@@ -2,10 +2,36 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+
+type UploadType = 'video' | 'image' | 'text'
+type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin'
 
 export default function UploadPage() {
-  const [uploadType, setUploadType] = useState<'video' | 'image' | 'text'>('video')
+  const router = useRouter()
+  const [uploadType, setUploadType] = useState<UploadType>('video')
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(['instagram', 'tiktok'])
   const [dragActive, setDragActive] = useState(false)
+  const [textContent, setTextContent] = useState('')
+  const [urlContent, setUrlContent] = useState('')
+
+  const platforms = [
+    { id: 'tiktok' as Platform, name: 'TikTok', icon: '🎵', color: 'bg-pink-100 text-pink-700 border-pink-300' },
+    { id: 'instagram' as Platform, name: 'Instagram', icon: '📷', color: 'bg-purple-100 text-purple-700 border-purple-300' },
+    { id: 'youtube' as Platform, name: 'YouTube', icon: '▶️', color: 'bg-red-100 text-red-700 border-red-300' },
+    { id: 'facebook' as Platform, name: 'Facebook', icon: '👥', color: 'bg-blue-100 text-blue-700 border-blue-300' },
+    { id: 'x' as Platform, name: 'X (Twitter)', icon: '🐦', color: 'bg-gray-100 text-gray-700 border-gray-300' },
+    { id: 'linkedin' as Platform, name: 'LinkedIn', icon: '💼', color: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
+  ]
+
+  const togglePlatform = (platformId: Platform) => {
+    setSelectedPlatforms(prev =>
+      prev.includes(platformId)
+        ? prev.filter(p => p !== platformId)
+        : [...prev, platformId]
+    )
+  }
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -24,144 +50,223 @@ export default function UploadPage() {
     // Handle file drop
   }
 
+  const handleGenerate = () => {
+    // Validate input
+    if (selectedPlatforms.length === 0) {
+      alert('Please select at least one platform')
+      return
+    }
+
+    // Navigate to generate page
+    router.push('/generate')
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold text-teal-600">
-              🚀 ReGen
-            </Link>
-            <nav className="flex gap-6">
-              <Link href="/upload" className="text-teal-600 font-semibold">Upload</Link>
-              <Link href="/generate" className="text-gray-600 hover:text-gray-900">Generate</Link>
-              <Link href="/schedule" className="text-gray-600 hover:text-gray-900">Schedule</Link>
-              <Link href="/analytics" className="text-gray-600 hover:text-gray-900">Analytics</Link>
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-3">
+              <Link href="/dashboard" className="flex items-center gap-3">
+                <Image src="/logo.png" alt="ReGen Logo" width={168} height={168} className="object-contain" />
+                <span className="text-2xl font-bold text-primary">ReGen</span>
+              </Link>
+              <span className="text-text-secondary text-sm">/ Upload</span>
+            </div>
+            <nav className="hidden md:flex items-center gap-6">
+              <Link href="/dashboard" className="text-text-secondary hover:text-primary transition-colors">Dashboard</Link>
+              <Link href="/upload" className="text-primary font-semibold">Upload</Link>
+              <Link href="/analytics" className="text-text-secondary hover:text-primary transition-colors">Analytics</Link>
             </nav>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Upload Content</h1>
-          <p className="text-gray-600">Upload your videos, images, or describe your content</p>
+          <h1 className="text-4xl font-bold text-text-primary mb-2">Upload / Import Content</h1>
+          <p className="text-text-secondary text-lg">Choose your content source and select target platforms</p>
         </div>
 
-        {/* Upload Type Selector */}
-        <div className="flex gap-4 mb-8">
-          <button
-            onClick={() => setUploadType('video')}
-            className={`flex-1 py-4 px-6 rounded-lg font-semibold transition-all ${
-              uploadType === 'video'
-                ? 'bg-gradient-to-r from-teal-400 to-teal-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            🎬 Video
-          </button>
-          <button
-            onClick={() => setUploadType('image')}
-            className={`flex-1 py-4 px-6 rounded-lg font-semibold transition-all ${
-              uploadType === 'image'
-                ? 'bg-gradient-to-r from-teal-400 to-teal-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            🖼️ Image
-          </button>
-          <button
-            onClick={() => setUploadType('text')}
-            className={`flex-1 py-4 px-6 rounded-lg font-semibold transition-all ${
-              uploadType === 'text'
-                ? 'bg-gradient-to-r from-teal-400 to-teal-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            📝 Text
-          </button>
-        </div>
-
-        {/* Upload Area */}
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          {uploadType !== 'text' ? (
-            <div
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              className={`border-3 border-dashed rounded-xl p-12 text-center transition-all ${
-                dragActive
-                  ? 'border-teal-500 bg-teal-50'
-                  : 'border-gray-300 hover:border-teal-400'
-              }`}
-            >
-              <div className="text-6xl mb-4">
-                {uploadType === 'video' ? '🎬' : '🖼️'}
+        <div className="space-y-8">
+          {/* Step 1: Choose Upload Type */}
+          <div className="bg-white rounded-2xl shadow-lg p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold">
+                1
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Drop your {uploadType} here
-              </h3>
-              <p className="text-gray-600 mb-6">
-                or click to browse from your computer
-              </p>
-              <input
-                type="file"
-                accept={uploadType === 'video' ? 'video/*' : 'image/*'}
-                className="hidden"
-                id="file-upload"
-              />
-              <label
-                htmlFor="file-upload"
-                className="inline-block bg-gradient-to-r from-teal-400 to-teal-600 text-white font-semibold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all hover:scale-105 cursor-pointer"
+              <h2 className="text-2xl font-bold text-text-primary">Choose Content Source</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button
+                onClick={() => setUploadType('video')}
+                className={`p-6 rounded-xl border-2 transition-all ${
+                  uploadType === 'video'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
               >
-                Choose File
-              </label>
-              <p className="text-sm text-gray-500 mt-4">
-                {uploadType === 'video'
-                  ? 'Supported formats: MP4, MOV, AVI (Max 500MB)'
-                  : 'Supported formats: JPG, PNG, GIF (Max 10MB)'}
+                <div className="text-4xl mb-3">🎬</div>
+                <h3 className="font-bold text-text-primary mb-1">Upload Video</h3>
+                <p className="text-sm text-text-secondary">MP4, MOV, AVI up to 500MB</p>
+              </button>
+
+              <button
+                onClick={() => setUploadType('image')}
+                className={`p-6 rounded-xl border-2 transition-all ${
+                  uploadType === 'image'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="text-4xl mb-3">🖼️</div>
+                <h3 className="font-bold text-text-primary mb-1">Upload Image</h3>
+                <p className="text-sm text-text-secondary">JPG, PNG, GIF up to 10MB</p>
+              </button>
+
+              <button
+                onClick={() => setUploadType('text')}
+                className={`p-6 rounded-xl border-2 transition-all ${
+                  uploadType === 'text'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="text-4xl mb-3">📝</div>
+                <h3 className="font-bold text-text-primary mb-1">Paste Text/URL</h3>
+                <p className="text-sm text-text-secondary">Or import from link</p>
+              </button>
+            </div>
+
+            {/* Upload Area */}
+            <div className="mt-6">
+              {uploadType !== 'text' ? (
+                <div
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  className={`border-3 border-dashed rounded-xl p-12 text-center transition-all ${
+                    dragActive
+                      ? 'border-primary bg-primary/5'
+                      : 'border-gray-300 hover:border-primary'
+                  }`}
+                >
+                  <div className="text-6xl mb-4">
+                    {uploadType === 'video' ? '🎬' : '🖼️'}
+                  </div>
+                  <h3 className="text-xl font-semibold text-text-primary mb-2">
+                    Drop your {uploadType} here
+                  </h3>
+                  <p className="text-text-secondary mb-6">
+                    or click to browse from your computer
+                  </p>
+                  <input
+                    type="file"
+                    accept={uploadType === 'video' ? 'video/*' : 'image/*'}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    className="inline-block btn-primary cursor-pointer"
+                  >
+                    Choose File
+                  </label>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Paste Text Content
+                    </label>
+                    <textarea
+                      value={textContent}
+                      onChange={(e) => setTextContent(e.target.value)}
+                      rows={6}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus resize-none"
+                      placeholder="Paste your content here..."
+                    />
+                  </div>
+                  <div className="text-center text-text-secondary font-medium">OR</div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Import from URL
+                    </label>
+                    <input
+                      type="url"
+                      value={urlContent}
+                      onChange={(e) => setUrlContent(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus"
+                      placeholder="https://example.com/post..."
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Step 2: Select Platforms */}
+          <div className="bg-white rounded-2xl shadow-lg p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold">
+                2
+              </div>
+              <h2 className="text-2xl font-bold text-text-primary">Select Target Platforms</h2>
+            </div>
+
+            <p className="text-text-secondary mb-6">
+              Choose which platforms you want to repurpose your content for
+            </p>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {platforms.map((platform) => (
+                <button
+                  key={platform.id}
+                  onClick={() => togglePlatform(platform.id)}
+                  className={`flex items-center gap-3 p-4 rounded-lg border-2 font-semibold transition-all ${
+                    selectedPlatforms.includes(platform.id)
+                      ? `${platform.color} border-current`
+                      : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="text-2xl">{platform.icon}</span>
+                  <span>{platform.name}</span>
+                  {selectedPlatforms.includes(platform.id) && (
+                    <span className="ml-auto text-lg">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
+              <p className="text-sm text-text-primary">
+                <span className="font-semibold">{selectedPlatforms.length} platforms selected</span> - ReGen will create optimized versions for each platform
               </p>
             </div>
-          ) : (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Describe your content
-              </label>
-              <textarea
-                rows={8}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-transparent outline-none transition-all resize-none"
-                placeholder="Enter your content description here..."
-              />
-              <div className="mt-6 flex justify-end">
-                <button className="bg-gradient-to-r from-teal-400 to-teal-600 text-white font-semibold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all hover:scale-105">
-                  Continue to Generate
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
 
-        {/* Recent Uploads */}
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Recent Uploads</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="h-48 bg-gradient-to-br from-teal-100 to-teal-200 flex items-center justify-center text-6xl">
-                  {i % 3 === 0 ? '🎬' : i % 3 === 1 ? '🖼️' : '📝'}
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900">Sample {i % 3 === 0 ? 'Video' : i % 3 === 1 ? 'Image' : 'Text'}</h3>
-                  <p className="text-sm text-gray-600 mt-1">Uploaded 2 days ago</p>
-                </div>
-              </div>
-            ))}
+          {/* Generate Button */}
+          <div className="flex justify-between items-center">
+            <Link
+              href="/dashboard"
+              className="text-text-secondary hover:text-primary font-medium"
+            >
+              ← Back to Dashboard
+            </Link>
+            <button
+              onClick={handleGenerate}
+              disabled={selectedPlatforms.length === 0}
+              className="btn-primary text-lg px-8 py-4"
+            >
+              Generate Previews →
+            </button>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }
