@@ -88,8 +88,8 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Feature 1 */}
             <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
-              <div className="w-32 h-32 flex items-center justify-center mb-6">
-                <Image src="/feature-icon.png" alt="All-in-One Repurposing" width={128} height={128} className="object-contain" />
+              <div className="w-40 h-40 flex items-center justify-center mb-6">
+                <Image src="/feature-icon.png" alt="All-in-One Repurposing" width={160} height={160} className="object-contain" />
               </div>
               <h3 className="text-2xl font-bold text-text-primary mb-4">
                 All-in-One Repurposing
@@ -101,8 +101,8 @@ export default function Home() {
 
             {/* Feature 2 */}
             <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
-              <div className="w-32 h-32 flex items-center justify-center mb-6">
-                <Image src="/ai-caption-bubble.png" alt="Smart Captions" width={128} height={128} className="object-contain" />
+              <div className="w-40 h-40 flex items-center justify-center mb-6">
+                <Image src="/ai-caption-bubble.png" alt="Smart Captions" width={160} height={160} className="object-contain" />
               </div>
               <h3 className="text-2xl font-bold text-text-primary mb-4">
                 Smart Captions
@@ -114,8 +114,8 @@ export default function Home() {
 
             {/* Feature 3 */}
             <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
-              <div className="w-32 h-32 flex items-center justify-center mb-6">
-                <Image src="/voice-shield.png" alt="Brand Voice AI" width={128} height={128} className="object-contain" />
+              <div className="w-40 h-40 flex items-center justify-center mb-6">
+                <Image src="/voice-shield.png" alt="Brand Voice AI" width={160} height={160} className="object-contain" />
               </div>
               <h3 className="text-2xl font-bold text-text-primary mb-4">
                 Brand Voice AI
@@ -127,8 +127,8 @@ export default function Home() {
 
             {/* Feature 4 */}
             <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
-              <div className="w-14 h-14 rounded-xl bg-gradient-brand flex items-center justify-center text-3xl mb-6">
-                🚀
+              <div className="w-40 h-40 flex items-center justify-center mb-6">
+                <Image src="/tap-ripple.png" alt="One-Tap Publish" width={160} height={160} className="object-contain" />
               </div>
               <h3 className="text-2xl font-bold text-text-primary mb-4">
                 One-Tap Publish
@@ -140,8 +140,8 @@ export default function Home() {
 
             {/* Feature 5 */}
             <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
-              <div className="w-14 h-14 rounded-xl bg-gradient-brand flex items-center justify-center text-3xl mb-6">
-                📊
+              <div className="w-40 h-40 flex items-center justify-center mb-6">
+                <Image src="/insight-analytics.png" alt="Insights Dashboard" width={160} height={160} className="object-contain" />
               </div>
               <h3 className="text-2xl font-bold text-text-primary mb-4">
                 Insights Dashboard
