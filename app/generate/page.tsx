@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
+type CaptionTone = 'professional' | 'engaging' | 'casual'
+
 type Preview = {
   id: number
   platform: string
@@ -18,6 +20,8 @@ type Preview = {
 export default function GeneratePage() {
   const router = useRouter()
   const [generating, setGenerating] = useState(false)
+  const [selectedTone, setSelectedTone] = useState<CaptionTone>('engaging')
+  const [showToneSelector, setShowToneSelector] = useState(true)
   const [previews, setPreviews] = useState<Preview[]>([
     {
       id: 1,
@@ -67,7 +71,38 @@ export default function GeneratePage() {
   ])
 
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingHashtags, setEditingHashtags] = useState<number | null>(null)
   const [selectedPreviews, setSelectedPreviews] = useState<number[]>([1, 2, 3])
+
+  const tones = [
+    { id: 'professional' as CaptionTone, label: 'Professional', icon: '💼', description: 'Formal and business-focused' },
+    { id: 'engaging' as CaptionTone, label: 'Engaging', icon: '✨', description: 'Fun and attention-grabbing' },
+    { id: 'casual' as CaptionTone, label: 'Casual', icon: '😊', description: 'Friendly and relaxed' },
+  ]
+
+  const sampleCaptionsByTone = {
+    professional: {
+      tiktok: "Sharing insights on how AI technology is transforming content creation workflows. This innovative approach helps teams maintain consistent quality across all platforms.",
+      instagram: "Professional tip: Strategic content repurposing increases reach by 300%.\n\nDiscover how leading brands leverage AI to optimize their social media strategy.",
+      youtube: "The Complete Guide to Professional Content Repurposing | Industry Best Practices",
+      twitter: "Enterprise content teams: AI-powered repurposing reduces production time by 85%.\n\nKey benefits:\n• Consistent messaging\n• Scalable output\n• Data-driven optimization\n\nLearn more ↓",
+      linkedin: "Content repurposing is no longer optional—it's essential for competitive advantage.\n\nAfter implementing AI-driven workflows, our team achieved:\n✓ 3x content output\n✓ 40% cost reduction\n✓ Improved cross-platform consistency\n\nHere's our framework:"
+    },
+    engaging: {
+      tiktok: "🚀 OMG you NEED to see this! We just dropped something absolutely game-changing for content creators everywhere! Drop a 🔥 if you're ready to level up your content game! 💪✨",
+      instagram: "Swipe to see how AI is changing content creation 👉\n\nThis is literally THE secret weapon every creator needs! 🎯💥\n\nWho else is ready to 10x their content? 🙋‍♀️",
+      youtube: "This AI Tool Changed EVERYTHING About My Content Strategy! (You Won't Believe #3) 🤯",
+      twitter: "POV: You just discovered the content creation hack that saves 10+ hours per week 🤯\n\nCreators are calling it a \"game changer\" 🔥\n\nHere's why everyone's switching:",
+      linkedin: "Hot take: Manual content repurposing is dead 💀\n\nI've been testing this AI approach for 30 days and the results are INSANE:\n\n📈 300% more engagement\n⚡ 85% time saved\n🎯 Better targeting\n\nThread below 👇"
+    },
+    casual: {
+      tiktok: "Hey everyone! Just wanted to share something cool we've been working on. It's been a fun journey and we think you'll really like it. Let us know what you think! 😊",
+      instagram: "Quick update: been trying out this new content thing and it's pretty neat!\n\nSwipe through to see how it works. Let me know if you have questions! 💬",
+      youtube: "Just sharing some thoughts on content creation | My new workflow",
+      twitter: "So I've been using this new approach for my content and it's actually pretty helpful.\n\nFigured I'd share in case anyone else is interested. Happy to chat about it!",
+      linkedin: "Wanted to share something that's been making my content workflow easier lately.\n\nIt's nothing revolutionary, but it's saved me quite a bit of time. Thought some of you might find it useful too.\n\nHappy to discuss if you're curious!"
+    }
+  }
 
   const handleEditCaption = (id: number, newCaption: string) => {
     setPreviews(prev =>
@@ -77,21 +112,47 @@ export default function GeneratePage() {
 
   const handleRegenerate = (id: number) => {
     setGenerating(true)
+    setShowToneSelector(true)
     // Simulate API call
     setTimeout(() => {
-      // In a real app, this would fetch a new caption from the API
-      setPreviews(prev =>
-        prev.map(p =>
-          p.id === id
-            ? {
-                ...p,
-                caption: 'New AI-generated caption with fresh perspective! ✨ This is an example of regenerated content.'
-              }
-            : p
+      const preview = previews.find(p => p.id === id)
+      if (preview) {
+        const platformKey = preview.platform.toLowerCase().replace(/\s*\(.*?\)\s*/g, '').replace(' ', '') as keyof typeof sampleCaptionsByTone.professional
+        const newCaption = sampleCaptionsByTone[selectedTone][platformKey] || 'New AI-generated caption with fresh perspective! ✨'
+
+        setPreviews(prev =>
+          prev.map(p =>
+            p.id === id
+              ? {
+                  ...p,
+                  caption: newCaption
+                }
+              : p
+          )
         )
-      )
+      }
       setGenerating(false)
     }, 1500)
+  }
+
+  const handleAddHashtag = (id: number, hashtag: string) => {
+    setPreviews(prev =>
+      prev.map(p =>
+        p.id === id
+          ? { ...p, hashtags: [...p.hashtags, hashtag] }
+          : p
+      )
+    )
+  }
+
+  const handleRemoveHashtag = (id: number, tagIndex: number) => {
+    setPreviews(prev =>
+      prev.map(p =>
+        p.id === id
+          ? { ...p, hashtags: p.hashtags.filter((_, i) => i !== tagIndex) }
+          : p
+      )
+    )
   }
 
   const togglePreview = (id: number) => {
@@ -124,7 +185,9 @@ export default function GeneratePage() {
             <nav className="hidden md:flex items-center gap-6">
               <Link href="/dashboard" className="text-text-secondary hover:text-primary transition-colors">Dashboard</Link>
               <Link href="/upload" className="text-text-secondary hover:text-primary transition-colors">Upload</Link>
+              <Link href="/schedule" className="text-text-secondary hover:text-primary transition-colors">Schedule</Link>
               <Link href="/analytics" className="text-text-secondary hover:text-primary transition-colors">Analytics</Link>
+              <Link href="/settings" className="text-text-secondary hover:text-primary transition-colors">Settings</Link>
             </nav>
           </div>
         </div>
@@ -138,6 +201,47 @@ export default function GeneratePage() {
             ReGen created {previews.length} optimized previews for your selected platforms
           </p>
         </div>
+
+        {/* Tone Selector */}
+        {showToneSelector && (
+          <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-text-primary">Select Caption Tone</h2>
+                <p className="text-sm text-text-secondary mt-1">Choose the tone for AI-generated captions</p>
+              </div>
+              <button
+                onClick={() => setShowToneSelector(false)}
+                className="text-text-secondary hover:text-text-primary text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              {tones.map((tone) => (
+                <button
+                  key={tone.id}
+                  onClick={() => setSelectedTone(tone.id)}
+                  className={`p-4 rounded-xl border-2 transition-all ${
+                    selectedTone === tone.id
+                      ? 'border-primary bg-primary/5 shadow-md'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-3xl mb-2">{tone.icon}</div>
+                  <h3 className="font-semibold text-text-primary text-sm mb-1">{tone.label}</h3>
+                  <p className="text-xs text-text-secondary">{tone.description}</p>
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-800 flex items-center gap-2">
+                <span>💡</span>
+                <span>Tip: Click "🔄 Regenerate" on any preview to apply the selected tone</span>
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Stats Bar */}
         <div className="bg-gradient-brand text-white rounded-xl p-6 mb-8">
@@ -228,17 +332,47 @@ export default function GeneratePage() {
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium text-gray-700 mb-2 block">Hashtags</label>
-                      <div className="flex flex-wrap gap-2">
-                        {preview.hashtags.map((tag, i) => (
-                          <span key={i} className="badge-primary">
-                            {tag}
-                          </span>
-                        ))}
-                        <button className="px-3 py-1 text-sm text-primary hover:text-primary-hover font-medium">
-                          + Add
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-medium text-gray-700">Hashtags</label>
+                        <button
+                          onClick={() => setEditingHashtags(editingHashtags === preview.id ? null : preview.id)}
+                          className="text-primary hover:text-primary-hover text-sm font-medium"
+                        >
+                          {editingHashtags === preview.id ? 'Done' : '✏️ Edit'}
                         </button>
                       </div>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {preview.hashtags.map((tag, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 badge-primary">
+                            {tag}
+                            {editingHashtags === preview.id && (
+                              <button
+                                onClick={() => handleRemoveHashtag(preview.id, i)}
+                                className="text-xs hover:text-red-600"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                      {editingHashtags === preview.id && (
+                        <input
+                          type="text"
+                          placeholder="Add hashtag (press Enter)"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              const input = e.currentTarget
+                              const value = input.value.trim().replace('#', '')
+                              if (value && !preview.hashtags.includes(`#${value}`)) {
+                                handleAddHashtag(preview.id, `#${value}`)
+                                input.value = ''
+                              }
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg input-focus text-sm"
+                        />
+                      )}
                     </div>
 
                     {/* Actions */}
