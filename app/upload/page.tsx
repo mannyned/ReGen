@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -15,6 +15,7 @@ export default function UploadPage() {
   const [dragActive, setDragActive] = useState(false)
   const [textContent, setTextContent] = useState('')
   const [urlContent, setUrlContent] = useState('')
+  const [connectedAccounts, setConnectedAccounts] = useState<string[]>([])
 
   const platforms = [
     { id: 'tiktok' as Platform, name: 'TikTok', icon: '🎵', color: 'bg-pink-100 text-pink-700 border-pink-300' },
@@ -24,6 +25,18 @@ export default function UploadPage() {
     { id: 'x' as Platform, name: 'X (Twitter)', icon: '🐦', color: 'bg-gray-100 text-gray-700 border-gray-300' },
     { id: 'linkedin' as Platform, name: 'LinkedIn', icon: '💼', color: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
   ]
+
+  // Load connected accounts from localStorage
+  useEffect(() => {
+    const savedPlatforms = localStorage.getItem('connectedPlatforms')
+    if (savedPlatforms) {
+      const platforms = JSON.parse(savedPlatforms)
+      const connected = platforms
+        .filter((p: any) => p.connected)
+        .map((p: any) => p.id === 'twitter' ? 'x' : p.id) // Map twitter to x for consistency
+      setConnectedAccounts(connected)
+    }
+  }, [])
 
   const togglePlatform = (platformId: Platform) => {
     setSelectedPlatforms(prev =>
@@ -77,7 +90,9 @@ export default function UploadPage() {
             <nav className="hidden md:flex items-center gap-6">
               <Link href="/dashboard" className="text-text-secondary hover:text-primary transition-colors">Dashboard</Link>
               <Link href="/upload" className="text-primary font-semibold">Upload</Link>
+              <Link href="/schedule" className="text-text-secondary hover:text-primary transition-colors">Schedule</Link>
               <Link href="/analytics" className="text-text-secondary hover:text-primary transition-colors">Analytics</Link>
+              <Link href="/settings" className="text-text-secondary hover:text-primary transition-colors">Settings</Link>
             </nav>
           </div>
         </div>
@@ -223,23 +238,29 @@ export default function UploadPage() {
             </p>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {platforms.map((platform) => (
-                <button
-                  key={platform.id}
-                  onClick={() => togglePlatform(platform.id)}
-                  className={`flex items-center gap-3 p-4 rounded-lg border-2 font-semibold transition-all ${
-                    selectedPlatforms.includes(platform.id)
-                      ? `${platform.color} border-current`
-                      : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <span className="text-2xl">{platform.icon}</span>
-                  <span>{platform.name}</span>
-                  {selectedPlatforms.includes(platform.id) && (
-                    <span className="ml-auto text-lg">✓</span>
-                  )}
-                </button>
-              ))}
+              {platforms.map((platform) => {
+                const isConnected = connectedAccounts.includes(platform.id)
+                return (
+                  <button
+                    key={platform.id}
+                    onClick={() => togglePlatform(platform.id)}
+                    className={`flex items-center gap-3 p-4 rounded-lg border-2 font-semibold transition-all relative ${
+                      selectedPlatforms.includes(platform.id)
+                        ? `${platform.color} border-current`
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="text-2xl">{platform.icon}</span>
+                    <span>{platform.name}</span>
+                    {selectedPlatforms.includes(platform.id) && (
+                      <span className="ml-auto text-lg">✓</span>
+                    )}
+                    {!isConnected && (
+                      <span className="absolute top-1 right-1 w-3 h-3 bg-orange-500 rounded-full" title="Not connected" />
+                    )}
+                  </button>
+                )
+              })}
             </div>
 
             <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
@@ -247,6 +268,24 @@ export default function UploadPage() {
                 <span className="font-semibold">{selectedPlatforms.length} platforms selected</span> - ReGen will create optimized versions for each platform
               </p>
             </div>
+
+            {connectedAccounts.length === 0 && (
+              <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <p className="text-sm text-orange-800 flex items-center gap-2">
+                  <span className="text-xl">⚠️</span>
+                  <span>No accounts connected. <Link href="/settings" className="font-semibold underline">Connect your accounts</Link> to publish content.</span>
+                </p>
+              </div>
+            )}
+
+            {connectedAccounts.length > 0 && selectedPlatforms.some(p => !connectedAccounts.includes(p)) && (
+              <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <p className="text-sm text-orange-800 flex items-center gap-2">
+                  <span className="text-xl">⚠️</span>
+                  <span>Some selected platforms are not connected. <Link href="/settings" className="font-semibold underline">Connect them</Link> to publish to all platforms.</span>
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Generate Button */}

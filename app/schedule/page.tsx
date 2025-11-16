@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -10,6 +10,9 @@ export default function SchedulePage() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([])
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [connectedAccounts, setConnectedAccounts] = useState<string[]>([])
+  const [showWarning, setShowWarning] = useState(false)
 
   const platforms: { name: Platform; label: string; icon: string }[] = [
     { name: 'instagram', label: 'Instagram', icon: '📷' },
@@ -19,12 +22,46 @@ export default function SchedulePage() {
     { name: 'tiktok', label: 'TikTok', icon: '🎵' }
   ]
 
+  // Load connected accounts from localStorage
+  useEffect(() => {
+    const savedPlatforms = localStorage.getItem('connectedPlatforms')
+    if (savedPlatforms) {
+      const platforms = JSON.parse(savedPlatforms)
+      const connected = platforms
+        .filter((p: any) => p.connected)
+        .map((p: any) => p.id)
+      setConnectedAccounts(connected)
+    }
+  }, [])
+
   const togglePlatform = (platform: Platform) => {
     setSelectedPlatforms(prev =>
       prev.includes(platform)
         ? prev.filter(p => p !== platform)
         : [...prev, platform]
     )
+  }
+
+  const handleSchedulePost = () => {
+    // Check if any selected platforms are not connected
+    const unconnectedPlatforms = selectedPlatforms.filter(p => !connectedAccounts.includes(p))
+
+    if (unconnectedPlatforms.length > 0) {
+      setShowWarning(true)
+      return
+    }
+
+    // Show success message
+    setShowSuccess(true)
+
+    // Hide success message after 3 seconds
+    setTimeout(() => {
+      setShowSuccess(false)
+      // Reset form
+      setSelectedPlatforms([])
+      setSelectedDate('')
+      setSelectedTime('')
+    }, 3000)
   }
 
   const upcomingPosts = [
@@ -51,6 +88,7 @@ export default function SchedulePage() {
               <Link href="/upload" className="text-text-secondary hover:text-primary transition-colors">Upload</Link>
               <Link href="/schedule" className="text-primary font-semibold">Schedule</Link>
               <Link href="/analytics" className="text-text-secondary hover:text-primary transition-colors">Analytics</Link>
+              <Link href="/settings" className="text-text-secondary hover:text-primary transition-colors">Settings</Link>
             </nav>
           </div>
         </div>
@@ -90,21 +128,35 @@ export default function SchedulePage() {
                   Select Platforms
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {platforms.map(({ name, label, icon }) => (
-                    <button
-                      key={name}
-                      onClick={() => togglePlatform(name)}
-                      className={`flex items-center gap-3 p-4 rounded-lg font-semibold transition-all ${
-                        selectedPlatforms.includes(name)
-                          ? 'bg-primary text-white shadow-lg hover:bg-primary-hover'
-                          : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
-                      }`}
-                    >
-                      <span className="text-2xl">{icon}</span>
-                      <span>{label}</span>
-                    </button>
-                  ))}
+                  {platforms.map(({ name, label, icon }) => {
+                    const isConnected = connectedAccounts.includes(name)
+                    return (
+                      <button
+                        key={name}
+                        onClick={() => togglePlatform(name)}
+                        className={`flex items-center gap-3 p-4 rounded-lg font-semibold transition-all relative ${
+                          selectedPlatforms.includes(name)
+                            ? 'bg-primary text-white shadow-lg hover:bg-primary-hover'
+                            : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
+                        }`}
+                      >
+                        <span className="text-2xl">{icon}</span>
+                        <span>{label}</span>
+                        {!isConnected && (
+                          <span className="absolute top-1 right-1 w-3 h-3 bg-orange-500 rounded-full" title="Not connected" />
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
+                {connectedAccounts.length === 0 && (
+                  <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                    <p className="text-sm text-orange-800 flex items-center gap-2">
+                      <span className="text-xl">⚠️</span>
+                      <span>No accounts connected. <Link href="/settings" className="font-semibold underline">Connect your accounts</Link> to schedule posts.</span>
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Date & Time Selection */}
@@ -154,8 +206,51 @@ export default function SchedulePage() {
                 </div>
               </div>
 
+              {/* Warning Message */}
+              {showWarning && (
+                <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="flex items-start gap-3 mb-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div className="flex-1">
+                      <p className="font-semibold text-orange-800">Cannot Schedule Post</p>
+                      <p className="text-sm text-orange-600 mt-1">
+                        Some selected platforms are not connected to your account.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <Link
+                      href="/settings"
+                      className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors"
+                    >
+                      Go to Settings
+                    </Link>
+                    <button
+                      onClick={() => setShowWarning(false)}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Success Message */}
+              {showSuccess && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+                  <span className="text-2xl">✅</span>
+                  <div>
+                    <p className="font-semibold text-green-800">Post Scheduled Successfully!</p>
+                    <p className="text-sm text-green-600">
+                      Your post will be published on {selectedDate} at {selectedTime}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Schedule Button */}
               <button
+                onClick={handleSchedulePost}
                 disabled={selectedPlatforms.length === 0 || !selectedDate || !selectedTime}
                 className="w-full btn-primary"
               >

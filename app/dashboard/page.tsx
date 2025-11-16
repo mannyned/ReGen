@@ -37,7 +37,9 @@ export default function DashboardPage() {
             <nav className="hidden md:flex items-center gap-6">
               <Link href="/dashboard" className="text-primary font-semibold">Dashboard</Link>
               <Link href="/upload" className="text-text-secondary hover:text-primary transition-colors">Upload</Link>
+              <Link href="/schedule" className="text-text-secondary hover:text-primary transition-colors">Schedule</Link>
               <Link href="/analytics" className="text-text-secondary hover:text-primary transition-colors">Analytics</Link>
+              <Link href="/settings" className="text-text-secondary hover:text-primary transition-colors">Settings</Link>
               <div className="w-10 h-10 rounded-full bg-gradient-brand flex items-center justify-center text-white font-semibold cursor-pointer">
                 JD
               </div>
