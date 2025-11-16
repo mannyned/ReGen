@@ -16,6 +16,8 @@ export default function UploadPage() {
   const [textContent, setTextContent] = useState('')
   const [urlContent, setUrlContent] = useState('')
   const [connectedAccounts, setConnectedAccounts] = useState<string[]>([])
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string>('')
 
   const platforms = [
     { id: 'tiktok' as Platform, name: 'TikTok', icon: '🎵', color: 'bg-pink-100 text-pink-700 border-pink-300' },
@@ -60,7 +62,37 @@ export default function UploadPage() {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    // Handle file drop
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0])
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0])
+    }
+  }
+
+  const handleFile = (file: File) => {
+    // Validate file type
+    const isVideo = uploadType === 'video' && file.type.startsWith('video/')
+    const isImage = uploadType === 'image' && file.type.startsWith('image/')
+
+    if (!isVideo && !isImage) {
+      alert(`Please select a ${uploadType} file`)
+      return
+    }
+
+    setUploadedFile(file)
+
+    // Create preview URL
+    const url = URL.createObjectURL(file)
+    setPreviewUrl(url)
+
+    // Store in localStorage for generate page
+    localStorage.setItem('uploadedFileName', file.name)
+    localStorage.setItem('uploadedFileType', uploadType)
   }
 
   const handleGenerate = () => {
@@ -69,6 +101,20 @@ export default function UploadPage() {
       alert('Please select at least one platform')
       return
     }
+
+    // Validate content
+    if (uploadType !== 'text' && !uploadedFile) {
+      alert('Please upload a file first')
+      return
+    }
+
+    if (uploadType === 'text' && !textContent && !urlContent) {
+      alert('Please enter text or URL content')
+      return
+    }
+
+    // Store selected platforms for generate page
+    localStorage.setItem('selectedPlatforms', JSON.stringify(selectedPlatforms))
 
     // Navigate to generate page
     router.push('/generate')
@@ -159,39 +205,86 @@ export default function UploadPage() {
             {/* Upload Area */}
             <div className="mt-6">
               {uploadType !== 'text' ? (
-                <div
-                  onDragEnter={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDragOver={handleDrag}
-                  onDrop={handleDrop}
-                  className={`border-3 border-dashed rounded-xl p-12 text-center transition-all ${
-                    dragActive
-                      ? 'border-primary bg-primary/5'
-                      : 'border-gray-300 hover:border-primary'
-                  }`}
-                >
-                  <div className="text-6xl mb-4">
-                    {uploadType === 'video' ? '🎬' : '🖼️'}
-                  </div>
-                  <h3 className="text-xl font-semibold text-text-primary mb-2">
-                    Drop your {uploadType} here
-                  </h3>
-                  <p className="text-text-secondary mb-6">
-                    or click to browse from your computer
-                  </p>
-                  <input
-                    type="file"
-                    accept={uploadType === 'video' ? 'video/*' : 'image/*'}
-                    className="hidden"
-                    id="file-upload"
-                  />
-                  <label
-                    htmlFor="file-upload"
-                    className="inline-block btn-primary cursor-pointer"
-                  >
-                    Choose File
-                  </label>
-                </div>
+                <>
+                  {!uploadedFile ? (
+                    <div
+                      onDragEnter={handleDrag}
+                      onDragLeave={handleDrag}
+                      onDragOver={handleDrag}
+                      onDrop={handleDrop}
+                      className={`border-3 border-dashed rounded-xl p-12 text-center transition-all ${
+                        dragActive
+                          ? 'border-primary bg-primary/5'
+                          : 'border-gray-300 hover:border-primary'
+                      }`}
+                    >
+                      <div className="text-6xl mb-4">
+                        {uploadType === 'video' ? '🎬' : '🖼️'}
+                      </div>
+                      <h3 className="text-xl font-semibold text-text-primary mb-2">
+                        Drop your {uploadType} here
+                      </h3>
+                      <p className="text-text-secondary mb-6">
+                        or click to browse from your computer
+                      </p>
+                      <input
+                        type="file"
+                        accept={uploadType === 'video' ? 'video/*' : 'image/*'}
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        id="file-upload"
+                      />
+                      <label
+                        htmlFor="file-upload"
+                        className="inline-block btn-primary cursor-pointer"
+                      >
+                        Choose File
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-primary rounded-xl p-6 bg-primary/5">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-4">
+                            <span className="text-3xl">✅</span>
+                            <div>
+                              <h3 className="font-semibold text-text-primary">File Uploaded Successfully</h3>
+                              <p className="text-sm text-text-secondary">{uploadedFile.name}</p>
+                              <p className="text-xs text-text-secondary">{(uploadedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                            </div>
+                          </div>
+
+                          {/* Preview */}
+                          <div className="rounded-lg overflow-hidden bg-black max-w-md">
+                            {uploadType === 'video' ? (
+                              <video
+                                src={previewUrl}
+                                controls
+                                className="w-full"
+                              />
+                            ) : (
+                              <img
+                                src={previewUrl}
+                                alt="Preview"
+                                className="w-full h-auto"
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setUploadedFile(null)
+                            setPreviewUrl('')
+                            URL.revokeObjectURL(previewUrl)
+                          }}
+                          className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
               ) : (
                 <div className="space-y-4">
                   <div>

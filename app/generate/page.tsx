@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -22,6 +22,18 @@ export default function GeneratePage() {
   const [generating, setGenerating] = useState(false)
   const [selectedTone, setSelectedTone] = useState<CaptionTone>('engaging')
   const [showToneSelector, setShowToneSelector] = useState(true)
+  const [uploadedFileName, setUploadedFileName] = useState<string>('')
+  const [uploadedFileType, setUploadedFileType] = useState<string>('')
+
+  // Load uploaded file info from localStorage
+  useEffect(() => {
+    const fileName = localStorage.getItem('uploadedFileName')
+    const fileType = localStorage.getItem('uploadedFileType')
+
+    if (fileName) setUploadedFileName(fileName)
+    if (fileType) setUploadedFileType(fileType)
+  }, [])
+
   const [previews, setPreviews] = useState<Preview[]>([
     {
       id: 1,
@@ -300,8 +312,11 @@ export default function GeneratePage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Thumbnail */}
                   <div className="md:col-span-1">
-                    <div className="aspect-square bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl flex items-center justify-center text-6xl">
+                    <div className="aspect-square bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl flex items-center justify-center text-6xl relative overflow-hidden">
                       {preview.thumbnail}
+                      <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/70 text-white text-xs rounded">
+                        {preview.platform}
+                      </div>
                     </div>
                   </div>
 
