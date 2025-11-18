@@ -13,6 +13,7 @@ export default function SchedulePage() {
   const [showSuccess, setShowSuccess] = useState(false)
   const [connectedAccounts, setConnectedAccounts] = useState<string[]>([])
   const [showWarning, setShowWarning] = useState(false)
+  const [postMode, setPostMode] = useState<'schedule' | 'now'>('schedule')
 
   const platforms: { name: Platform; label: string; icon: string }[] = [
     { name: 'instagram', label: 'Instagram', icon: '📷' },
@@ -42,6 +43,51 @@ export default function SchedulePage() {
     )
   }
 
+  const handlePublishNow = async () => {
+    // Check if any selected platforms are not connected
+    const unconnectedPlatforms = selectedPlatforms.filter(p => !connectedAccounts.includes(p))
+
+    if (unconnectedPlatforms.length > 0) {
+      setShowWarning(true)
+      return
+    }
+
+    try {
+      // Call the publish now API for each platform
+      for (const platform of selectedPlatforms) {
+        const response = await fetch('http://localhost:3000/api/publish/now', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            jobId: 'temp-job-id', // In real app, this would come from the content selection
+            platform: platform,
+            caption: 'Sample caption',
+            hashtags: ['#regen', '#content'],
+          }),
+        })
+
+        if (!response.ok) {
+          console.error(`Failed to publish to ${platform}`)
+        }
+      }
+
+      // Show success message
+      setShowSuccess(true)
+      setPostMode('now')
+
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setShowSuccess(false)
+        setSelectedPlatforms([])
+      }, 3000)
+    } catch (error) {
+      console.error('Error publishing now:', error)
+      alert('Failed to publish. Please try again.')
+    }
+  }
+
   const handleSchedulePost = () => {
     // Check if any selected platforms are not connected
     const unconnectedPlatforms = selectedPlatforms.filter(p => !connectedAccounts.includes(p))
@@ -53,6 +99,7 @@ export default function SchedulePage() {
 
     // Show success message
     setShowSuccess(true)
+    setPostMode('schedule')
 
     // Hide success message after 3 seconds
     setTimeout(() => {
@@ -191,16 +238,44 @@ export default function SchedulePage() {
                   Quick Schedule
                 </label>
                 <div className="grid grid-cols-4 gap-3">
-                  <button className="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-lg text-sm font-medium transition-colors">
-                    Now
+                  <button
+                    onClick={handlePublishNow}
+                    disabled={selectedPlatforms.length === 0}
+                    className="py-2 px-4 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-sm font-medium transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    🚀 Now
                   </button>
-                  <button className="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-lg text-sm font-medium transition-colors">
+                  <button
+                    onClick={() => {
+                      const date = new Date()
+                      date.setHours(date.getHours() + 1)
+                      setSelectedDate(date.toISOString().split('T')[0])
+                      setSelectedTime(date.toTimeString().slice(0, 5))
+                    }}
+                    className="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-lg text-sm font-medium transition-colors"
+                  >
                     +1 Hour
                   </button>
-                  <button className="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-lg text-sm font-medium transition-colors">
+                  <button
+                    onClick={() => {
+                      const date = new Date()
+                      date.setDate(date.getDate() + 1)
+                      setSelectedDate(date.toISOString().split('T')[0])
+                      setSelectedTime('09:00')
+                    }}
+                    className="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-lg text-sm font-medium transition-colors"
+                  >
                     +1 Day
                   </button>
-                  <button className="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-lg text-sm font-medium transition-colors">
+                  <button
+                    onClick={() => {
+                      const date = new Date()
+                      date.setDate(date.getDate() + 7)
+                      setSelectedDate(date.toISOString().split('T')[0])
+                      setSelectedTime('09:00')
+                    }}
+                    className="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-lg text-sm font-medium transition-colors"
+                  >
                     +1 Week
                   </button>
                 </div>
@@ -240,22 +315,36 @@ export default function SchedulePage() {
                 <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
                   <span className="text-2xl">✅</span>
                   <div>
-                    <p className="font-semibold text-green-800">Post Scheduled Successfully!</p>
+                    <p className="font-semibold text-green-800">
+                      {postMode === 'now' ? 'Post Published Successfully!' : 'Post Scheduled Successfully!'}
+                    </p>
                     <p className="text-sm text-green-600">
-                      Your post will be published on {selectedDate} at {selectedTime}
+                      {postMode === 'now'
+                        ? `Your post has been published to ${selectedPlatforms.join(', ')}`
+                        : `Your post will be published on ${selectedDate} at ${selectedTime}`
+                      }
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Schedule Button */}
-              <button
-                onClick={handleSchedulePost}
-                disabled={selectedPlatforms.length === 0 || !selectedDate || !selectedTime}
-                className="w-full btn-primary"
-              >
-                📅 Schedule Post
-              </button>
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={handlePublishNow}
+                  disabled={selectedPlatforms.length === 0}
+                  className="btn-primary bg-green-600 hover:bg-green-700 disabled:bg-gray-300"
+                >
+                  🚀 Post Now
+                </button>
+                <button
+                  onClick={handleSchedulePost}
+                  disabled={selectedPlatforms.length === 0 || !selectedDate || !selectedTime}
+                  className="btn-primary"
+                >
+                  📅 Schedule Post
+                </button>
+              </div>
             </div>
           </div>
 

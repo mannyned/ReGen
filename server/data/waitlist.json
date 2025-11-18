@@ -1,0 +1,10 @@
+[
+  {
+    "email": "john@example.com",
+    "name": "John Doe",
+    "referralSource": "twitter",
+    "position": 1,
+    "joinedAt": "2025-11-12T17:37:00.832Z",
+    "status": "pending"
+  }
+]

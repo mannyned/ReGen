@@ -24,14 +24,20 @@ export default function GeneratePage() {
   const [showToneSelector, setShowToneSelector] = useState(true)
   const [uploadedFileName, setUploadedFileName] = useState<string>('')
   const [uploadedFileType, setUploadedFileType] = useState<string>('')
+  const [contentDescription, setContentDescription] = useState<string>('')
+  const [customHashtags, setCustomHashtags] = useState<string>('')
 
-  // Load uploaded file info from localStorage
+  // Load uploaded file info and content details from localStorage
   useEffect(() => {
     const fileName = localStorage.getItem('uploadedFileName')
     const fileType = localStorage.getItem('uploadedFileType')
+    const description = localStorage.getItem('contentDescription')
+    const hashtags = localStorage.getItem('customHashtags')
 
     if (fileName) setUploadedFileName(fileName)
     if (fileType) setUploadedFileType(fileType)
+    if (description) setContentDescription(description)
+    if (hashtags) setCustomHashtags(hashtags)
   }, [])
 
   const [previews, setPreviews] = useState<Preview[]>([
@@ -122,29 +128,63 @@ export default function GeneratePage() {
     )
   }
 
-  const handleRegenerate = (id: number) => {
+  const handleRegenerate = async (id: number) => {
     setGenerating(true)
     setShowToneSelector(true)
-    // Simulate API call
-    setTimeout(() => {
-      const preview = previews.find(p => p.id === id)
-      if (preview) {
-        const platformKey = preview.platform.toLowerCase().replace(/\s*\(.*?\)\s*/g, '').replace(' ', '') as keyof typeof sampleCaptionsByTone.professional
-        const newCaption = sampleCaptionsByTone[selectedTone][platformKey] || 'New AI-generated caption with fresh perspective! ✨'
 
-        setPreviews(prev =>
-          prev.map(p =>
-            p.id === id
-              ? {
-                  ...p,
-                  caption: newCaption
-                }
-              : p
-          )
-        )
+    try {
+      const preview = previews.find(p => p.id === id)
+      if (!preview) {
+        setGenerating(false)
+        return
       }
+
+      console.log('Generating caption with OpenAI...')
+      console.log('Platform:', preview.platform)
+      console.log('Tone:', selectedTone)
+      console.log('Description:', contentDescription || '(none)')
+      console.log('Hashtags:', customHashtags || '(none)')
+
+      // Call OpenAI API
+      const response = await fetch('/api/generate-caption', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          platform: preview.platform,
+          tone: selectedTone,
+          description: contentDescription,
+          hashtags: customHashtags,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate caption')
+      }
+
+      const data = await response.json()
+      console.log('Generated caption:', data.caption)
+
+      // Update the preview with the new AI-generated caption
+      setPreviews(prev =>
+        prev.map(p =>
+          p.id === id
+            ? {
+                ...p,
+                caption: data.caption
+              }
+            : p
+        )
+      )
+
+    } catch (error: any) {
+      console.error('Error generating caption:', error)
+      alert(`Failed to generate caption: ${error.message}`)
+    } finally {
       setGenerating(false)
-    }, 1500)
+    }
   }
 
   const handleAddHashtag = (id: number, hashtag: string) => {

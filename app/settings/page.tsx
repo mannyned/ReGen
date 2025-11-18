@@ -16,25 +16,67 @@ type Platform = {
 
 export default function SettingsPage() {
   const [platforms, setPlatforms] = useState<Platform[]>([])
-  const [showConnectModal, setShowConnectModal] = useState(false)
-  const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null)
-  const [username, setUsername] = useState('')
 
-  // Initialize platforms from localStorage
+  // Initialize platforms and fetch connection status
   useEffect(() => {
-    const savedPlatforms = localStorage.getItem('connectedPlatforms')
-    if (savedPlatforms) {
-      setPlatforms(JSON.parse(savedPlatforms))
-    } else {
+    const initializePlatforms = async () => {
       // Default platforms
-      setPlatforms([
+      const defaultPlatforms = [
         { id: 'instagram', name: 'Instagram', icon: '📷', color: 'bg-gradient-to-br from-purple-500 to-pink-500', connected: false },
         { id: 'tiktok', name: 'TikTok', icon: '🎵', color: 'bg-gradient-to-br from-black to-cyan-500', connected: false },
         { id: 'youtube', name: 'YouTube', icon: '▶️', color: 'bg-gradient-to-br from-red-600 to-red-500', connected: false },
         { id: 'twitter', name: 'X (Twitter)', icon: '🐦', color: 'bg-gradient-to-br from-gray-900 to-gray-700', connected: false },
         { id: 'linkedin', name: 'LinkedIn', icon: '💼', color: 'bg-gradient-to-br from-blue-700 to-blue-600', connected: false },
         { id: 'facebook', name: 'Facebook', icon: '👥', color: 'bg-gradient-to-br from-blue-600 to-blue-500', connected: false },
-      ])
+      ]
+
+      try {
+        // Fetch connection status from backend
+        const response = await fetch('http://localhost:3000/api/oauth/status?userId=default-user')
+        const data = await response.json()
+
+        if (data.success && data.connectedPlatforms) {
+          // Update platforms with connection status
+          const updatedPlatforms = defaultPlatforms.map(platform => {
+            const connectedPlatform = data.connectedPlatforms.find((cp: any) => cp.platform === platform.id)
+            if (connectedPlatform) {
+              return {
+                ...platform,
+                connected: true,
+                username: connectedPlatform.username,
+                connectedDate: new Date(connectedPlatform.connectedAt).toLocaleDateString(),
+              }
+            }
+            return platform
+          })
+          setPlatforms(updatedPlatforms)
+          localStorage.setItem('connectedPlatforms', JSON.stringify(updatedPlatforms))
+        } else {
+          setPlatforms(defaultPlatforms)
+        }
+      } catch (error) {
+        console.error('Failed to fetch connection status:', error)
+        setPlatforms(defaultPlatforms)
+      }
+    }
+
+    initializePlatforms()
+
+    // Check for OAuth callback success
+    const urlParams = new URLSearchParams(window.location.search)
+    const connectedPlatform = urlParams.get('connected')
+    const username = urlParams.get('username')
+    const error = urlParams.get('error')
+
+    if (connectedPlatform && username) {
+      alert(`Successfully connected to ${connectedPlatform} as @${username}!`)
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname)
+      // Refresh to show updated status
+      window.location.reload()
+    } else if (error) {
+      alert(`OAuth error: ${error}`)
+      window.history.replaceState({}, document.title, window.location.pathname)
     }
   }, [])
 
@@ -45,37 +87,49 @@ export default function SettingsPage() {
     }
   }, [platforms])
 
-  const handleConnect = (platform: Platform) => {
-    setSelectedPlatform(platform)
-    setShowConnectModal(true)
-    setUsername('')
+  const handleConnect = async (platform: Platform) => {
+    try {
+      // Call backend to get OAuth URL
+      const response = await fetch(`http://localhost:3000/api/oauth/connect/${platform.id}?userId=default-user`)
+      const data = await response.json()
+
+      if (data.setupRequired) {
+        alert(data.error + '\n\nPlease check OAUTH_SETUP_GUIDE.md for instructions.')
+        return
+      }
+
+      if (data.authUrl) {
+        // Redirect to OAuth authorization page
+        window.location.href = data.authUrl
+      } else {
+        throw new Error('Failed to get authorization URL')
+      }
+    } catch (error) {
+      console.error('OAuth connection error:', error)
+      alert('Failed to initiate OAuth connection. Please try again.')
+    }
   }
 
-  const handleDisconnect = (platformId: string) => {
-    setPlatforms(platforms.map(p =>
-      p.id === platformId
-        ? { ...p, connected: false, username: undefined, connectedDate: undefined }
-        : p
-    ))
-  }
+  const handleDisconnect = async (platformId: string) => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/oauth/disconnect/${platformId}?userId=default-user`, {
+        method: 'DELETE',
+      })
 
-  const confirmConnect = () => {
-    if (!selectedPlatform || !username) return
+      const data = await response.json()
 
-    setPlatforms(platforms.map(p =>
-      p.id === selectedPlatform.id
-        ? {
-            ...p,
-            connected: true,
-            username: username,
-            connectedDate: new Date().toLocaleDateString()
-          }
-        : p
-    ))
-
-    setShowConnectModal(false)
-    setSelectedPlatform(null)
-    setUsername('')
+      if (data.success) {
+        setPlatforms(platforms.map(p =>
+          p.id === platformId
+            ? { ...p, connected: false, username: undefined, connectedDate: undefined }
+            : p
+        ))
+        alert(`${platformId} disconnected successfully`)
+      }
+    } catch (error) {
+      console.error('Disconnect error:', error)
+      alert('Failed to disconnect platform')
+    }
   }
 
   const connectedCount = platforms.filter(p => p.connected).length
@@ -221,62 +275,6 @@ export default function SettingsPage() {
           </div>
         </div>
       </main>
-
-      {/* Connect Modal */}
-      {showConnectModal && selectedPlatform && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full">
-            <div className="text-center mb-6">
-              <div className={`w-20 h-20 ${selectedPlatform.color} rounded-2xl flex items-center justify-center text-4xl mx-auto mb-4 shadow-lg`}>
-                {selectedPlatform.icon}
-              </div>
-              <h3 className="text-2xl font-bold text-text-primary mb-2">
-                Connect {selectedPlatform.name}
-              </h3>
-              <p className="text-text-secondary">
-                Enter your username to connect your {selectedPlatform.name} account
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-text-secondary mb-2">
-                Username
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder={`your_${selectedPlatform.id}_username`}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus"
-                autoFocus
-              />
-              <p className="text-xs text-text-secondary mt-2">
-                In production, this would use OAuth to securely connect your account
-              </p>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowConnectModal(false)
-                  setSelectedPlatform(null)
-                  setUsername('')
-                }}
-                className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-lg font-medium transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmConnect}
-                disabled={!username}
-                className="flex-1 py-3 px-4 bg-primary hover:bg-primary-hover text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Connect
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

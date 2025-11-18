@@ -18,6 +18,8 @@ export default function UploadPage() {
   const [connectedAccounts, setConnectedAccounts] = useState<string[]>([])
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string>('')
+  const [contentDescription, setContentDescription] = useState('')
+  const [customHashtags, setCustomHashtags] = useState('')
 
   const platforms = [
     { id: 'tiktok' as Platform, name: 'TikTok', icon: '🎵', color: 'bg-pink-100 text-pink-700 border-pink-300' },
@@ -113,8 +115,10 @@ export default function UploadPage() {
       return
     }
 
-    // Store selected platforms for generate page
+    // Store selected platforms and content info for generate page
     localStorage.setItem('selectedPlatforms', JSON.stringify(selectedPlatforms))
+    localStorage.setItem('contentDescription', contentDescription)
+    localStorage.setItem('customHashtags', customHashtags)
 
     // Navigate to generate page
     router.push('/generate')
@@ -285,6 +289,7 @@ export default function UploadPage() {
                       </div>
                     </div>
                   )}
+                </>
               ) : (
                 <div className="space-y-4">
                   <div>
@@ -314,6 +319,46 @@ export default function UploadPage() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* AI Generation Options */}
+            <div className="mt-6 space-y-4 p-6 bg-blue-50 rounded-xl border border-blue-200">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-2xl">🤖</span>
+                <h3 className="font-semibold text-text-primary">AI Caption Generation (Optional)</h3>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Content Description
+                </label>
+                <textarea
+                  value={contentDescription}
+                  onChange={(e) => setContentDescription(e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus resize-none"
+                  placeholder="Describe your content... (e.g., 'Product launch video for new eco-friendly water bottle')"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 Help AI generate better captions by describing what your content is about
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Custom Hashtags
+                </label>
+                <input
+                  type="text"
+                  value={customHashtags}
+                  onChange={(e) => setCustomHashtags(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus"
+                  placeholder="#YourBrand #ProductLaunch #Sustainable"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 Add hashtags you want included in the generated captions
+                </p>
+              </div>
             </div>
           </div>
 
