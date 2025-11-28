@@ -82,12 +82,12 @@ async function generateBrandVoiceCaption(
   }
 
   // Add emojis based on preference
-  if (options.includeEmojis && contentPreferences?.emojiUsage !== 'none') {
+  if (options.includeEmojis && contentPreferences?.emojiUsage && contentPreferences.emojiUsage !== 'none') {
     caption = addEmojis(caption, contentPreferences.emojiUsage, learnedPatterns?.emojiPreferences)
   }
 
   // Add hashtags based on style
-  if (options.includeHashtags && contentPreferences?.hashtagStyle !== 'minimal') {
+  if (options.includeHashtags && contentPreferences?.hashtagStyle && contentPreferences.hashtagStyle !== 'minimal') {
     caption = addHashtags(caption, contentPreferences.hashtagStyle, learnedPatterns?.hashtagPatterns)
   }
 
@@ -271,14 +271,14 @@ function addCTA(caption: string, style: string, platform: string) {
       linkedin: 'Feel free to share your experiences'
     },
     question: {
-      instagram: 'What's your take on this? 🤔',
+      instagram: 'What\'s your take on this? 🤔',
       tiktok: 'Have you tried this yet?',
       linkedin: 'What strategies have worked for you?'
     },
     inspirational: {
       instagram: 'Together we can achieve amazing things! ✨',
-      tiktok: 'You've got this! 💪',
-      linkedin: 'Let's elevate each other to success 🚀'
+      tiktok: 'You\'ve got this! 💪',
+      linkedin: 'Let\'s elevate each other to success 🚀'
     }
   }
 

@@ -19,22 +19,22 @@ export async function POST(request: NextRequest) {
     // In production, this would use GPT-4 or Claude for sophisticated analysis
     const brandVoiceAnalysis: BrandVoiceAnalysis = {
       detectedTone: {
-        formality: analysis.formality,
-        emotion: analysis.emotion,
-        humor: analysis.humor,
-        personality: analysis.personality
+        formality: analysis.formality as BrandVoiceAnalysis['detectedTone']['formality'],
+        emotion: analysis.emotion as BrandVoiceAnalysis['detectedTone']['emotion'],
+        humor: analysis.humor as BrandVoiceAnalysis['detectedTone']['humor'],
+        personality: analysis.personality as BrandVoiceAnalysis['detectedTone']['personality']
       },
       detectedStyle: {
-        sentenceLength: analysis.sentenceLength,
-        vocabulary: analysis.vocabulary,
-        punctuation: analysis.punctuation,
-        capitalization: analysis.capitalization
+        sentenceLength: analysis.sentenceLength as BrandVoiceAnalysis['detectedStyle']['sentenceLength'],
+        vocabulary: analysis.vocabulary as BrandVoiceAnalysis['detectedStyle']['vocabulary'],
+        punctuation: analysis.punctuation as BrandVoiceAnalysis['detectedStyle']['punctuation'],
+        capitalization: analysis.capitalization as BrandVoiceAnalysis['detectedStyle']['capitalization']
       },
       detectedPreferences: {
-        emojiUsage: analysis.emojiUsage,
-        hashtagStyle: analysis.hashtagStyle,
-        ctaStyle: analysis.ctaStyle,
-        storytelling: analysis.storytelling
+        emojiUsage: analysis.emojiUsage as BrandVoiceAnalysis['detectedPreferences']['emojiUsage'],
+        hashtagStyle: analysis.hashtagStyle as BrandVoiceAnalysis['detectedPreferences']['hashtagStyle'],
+        ctaStyle: analysis.ctaStyle as BrandVoiceAnalysis['detectedPreferences']['ctaStyle'],
+        storytelling: analysis.storytelling as BrandVoiceAnalysis['detectedPreferences']['storytelling']
       },
       suggestedImprovements: [
         'Consider maintaining consistent emoji usage across posts',
