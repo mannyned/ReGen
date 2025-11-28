@@ -3,7 +3,7 @@ import OpenAI from 'openai'
 
 export async function POST(request: NextRequest) {
   try {
-    const { platform, tone, description, hashtags } = await request.json()
+    const { platform, tone, description, hashtags, imageData } = await request.json()
 
     // Check if API key is configured
     if (!process.env.OPENAI_API_KEY) {
@@ -49,21 +49,46 @@ export async function POST(request: NextRequest) {
 
     prompt += `\n\nTone Guidelines: ${toneGuidelines[tone] || 'Match the selected tone.'}`
 
+    prompt += '\n\nAnalyze the uploaded image/video and create a caption that accurately reflects what you see in the visual content.'
     prompt += '\n\nGenerate only the caption text, no explanations or metadata.'
 
-    // Call OpenAI API
+    // Prepare messages for OpenAI API
+    const messages: any[] = [
+      {
+        role: 'system',
+        content: 'You are an expert social media content creator who writes compelling captions that drive engagement. You analyze images and videos to create captions that accurately reflect the visual content.'
+      }
+    ]
+
+    // If image data is provided, use vision model to analyze it
+    if (imageData) {
+      messages.push({
+        role: 'user',
+        content: [
+          {
+            type: 'image_url',
+            image_url: {
+              url: imageData, // Expects base64 data URL or public URL
+            }
+          },
+          {
+            type: 'text',
+            text: prompt
+          }
+        ]
+      })
+    } else {
+      // Fallback to text-only if no image provided
+      messages.push({
+        role: 'user',
+        content: prompt
+      })
+    }
+
+    // Call OpenAI API with vision capabilities
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert social media content creator who writes compelling captions that drive engagement.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
+      model: imageData ? 'gpt-4o' : 'gpt-4o-mini', // Use vision model when image is present
+      messages,
       temperature: 0.8,
       max_tokens: 300,
     })

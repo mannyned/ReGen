@@ -20,28 +20,41 @@ For each platform, you'll need to:
 
 ## Platform-Specific Instructions
 
-### 1. Instagram (via Facebook)
+### 1. Instagram (via Facebook Graph API)
 
-Instagram uses Facebook's OAuth system.
+**IMPORTANT:** Instagram Basic Display API is deprecated. Use Instagram Graph API instead.
+
+**Prerequisites:**
+- You need an Instagram **Business** or **Creator** account
+- The Instagram account must be connected to a Facebook Page
 
 **Steps:**
 1. Go to [Facebook Developers](https://developers.facebook.com/apps)
-2. Click "Create App"
-3. Select "Business" or "Consumer" type
-4. Name your app and provide contact email
-5. Go to Settings > Basic
+2. Click "Create App" → Select "Business" type
+3. Name your app and provide contact email
+4. Go to **Settings > Basic**
    - Copy **App ID** → This is your `INSTAGRAM_CLIENT_ID`
    - Copy **App Secret** → This is your `INSTAGRAM_CLIENT_SECRET`
-6. Go to Instagram > Basic Display
-7. Add OAuth Redirect URI: `http://localhost:3000/api/oauth/callback/instagram`
-8. Add to Products: Instagram Basic Display
-9. Configure Instagram permissions
+5. Add **Instagram Graph API** product (NOT Basic Display)
+6. Add **Facebook Login** product
+7. In Facebook Login Settings:
+   - Add OAuth Redirect URI: `http://localhost:3000/api/oauth/callback/instagram`
+8. Request these permissions:
+   - `instagram_basic`
+   - `instagram_content_publish`
+   - `pages_read_engagement`
+   - `pages_show_list`
+9. Connect your Instagram Business account to a Facebook Page:
+   - Go to your Facebook Page Settings
+   - Link Instagram account in the Instagram section
 
 **Add to .env:**
 ```env
-INSTAGRAM_CLIENT_ID=your-app-id
-INSTAGRAM_CLIENT_SECRET=your-app-secret
+INSTAGRAM_CLIENT_ID=your-facebook-app-id
+INSTAGRAM_CLIENT_SECRET=your-facebook-app-secret
 ```
+
+**Note:** Testing requires App Review approval from Meta for production use.
 
 ---
 

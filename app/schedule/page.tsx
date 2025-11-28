@@ -3,8 +3,23 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { fileStorage } from '../utils/fileStorage'
 
-type Platform = 'instagram' | 'twitter' | 'linkedin' | 'facebook' | 'tiktok'
+type Platform = 'instagram' | 'twitter' | 'linkedin' | 'facebook' | 'tiktok' | 'youtube' | 'x' | 'snapchat'
+
+interface PreviewData {
+  id: number
+  platform: Platform
+  caption: string
+  hashtags: string[]
+  files: Array<{
+    id?: string
+    name: string
+    type: string
+    size: number
+    base64Data?: string
+  }>
+}
 
 export default function SchedulePage() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([])
@@ -14,6 +29,8 @@ export default function SchedulePage() {
   const [connectedAccounts, setConnectedAccounts] = useState<string[]>([])
   const [showWarning, setShowWarning] = useState(false)
   const [postMode, setPostMode] = useState<'schedule' | 'now'>('schedule')
+  const [selectedPreviews, setSelectedPreviews] = useState<PreviewData[]>([])
+  const [testMode, setTestMode] = useState(true) // Default to test mode for safety
 
   const platforms: { name: Platform; label: string; icon: string }[] = [
     { name: 'instagram', label: 'Instagram', icon: '📷' },
@@ -23,8 +40,9 @@ export default function SchedulePage() {
     { name: 'tiktok', label: 'TikTok', icon: '🎵' }
   ]
 
-  // Load connected accounts from localStorage
+  // Load connected accounts and selected previews
   useEffect(() => {
+    // Load connected accounts
     const savedPlatforms = localStorage.getItem('connectedPlatforms')
     if (savedPlatforms) {
       const platforms = JSON.parse(savedPlatforms)
@@ -33,6 +51,41 @@ export default function SchedulePage() {
         .map((p: any) => p.id)
       setConnectedAccounts(connected)
     }
+
+    // Load selected previews
+    const loadPreviews = async () => {
+      const previewsData = localStorage.getItem('selectedPreviews')
+      if (previewsData) {
+        try {
+          const previews: PreviewData[] = JSON.parse(previewsData)
+
+          // Load file data from IndexedDB if needed
+          const storedFiles = await fileStorage.getFiles()
+
+          // Enrich previews with file data
+          const enrichedPreviews = previews.map(preview => ({
+            ...preview,
+            files: preview.files.map(file => {
+              const storedFile = storedFiles.find(sf => sf.id === file.id)
+              return {
+                ...file,
+                base64Data: storedFile?.base64Data
+              }
+            })
+          }))
+
+          setSelectedPreviews(enrichedPreviews)
+
+          // Pre-select platforms from the previews
+          const previewPlatforms = enrichedPreviews.map(p => p.platform)
+          setSelectedPlatforms(previewPlatforms)
+        } catch (error) {
+          console.error('Error loading previews:', error)
+        }
+      }
+    }
+
+    loadPreviews()
   }, [])
 
   const togglePlatform = (platform: Platform) => {
@@ -44,47 +97,65 @@ export default function SchedulePage() {
   }
 
   const handlePublishNow = async () => {
-    // Check if any selected platforms are not connected
-    const unconnectedPlatforms = selectedPlatforms.filter(p => !connectedAccounts.includes(p))
-
-    if (unconnectedPlatforms.length > 0) {
-      setShowWarning(true)
-      return
+    // In test mode, skip connection check
+    if (!testMode) {
+      const unconnectedPlatforms = selectedPlatforms.filter(p => !connectedAccounts.includes(p))
+      if (unconnectedPlatforms.length > 0) {
+        setShowWarning(true)
+        return
+      }
     }
 
     try {
-      // Call the publish now API for each platform
-      for (const platform of selectedPlatforms) {
-        const response = await fetch('http://localhost:3000/api/publish/now', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            jobId: 'temp-job-id', // In real app, this would come from the content selection
-            platform: platform,
-            caption: 'Sample caption',
-            hashtags: ['#regen', '#content'],
-          }),
-        })
-
-        if (!response.ok) {
-          console.error(`Failed to publish to ${platform}`)
-        }
+      // Prepare content data from selected previews
+      const contentData = {
+        platforms: selectedPlatforms,
+        caption: selectedPreviews[0]?.caption || 'Test post from ReGen',
+        hashtags: selectedPreviews[0]?.hashtags || ['#ReGen', '#TestMode'],
+        files: selectedPreviews[0]?.files?.map(f => ({
+          name: f.name,
+          type: f.type,
+          size: f.size
+        })) || [],
+        scheduleTime: 'immediate'
       }
 
-      // Show success message
-      setShowSuccess(true)
-      setPostMode('now')
+      // Use mock API in test mode
+      const apiEndpoint = testMode ? '/api/publish/mock' : '/api/publish/now'
 
-      // Hide success message after 3 seconds
-      setTimeout(() => {
-        setShowSuccess(false)
-        setSelectedPlatforms([])
-      }, 3000)
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contentData),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Show success message
+        setShowSuccess(true)
+        setPostMode('now')
+
+        // Redirect to test results if in test mode
+        if (testMode) {
+          setTimeout(() => {
+            window.location.href = '/test-results'
+          }, 2000)
+        } else {
+          // Hide success message after 3 seconds
+          setTimeout(() => {
+            setShowSuccess(false)
+            setSelectedPlatforms([])
+          }, 3000)
+        }
+      } else {
+        throw new Error(result.error || 'Failed to publish')
+      }
     } catch (error) {
       console.error('Error publishing now:', error)
-      alert('Failed to publish. Please try again.')
+      alert(`Failed to publish. ${testMode ? '(Test Mode)' : ''} Please try again.`)
     }
   }
 
@@ -143,6 +214,55 @@ export default function SchedulePage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Test Mode Banner */}
+        <div className={`mb-6 p-4 rounded-xl border-2 ${
+          testMode
+            ? 'bg-blue-50 border-blue-300'
+            : 'bg-orange-50 border-orange-300'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{testMode ? '🧪' : '🚀'}</span>
+              <div>
+                <h3 className="font-semibold text-gray-900">
+                  {testMode ? 'Test Mode Active' : 'Live Mode Active'}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {testMode
+                    ? 'Posts will be simulated, not published to actual social media'
+                    : 'Posts will be published to your connected social media accounts'
+                  }
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setTestMode(!testMode)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  testMode ? 'bg-blue-600' : 'bg-orange-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    testMode ? 'translate-x-1' : 'translate-x-6'
+                  }`}
+                />
+              </button>
+              <span className="text-sm font-medium text-gray-700">
+                {testMode ? 'Test' : 'Live'}
+              </span>
+              {testMode && (
+                <Link
+                  href="/test-results"
+                  className="ml-4 text-sm font-medium text-blue-600 hover:text-blue-700"
+                >
+                  View Test Results →
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-text-primary mb-2">Schedule Posts</h1>
           <p className="text-text-secondary">Schedule your content across multiple platforms</p>

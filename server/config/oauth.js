@@ -14,13 +14,12 @@ const oauthConfig = {
   instagram: {
     clientId: process.env.INSTAGRAM_CLIENT_ID,
     clientSecret: process.env.INSTAGRAM_CLIENT_SECRET,
-    authUrl: 'https://api.instagram.com/oauth/authorize',
-    tokenUrl: 'https://api.instagram.com/oauth/access_token',
+    // Instagram Basic Display API is DEPRECATED - use Graph API instead
+    authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
+    tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
     redirectUri: `${REDIRECT_BASE_URL}/api/oauth/callback/instagram`,
-    scope: 'user_profile,user_media',
-    // Instagram uses Facebook OAuth
-    facebookAuthUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
-    facebookTokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
+    scope: 'instagram_basic,instagram_content_publish,pages_read_engagement,pages_show_list',
+    // Requires Facebook Page connected to Instagram Business/Creator account
   },
 
   twitter: {
@@ -89,11 +88,6 @@ function generateAuthUrl(platform, state) {
   });
 
   // Platform-specific parameters
-  if (platform === 'instagram') {
-    // Instagram uses Facebook OAuth
-    return `${config.facebookAuthUrl}?${params.toString()}`;
-  }
-
   if (platform === 'twitter') {
     params.append('code_challenge', 'challenge'); // TODO: Implement proper PKCE
     params.append('code_challenge_method', 'plain');

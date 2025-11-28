@@ -32,7 +32,7 @@ export default function SettingsPage() {
 
       try {
         // Fetch connection status from backend
-        const response = await fetch('http://localhost:3000/api/oauth/status?userId=default-user')
+        const response = await fetch('/api/oauth/status?userId=default-user')
         const data = await response.json()
 
         if (data.success && data.connectedPlatforms) {
@@ -90,7 +90,7 @@ export default function SettingsPage() {
   const handleConnect = async (platform: Platform) => {
     try {
       // Call backend to get OAuth URL
-      const response = await fetch(`http://localhost:3000/api/oauth/connect/${platform.id}?userId=default-user`)
+      const response = await fetch(`/api/oauth/connect/${platform.id}?userId=default-user`)
       const data = await response.json()
 
       if (data.setupRequired) {
@@ -112,7 +112,7 @@ export default function SettingsPage() {
 
   const handleDisconnect = async (platformId: string) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/oauth/disconnect/${platformId}?userId=default-user`, {
+      const response = await fetch(`/api/oauth/disconnect/${platformId}?userId=default-user`, {
         method: 'DELETE',
       })
 

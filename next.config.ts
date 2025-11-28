@@ -1,8 +1,10 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  // Disable Turbopack (use webpack instead for stability)
-  // Remove --turbo from package.json dev script
+  // Explicitly set Turbopack root to silence workspace detection warning
+  turbopack: {
+    root: __dirname,
+  },
 
   images: {
     remotePatterns: [

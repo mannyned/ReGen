@@ -4,123 +4,193 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { fileStorage } from '../utils/fileStorage'
+import { usePlan } from '../context/PlanContext'
+import BrandVoiceManager from '../components/BrandVoiceManager'
+import { BrandVoiceProfile } from '../types/brandVoice'
 
 type CaptionTone = 'professional' | 'engaging' | 'casual'
+type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'snapchat'
+type ContentType = 'post' | 'story'
+
+interface UploadedFile {
+  id?: string
+  name: string
+  type: string
+  size: number
+  base64Data?: string
+}
+
+interface UploadData {
+  uploadType: 'video' | 'image' | 'text'
+  contentType: ContentType
+  selectedPlatforms: Platform[]
+  contentDescription: string
+  customHashtags: string
+  files: UploadedFile[]
+  textContent?: string
+  urlContent?: string
+}
 
 type Preview = {
   id: number
-  platform: string
+  platform: Platform
   icon: string
   format: string
   caption: string
   hashtags: string[]
-  thumbnail: string
+  files: UploadedFile[]
+  currentFileIndex: number
+}
+
+// Platform configuration
+const PLATFORM_CONFIG = {
+  tiktok: { icon: '🎵', formats: { post: '15-60s vertical video', story: '15s story' } },
+  instagram: { icon: '📷', formats: { post: 'Carousel/Reel', story: 'Story (15s)' } },
+  youtube: { icon: '▶️', formats: { post: 'Short (vertical)', story: 'Short' } },
+  facebook: { icon: '👥', formats: { post: 'Feed post', story: 'Story' } },
+  x: { icon: '🐦', formats: { post: 'Tweet thread', story: 'Fleet' } },
+  linkedin: { icon: '💼', formats: { post: 'Professional post', story: 'Story' } },
+  snapchat: { icon: '👻', formats: { post: 'Snap', story: 'Story' } },
 }
 
 export default function GeneratePage() {
   const router = useRouter()
+  const { currentPlan } = usePlan()
   const [generating, setGenerating] = useState(false)
   const [selectedTone, setSelectedTone] = useState<CaptionTone>('engaging')
   const [showToneSelector, setShowToneSelector] = useState(true)
-  const [uploadedFileName, setUploadedFileName] = useState<string>('')
-  const [uploadedFileType, setUploadedFileType] = useState<string>('')
-  const [contentDescription, setContentDescription] = useState<string>('')
-  const [customHashtags, setCustomHashtags] = useState<string>('')
-
-  // Load uploaded file info and content details from localStorage
-  useEffect(() => {
-    const fileName = localStorage.getItem('uploadedFileName')
-    const fileType = localStorage.getItem('uploadedFileType')
-    const description = localStorage.getItem('contentDescription')
-    const hashtags = localStorage.getItem('customHashtags')
-
-    if (fileName) setUploadedFileName(fileName)
-    if (fileType) setUploadedFileType(fileType)
-    if (description) setContentDescription(description)
-    if (hashtags) setCustomHashtags(hashtags)
-  }, [])
-
-  const [previews, setPreviews] = useState<Preview[]>([
-    {
-      id: 1,
-      platform: 'TikTok',
-      icon: '🎵',
-      format: '15s vertical video',
-      caption: 'Transform your content strategy with AI! 🚀 See how ReGen helps creators save 10+ hours per week.',
-      hashtags: ['#ContentCreation', '#AITools', '#CreatorTips', '#SocialMedia'],
-      thumbnail: '🎬'
-    },
-    {
-      id: 2,
-      platform: 'Instagram',
-      icon: '📷',
-      format: 'Carousel post (1:1)',
-      caption: 'Swipe to see how AI is changing content creation 👉\n\nReGen transforms one video into posts for every platform. No more manual editing!',
-      hashtags: ['#Instagram', '#ContentMarketing', '#CreatorEconomy'],
-      thumbnail: '🖼️'
-    },
-    {
-      id: 3,
-      platform: 'YouTube',
-      icon: '▶️',
-      format: 'Short (vertical)',
-      caption: 'The SECRET to posting on every platform without burnout | Try ReGen today',
-      hashtags: ['#YouTubeShorts', '#ContentCreator', '#AIContentCreation'],
-      thumbnail: '🎥'
-    },
-    {
-      id: 4,
-      platform: 'X (Twitter)',
-      icon: '🐦',
-      format: 'Tweet thread',
-      caption: 'Creators: Stop wasting hours on manual repurposing.\n\nReGen AI:\n• Upload once\n• Generate for all platforms\n• Edit & schedule\n• Track performance\n\nGame changer 🔥',
-      hashtags: ['#CreatorTools', '#AIforCreators'],
-      thumbnail: '💬'
-    },
-    {
-      id: 5,
-      platform: 'LinkedIn',
-      icon: '💼',
-      format: 'Professional post',
-      caption: 'Content repurposing doesn\'t have to be painful.\n\nI\'ve been using AI to transform one video into platform-specific posts for TikTok, Instagram, YouTube, and more.\n\nThe result? 10+ hours saved per week and 3x more engagement.\n\nHere\'s my workflow:',
-      hashtags: ['#ContentStrategy', '#MarketingAutomation', '#CreatorEconomy'],
-      thumbnail: '📊'
-    }
-  ])
-
+  const [uploadData, setUploadData] = useState<UploadData | null>(null)
+  const [previews, setPreviews] = useState<Preview[]>([])
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingHashtags, setEditingHashtags] = useState<number | null>(null)
-  const [selectedPreviews, setSelectedPreviews] = useState<number[]>([1, 2, 3])
+  const [selectedPreviews, setSelectedPreviews] = useState<number[]>([])
+  const [activeBrandVoice, setActiveBrandVoice] = useState<BrandVoiceProfile | null>(null)
+  const [useBrandVoice, setUseBrandVoice] = useState(false)
+
+  // Load upload data from localStorage and files from IndexedDB
+  useEffect(() => {
+    const loadData = async () => {
+      const data = localStorage.getItem('uploadData')
+      if (data) {
+        const parsed: UploadData = JSON.parse(data)
+
+        // Load actual file data from IndexedDB
+        try {
+          const storedFiles = await fileStorage.getFiles()
+
+          // Match files by ID and add base64 data
+          const filesWithData = parsed.files.map(file => {
+            const storedFile = storedFiles.find(sf => sf.id === file.id)
+            return {
+              ...file,
+              base64Data: storedFile?.base64Data
+            }
+          })
+
+          // Update upload data with complete file data
+          const completeData = {
+            ...parsed,
+            files: filesWithData
+          }
+
+          setUploadData(completeData)
+
+          // Generate initial previews based on selected platforms
+          const initialPreviews = parsed.selectedPlatforms.map((platform, index) => {
+            // Determine how many files this platform will use
+            const filesForPlatform = getFilesForPlatform(platform, filesWithData, parsed.contentType)
+
+            return {
+              id: index + 1,
+              platform,
+              icon: PLATFORM_CONFIG[platform].icon,
+              format: PLATFORM_CONFIG[platform].formats[parsed.contentType],
+              caption: generateDefaultCaption(platform, parsed.contentType),
+              hashtags: generateDefaultHashtags(platform, parsed.customHashtags),
+              files: filesForPlatform,
+              currentFileIndex: 0
+            }
+          })
+
+          setPreviews(initialPreviews)
+          setSelectedPreviews(initialPreviews.map(p => p.id))
+        } catch (error) {
+          console.error('Error loading files from IndexedDB:', error)
+          alert('Failed to load uploaded files. Please try uploading again.')
+          router.push('/upload')
+        }
+      } else {
+        // If no upload data, redirect back to upload page
+        router.push('/upload')
+      }
+    }
+
+    loadData()
+  }, [router])
+
+  const getPlatformLimit = (platform: Platform, contentType: ContentType): number => {
+    const limits: Record<Platform, { post: number, story: number }> = {
+      instagram: { post: 6, story: 6 },
+      facebook: { post: 6, story: 6 },
+      tiktok: { post: 1, story: 1 },
+      snapchat: { post: 1, story: 1 },
+      youtube: { post: 1, story: 1 },
+      x: { post: 4, story: 1 },
+      linkedin: { post: 1, story: 1 }
+    }
+    return limits[platform]?.[contentType] || 1
+  }
+
+  const getFilesForPlatform = (platform: Platform, files: UploadedFile[], contentType: ContentType): UploadedFile[] => {
+    const limit = getPlatformLimit(platform, contentType)
+
+    // For single-content platforms with multiple files available,
+    // initially select the first file (user can change this later)
+    if (limit === 1 && files.length > 1) {
+      return [files[0]]
+    }
+
+    return files.slice(0, limit)
+  }
+
+  const generateDefaultCaption = (platform: Platform, contentType: ContentType): string => {
+    const captions: Record<Platform, string> = {
+      tiktok: 'Transform your content strategy with AI! 🚀 See how ReGen helps creators save 10+ hours per week.',
+      instagram: 'Swipe to see how AI is changing content creation 👉\n\nReGen transforms one video into posts for every platform. No more manual editing!',
+      youtube: 'The SECRET to posting on every platform without burnout | Try ReGen today',
+      facebook: 'Check out how AI is revolutionizing content creation! 🎯\n\nWith ReGen, one upload = content for all platforms.',
+      x: 'Creators: Stop wasting hours on manual repurposing.\n\nReGen AI:\n• Upload once\n• Generate for all platforms\n• Edit & schedule\n• Track performance\n\nGame changer 🔥',
+      linkedin: 'Content repurposing doesn\'t have to be painful.\n\nI\'ve been using AI to transform one video into platform-specific posts for TikTok, Instagram, YouTube, and more.\n\nThe result? 10+ hours saved per week and 3x more engagement.\n\nHere\'s my workflow:',
+      snapchat: 'New content drop! 💫 Created with AI magic ✨'
+    }
+    return captions[platform] || ''
+  }
+
+  const generateDefaultHashtags = (platform: Platform, customHashtags: string): string[] => {
+    const baseHashtags: Record<Platform, string[]> = {
+      tiktok: ['#ContentCreation', '#AITools', '#CreatorTips', '#SocialMedia'],
+      instagram: ['#Instagram', '#ContentMarketing', '#CreatorEconomy'],
+      youtube: ['#YouTubeShorts', '#ContentCreator', '#AIContentCreation'],
+      facebook: ['#FacebookCreator', '#ContentStrategy', '#SocialMediaMarketing'],
+      x: ['#CreatorTools', '#AIforCreators'],
+      linkedin: ['#ContentStrategy', '#MarketingAutomation', '#CreatorEconomy'],
+      snapchat: ['#SnapCreator', '#ContentCreation']
+    }
+
+    const platformTags = baseHashtags[platform] || []
+    const customTags = customHashtags ? customHashtags.split(/[,\s]+/).map(tag =>
+      tag.startsWith('#') ? tag : `#${tag}`
+    ).filter(tag => tag.length > 1) : []
+
+    return [...new Set([...platformTags, ...customTags])].slice(0, 5)
+  }
 
   const tones = [
     { id: 'professional' as CaptionTone, label: 'Professional', icon: '💼', description: 'Formal and business-focused' },
     { id: 'engaging' as CaptionTone, label: 'Engaging', icon: '✨', description: 'Fun and attention-grabbing' },
     { id: 'casual' as CaptionTone, label: 'Casual', icon: '😊', description: 'Friendly and relaxed' },
   ]
-
-  const sampleCaptionsByTone = {
-    professional: {
-      tiktok: "Sharing insights on how AI technology is transforming content creation workflows. This innovative approach helps teams maintain consistent quality across all platforms.",
-      instagram: "Professional tip: Strategic content repurposing increases reach by 300%.\n\nDiscover how leading brands leverage AI to optimize their social media strategy.",
-      youtube: "The Complete Guide to Professional Content Repurposing | Industry Best Practices",
-      twitter: "Enterprise content teams: AI-powered repurposing reduces production time by 85%.\n\nKey benefits:\n• Consistent messaging\n• Scalable output\n• Data-driven optimization\n\nLearn more ↓",
-      linkedin: "Content repurposing is no longer optional—it's essential for competitive advantage.\n\nAfter implementing AI-driven workflows, our team achieved:\n✓ 3x content output\n✓ 40% cost reduction\n✓ Improved cross-platform consistency\n\nHere's our framework:"
-    },
-    engaging: {
-      tiktok: "🚀 OMG you NEED to see this! We just dropped something absolutely game-changing for content creators everywhere! Drop a 🔥 if you're ready to level up your content game! 💪✨",
-      instagram: "Swipe to see how AI is changing content creation 👉\n\nThis is literally THE secret weapon every creator needs! 🎯💥\n\nWho else is ready to 10x their content? 🙋‍♀️",
-      youtube: "This AI Tool Changed EVERYTHING About My Content Strategy! (You Won't Believe #3) 🤯",
-      twitter: "POV: You just discovered the content creation hack that saves 10+ hours per week 🤯\n\nCreators are calling it a \"game changer\" 🔥\n\nHere's why everyone's switching:",
-      linkedin: "Hot take: Manual content repurposing is dead 💀\n\nI've been testing this AI approach for 30 days and the results are INSANE:\n\n📈 300% more engagement\n⚡ 85% time saved\n🎯 Better targeting\n\nThread below 👇"
-    },
-    casual: {
-      tiktok: "Hey everyone! Just wanted to share something cool we've been working on. It's been a fun journey and we think you'll really like it. Let us know what you think! 😊",
-      instagram: "Quick update: been trying out this new content thing and it's pretty neat!\n\nSwipe through to see how it works. Let me know if you have questions! 💬",
-      youtube: "Just sharing some thoughts on content creation | My new workflow",
-      twitter: "So I've been using this new approach for my content and it's actually pretty helpful.\n\nFigured I'd share in case anyone else is interested. Happy to chat about it!",
-      linkedin: "Wanted to share something that's been making my content workflow easier lately.\n\nIt's nothing revolutionary, but it's saved me quite a bit of time. Thought some of you might find it useful too.\n\nHappy to discuss if you're curious!"
-    }
-  }
 
   const handleEditCaption = (id: number, newCaption: string) => {
     setPreviews(prev =>
@@ -134,29 +204,52 @@ export default function GeneratePage() {
 
     try {
       const preview = previews.find(p => p.id === id)
-      if (!preview) {
+      if (!preview || !uploadData) {
         setGenerating(false)
         return
       }
 
+      // Get the first file's data for AI analysis (if available)
+      const imageData = preview.files[0]?.base64Data
+
       console.log('Generating caption with OpenAI...')
       console.log('Platform:', preview.platform)
       console.log('Tone:', selectedTone)
-      console.log('Description:', contentDescription || '(none)')
-      console.log('Hashtags:', customHashtags || '(none)')
+      console.log('Description:', uploadData.contentDescription || '(none)')
+      console.log('Hashtags:', uploadData.customHashtags || '(none)')
+      console.log('Image data:', imageData ? 'Present' : 'Not available')
 
-      // Call OpenAI API
-      const response = await fetch('/api/generate-caption', {
+      // Use Brand Voice API if Pro user with active brand voice, otherwise use standard API
+      const apiEndpoint = currentPlan === 'pro' && useBrandVoice && activeBrandVoice
+        ? '/api/brand-voice/generate'
+        : '/api/generate-caption'
+
+      const requestBody = currentPlan === 'pro' && useBrandVoice && activeBrandVoice
+        ? {
+            content: uploadData.contentDescription || `Content for ${preview.platform}`,
+            platform: preview.platform,
+            brandVoiceProfile: activeBrandVoice,
+            tone: selectedTone === 'professional' ? 'professional' :
+                  selectedTone === 'casual' ? 'casual' : 'default',
+            includeEmojis: true,
+            includeHashtags: true,
+            includeCTA: true
+          }
+        : {
+            platform: preview.platform,
+            tone: selectedTone,
+            description: uploadData.contentDescription,
+            hashtags: uploadData.customHashtags,
+            imageData: imageData,
+          }
+
+      // Call the appropriate API
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          platform: preview.platform,
-          tone: selectedTone,
-          description: contentDescription,
-          hashtags: customHashtags,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       if (!response.ok) {
@@ -207,6 +300,37 @@ export default function GeneratePage() {
     )
   }
 
+  const handleFileNavigation = (previewId: number, direction: 'prev' | 'next') => {
+    setPreviews(prev =>
+      prev.map(p => {
+        if (p.id === previewId) {
+          const newIndex = direction === 'next'
+            ? Math.min(p.currentFileIndex + 1, p.files.length - 1)
+            : Math.max(p.currentFileIndex - 1, 0)
+          return { ...p, currentFileIndex: newIndex }
+        }
+        return p
+      })
+    )
+  }
+
+  const handleSingleContentSelection = (previewId: number, fileIndex: number) => {
+    setPreviews(prev =>
+      prev.map(p => {
+        if (p.id === previewId && uploadData) {
+          // Replace the single file with the selected one
+          const selectedFile = uploadData.files[fileIndex]
+          return {
+            ...p,
+            files: [selectedFile],
+            currentFileIndex: 0
+          }
+        }
+        return p
+      })
+    )
+  }
+
   const togglePreview = (id: number) => {
     setSelectedPreviews(prev =>
       prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
@@ -218,7 +342,37 @@ export default function GeneratePage() {
       alert('Please select at least one preview to continue')
       return
     }
-    router.push('/schedule')
+
+    // Save selected previews for schedule page (without base64 data to avoid quota issues)
+    const selectedData = previews.filter(p => selectedPreviews.includes(p.id)).map(preview => ({
+      ...preview,
+      files: preview.files.map(file => ({
+        id: file.id,
+        name: file.name,
+        type: file.type,
+        size: file.size
+        // Exclude base64Data to avoid localStorage quota issues
+      }))
+    }))
+
+    try {
+      localStorage.setItem('selectedPreviews', JSON.stringify(selectedData))
+      router.push('/schedule')
+    } catch (error) {
+      console.error('Error saving selected previews:', error)
+      alert('Unable to save selection. The data might be too large. Please try with fewer items.')
+    }
+  }
+
+  if (!uploadData) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-text-secondary">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -252,6 +406,11 @@ export default function GeneratePage() {
           <p className="text-text-secondary text-lg">
             ReGen created {previews.length} optimized previews for your selected platforms
           </p>
+          {uploadData.files.length > 1 && (
+            <p className="text-primary text-sm mt-2">
+              📸 {uploadData.files.length} items uploaded • {uploadData.contentType} format
+            </p>
+          )}
         </div>
 
         {/* Tone Selector */}
@@ -295,12 +454,48 @@ export default function GeneratePage() {
           </div>
         )}
 
+        {/* Brand Voice Manager - Pro Plan Only */}
+        {currentPlan === 'pro' && (
+          <div className="mb-8">
+            <BrandVoiceManager
+              onProfileUpdate={(profile) => {
+                setActiveBrandVoice(profile)
+                setUseBrandVoice(!!profile)
+              }}
+              currentProfile={activeBrandVoice}
+            />
+            {activeBrandVoice && (
+              <div className="mt-4 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="useBrandVoice"
+                    checked={useBrandVoice}
+                    onChange={(e) => setUseBrandVoice(e.target.checked)}
+                    className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                  />
+                  <label htmlFor="useBrandVoice" className="font-medium text-gray-900">
+                    Generate captions using "{activeBrandVoice.name}" voice profile
+                  </label>
+                </div>
+                <div className="text-sm text-purple-700">
+                  {activeBrandVoice.confidence.overall}% confidence
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Stats Bar */}
         <div className="bg-gradient-brand text-white rounded-xl p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div>
+              <div className="text-white/80 text-sm mb-1">Content Type</div>
+              <div className="text-2xl font-bold capitalize">{uploadData.contentType}</div>
+            </div>
             <div>
               <div className="text-white/80 text-sm mb-1">Platforms</div>
-              <div className="text-2xl font-bold">{previews.length} versions created</div>
+              <div className="text-2xl font-bold">{previews.length} versions</div>
             </div>
             <div>
               <div className="text-white/80 text-sm mb-1">Selected</div>
@@ -332,6 +527,11 @@ export default function GeneratePage() {
                     <div>
                       <h3 className="text-xl font-bold text-text-primary">{preview.platform}</h3>
                       <p className="text-sm text-text-secondary">{preview.format}</p>
+                      {preview.files.length > 1 && (
+                        <p className="text-xs text-primary mt-1">
+                          {preview.files.length} items available
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -350,13 +550,135 @@ export default function GeneratePage() {
 
                 {/* Preview Content */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Thumbnail */}
+                  {/* Thumbnail(s) */}
                   <div className="md:col-span-1">
-                    <div className="aspect-square bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl flex items-center justify-center text-6xl relative overflow-hidden">
-                      {preview.thumbnail}
-                      <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/70 text-white text-xs rounded">
-                        {preview.platform}
+                    <div className="relative">
+                      {/* Main preview */}
+                      <div className="aspect-square bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl flex items-center justify-center relative overflow-hidden">
+                        {uploadData.uploadType === 'text' ? (
+                          <div className="p-4 text-center">
+                            <span className="text-4xl mb-2 block">📝</span>
+                            <p className="text-sm text-gray-600">Text Content</p>
+                          </div>
+                        ) : preview.files[preview.currentFileIndex]?.base64Data ? (
+                          <img
+                            src={preview.files[preview.currentFileIndex].base64Data}
+                            alt={`Preview ${preview.currentFileIndex + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-6xl">
+                            {uploadData.uploadType === 'video' ? '🎬' : '🖼️'}
+                          </div>
+                        )}
+                        <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/70 text-white text-xs rounded">
+                          {preview.platform}
+                        </div>
                       </div>
+
+                      {/* Navigation for multi-content platforms */}
+                      {preview.files.length > 1 &&
+                       getPlatformLimit(preview.platform, uploadData.contentType) > 1 && (
+                        <div className="flex items-center justify-between mt-2">
+                          <button
+                            onClick={() => handleFileNavigation(preview.id, 'prev')}
+                            disabled={preview.currentFileIndex === 0}
+                            className="p-1 rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-50"
+                          >
+                            ←
+                          </button>
+                          <span className="text-sm text-gray-600">
+                            {preview.currentFileIndex + 1} / {preview.files.length}
+                          </span>
+                          <button
+                            onClick={() => handleFileNavigation(preview.id, 'next')}
+                            disabled={preview.currentFileIndex === preview.files.length - 1}
+                            className="p-1 rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-50"
+                          >
+                            →
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Content selector for single-upload platforms */}
+                      {getPlatformLimit(preview.platform, uploadData.contentType) === 1 &&
+                       uploadData.files.length > 1 && (
+                        <div className="mt-3">
+                          <p className="text-xs text-gray-600 mb-2">
+                            Select content for {preview.platform} (single item only):
+                          </p>
+                          <div className="flex gap-2 overflow-x-auto">
+                            {uploadData.files.map((file, idx) => {
+                              const isSelected = preview.files[0]?.id === file.id
+                              return (
+                                <button
+                                  key={idx}
+                                  onClick={() => handleSingleContentSelection(preview.id, idx)}
+                                  className={`relative w-16 h-16 rounded flex-shrink-0 overflow-hidden border-2 ${
+                                    isSelected
+                                      ? 'border-primary ring-2 ring-primary/30'
+                                      : 'border-gray-300 hover:border-gray-400'
+                                  }`}
+                                >
+                                  {file.base64Data ? (
+                                    <img
+                                      src={file.base64Data}
+                                      alt={`Option ${idx + 1}`}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full bg-gray-200 flex items-center justify-center text-sm">
+                                      {idx + 1}
+                                    </div>
+                                  )}
+                                  {isSelected && (
+                                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                                      <span className="text-white bg-primary rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                                        ✓
+                                      </span>
+                                    </div>
+                                  )}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Thumbnail strip for multi-content platforms */}
+                      {preview.files.length > 1 &&
+                       getPlatformLimit(preview.platform, uploadData.contentType) > 1 && (
+                        <div className="flex gap-2 mt-3 overflow-x-auto">
+                          {preview.files.map((file, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setPreviews(prev =>
+                                prev.map(p => p.id === preview.id
+                                  ? { ...p, currentFileIndex: idx }
+                                  : p
+                                )
+                              )}
+                              className={`w-12 h-12 rounded flex-shrink-0 overflow-hidden border-2 ${
+                                idx === preview.currentFileIndex
+                                  ? 'border-primary'
+                                  : 'border-gray-300'
+                              }`}
+                            >
+                              {file.base64Data ? (
+                                <img
+                                  src={file.base64Data}
+                                  alt={`Thumb ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gray-200 flex items-center justify-center text-xs">
+                                  {idx + 1}
+                                </div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
