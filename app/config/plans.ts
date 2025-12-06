@@ -29,6 +29,9 @@ export interface PlanFeatures {
   // Analytics
   basicAnalytics: boolean
   advancedAnalytics: boolean
+  locationAnalytics: boolean     // Pro only - engagement by geographic location
+  saveRateAnalytics: boolean     // Creator + Pro - save rate metrics
+  retentionAnalytics: boolean    // Pro only - video retention graphs
   aiRecommendations: boolean
   exportReports: boolean
 
@@ -70,6 +73,9 @@ export const PLANS: Record<PlanType, PlanFeatures> = {
     // Analytics
     basicAnalytics: true,
     advancedAnalytics: false,
+    locationAnalytics: false,     // Pro only
+    saveRateAnalytics: false,     // Creator + Pro (not Free)
+    retentionAnalytics: false,    // Pro only
     aiRecommendations: false,
     exportReports: false,
     // Storage
@@ -106,6 +112,9 @@ export const PLANS: Record<PlanType, PlanFeatures> = {
     // Analytics
     basicAnalytics: true,
     advancedAnalytics: false,
+    locationAnalytics: false,     // Pro only
+    saveRateAnalytics: true,      // Creator gets Save Rate!
+    retentionAnalytics: false,    // Pro only
     aiRecommendations: false,
     exportReports: false,
     // Storage
@@ -142,6 +151,9 @@ export const PLANS: Record<PlanType, PlanFeatures> = {
     // Analytics
     basicAnalytics: true,
     advancedAnalytics: true,
+    locationAnalytics: true,      // Pro exclusive
+    saveRateAnalytics: true,      // Pro gets Save Rate
+    retentionAnalytics: true,     // Pro exclusive - Retention Graphs
     aiRecommendations: true,
     exportReports: true,
     // Storage
@@ -218,4 +230,28 @@ export function getRemainingUploads(planType: PlanType, usedUploads: number = 0)
     return null // unlimited
   }
   return Math.max(0, plan.maxUploadsPerMonth - usedUploads)
+}
+
+// Check if location analytics is available for a plan
+export function hasLocationAnalytics(planType: PlanType): boolean {
+  const plan = getPlan(planType)
+  return plan.locationAnalytics
+}
+
+// Check if user can access advanced analytics features
+export function hasAdvancedAnalytics(planType: PlanType): boolean {
+  const plan = getPlan(planType)
+  return plan.advancedAnalytics
+}
+
+// Check if save rate analytics is available (Creator + Pro)
+export function hasSaveRateAnalytics(planType: PlanType): boolean {
+  const plan = getPlan(planType)
+  return plan.saveRateAnalytics
+}
+
+// Check if retention analytics is available (Pro only)
+export function hasRetentionAnalytics(planType: PlanType): boolean {
+  const plan = getPlan(planType)
+  return plan.retentionAnalytics
 }

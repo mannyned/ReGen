@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import { AppHeader, Card, StatCard, GradientBanner, Badge } from '../components/ui'
 
 type TimeRange = '7' | '30' | '90' | '365'
-type PlanType = 'creator' | 'pro'
+type PlanType = 'free' | 'creator' | 'pro'
 
 interface AIRecommendation {
   id: string
@@ -17,13 +17,18 @@ interface AIRecommendation {
 
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('30')
-  const [userPlan, setUserPlan] = useState<PlanType>('creator')
+  const [userPlan, setUserPlan] = useState<PlanType>('free')
+  const [mounted, setMounted] = useState(false)
 
-  // Load user plan from localStorage
   useEffect(() => {
+    setMounted(true)
     const savedPlan = localStorage.getItem('userPlan')
     if (savedPlan === 'pro') {
       setUserPlan('pro')
+    } else if (savedPlan === 'creator') {
+      setUserPlan('creator')
+    } else {
+      setUserPlan('free')
     }
   }, [])
 
@@ -41,7 +46,6 @@ export default function AnalyticsPage() {
     { type: 'Text', count: 27, avgEngagement: 8.9, trend: 'down' }
   ]
 
-  // AI Recommendations for Pro Plan
   const aiRecommendations: AIRecommendation[] = [
     {
       id: '1',
@@ -80,7 +84,6 @@ export default function AnalyticsPage() {
     }
   ]
 
-  // Advanced metrics for Pro Plan
   const advancedMetrics = {
     sentimentScore: 78,
     audienceRetention: 65,
@@ -90,447 +93,589 @@ export default function AnalyticsPage() {
     hashtagPerformance: 72
   }
 
+  if (!mounted) return null
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <Link href="/dashboard" className="flex items-center gap-3">
-                <Image src="/logo.png" alt="ReGen Logo" width={168} height={168} className="object-contain" />
-                <span className="text-2xl font-bold text-primary">ReGen</span>
-              </Link>
-              <span className="text-text-secondary text-sm">/ Analytics</span>
-            </div>
-            <nav className="hidden md:flex items-center gap-6">
-              <Link href="/dashboard" className="text-text-secondary hover:text-primary transition-colors">Dashboard</Link>
-              <Link href="/upload" className="text-text-secondary hover:text-primary transition-colors">Upload</Link>
-              <Link href="/analytics" className="text-primary font-semibold">Analytics</Link>
-              <Link href="/settings" className="text-text-secondary hover:text-primary transition-colors">Settings</Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <AppHeader currentPage="analytics" />
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Plan Badge */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-4 mb-2">
-              <h1 className="text-4xl font-bold text-text-primary">Analytics Dashboard</h1>
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                userPlan === 'pro'
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                  : 'bg-gray-200 text-gray-700'
-              }`}>
-                {userPlan === 'pro' ? '⭐ PRO' : '🌟 CREATOR'}
-              </span>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28">
+        {/* FREE USER - Full Page Upgrade Gate */}
+        {userPlan === 'free' ? (
+          <div className="min-h-[70vh] flex flex-col items-center justify-center animate-fade-in">
+            {/* Lock Icon */}
+            <div className="w-24 h-24 bg-gradient-to-br from-primary/20 to-accent-purple/20 rounded-full flex items-center justify-center mb-8 animate-float">
+              <span className="text-5xl">🔒</span>
             </div>
-            <p className="text-text-secondary">
-              {userPlan === 'pro'
-                ? 'Advanced analytics with AI-powered recommendations'
-                : 'Track your content performance across platforms'
-              }
+
+            <h1 className="text-4xl font-bold text-text-primary mb-4 text-center">Unlock Analytics</h1>
+            <p className="text-text-secondary text-lg mb-12 text-center max-w-xl">
+              Get detailed insights into your content performance, audience engagement, and AI-powered recommendations.
             </p>
-          </div>
 
-          {/* Time Range Selector */}
-          <div className="flex gap-2 bg-white rounded-lg shadow-sm p-1">
-            {[
-              { value: '7' as TimeRange, label: '7 Days' },
-              { value: '30' as TimeRange, label: '30 Days' },
-              { value: '90' as TimeRange, label: '90 Days' },
-              { value: '365' as TimeRange, label: '1 Year' }
-            ].map(({ value, label }) => (
-              <button
-                key={value}
-                onClick={() => setTimeRange(value)}
-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                  timeRange === value
-                    ? 'bg-primary text-white shadow hover:bg-primary-hover'
-                    : 'text-text-secondary hover:bg-gray-100'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
+            {/* Plan Comparison Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full mb-12">
+              {/* Creator Plan */}
+              <Card className="p-8 border-2 border-gray-200 hover:border-primary transition-colors" hover={false}>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">🌟</span>
+                  <div>
+                    <h3 className="text-xl font-bold text-text-primary">Creator Plan</h3>
+                    <p className="text-primary font-semibold">$9/month</p>
+                  </div>
+                </div>
+                <ul className="space-y-3 mb-6">
+                  {['Save Rate Analytics', 'Platform Performance', 'Top Formats Analysis', 'AI Impact Insights', 'Unlimited Uploads'].map((feature) => (
+                    <li key={feature} className="flex items-center gap-3 text-text-secondary">
+                      <span className="text-green-500 text-lg">✓</span>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/settings" className="block w-full py-3 btn-primary text-center">
+                  Upgrade to Creator
+                </Link>
+              </Card>
 
-        {/* AI Recommendations - Pro Plan Only */}
-        {userPlan === 'pro' && (
-          <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl p-8 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <span>🤖</span>
-                  AI-Powered Recommendations
-                </h2>
-                <p className="text-white/90 mt-1">Personalized insights to boost your performance</p>
-              </div>
-              <button className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors">
-                View All
-              </button>
+              {/* Pro Plan */}
+              <Card className="p-8 border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50 relative" hover={false}>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full">
+                  BEST VALUE
+                </div>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">⭐</span>
+                  <div>
+                    <h3 className="text-xl font-bold text-text-primary">Pro Plan</h3>
+                    <p className="text-purple-600 font-semibold">$29/month</p>
+                  </div>
+                </div>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-center gap-3 text-text-secondary">
+                    <span className="text-green-500 text-lg">✓</span>
+                    <span>Everything in Creator, plus:</span>
+                  </li>
+                  {['Location Analytics', 'Retention Graphs & Hook Scoring', 'AI-Powered Recommendations', 'Advanced Metrics & Calendar'].map((feature) => (
+                    <li key={feature} className="flex items-center gap-3 text-text-secondary">
+                      <span className="text-purple-500 text-lg">⭐</span>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/settings" className="block w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-center rounded-xl font-semibold hover:opacity-90 transition-opacity">
+                  Upgrade to Pro
+                </Link>
+              </Card>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {aiRecommendations.slice(0, 3).map((rec) => (
-                <div key={rec.id} className="bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
-                  <div className="flex items-start gap-3">
-                    <span className="text-3xl">{rec.icon}</span>
-                    <div className="flex-1">
-                      <h3 className="font-semibold mb-1">{rec.title}</h3>
-                      <p className="text-sm text-white/80 mb-2">{rec.description}</p>
-                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                        rec.impact === 'high'
-                          ? 'bg-red-500/30 text-white'
-                          : rec.impact === 'medium'
-                          ? 'bg-yellow-500/30 text-white'
-                          : 'bg-green-500/30 text-white'
-                      }`}>
-                        {rec.impact.toUpperCase()} IMPACT
-                      </span>
+            {/* Preview Tags */}
+            <div className="text-center">
+              <p className="text-text-secondary text-sm mb-4">See what you're missing:</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                {[
+                  { icon: '📊', text: 'Performance Tracking' },
+                  { icon: '📌', text: 'Save Rate Analysis' },
+                  { icon: '🌍', text: 'Location Insights' },
+                  { icon: '🤖', text: 'AI Recommendations' }
+                ].map(({ icon, text }) => (
+                  <Badge key={text} variant="gray" className="px-4 py-2">
+                    {icon} {text}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Plan Switcher for Testing */}
+            <div className="mt-16 p-6 bg-gray-100 rounded-xl w-full max-w-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-text-secondary mb-1">Test Different Plans (Development Only)</p>
+                  <p className="text-xs text-text-secondary/70">This switcher is for testing purposes only</p>
+                </div>
+                <div className="flex gap-2">
+                  {(['free', 'creator', 'pro'] as PlanType[]).map((plan) => (
+                    <button
+                      key={plan}
+                      onClick={() => {
+                        setUserPlan(plan)
+                        localStorage.setItem('userPlan', plan)
+                      }}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                        userPlan === plan
+                          ? plan === 'pro'
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                            : plan === 'creator'
+                            ? 'bg-primary text-white'
+                            : 'bg-blue-500 text-white'
+                          : 'bg-white text-text-secondary hover:bg-gray-50'
+                      }`}
+                    >
+                      {plan}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Page Header */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8 animate-fade-in">
+              <div>
+                <div className="flex items-center gap-4 mb-2">
+                  <h1 className="text-3xl lg:text-4xl font-bold text-text-primary tracking-tight">Analytics Dashboard</h1>
+                  <Badge variant={userPlan === 'pro' ? 'primary' : 'gray'} className={userPlan === 'pro' ? 'bg-gradient-to-r from-purple-500 to-pink-500' : ''}>
+                    {userPlan === 'pro' ? '⭐ PRO' : '🌟 CREATOR'}
+                  </Badge>
+                </div>
+                <p className="text-text-secondary text-lg">
+                  {userPlan === 'pro'
+                    ? 'Advanced analytics with AI-powered recommendations'
+                    : 'Track your content performance across platforms'}
+                </p>
+              </div>
+
+              {/* Time Range Selector */}
+              <div className="flex gap-2 bg-white rounded-xl shadow-sm p-1.5">
+                {[
+                  { value: '7' as TimeRange, label: '7 Days' },
+                  { value: '30' as TimeRange, label: '30 Days' },
+                  { value: '90' as TimeRange, label: '90 Days' },
+                  { value: '365' as TimeRange, label: '1 Year' }
+                ].map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => setTimeRange(value)}
+                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                      timeRange === value
+                        ? 'bg-primary text-white shadow-md'
+                        : 'text-text-secondary hover:bg-gray-100'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* AI Recommendations - Pro Plan Only */}
+            {userPlan === 'pro' && (
+              <GradientBanner className="mb-8 animate-slide-up">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                      <span>🤖</span>
+                      AI-Powered Recommendations
+                    </h2>
+                    <p className="text-white/90 mt-1">Personalized insights to boost your performance</p>
+                  </div>
+                  <button className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-medium transition-colors backdrop-blur-sm">
+                    View All
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {aiRecommendations.slice(0, 3).map((rec) => (
+                    <div key={rec.id} className="bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <span className="text-3xl">{rec.icon}</span>
+                        <div className="flex-1">
+                          <h3 className="font-semibold mb-1">{rec.title}</h3>
+                          <p className="text-sm text-white/80 mb-2">{rec.description}</p>
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                            rec.impact === 'high'
+                              ? 'bg-red-500/30 text-white'
+                              : rec.impact === 'medium'
+                              ? 'bg-yellow-500/30 text-white'
+                              : 'bg-green-500/30 text-white'
+                          }`}>
+                            {rec.impact.toUpperCase()} IMPACT
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </GradientBanner>
+            )}
+
+            {/* Pro Features Section - Creator Plan Only */}
+            {userPlan === 'creator' && (
+              <Card className="p-6 mb-8 bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 border-2 border-purple-200" hover={false}>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                      <span className="text-2xl">⭐</span>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-text-primary text-lg">Unlock Pro Analytics</h3>
+                      <p className="text-sm text-text-secondary">Get these powerful features with Pro Plan</p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/settings"
+                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg hover:shadow-xl"
+                  >
+                    Upgrade to Pro - $29/mo
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[
+                    { href: '/analytics/location', icon: '🌍', title: 'Location Analytics', desc: 'See where your audience engages by country, region & city' },
+                    { href: '/analytics/retention', icon: '📊', title: 'Retention Graphs', desc: 'Video retention curves, drop-off detection & hook scoring' },
+                    { href: null, icon: '🤖', title: 'AI Recommendations', desc: 'Personalized insights to boost your performance' },
+                    { href: null, icon: '📈', title: 'Advanced Metrics', desc: 'Sentiment, virality score, hashtag performance & more' },
+                    { href: null, icon: '⏰', title: 'Best Posting Times', desc: 'Optimal times for each platform based on your audience' },
+                    { href: null, icon: '📅', title: 'Calendar Insights', desc: 'Peak days, optimal frequency & content mix analysis' }
+                  ].map((feature) => {
+                    const content = (
+                      <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-purple-100 hover:border-purple-300 hover:shadow-md transition-all">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-2xl">{feature.icon}</span>
+                          <h4 className="font-semibold text-text-primary group-hover:text-purple-600 transition-colors">{feature.title}</h4>
+                        </div>
+                        <p className="text-sm text-text-secondary">{feature.desc}</p>
+                      </div>
+                    )
+                    return feature.href ? (
+                      <Link key={feature.title} href={feature.href} className="group">{content}</Link>
+                    ) : (
+                      <div key={feature.title}>{content}</div>
+                    )
+                  })}
+                </div>
+              </Card>
+            )}
+
+            {/* Key Metrics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <StatCard label="Total Posts" value="147" icon="📊" trend={{ value: 12, positive: true }} />
+              <StatCard label="Total Reach" value="22.5K" icon="👥" trend={{ value: 24, positive: true }} />
+              <StatCard label="Avg Engagement" value="12.3%" icon="❤️" trend={{ value: 5.2, positive: true }} />
+              <StatCard label="AI Generated" value="89" icon="✨" subtitle="60% of total posts" />
+            </div>
+
+            {/* Feature Cards */}
+            {userPlan === 'pro' && (
+              <Link href="/analytics/location" className="block mb-6 group">
+                <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl p-6 hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl group-hover:scale-[1.01] transform">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="text-5xl">🌍</div>
+                      <div>
+                        <h3 className="text-xl font-bold mb-1">Location of Engagement</h3>
+                        <p className="text-white/90 text-sm">See where your audience engages the most — by country, region, and city</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right hidden md:block">
+                        <p className="text-2xl font-bold">47</p>
+                        <p className="text-xs text-white/80">Countries</p>
+                      </div>
+                      <div className="text-right hidden md:block">
+                        <p className="text-2xl font-bold">234</p>
+                        <p className="text-xs text-white/80">Cities</p>
+                      </div>
+                      <div className="ml-4 bg-white/20 rounded-full p-3 group-hover:bg-white/30 transition-colors">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Upgrade Prompt - Creator Plan Only */}
-        {userPlan === 'creator' && (
-          <div className="bg-gradient-to-r from-purple-100 to-pink-100 border-2 border-purple-300 rounded-2xl p-6 mb-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <span className="text-4xl">🚀</span>
-                <div>
-                  <h3 className="font-bold text-gray-900">Unlock Advanced Analytics</h3>
-                  <p className="text-sm text-gray-600">
-                    Get AI recommendations, sentiment analysis, and advanced metrics with Pro Plan
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/settings"
-                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
-              >
-                Upgrade to Pro
               </Link>
-            </div>
-          </div>
-        )}
-
-        {/* Key Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-text-secondary font-medium">Total Posts</span>
-              <span className="text-3xl">📊</span>
-            </div>
-            <p className="text-4xl font-bold text-text-primary mb-1">147</p>
-            <p className="text-sm text-primary font-medium">+12% from last period</p>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-text-secondary font-medium">Total Reach</span>
-              <span className="text-3xl">👥</span>
-            </div>
-            <p className="text-4xl font-bold text-text-primary mb-1">22.5K</p>
-            <p className="text-sm text-primary font-medium">+24% from last period</p>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-text-secondary font-medium">Avg Engagement</span>
-              <span className="text-3xl">❤️</span>
-            </div>
-            <p className="text-4xl font-bold text-text-primary mb-1">12.3%</p>
-            <p className="text-sm text-primary font-medium">+5.2% from last period</p>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-text-secondary font-medium">AI Generated</span>
-              <span className="text-3xl">✨</span>
-            </div>
-            <p className="text-4xl font-bold text-text-primary mb-1">89</p>
-            <p className="text-sm text-text-secondary">60% of total posts</p>
-          </div>
-        </div>
-
-        {/* Advanced Metrics - Pro Plan Only */}
-        {userPlan === 'pro' && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-            <div className="bg-white rounded-xl shadow-md p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl">😊</span>
-                <span className="text-xs text-text-secondary font-medium">Sentiment</span>
-              </div>
-              <p className="text-2xl font-bold text-text-primary">{advancedMetrics.sentimentScore}%</p>
-              <p className="text-xs text-green-600">Positive</p>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-md p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl">👁️</span>
-                <span className="text-xs text-text-secondary font-medium">Retention</span>
-              </div>
-              <p className="text-2xl font-bold text-text-primary">{advancedMetrics.audienceRetention}%</p>
-              <p className="text-xs text-text-secondary">Avg watch</p>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-md p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl">🔥</span>
-                <span className="text-xs text-text-secondary font-medium">Virality</span>
-              </div>
-              <p className="text-2xl font-bold text-text-primary">{advancedMetrics.viralityScore}</p>
-              <p className="text-xs text-orange-600">Score</p>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-md p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl">⚡</span>
-                <span className="text-xs text-text-secondary font-medium">Velocity</span>
-              </div>
-              <p className="text-2xl font-bold text-text-primary">{advancedMetrics.contentVelocity}</p>
-              <p className="text-xs text-text-secondary">Posts/day</p>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-md p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl">🔗</span>
-                <span className="text-xs text-text-secondary font-medium">Cross-Platform</span>
-              </div>
-              <p className="text-2xl font-bold text-text-primary">{advancedMetrics.crossPlatformSynergy}%</p>
-              <p className="text-xs text-blue-600">Synergy</p>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-md p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl">#️⃣</span>
-                <span className="text-xs text-text-secondary font-medium">Hashtags</span>
-              </div>
-              <p className="text-2xl font-bold text-text-primary">{advancedMetrics.hashtagPerformance}%</p>
-              <p className="text-xs text-purple-600">Performance</p>
-            </div>
-          </div>
-        )}
-
-        {/* Platform Performance */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-text-primary">Platform Performance</h2>
-            {userPlan === 'creator' && (
-              <span className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">
-                🔒 Pro: Unlock best posting times
-              </span>
             )}
-          </div>
-          <div className="space-y-6">
-            {platformData.map((platform) => (
-              <div key={platform.platform}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-semibold text-text-primary">{platform.platform}</span>
-                  <div className="flex items-center gap-4">
-                    {userPlan === 'pro' && (
-                      <>
-                        <span className="text-xs text-text-secondary">
-                          Best time: <span className="font-medium text-primary">{platform.bestTime}</span>
-                        </span>
-                        <span className={`text-xs font-medium ${
-                          platform.growth > 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {platform.growth > 0 ? '↑' : '↓'} {Math.abs(platform.growth)}%
-                        </span>
-                      </>
-                    )}
-                    <span className="text-sm text-text-secondary">{platform.posts} posts</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-4 mb-2">
-                  <div>
-                    <p className="text-xs text-text-secondary mb-1">Engagement Rate</p>
-                    <p className="text-lg font-bold text-primary">{platform.engagement}%</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-text-secondary mb-1">Reach</p>
-                    <p className="text-lg font-bold text-text-primary">{platform.reach.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-text-secondary mb-1">Avg per Post</p>
-                    <p className="text-lg font-bold text-text-primary">{Math.round(platform.reach / platform.posts)}</p>
-                  </div>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-gradient-primary h-3 rounded-full transition-all"
-                    style={{ width: `${platform.engagement * 5}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Top Performing Formats */}
-          <div className="bg-white rounded-2xl shadow-lg p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-text-primary">Top Formats</h2>
-              {userPlan === 'creator' && (
-                <span className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">
-                  🔒 Pro: See trends
-                </span>
-              )}
-            </div>
-            <div className="space-y-6">
-              {topFormats.map((format, index) => (
-                <div key={format.type} className="flex items-center gap-4">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary font-bold text-lg">
-                    #{index + 1}
+            {(userPlan === 'creator' || userPlan === 'pro') && (
+              <Link href="/analytics/save-rate" className="block mb-6 group">
+                <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl p-6 hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg hover:shadow-xl group-hover:scale-[1.01] transform">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="text-5xl">📌</div>
+                      <div>
+                        <h3 className="text-xl font-bold mb-1">Save Rate Analytics</h3>
+                        <p className="text-white/90 text-sm">Track how often your content gets saved — by format and platform</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right hidden md:block">
+                        <p className="text-2xl font-bold">2.9%</p>
+                        <p className="text-xs text-white/80">Avg Save Rate</p>
+                      </div>
+                      <div className="text-right hidden md:block">
+                        <p className="text-2xl font-bold">4,520</p>
+                        <p className="text-xs text-white/80">Total Saves</p>
+                      </div>
+                      <div className="ml-4 bg-white/20 rounded-full p-3 group-hover:bg-white/30 transition-colors">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold text-text-primary">{format.type}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-primary">{format.avgEngagement}%</span>
+                </div>
+              </Link>
+            )}
+
+            {userPlan === 'pro' && (
+              <Link href="/analytics/retention" className="block mb-8 group">
+                <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl p-6 hover:from-orange-600 hover:to-red-600 transition-all shadow-lg hover:shadow-xl group-hover:scale-[1.01] transform">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="text-5xl">📊</div>
+                      <div>
+                        <h3 className="text-xl font-bold mb-1">Retention Graph Analytics</h3>
+                        <p className="text-white/90 text-sm">See exactly where viewers drop off and optimize your hooks</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right hidden md:block">
+                        <p className="text-2xl font-bold">82%</p>
+                        <p className="text-xs text-white/80">Hook Score</p>
+                      </div>
+                      <div className="text-right hidden md:block">
+                        <p className="text-2xl font-bold">28%</p>
+                        <p className="text-xs text-white/80">Completion</p>
+                      </div>
+                      <div className="ml-4 bg-white/20 rounded-full p-3 group-hover:bg-white/30 transition-colors">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            )}
+
+            {/* Advanced Metrics - Pro Plan Only */}
+            {userPlan === 'pro' && (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+                {[
+                  { icon: '😊', label: 'Sentiment', value: advancedMetrics.sentimentScore, suffix: '%', color: 'text-green-600', sublabel: 'Positive' },
+                  { icon: '👁️', label: 'Retention', value: advancedMetrics.audienceRetention, suffix: '%', color: 'text-text-secondary', sublabel: 'Avg watch' },
+                  { icon: '🔥', label: 'Virality', value: advancedMetrics.viralityScore, suffix: '', color: 'text-orange-600', sublabel: 'Score' },
+                  { icon: '⚡', label: 'Velocity', value: advancedMetrics.contentVelocity, suffix: '', color: 'text-text-secondary', sublabel: 'Posts/day' },
+                  { icon: '🔗', label: 'Cross-Platform', value: advancedMetrics.crossPlatformSynergy, suffix: '%', color: 'text-blue-600', sublabel: 'Synergy' },
+                  { icon: '#️⃣', label: 'Hashtags', value: advancedMetrics.hashtagPerformance, suffix: '%', color: 'text-purple-600', sublabel: 'Performance' }
+                ].map((metric) => (
+                  <Card key={metric.label} className="p-4" hover={false}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xl">{metric.icon}</span>
+                      <span className="text-xs text-text-secondary font-medium">{metric.label}</span>
+                    </div>
+                    <p className="text-2xl font-bold text-text-primary">{metric.value}{metric.suffix}</p>
+                    <p className={`text-xs ${metric.color}`}>{metric.sublabel}</p>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Platform Performance */}
+            <Card className="p-6 lg:p-8 mb-8" hover={false}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-text-primary">Platform Performance</h2>
+                {userPlan === 'creator' && (
+                  <Badge variant="primary" className="bg-purple-100 text-purple-700">
+                    🔒 Pro: Unlock best posting times
+                  </Badge>
+                )}
+              </div>
+              <div className="space-y-6">
+                {platformData.map((platform) => (
+                  <div key={platform.platform}>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-semibold text-text-primary">{platform.platform}</span>
+                      <div className="flex items-center gap-4">
                         {userPlan === 'pro' && (
-                          <span className={`text-xs ${
-                            format.trend === 'up' ? 'text-green-600' :
-                            format.trend === 'down' ? 'text-red-600' : 'text-gray-600'
-                          }`}>
-                            {format.trend === 'up' ? '↑' : format.trend === 'down' ? '↓' : '→'}
-                          </span>
+                          <>
+                            <span className="text-xs text-text-secondary">
+                              Best time: <span className="font-medium text-primary">{platform.bestTime}</span>
+                            </span>
+                            <span className={`text-xs font-medium ${platform.growth > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {platform.growth > 0 ? '↑' : '↓'} {Math.abs(platform.growth)}%
+                            </span>
+                          </>
+                        )}
+                        <span className="text-sm text-text-secondary">{platform.posts} posts</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 mb-2">
+                      <div>
+                        <p className="text-xs text-text-secondary mb-1">Engagement Rate</p>
+                        <p className="text-lg font-bold text-primary">{platform.engagement}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-text-secondary mb-1">Reach</p>
+                        <p className="text-lg font-bold text-text-primary">{platform.reach.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-text-secondary mb-1">Avg per Post</p>
+                        <p className="text-lg font-bold text-text-primary">{Math.round(platform.reach / platform.posts)}</p>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="bg-gradient-primary h-3 rounded-full transition-all duration-500"
+                        style={{ width: `${platform.engagement * 5}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Top Performing Formats */}
+              <Card className="p-6 lg:p-8" hover={false}>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-text-primary">Top Formats</h2>
+                  {userPlan === 'creator' && (
+                    <Badge variant="primary" className="bg-purple-100 text-purple-700">
+                      🔒 Pro: See trends
+                    </Badge>
+                  )}
+                </div>
+                <div className="space-y-6">
+                  {topFormats.map((format, index) => (
+                    <div key={format.type} className="flex items-center gap-4">
+                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary font-bold text-lg">
+                        #{index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-semibold text-text-primary">{format.type}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-primary">{format.avgEngagement}%</span>
+                            {userPlan === 'pro' && (
+                              <span className={`text-xs ${
+                                format.trend === 'up' ? 'text-green-600' :
+                                format.trend === 'down' ? 'text-red-600' : 'text-text-secondary'
+                              }`}>
+                                {format.trend === 'up' ? '↑' : format.trend === 'down' ? '↓' : '→'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-sm text-text-secondary">{format.count} posts</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* AI Impact */}
+              <Card className="p-6 lg:p-8" hover={false}>
+                <h2 className="text-2xl font-bold text-text-primary mb-6">AI Impact</h2>
+                <div className="space-y-6">
+                  <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-text-primary font-medium">With AI Captions</span>
+                      <span className="text-3xl">✨</span>
+                    </div>
+                    <p className="text-4xl font-bold text-primary mb-2">14.8%</p>
+                    <p className="text-sm text-text-secondary">Average engagement rate</p>
+                  </div>
+
+                  <div className="bg-gray-100 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-text-primary font-medium">Without AI Captions</span>
+                      <span className="text-3xl">📝</span>
+                    </div>
+                    <p className="text-4xl font-bold text-text-secondary mb-2">11.2%</p>
+                    <p className="text-sm text-text-secondary">Average engagement rate</p>
+                  </div>
+
+                  <GradientBanner className="!p-6">
+                    <p className="text-sm font-medium mb-1">Performance Improvement</p>
+                    <p className="text-5xl font-bold">+32%</p>
+                    <p className="text-sm mt-2 opacity-90">AI captions perform significantly better</p>
+                  </GradientBanner>
+                </div>
+              </Card>
+            </div>
+
+            {/* Content Calendar Insights - Pro Plan Only */}
+            {userPlan === 'pro' && (
+              <Card className="p-6 lg:p-8 mt-8" hover={false}>
+                <h2 className="text-2xl font-bold text-text-primary mb-6">📅 Content Calendar Insights</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                    <h3 className="font-semibold text-green-900 mb-2">Peak Performance Days</h3>
+                    <p className="text-sm text-green-700">Tuesday & Thursday show 40% higher engagement</p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <h3 className="font-semibold text-blue-900 mb-2">Optimal Frequency</h3>
+                    <p className="text-sm text-blue-700">3-4 posts per platform per week maximizes reach</p>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                    <h3 className="font-semibold text-purple-900 mb-2">Content Mix</h3>
+                    <p className="text-sm text-purple-700">60% educational, 30% entertaining, 10% promotional</p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Recent Activity */}
+            <Card className="p-6 lg:p-8 mt-8" hover={false}>
+              <h2 className="text-2xl font-bold text-text-primary mb-6">Recent Activity</h2>
+              <div className="space-y-2">
+                {[
+                  { action: 'Post published on Instagram', time: '2 hours ago', icon: '📷', performance: userPlan === 'pro' ? '+15% above average' : null },
+                  { action: 'AI caption generated', time: '4 hours ago', icon: '✨', performance: userPlan === 'pro' ? 'Predicted engagement: 14.2%' : null },
+                  { action: 'Post scheduled for LinkedIn', time: '6 hours ago', icon: '💼', performance: userPlan === 'pro' ? 'Optimal time selected' : null },
+                  { action: 'Video uploaded', time: '1 day ago', icon: '🎬', performance: userPlan === 'pro' ? '92% quality score' : null }
+                ].map((activity, index) => (
+                  <div key={index} className="flex items-center gap-4 p-4 hover:bg-background rounded-xl transition-colors">
+                    <span className="text-3xl">{activity.icon}</span>
+                    <div className="flex-1">
+                      <p className="font-medium text-text-primary">{activity.action}</p>
+                      <div className="flex items-center gap-4">
+                        <p className="text-sm text-text-secondary">{activity.time}</p>
+                        {activity.performance && (
+                          <p className="text-sm text-primary font-medium">{activity.performance}</p>
                         )}
                       </div>
                     </div>
-                    <p className="text-sm text-text-secondary">{format.count} posts</p>
                   </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Plan Switcher for Testing */}
+            <div className="mt-12 p-6 bg-gray-100 rounded-xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-text-secondary mb-1">Test Different Plans (Development Only)</p>
+                  <p className="text-xs text-text-secondary/70">This switcher is for testing purposes only</p>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* AI Impact */}
-          <div className="bg-white rounded-2xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-text-primary mb-6">AI Impact</h2>
-            <div className="space-y-6">
-              <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-text-primary font-medium">With AI Captions</span>
-                  <span className="text-3xl">✨</span>
+                <div className="flex gap-2">
+                  {(['free', 'creator', 'pro'] as PlanType[]).map((plan) => (
+                    <button
+                      key={plan}
+                      onClick={() => {
+                        setUserPlan(plan)
+                        localStorage.setItem('userPlan', plan)
+                      }}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                        userPlan === plan
+                          ? plan === 'pro'
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                            : plan === 'creator'
+                            ? 'bg-primary text-white'
+                            : 'bg-blue-500 text-white'
+                          : 'bg-white text-text-secondary hover:bg-gray-50'
+                      }`}
+                    >
+                      {plan} Plan
+                    </button>
+                  ))}
                 </div>
-                <p className="text-4xl font-bold text-primary mb-2">14.8%</p>
-                <p className="text-sm text-text-primary">Average engagement rate</p>
-              </div>
-
-              <div className="bg-gray-100 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-text-primary font-medium">Without AI Captions</span>
-                  <span className="text-3xl">📝</span>
-                </div>
-                <p className="text-4xl font-bold text-text-secondary mb-2">11.2%</p>
-                <p className="text-sm text-text-primary">Average engagement rate</p>
-              </div>
-
-              <div className="gradient-brand rounded-xl p-6 text-white">
-                <p className="text-sm font-medium mb-1">Performance Improvement</p>
-                <p className="text-5xl font-bold">+32%</p>
-                <p className="text-sm mt-2 opacity-90">AI captions perform significantly better</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Content Calendar Insights - Pro Plan Only */}
-        {userPlan === 'pro' && (
-          <div className="bg-white rounded-2xl shadow-lg p-8 mt-8">
-            <h2 className="text-2xl font-bold text-text-primary mb-6">📅 Content Calendar Insights</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                <h3 className="font-semibold text-green-900 mb-2">Peak Performance Days</h3>
-                <p className="text-sm text-green-700">Tuesday & Thursday show 40% higher engagement</p>
-              </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <h3 className="font-semibold text-blue-900 mb-2">Optimal Frequency</h3>
-                <p className="text-sm text-blue-700">3-4 posts per platform per week maximizes reach</p>
-              </div>
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                <h3 className="font-semibold text-purple-900 mb-2">Content Mix</h3>
-                <p className="text-sm text-purple-700">60% educational, 30% entertaining, 10% promotional</p>
               </div>
             </div>
-          </div>
+          </>
         )}
-
-        {/* Recent Activity */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mt-8">
-          <h2 className="text-2xl font-bold text-text-primary mb-6">Recent Activity</h2>
-          <div className="space-y-4">
-            {[
-              { action: 'Post published on Instagram', time: '2 hours ago', icon: '📷', performance: userPlan === 'pro' ? '+15% above average' : null },
-              { action: 'AI caption generated', time: '4 hours ago', icon: '✨', performance: userPlan === 'pro' ? 'Predicted engagement: 14.2%' : null },
-              { action: 'Post scheduled for LinkedIn', time: '6 hours ago', icon: '💼', performance: userPlan === 'pro' ? 'Optimal time selected' : null },
-              { action: 'Video uploaded', time: '1 day ago', icon: '🎬', performance: userPlan === 'pro' ? '92% quality score' : null }
-            ].map((activity, index) => (
-              <div key={index} className="flex items-center gap-4 p-4 hover:bg-background rounded-lg transition-colors">
-                <span className="text-3xl">{activity.icon}</span>
-                <div className="flex-1">
-                  <p className="font-medium text-text-primary">{activity.action}</p>
-                  <div className="flex items-center gap-4">
-                    <p className="text-sm text-text-secondary">{activity.time}</p>
-                    {activity.performance && (
-                      <p className="text-sm text-primary font-medium">{activity.performance}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Plan Switcher for Testing */}
-        <div className="mt-12 p-6 bg-gray-100 rounded-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Test Different Plans (Development Only)</p>
-              <p className="text-xs text-gray-500">This switcher is for testing purposes only</p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setUserPlan('creator')
-                  localStorage.setItem('userPlan', 'creator')
-                }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  userPlan === 'creator'
-                    ? 'bg-primary text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Creator Plan
-              </button>
-              <button
-                onClick={() => {
-                  setUserPlan('pro')
-                  localStorage.setItem('userPlan', 'pro')
-                }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  userPlan === 'pro'
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Pro Plan
-              </button>
-            </div>
-          </div>
-        </div>
       </main>
     </div>
   )

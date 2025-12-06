@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { AppHeader, Card, GradientBanner, Badge } from '../components/ui'
 
 type Platform = {
   id: string
@@ -16,27 +17,27 @@ type Platform = {
 
 export default function SettingsPage() {
   const [platforms, setPlatforms] = useState<Platform[]>([])
+  const [mounted, setMounted] = useState(false)
 
   // Initialize platforms and fetch connection status
   useEffect(() => {
+    setMounted(true)
+
     const initializePlatforms = async () => {
-      // Default platforms
       const defaultPlatforms = [
-        { id: 'instagram', name: 'Instagram', icon: '📷', color: 'bg-gradient-to-br from-purple-500 to-pink-500', connected: false },
-        { id: 'tiktok', name: 'TikTok', icon: '🎵', color: 'bg-gradient-to-br from-black to-cyan-500', connected: false },
-        { id: 'youtube', name: 'YouTube', icon: '▶️', color: 'bg-gradient-to-br from-red-600 to-red-500', connected: false },
-        { id: 'twitter', name: 'X (Twitter)', icon: '🐦', color: 'bg-gradient-to-br from-gray-900 to-gray-700', connected: false },
-        { id: 'linkedin', name: 'LinkedIn', icon: '💼', color: 'bg-gradient-to-br from-blue-700 to-blue-600', connected: false },
-        { id: 'facebook', name: 'Facebook', icon: '👥', color: 'bg-gradient-to-br from-blue-600 to-blue-500', connected: false },
+        { id: 'instagram', name: 'Instagram', icon: '📷', color: 'from-purple-500 to-pink-500', connected: false },
+        { id: 'tiktok', name: 'TikTok', icon: '🎵', color: 'from-gray-900 to-cyan-500', connected: false },
+        { id: 'youtube', name: 'YouTube', icon: '▶️', color: 'from-red-600 to-red-500', connected: false },
+        { id: 'twitter', name: 'X (Twitter)', icon: '𝕏', color: 'from-gray-900 to-gray-700', connected: false },
+        { id: 'linkedin', name: 'LinkedIn', icon: '💼', color: 'from-blue-700 to-blue-600', connected: false },
+        { id: 'facebook', name: 'Facebook', icon: '👥', color: 'from-blue-600 to-blue-500', connected: false },
       ]
 
       try {
-        // Fetch connection status from backend
         const response = await fetch('/api/oauth/status?userId=default-user')
         const data = await response.json()
 
         if (data.success && data.connectedPlatforms) {
-          // Update platforms with connection status
           const updatedPlatforms = defaultPlatforms.map(platform => {
             const connectedPlatform = data.connectedPlatforms.find((cp: any) => cp.platform === platform.id)
             if (connectedPlatform) {
@@ -62,7 +63,6 @@ export default function SettingsPage() {
 
     initializePlatforms()
 
-    // Check for OAuth callback success
     const urlParams = new URLSearchParams(window.location.search)
     const connectedPlatform = urlParams.get('connected')
     const username = urlParams.get('username')
@@ -70,9 +70,7 @@ export default function SettingsPage() {
 
     if (connectedPlatform && username) {
       alert(`Successfully connected to ${connectedPlatform} as @${username}!`)
-      // Clear URL parameters
       window.history.replaceState({}, document.title, window.location.pathname)
-      // Refresh to show updated status
       window.location.reload()
     } else if (error) {
       alert(`OAuth error: ${error}`)
@@ -80,7 +78,6 @@ export default function SettingsPage() {
     }
   }, [])
 
-  // Save to localStorage whenever platforms change
   useEffect(() => {
     if (platforms.length > 0) {
       localStorage.setItem('connectedPlatforms', JSON.stringify(platforms))
@@ -89,7 +86,6 @@ export default function SettingsPage() {
 
   const handleConnect = async (platform: Platform) => {
     try {
-      // Call backend to get OAuth URL
       const response = await fetch(`/api/oauth/connect/${platform.id}?userId=default-user`)
       const data = await response.json()
 
@@ -99,7 +95,6 @@ export default function SettingsPage() {
       }
 
       if (data.authUrl) {
-        // Redirect to OAuth authorization page
         window.location.href = data.authUrl
       } else {
         throw new Error('Failed to get authorization URL')
@@ -134,87 +129,89 @@ export default function SettingsPage() {
 
   const connectedCount = platforms.filter(p => p.connected).length
 
+  if (!mounted) return null
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <Link href="/dashboard" className="flex items-center gap-3">
-                <Image src="/logo.png" alt="ReGen Logo" width={168} height={168} className="object-contain" />
-                <span className="text-2xl font-bold text-primary">ReGen</span>
-              </Link>
-              <span className="text-text-secondary text-sm">/ Settings</span>
-            </div>
-            <nav className="hidden md:flex items-center gap-6">
-              <Link href="/dashboard" className="text-text-secondary hover:text-primary transition-colors">Dashboard</Link>
-              <Link href="/upload" className="text-text-secondary hover:text-primary transition-colors">Upload</Link>
-              <Link href="/schedule" className="text-text-secondary hover:text-primary transition-colors">Schedule</Link>
-              <Link href="/analytics" className="text-text-secondary hover:text-primary transition-colors">Analytics</Link>
-              <Link href="/settings" className="text-primary font-semibold">Settings</Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <AppHeader currentPage="settings" />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28">
+        {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-text-primary mb-2">Settings</h1>
+          <h1 className="text-3xl lg:text-4xl font-bold text-text-primary tracking-tight mb-2">Settings</h1>
           <p className="text-text-secondary text-lg">Manage your social media accounts and preferences</p>
         </div>
 
-        {/* Stats Card */}
-        <div className="bg-gradient-brand rounded-2xl p-6 text-white mb-8">
+        {/* Connection Stats */}
+        <GradientBanner className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-white/80 mb-1">Connected Accounts</p>
-              <p className="text-4xl font-bold">{connectedCount} / {platforms.length}</p>
+              <p className="text-white/80 text-sm mb-1">Connected Accounts</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-bold">{connectedCount}</span>
+                <span className="text-white/60 text-xl">/ {platforms.length}</span>
+              </div>
             </div>
-            <div className="text-6xl">🔗</div>
+            <div className="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
+              <span className="text-4xl">🔗</span>
+            </div>
           </div>
           {connectedCount === 0 && (
             <p className="mt-4 text-white/90 text-sm">
               Connect your social media accounts to start publishing content across all platforms
             </p>
           )}
-        </div>
+          {connectedCount > 0 && connectedCount < platforms.length && (
+            <div className="mt-4 pt-4 border-t border-white/20">
+              <div className="flex items-center gap-2 text-white/80 text-sm">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Connect more accounts to maximize your content reach</span>
+              </div>
+            </div>
+          )}
+        </GradientBanner>
 
         {/* Social Media Accounts */}
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          <h2 className="text-2xl font-bold text-text-primary mb-6">Social Media Accounts</h2>
+        <Card className="p-6 lg:p-8 mb-8" hover={false}>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-text-primary">Social Media Accounts</h2>
+            <Badge variant="primary">{connectedCount} connected</Badge>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
             {platforms.map((platform) => (
               <div
                 key={platform.id}
-                className="border-2 border-gray-200 rounded-xl p-6 hover:border-primary transition-all"
+                className={`group relative border-2 rounded-2xl p-5 transition-all duration-300 ${
+                  platform.connected
+                    ? 'border-green-200 bg-green-50/50'
+                    : 'border-gray-200 hover:border-primary/50 bg-white'
+                }`}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-4">
-                    <div className={`w-16 h-16 ${platform.color} rounded-xl flex items-center justify-center text-3xl shadow-lg`}>
+                    <div className={`w-14 h-14 bg-gradient-to-br ${platform.color} rounded-xl flex items-center justify-center text-2xl shadow-lg transition-transform group-hover:scale-105`}>
                       {platform.icon}
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-text-primary">{platform.name}</h3>
+                      <h3 className="text-lg font-bold text-text-primary">{platform.name}</h3>
                       {platform.connected ? (
-                        <div className="mt-1">
+                        <div className="mt-0.5">
                           <p className="text-sm text-primary font-medium">@{platform.username}</p>
                           <p className="text-xs text-text-secondary">Connected {platform.connectedDate}</p>
                         </div>
                       ) : (
-                        <p className="text-sm text-text-secondary mt-1">Not connected</p>
+                        <p className="text-sm text-text-secondary mt-0.5">Not connected</p>
                       )}
                     </div>
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    platform.connected
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
+                  <Badge variant={platform.connected ? 'success' : 'gray'}>
                     {platform.connected ? '✓ Active' : 'Inactive'}
-                  </div>
+                  </Badge>
                 </div>
 
                 <div className="flex gap-3">
@@ -222,13 +219,13 @@ export default function SettingsPage() {
                     <>
                       <button
                         onClick={() => handleConnect(platform)}
-                        className="flex-1 py-2 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-lg font-medium transition-colors text-sm"
+                        className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-xl font-medium transition-colors text-sm"
                       >
                         Reconnect
                       </button>
                       <button
                         onClick={() => handleDisconnect(platform.id)}
-                        className="flex-1 py-2 px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors text-sm"
+                        className="flex-1 py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors text-sm"
                       >
                         Disconnect
                       </button>
@@ -236,7 +233,7 @@ export default function SettingsPage() {
                   ) : (
                     <button
                       onClick={() => handleConnect(platform)}
-                      className="w-full py-2 px-4 bg-primary hover:bg-primary-hover text-white rounded-lg font-medium transition-colors text-sm"
+                      className="w-full py-2.5 px-4 btn-primary text-sm"
                     >
                       Connect {platform.name}
                     </button>
@@ -245,35 +242,62 @@ export default function SettingsPage() {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
 
-        {/* Account Info */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mt-8">
+        {/* Account Information */}
+        <Card className="p-6 lg:p-8 mb-8" hover={false}>
           <h2 className="text-2xl font-bold text-text-primary mb-6">Account Information</h2>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-2">Email</label>
-              <input
-                type="email"
-                defaultValue="user@example.com"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus"
-                disabled
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">Plan</label>
-              <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
-                <div>
-                  <p className="font-semibold text-text-primary">Creator Plan</p>
-                  <p className="text-sm text-text-secondary">$9/month - Unlimited repurposes</p>
+              <div className="relative">
+                <input
+                  type="email"
+                  defaultValue="user@example.com"
+                  className="input-primary bg-gray-50"
+                  disabled
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Badge variant="success">Verified</Badge>
                 </div>
-                <button className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors">
-                  Upgrade
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Current Plan</label>
+              <div className="flex items-center justify-between p-5 bg-gradient-to-r from-primary/5 to-accent-purple/5 rounded-2xl border border-primary/20">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <span className="text-2xl">🌟</span>
+                  </div>
+                  <div>
+                    <p className="font-bold text-text-primary text-lg">Creator Plan</p>
+                    <p className="text-sm text-text-secondary">$9/month — Unlimited repurposes</p>
+                  </div>
+                </div>
+                <button className="btn-primary text-sm">
+                  Upgrade to Pro
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </Card>
+
+        {/* Danger Zone */}
+        <Card className="p-6 lg:p-8 border-red-200" hover={false}>
+          <h2 className="text-xl font-bold text-red-600 mb-4">Danger Zone</h2>
+          <p className="text-text-secondary mb-6 text-sm">
+            These actions are irreversible. Please proceed with caution.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button className="px-4 py-2.5 border-2 border-red-200 text-red-600 rounded-xl font-medium hover:bg-red-50 transition-colors text-sm">
+              Export All Data
+            </button>
+            <button className="px-4 py-2.5 border-2 border-red-200 text-red-600 rounded-xl font-medium hover:bg-red-50 transition-colors text-sm">
+              Delete Account
+            </button>
+          </div>
+        </Card>
       </main>
     </div>
   )

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { fileStorage, fileToBase64, generateFileId } from '../utils/fileStorage'
+import { AppHeader, Card, Badge } from '../components/ui'
 
 type UploadType = 'video' | 'image' | 'text'
 type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'snapchat'
@@ -16,16 +16,25 @@ interface UploadedFileData {
   fileId: string
 }
 
-// Platform upload limits configuration
 const PLATFORM_LIMITS = {
   instagram: { post: 6, story: 6 },
   facebook: { post: 6, story: 6 },
   tiktok: { post: 1, story: 1 },
   snapchat: { post: 1, story: 1 },
   youtube: { post: 1, story: 1 },
-  x: { post: 4, story: 1 }, // X (Twitter) allows up to 4 images in a post
+  x: { post: 4, story: 1 },
   linkedin: { post: 1, story: 1 }
 }
+
+const platforms = [
+  { id: 'tiktok' as Platform, name: 'TikTok', icon: '🎵', color: 'bg-gradient-to-br from-gray-900 to-cyan-500' },
+  { id: 'instagram' as Platform, name: 'Instagram', icon: '📷', color: 'bg-gradient-to-br from-purple-500 to-pink-500' },
+  { id: 'youtube' as Platform, name: 'YouTube', icon: '▶️', color: 'bg-gradient-to-br from-red-600 to-red-500' },
+  { id: 'facebook' as Platform, name: 'Facebook', icon: '👥', color: 'bg-gradient-to-br from-blue-600 to-blue-500' },
+  { id: 'x' as Platform, name: 'X (Twitter)', icon: '𝕏', color: 'bg-gradient-to-br from-gray-900 to-gray-700' },
+  { id: 'linkedin' as Platform, name: 'LinkedIn', icon: '💼', color: 'bg-gradient-to-br from-blue-700 to-blue-600' },
+  { id: 'snapchat' as Platform, name: 'Snapchat', icon: '👻', color: 'bg-gradient-to-br from-yellow-400 to-yellow-500' },
+]
 
 export default function UploadPage() {
   const router = useRouter()
@@ -39,49 +48,40 @@ export default function UploadPage() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileData[]>([])
   const [contentDescription, setContentDescription] = useState('')
   const [customHashtags, setCustomHashtags] = useState('')
+  const [mounted, setMounted] = useState(false)
 
-  const platforms = [
-    { id: 'tiktok' as Platform, name: 'TikTok', icon: '🎵', color: 'bg-pink-100 text-pink-700 border-pink-300' },
-    { id: 'instagram' as Platform, name: 'Instagram', icon: '📷', color: 'bg-purple-100 text-purple-700 border-purple-300' },
-    { id: 'youtube' as Platform, name: 'YouTube', icon: '▶️', color: 'bg-red-100 text-red-700 border-red-300' },
-    { id: 'facebook' as Platform, name: 'Facebook', icon: '👥', color: 'bg-blue-100 text-blue-700 border-blue-300' },
-    { id: 'x' as Platform, name: 'X (Twitter)', icon: '🐦', color: 'bg-gray-100 text-gray-700 border-gray-300' },
-    { id: 'linkedin' as Platform, name: 'LinkedIn', icon: '💼', color: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
-    { id: 'snapchat' as Platform, name: 'Snapchat', icon: '👻', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
-  ]
-
-  // Calculate max upload limit based on selected platforms and content type
   const getMaxUploadLimit = () => {
     if (selectedPlatforms.length === 0) return 1
-
-    // Find the MAXIMUM limit among selected platforms for the chosen content type
-    // This allows users to upload multiple files and choose which one for single-content platforms
     const limits = selectedPlatforms.map(platform =>
       PLATFORM_LIMITS[platform]?.[contentType] || 1
     )
     return Math.max(...limits)
   }
 
-  // Get platforms that support multiple uploads
   const getMultiUploadPlatforms = () => {
     return selectedPlatforms.filter(platform =>
       PLATFORM_LIMITS[platform]?.[contentType] > 1
     )
   }
 
-  // Load connected accounts from localStorage
+  const getSingleUploadPlatforms = () => {
+    return selectedPlatforms.filter(platform =>
+      PLATFORM_LIMITS[platform]?.[contentType] === 1
+    )
+  }
+
   useEffect(() => {
+    setMounted(true)
     const savedPlatforms = localStorage.getItem('connectedPlatforms')
     if (savedPlatforms) {
-      const platforms = JSON.parse(savedPlatforms)
-      const connected = platforms
+      const platformsList = JSON.parse(savedPlatforms)
+      const connected = platformsList
         .filter((p: any) => p.connected)
-        .map((p: any) => p.id === 'twitter' ? 'x' : p.id) // Map twitter to x for consistency
+        .map((p: any) => p.id === 'twitter' ? 'x' : p.id)
       setConnectedAccounts(connected)
     }
   }, [])
 
-  // Clean up preview URLs when component unmounts
   useEffect(() => {
     return () => {
       uploadedFiles.forEach(file => URL.revokeObjectURL(file.previewUrl))
@@ -93,22 +93,6 @@ export default function UploadPage() {
       prev.includes(platformId)
         ? prev.filter(p => p !== platformId)
         : [...prev, platformId]
-    )
-  }
-
-  const getMaxUploadLimitForPlatforms = (platforms: Platform[]) => {
-    if (platforms.length === 0) return 1
-    const limits = platforms.map(platform =>
-      PLATFORM_LIMITS[platform]?.[contentType] || 1
-    )
-    // Use maximum limit to allow multiple uploads
-    return Math.max(...limits)
-  }
-
-  // Get platforms that only support single content
-  const getSingleUploadPlatforms = () => {
-    return selectedPlatforms.filter(platform =>
-      PLATFORM_LIMITS[platform]?.[contentType] === 1
     )
   }
 
@@ -147,10 +131,7 @@ export default function UploadPage() {
       return
     }
 
-    // Take only as many files as we have slots available
     const filesToProcess = files.slice(0, availableSlots)
-
-    // Validate file types
     const validFiles: UploadedFileData[] = []
 
     for (const file of filesToProcess) {
@@ -162,14 +143,9 @@ export default function UploadPage() {
         continue
       }
 
-      // Create preview URL with unique ID
       const url = URL.createObjectURL(file)
       const fileId = generateFileId()
-      validFiles.push({
-        file,
-        previewUrl: url,
-        fileId
-      })
+      validFiles.push({ file, previewUrl: url, fileId })
     }
 
     if (validFiles.length > 0) {
@@ -187,13 +163,11 @@ export default function UploadPage() {
   }
 
   const handleGenerate = async () => {
-    // Validate input
     if (selectedPlatforms.length === 0) {
       alert('Please select at least one platform')
       return
     }
 
-    // Validate content
     if (uploadType !== 'text' && uploadedFiles.length === 0) {
       alert('Please upload at least one file')
       return
@@ -205,7 +179,6 @@ export default function UploadPage() {
     }
 
     try {
-      // Store files in IndexedDB
       const filesToStore = []
       const fileMetadata = []
 
@@ -220,7 +193,6 @@ export default function UploadPage() {
           timestamp: Date.now()
         })
 
-        // Only store metadata in localStorage
         fileMetadata.push({
           id: fileData.fileId,
           name: fileData.file.name,
@@ -229,10 +201,8 @@ export default function UploadPage() {
         })
       }
 
-      // Store actual file data in IndexedDB
       await fileStorage.storeFiles(filesToStore)
 
-      // Store metadata in localStorage (much smaller)
       const uploadData = {
         uploadType,
         contentType,
@@ -245,8 +215,6 @@ export default function UploadPage() {
       }
 
       localStorage.setItem('uploadData', JSON.stringify(uploadData))
-
-      // Navigate to generate page
       router.push('/generate')
     } catch (error) {
       console.error('Error storing files:', error)
@@ -258,139 +226,108 @@ export default function UploadPage() {
   const multiUploadPlatforms = getMultiUploadPlatforms()
   const singleUploadPlatforms = getSingleUploadPlatforms()
 
+  if (!mounted) return null
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <Link href="/dashboard" className="flex items-center gap-3">
-                <Image src="/logo.png" alt="ReGen Logo" width={168} height={168} className="object-contain" />
-                <span className="text-2xl font-bold text-primary">ReGen</span>
-              </Link>
-              <span className="text-text-secondary text-sm">/ Upload</span>
-            </div>
-            <nav className="hidden md:flex items-center gap-6">
-              <Link href="/dashboard" className="text-text-secondary hover:text-primary transition-colors">Dashboard</Link>
-              <Link href="/upload" className="text-primary font-semibold">Upload</Link>
-              <Link href="/schedule" className="text-text-secondary hover:text-primary transition-colors">Schedule</Link>
-              <Link href="/analytics" className="text-text-secondary hover:text-primary transition-colors">Analytics</Link>
-              <Link href="/settings" className="text-text-secondary hover:text-primary transition-colors">Settings</Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <AppHeader currentPage="upload" />
 
-      {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28">
+        {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-text-primary mb-2">Upload / Import Content</h1>
-          <p className="text-text-secondary text-lg">Choose your content source and select target platforms</p>
+          <h1 className="text-3xl lg:text-4xl font-bold text-text-primary tracking-tight mb-2">
+            Upload / Import Content
+          </h1>
+          <p className="text-text-secondary text-lg">
+            Choose your content source and select target platforms
+          </p>
         </div>
 
-        <div className="space-y-8">
-          {/* Step 1: Choose Upload Type and Content Type */}
-          <div className="bg-white rounded-2xl shadow-lg p-8">
+        <div className="space-y-6">
+          {/* Step 1: Content Source & Type */}
+          <Card className="p-6 lg:p-8" hover={false}>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold">
+              <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-lg shadow-lg">
                 1
               </div>
-              <h2 className="text-2xl font-bold text-text-primary">Choose Content Source & Type</h2>
+              <div>
+                <h2 className="text-xl font-bold text-text-primary">Choose Content Source & Type</h2>
+                <p className="text-sm text-text-secondary">Select how you want to add your content</p>
+              </div>
             </div>
 
-            {/* Content Type Selection */}
+            {/* Content Type */}
             <div className="mb-6">
               <h3 className="font-semibold text-text-primary mb-3">Content Type</h3>
-              <div className="flex gap-4">
+              <div className="flex gap-3">
                 <button
                   onClick={() => setContentType('post')}
-                  className={`px-6 py-3 rounded-lg border-2 font-medium transition-all ${
+                  className={`flex items-center gap-2 px-5 py-3 rounded-xl border-2 font-medium transition-all ${
                     contentType === 'post'
-                      ? 'border-primary bg-primary text-white'
-                      : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                      ? 'border-primary bg-primary text-white shadow-lg'
+                      : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  📱 Post / Feed
+                  <span className="text-lg">📱</span>
+                  Post / Feed
                 </button>
                 <button
                   onClick={() => setContentType('story')}
-                  className={`px-6 py-3 rounded-lg border-2 font-medium transition-all ${
+                  className={`flex items-center gap-2 px-5 py-3 rounded-xl border-2 font-medium transition-all ${
                     contentType === 'story'
-                      ? 'border-primary bg-primary text-white'
-                      : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                      ? 'border-primary bg-primary text-white shadow-lg'
+                      : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  ⏰ Story / Reel
+                  <span className="text-lg">⏰</span>
+                  Story / Reel
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button
-                onClick={() => setUploadType('video')}
-                className={`p-6 rounded-xl border-2 transition-all ${
-                  uploadType === 'video'
-                    ? 'border-primary bg-primary/5'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-4xl mb-3">🎬</div>
-                <h3 className="font-bold text-text-primary mb-1">Upload Video</h3>
-                <p className="text-sm text-text-secondary">MP4, MOV, AVI up to 500MB</p>
-              </button>
-
-              <button
-                onClick={() => setUploadType('image')}
-                className={`p-6 rounded-xl border-2 transition-all ${
-                  uploadType === 'image'
-                    ? 'border-primary bg-primary/5'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-4xl mb-3">🖼️</div>
-                <h3 className="font-bold text-text-primary mb-1">Upload Image</h3>
-                <p className="text-sm text-text-secondary">JPG, PNG, GIF up to 10MB</p>
-              </button>
-
-              <button
-                onClick={() => setUploadType('text')}
-                className={`p-6 rounded-xl border-2 transition-all ${
-                  uploadType === 'text'
-                    ? 'border-primary bg-primary/5'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-4xl mb-3">📝</div>
-                <h3 className="font-bold text-text-primary mb-1">Paste Text/URL</h3>
-                <p className="text-sm text-text-secondary">Or import from link</p>
-              </button>
+            {/* Upload Type Selection */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {[
+                { type: 'video' as UploadType, icon: '🎬', title: 'Upload Video', desc: 'MP4, MOV, AVI up to 500MB' },
+                { type: 'image' as UploadType, icon: '🖼️', title: 'Upload Image', desc: 'JPG, PNG, GIF up to 10MB' },
+                { type: 'text' as UploadType, icon: '📝', title: 'Paste Text/URL', desc: 'Or import from link' },
+              ].map((option) => (
+                <button
+                  key={option.type}
+                  onClick={() => setUploadType(option.type)}
+                  className={`group p-5 rounded-2xl border-2 transition-all text-left ${
+                    uploadType === option.type
+                      ? 'border-primary bg-primary/5 shadow-lg'
+                      : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="text-4xl mb-3 transition-transform group-hover:scale-110">{option.icon}</div>
+                  <h3 className={`font-bold mb-1 ${uploadType === option.type ? 'text-primary' : 'text-text-primary'}`}>
+                    {option.title}
+                  </h3>
+                  <p className="text-sm text-text-secondary">{option.desc}</p>
+                </button>
+              ))}
             </div>
 
             {/* Upload Limit Info */}
             {selectedPlatforms.length > 0 && uploadType !== 'text' && (
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <span className="text-lg">ℹ️</span>
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
                   <div>
                     <p className="text-sm text-blue-900 font-medium">
                       You can upload up to {maxUploadLimit} {maxUploadLimit === 1 ? 'file' : 'files'}
                     </p>
                     {singleUploadPlatforms.length > 0 && multiUploadPlatforms.length > 0 && (
-                      <div className="text-xs text-blue-700 mt-1">
+                      <div className="text-xs text-blue-700 mt-1 space-y-0.5">
                         <p>• {multiUploadPlatforms.join(', ')}: Will use all {maxUploadLimit} items</p>
                         <p>• {singleUploadPlatforms.join(', ')}: You'll select 1 item during generation</p>
                       </div>
-                    )}
-                    {singleUploadPlatforms.length > 0 && multiUploadPlatforms.length === 0 && (
-                      <p className="text-xs text-blue-700 mt-1">
-                        All selected platforms support single content only
-                      </p>
-                    )}
-                    {multiUploadPlatforms.length > 0 && singleUploadPlatforms.length === 0 && (
-                      <p className="text-xs text-blue-700 mt-1">
-                        All selected platforms support up to {maxUploadLimit} items
-                      </p>
                     )}
                   </div>
                 </div>
@@ -401,30 +338,27 @@ export default function UploadPage() {
             <div className="mt-6">
               {uploadType !== 'text' ? (
                 <>
-                  {/* File Upload Section */}
                   {uploadedFiles.length < maxUploadLimit && (
                     <div
                       onDragEnter={handleDrag}
                       onDragLeave={handleDrag}
                       onDragOver={handleDrag}
                       onDrop={handleDrop}
-                      className={`border-3 border-dashed rounded-xl p-12 text-center transition-all ${
+                      className={`relative border-2 border-dashed rounded-2xl p-10 text-center transition-all ${
                         dragActive
-                          ? 'border-primary bg-primary/5'
-                          : 'border-gray-300 hover:border-primary'
+                          ? 'border-primary bg-primary/5 scale-[1.02]'
+                          : 'border-gray-300 hover:border-primary/50'
                       }`}
                     >
-                      <div className="text-6xl mb-4">
-                        {uploadType === 'video' ? '🎬' : '🖼️'}
-                      </div>
+                      <div className="text-6xl mb-4">{uploadType === 'video' ? '🎬' : '🖼️'}</div>
                       <h3 className="text-xl font-semibold text-text-primary mb-2">
                         Drop your {uploadType}s here
                       </h3>
                       <p className="text-text-secondary mb-6">
                         or click to browse from your computer
                         {maxUploadLimit > 1 && (
-                          <span className="block text-sm mt-2">
-                            You can select up to {maxUploadLimit} files ({uploadedFiles.length}/{maxUploadLimit} uploaded)
+                          <span className="block text-sm mt-2 text-primary font-medium">
+                            {uploadedFiles.length}/{maxUploadLimit} files uploaded
                           </span>
                         )}
                       </p>
@@ -445,10 +379,10 @@ export default function UploadPage() {
                     </div>
                   )}
 
-                  {/* Uploaded Files Display */}
+                  {/* Uploaded Files */}
                   {uploadedFiles.length > 0 && (
-                    <div className="mt-6 space-y-4">
-                      <div className="flex items-center justify-between">
+                    <div className="mt-6">
+                      <div className="flex items-center justify-between mb-4">
                         <h3 className="font-semibold text-text-primary">
                           Uploaded Files ({uploadedFiles.length}/{maxUploadLimit})
                         </h3>
@@ -472,46 +406,29 @@ export default function UploadPage() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {uploadedFiles.map((fileData, index) => (
-                          <div key={index} className="border-2 border-primary rounded-xl p-4 bg-primary/5">
-                            <div className="flex items-start gap-3">
-                              {/* Preview Thumbnail */}
-                              <div className="w-32 h-32 rounded-lg overflow-hidden bg-black flex-shrink-0">
+                          <div key={index} className="border-2 border-primary/30 rounded-xl p-4 bg-primary/5">
+                            <div className="flex items-start gap-4">
+                              <div className="w-24 h-24 rounded-lg overflow-hidden bg-black flex-shrink-0">
                                 {uploadType === 'video' ? (
-                                  <video
-                                    src={fileData.previewUrl}
-                                    className="w-full h-full object-cover"
-                                    muted
-                                  />
+                                  <video src={fileData.previewUrl} className="w-full h-full object-cover" muted />
                                 ) : (
-                                  <img
-                                    src={fileData.previewUrl}
-                                    alt={`Preview ${index + 1}`}
-                                    className="w-full h-full object-cover"
-                                  />
+                                  <img src={fileData.previewUrl} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
                                 )}
                               </div>
-
-                              {/* File Info */}
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-text-primary truncate">
-                                  {index + 1}. {fileData.file.name}
-                                </p>
+                                <p className="font-medium text-text-primary truncate">{fileData.file.name}</p>
                                 <p className="text-sm text-text-secondary">
                                   {(fileData.file.size / 1024 / 1024).toFixed(2)} MB
                                 </p>
-                                {maxUploadLimit > 1 && (
-                                  <p className="text-xs text-primary mt-1">
-                                    Item {index + 1} of {maxUploadLimit}
-                                  </p>
-                                )}
+                                <Badge variant="primary" className="mt-2">Item {index + 1}</Badge>
                               </div>
-
-                              {/* Remove Button */}
                               <button
                                 onClick={() => removeFile(index)}
-                                className="px-3 py-1 bg-red-50 text-red-600 rounded text-sm font-medium hover:bg-red-100 transition-colors"
+                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                               >
-                                Remove
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
                               </button>
                             </div>
                           </div>
@@ -523,27 +440,27 @@ export default function UploadPage() {
               ) : (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-text-primary mb-2">
                       Paste Text Content
                     </label>
                     <textarea
                       value={textContent}
                       onChange={(e) => setTextContent(e.target.value)}
-                      rows={6}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus resize-none"
+                      rows={5}
+                      className="input-primary resize-none"
                       placeholder="Paste your content here..."
                     />
                   </div>
-                  <div className="text-center text-text-secondary font-medium">OR</div>
+                  <div className="text-center text-text-secondary font-medium py-2">OR</div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-text-primary mb-2">
                       Import from URL
                     </label>
                     <input
                       type="url"
                       value={urlContent}
                       onChange={(e) => setUrlContent(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus"
+                      className="input-primary"
                       placeholder="https://example.com/post..."
                     />
                   </div>
@@ -551,143 +468,142 @@ export default function UploadPage() {
               )}
             </div>
 
-            {/* AI Generation Options */}
-            <div className="mt-6 space-y-4 p-6 bg-blue-50 rounded-xl border border-blue-200">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">🤖</span>
-                <h3 className="font-semibold text-text-primary">AI Caption Generation (Optional)</h3>
+            {/* AI Options */}
+            <div className="mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-200">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg">
+                  <span className="text-xl">🤖</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-text-primary">AI Caption Generation</h3>
+                  <p className="text-xs text-text-secondary">Optional - Help AI create better captions</p>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Content Description
-                </label>
-                <textarea
-                  value={contentDescription}
-                  onChange={(e) => setContentDescription(e.target.value)}
-                  rows={3}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus resize-none"
-                  placeholder="Describe your content... (e.g., 'Product launch video for new eco-friendly water bottle')"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  💡 Help AI generate better captions by describing what your content is about
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Custom Hashtags
-                </label>
-                <input
-                  type="text"
-                  value={customHashtags}
-                  onChange={(e) => setCustomHashtags(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus"
-                  placeholder="#YourBrand #ProductLaunch #Sustainable"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  💡 Add hashtags you want included in the generated captions
-                </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-2">
+                    Content Description
+                  </label>
+                  <textarea
+                    value={contentDescription}
+                    onChange={(e) => setContentDescription(e.target.value)}
+                    rows={2}
+                    className="input-primary resize-none"
+                    placeholder="Describe your content... (e.g., 'Product launch video for new eco-friendly water bottle')"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-2">
+                    Custom Hashtags
+                  </label>
+                  <input
+                    type="text"
+                    value={customHashtags}
+                    onChange={(e) => setCustomHashtags(e.target.value)}
+                    className="input-primary"
+                    placeholder="#YourBrand #ProductLaunch #Sustainable"
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          </Card>
 
-          {/* Step 2: Select Platforms */}
-          <div className="bg-white rounded-2xl shadow-lg p-8">
+          {/* Step 2: Platforms */}
+          <Card className="p-6 lg:p-8" hover={false}>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold">
+              <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-lg shadow-lg">
                 2
               </div>
-              <h2 className="text-2xl font-bold text-text-primary">Select Target Platforms</h2>
+              <div>
+                <h2 className="text-xl font-bold text-text-primary">Select Target Platforms</h2>
+                <p className="text-sm text-text-secondary">Choose where to publish your content</p>
+              </div>
             </div>
 
-            <p className="text-text-secondary mb-6">
-              Choose which platforms you want to repurpose your content for
-            </p>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {platforms.map((platform) => {
                 const isConnected = connectedAccounts.includes(platform.id)
                 const platformLimit = PLATFORM_LIMITS[platform.id]?.[contentType] || 1
+                const isSelected = selectedPlatforms.includes(platform.id)
+
                 return (
                   <button
                     key={platform.id}
                     onClick={() => togglePlatform(platform.id)}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 font-semibold transition-all relative ${
-                      selectedPlatforms.includes(platform.id)
-                        ? `${platform.color} border-current`
-                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
+                    className={`group relative p-4 rounded-xl border-2 transition-all ${
+                      isSelected
+                        ? 'border-primary bg-primary/5 shadow-lg'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-                    <div className="flex items-center gap-3 w-full justify-center">
-                      <span className="text-2xl">{platform.icon}</span>
-                      <span>{platform.name}</span>
-                      {selectedPlatforms.includes(platform.id) && (
-                        <span className="ml-auto text-lg">✓</span>
-                      )}
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`w-12 h-12 ${platform.color} rounded-xl flex items-center justify-center text-2xl shadow-md transition-transform group-hover:scale-105`}>
+                        {platform.icon}
+                      </div>
+                      <span className={`font-medium text-sm ${isSelected ? 'text-primary' : 'text-text-primary'}`}>
+                        {platform.name}
+                      </span>
+                      <span className="text-xs text-text-secondary">
+                        {platformLimit === 1 ? 'Single' : `Up to ${platformLimit}`}
+                      </span>
                     </div>
-                    <span className="text-xs opacity-75">
-                      {platformLimit === 1 ? 'Single' : `Up to ${platformLimit}`} {contentType}
-                    </span>
+                    {isSelected && (
+                      <div className="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
                     {!isConnected && (
-                      <span className="absolute top-1 right-1 w-3 h-3 bg-orange-500 rounded-full" title="Not connected" />
+                      <div className="absolute top-2 left-2 w-3 h-3 bg-orange-500 rounded-full" title="Not connected" />
                     )}
                   </button>
                 )
               })}
             </div>
 
-            <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
+            <div className="mt-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
               <p className="text-sm text-text-primary">
-                <span className="font-semibold">{selectedPlatforms.length} platforms selected</span> - ReGen will create optimized versions for each platform
+                <span className="font-bold text-primary">{selectedPlatforms.length} platforms</span> selected — ReGen will create optimized versions for each
               </p>
-              {selectedPlatforms.length > 0 && (
-                <div className="mt-2 text-xs text-text-secondary space-y-1">
-                  {selectedPlatforms.map(platform => {
-                    const limit = PLATFORM_LIMITS[platform]?.[contentType] || 1
-                    return (
-                      <div key={platform}>
-                        • {platform}: {limit === 1 ? 'Single content' : `Up to ${limit} items`}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
             </div>
 
             {connectedAccounts.length === 0 && (
-              <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                <p className="text-sm text-orange-800 flex items-center gap-2">
-                  <span className="text-xl">⚠️</span>
-                  <span>No accounts connected. <Link href="/settings" className="font-semibold underline">Connect your accounts</Link> to publish content.</span>
-                </p>
+              <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">⚠️</span>
+                  <div>
+                    <p className="text-sm font-medium text-amber-900">No accounts connected</p>
+                    <p className="text-xs text-amber-700">
+                      <Link href="/settings" className="underline font-medium">Connect your accounts</Link> to publish content.
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
+          </Card>
 
-            {connectedAccounts.length > 0 && selectedPlatforms.some(p => !connectedAccounts.includes(p)) && (
-              <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                <p className="text-sm text-orange-800 flex items-center gap-2">
-                  <span className="text-xl">⚠️</span>
-                  <span>Some selected platforms are not connected. <Link href="/settings" className="font-semibold underline">Connect them</Link> to publish to all platforms.</span>
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Generate Button */}
-          <div className="flex justify-between items-center">
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between pt-4">
             <Link
               href="/dashboard"
-              className="text-text-secondary hover:text-primary font-medium"
+              className="group flex items-center gap-2 text-text-secondary hover:text-primary font-medium transition-colors"
             >
-              ← Back to Dashboard
+              <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to Dashboard
             </Link>
             <button
               onClick={handleGenerate}
               disabled={selectedPlatforms.length === 0}
-              className="btn-primary text-lg px-8 py-4"
+              className="group btn-primary text-lg px-8 py-4 flex items-center gap-2"
             >
-              Generate Previews →
+              Generate Previews
+              <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
             </button>
           </div>
         </div>

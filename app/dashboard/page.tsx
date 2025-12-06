@@ -2,11 +2,18 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { useState, useEffect } from 'react'
 import { usePlan } from '../context/PlanContext'
 import { formatPlanBadge, getRemainingUploads } from '../config/plans'
+import { AppHeader, Card, StatCard, GradientBanner, Badge } from '../components/ui'
 
 export default function DashboardPage() {
   const { currentPlan, planFeatures, usedUploads } = usePlan()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Mock data - would come from API in production
   const stats = {
@@ -40,54 +47,36 @@ export default function DashboardPage() {
   const remainingUploads = getRemainingUploads(currentPlan, usedUploads)
   const badge = formatPlanBadge(currentPlan)
 
+  if (!mounted) return null
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <Link href="/" className="flex items-center gap-3">
-                <Image src="/logo.png" alt="ReGen Logo" width={168} height={168} className="object-contain" />
-                <span className="text-2xl font-bold text-primary">ReGen</span>
-              </Link>
-              <span className="text-text-secondary text-sm">/ Dashboard</span>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold ml-2 ${badge.className}`}>
-                {badge.text}
-              </span>
-            </div>
-            <nav className="hidden md:flex items-center gap-6">
-              <Link href="/dashboard" className="text-primary font-semibold">Dashboard</Link>
-              <Link href="/upload" className="text-text-secondary hover:text-primary transition-colors">Upload</Link>
-              {planFeatures.scheduling && (
-                <Link href="/schedule" className="text-text-secondary hover:text-primary transition-colors">Schedule</Link>
-              )}
-              <Link href="/analytics" className="text-text-secondary hover:text-primary transition-colors">Analytics</Link>
-              <Link href="/settings" className="text-text-secondary hover:text-primary transition-colors">Settings</Link>
-              <Link href="/test-results" className="text-text-secondary hover:text-primary transition-colors">Test Mode</Link>
-              <div className="w-10 h-10 rounded-full bg-gradient-brand flex items-center justify-center text-white font-semibold cursor-pointer">
-                {currentPlan === 'pro' ? '⭐' : currentPlan === 'creator' ? '🌟' : '🎯'}
-              </div>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        currentPage="dashboard"
+        showSchedule={planFeatures.scheduling}
+        planBadge={badge}
+        userIcon={currentPlan === 'pro' ? '⭐' : currentPlan === 'creator' ? '🌟' : '🎯'}
+      />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28">
         {/* Plan Status Banner */}
         {currentPlan === 'free' && (
-          <div className="bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-orange-300 rounded-xl p-4 mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-gray-900">You're on the Free Plan</h3>
-                <p className="text-sm text-gray-700">
-                  {remainingUploads !== null ? `${remainingUploads} uploads remaining this month` : 'Unlimited uploads'} •
-                  Limited to {planFeatures.maxPlatforms} platforms •
-                  {planFeatures.maxFilesPerUpload} file per post
-                </p>
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 mb-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                  <span className="text-xl">🎯</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900">You're on the Free Plan</h3>
+                  <p className="text-sm text-gray-600">
+                    {remainingUploads !== null ? `${remainingUploads} uploads remaining` : 'Unlimited uploads'} • {planFeatures.maxPlatforms} platforms • {planFeatures.maxFilesPerUpload} file/post
+                  </p>
+                </div>
               </div>
-              <Link href="/settings" className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover">
+              <Link href="/settings" className="btn-primary text-sm whitespace-nowrap">
                 Upgrade Now
               </Link>
             </div>
@@ -95,29 +84,34 @@ export default function DashboardPage() {
         )}
 
         {currentPlan === 'creator' && remainingUploads !== null && remainingUploads < 5 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-blue-900">Running low on uploads</h3>
-                <p className="text-sm text-blue-700">
-                  You have {remainingUploads} uploads remaining this month. Upgrade to Pro for unlimited uploads.
-                </p>
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5 mb-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-xl">⚡</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-blue-900">Running low on uploads</h3>
+                  <p className="text-sm text-blue-700">
+                    You have {remainingUploads} uploads remaining. Upgrade to Pro for unlimited.
+                  </p>
+                </div>
               </div>
-              <Link href="/settings" className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg text-sm font-medium">
+              <Link href="/settings" className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity shadow-lg">
                 Upgrade to Pro
               </Link>
             </div>
           </div>
         )}
 
-        {/* Stats Overview */}
+        {/* Welcome Section */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-text-primary">
+              <h1 className="text-3xl lg:text-4xl font-bold text-text-primary tracking-tight">
                 Welcome back! {currentPlan === 'pro' ? '⭐' : currentPlan === 'creator' ? '🌟' : '👋'}
               </h1>
-              <p className="text-text-secondary mt-1">
+              <p className="text-text-secondary mt-1 text-lg">
                 {currentPlan === 'pro'
                   ? "You're crushing it with Pro features!"
                   : currentPlan === 'creator'
@@ -128,15 +122,20 @@ export default function DashboardPage() {
             {(remainingUploads === null || remainingUploads > 0) ? (
               <Link
                 href="/upload"
-                className="btn-primary flex items-center gap-2"
+                className="group btn-primary flex items-center gap-2"
               >
-                <span className="text-xl">+</span>
-                Create New
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Create New</span>
+                <svg className="w-4 h-4 opacity-0 -ml-1 group-hover:opacity-100 group-hover:ml-0 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
               </Link>
             ) : (
               <button
                 disabled
-                className="px-6 py-3 bg-gray-200 text-gray-500 rounded-lg font-medium cursor-not-allowed"
+                className="px-6 py-3 bg-gray-100 text-gray-400 rounded-xl font-medium cursor-not-allowed"
               >
                 Upload Limit Reached
               </button>
@@ -144,40 +143,34 @@ export default function DashboardPage() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-text-secondary text-sm font-medium">Repurposes Done</span>
-                <span className="text-2xl">🔄</span>
-              </div>
-              <p className="text-3xl font-bold text-text-primary">{stats.repurposesDone}</p>
-              <p className="text-sm text-primary mt-1">
-                {currentPlan === 'free' ? 'Free tier' : currentPlan === 'creator' ? '+12 this week' : '+45 this week'}
-              </p>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-text-secondary text-sm font-medium">Total Engagement</span>
-                <span className="text-2xl">❤️</span>
-              </div>
-              <p className="text-3xl font-bold text-text-primary">{stats.totalEngagement}</p>
-              <p className="text-sm text-primary mt-1">
-                {currentPlan === 'pro' ? '+52% vs last week' : '+24% vs last week'}
-              </p>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-text-secondary text-sm font-medium">Average Reach</span>
-                <span className="text-2xl">👥</span>
-              </div>
-              <p className="text-3xl font-bold text-text-primary">{stats.averageReach}</p>
-              <p className="text-sm text-primary mt-1">Per post</p>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+            <StatCard
+              label="Repurposes Done"
+              value={stats.repurposesDone}
+              icon="🔄"
+              trend={currentPlan !== 'free' ? {
+                value: currentPlan === 'creator' ? '+12 this week' : '+45 this week',
+                positive: true
+              } : undefined}
+              subtitle={currentPlan === 'free' ? 'Free tier' : undefined}
+            />
+            <StatCard
+              label="Total Engagement"
+              value={stats.totalEngagement}
+              icon="❤️"
+              trend={{
+                value: currentPlan === 'pro' ? '+52% vs last week' : '+24% vs last week',
+                positive: true
+              }}
+            />
+            <StatCard
+              label="Average Reach"
+              value={stats.averageReach}
+              icon="👥"
+              subtitle="Per post"
+            />
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-3">
                 <span className="text-text-secondary text-sm font-medium">
                   {currentPlan === 'free' ? 'Uploads Used' : 'Posts This Week'}
                 </span>
@@ -185,18 +178,23 @@ export default function DashboardPage() {
               </div>
               {currentPlan === 'free' ? (
                 <>
-                  <p className="text-3xl font-bold text-text-primary">
+                  <p className="text-3xl font-bold text-text-primary mb-1">
                     {usedUploads}/{planFeatures.maxUploadsPerMonth}
                   </p>
-                  <p className="text-sm text-text-secondary mt-1">This month</p>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all"
+                      style={{ width: `${(usedUploads / (planFeatures.maxUploadsPerMonth || 1)) * 100}%` }}
+                    />
+                  </div>
                 </>
               ) : (
                 <>
-                  <p className="text-3xl font-bold text-text-primary">{stats.postsThisWeek}</p>
-                  <p className="text-sm text-text-secondary mt-1">Across all platforms</p>
+                  <p className="text-3xl font-bold text-text-primary mb-1">{stats.postsThisWeek}</p>
+                  <p className="text-sm text-text-secondary">Across all platforms</p>
                 </>
               )}
-            </div>
+            </Card>
           </div>
         </div>
 
@@ -205,60 +203,66 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             {currentPlan === 'free' && (
               <>
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 relative">
-                  <div className="absolute top-2 right-2">
-                    <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded-full text-xs font-bold">
-                      🔒 CREATOR
-                    </span>
+                <div className="group bg-gray-50 border border-gray-200 rounded-2xl p-5 relative overflow-hidden hover:border-gray-300 transition-colors">
+                  <div className="absolute top-3 right-3">
+                    <Badge variant="gray">🔒 CREATOR</Badge>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-gray-200 flex items-center justify-center mb-3">
+                    <span className="text-xl grayscale">📅</span>
                   </div>
                   <h3 className="font-semibold text-gray-400 mb-1">Schedule Posts</h3>
                   <p className="text-sm text-gray-400">Plan and schedule your content in advance</p>
                 </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 relative">
-                  <div className="absolute top-2 right-2">
-                    <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded-full text-xs font-bold">
-                      🔒 CREATOR
-                    </span>
+                <div className="group bg-gray-50 border border-gray-200 rounded-2xl p-5 relative overflow-hidden hover:border-gray-300 transition-colors">
+                  <div className="absolute top-3 right-3">
+                    <Badge variant="gray">🔒 CREATOR</Badge>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-gray-200 flex items-center justify-center mb-3">
+                    <span className="text-xl grayscale">🌐</span>
                   </div>
                   <h3 className="font-semibold text-gray-400 mb-1">Multi-Platform</h3>
                   <p className="text-sm text-gray-400">Post to 5+ platforms simultaneously</p>
                 </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 relative">
-                  <div className="absolute top-2 right-2">
-                    <span className="px-2 py-1 bg-gradient-to-r from-purple-400 to-pink-400 text-white rounded-full text-xs font-bold">
-                      🔒 PRO
-                    </span>
+                <div className="group bg-purple-50 border border-purple-200 rounded-2xl p-5 relative overflow-hidden hover:border-purple-300 transition-colors">
+                  <div className="absolute top-3 right-3">
+                    <Badge variant="gradient">🔒 PRO</Badge>
                   </div>
-                  <h3 className="font-semibold text-gray-400 mb-1">AI Recommendations</h3>
-                  <p className="text-sm text-gray-400">Get AI-powered content insights</p>
+                  <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center mb-3">
+                    <span className="text-xl">🤖</span>
+                  </div>
+                  <h3 className="font-semibold text-purple-900 mb-1">AI Recommendations</h3>
+                  <p className="text-sm text-purple-700">Get AI-powered content insights</p>
                 </div>
               </>
             )}
             {currentPlan === 'creator' && (
               <>
-                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 relative">
-                  <div className="absolute top-2 right-2">
-                    <span className="px-2 py-1 bg-gradient-to-r from-purple-400 to-pink-400 text-white rounded-full text-xs font-bold">
-                      🔒 PRO
-                    </span>
+                <div className="group bg-purple-50 border border-purple-200 rounded-2xl p-5 relative overflow-hidden hover:border-purple-300 transition-colors">
+                  <div className="absolute top-3 right-3">
+                    <Badge variant="gradient">🔒 PRO</Badge>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center mb-3">
+                    <span className="text-xl">📊</span>
                   </div>
                   <h3 className="font-semibold text-purple-900 mb-1">Advanced Analytics</h3>
                   <p className="text-sm text-purple-700">Sentiment analysis & virality scores</p>
                 </div>
-                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 relative">
-                  <div className="absolute top-2 right-2">
-                    <span className="px-2 py-1 bg-gradient-to-r from-purple-400 to-pink-400 text-white rounded-full text-xs font-bold">
-                      🔒 PRO
-                    </span>
+                <div className="group bg-purple-50 border border-purple-200 rounded-2xl p-5 relative overflow-hidden hover:border-purple-300 transition-colors">
+                  <div className="absolute top-3 right-3">
+                    <Badge variant="gradient">🔒 PRO</Badge>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center mb-3">
+                    <span className="text-xl">👥</span>
                   </div>
                   <h3 className="font-semibold text-purple-900 mb-1">Team Collaboration</h3>
                   <p className="text-sm text-purple-700">Add up to 5 team members</p>
                 </div>
-                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 relative">
-                  <div className="absolute top-2 right-2">
-                    <span className="px-2 py-1 bg-gradient-to-r from-purple-400 to-pink-400 text-white rounded-full text-xs font-bold">
-                      🔒 PRO
-                    </span>
+                <div className="group bg-purple-50 border border-purple-200 rounded-2xl p-5 relative overflow-hidden hover:border-purple-300 transition-colors">
+                  <div className="absolute top-3 right-3">
+                    <Badge variant="gradient">🔒 PRO</Badge>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center mb-3">
+                    <span className="text-xl">⚡</span>
                   </div>
                   <h3 className="font-semibold text-purple-900 mb-1">Priority Support</h3>
                   <p className="text-sm text-purple-700">Get help within 2 hours</p>
@@ -274,18 +278,18 @@ export default function DashboardPage() {
             <h2 className="text-2xl font-bold text-text-primary">Recent Posts</h2>
             {currentPlan !== 'free' && (
               <div className="flex gap-2">
-                <button className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium">
+                <button className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium shadow-sm">
                   All
                 </button>
-                <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">
+                <button className="px-4 py-2 bg-white text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors border border-gray-200">
                   Published
                 </button>
                 {planFeatures.scheduling && (
-                  <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">
+                  <button className="px-4 py-2 bg-white text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors border border-gray-200">
                     Scheduled
                   </button>
                 )}
-                <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">
+                <button className="px-4 py-2 bg-white text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors border border-gray-200">
                   Drafts
                 </button>
               </div>
@@ -294,34 +298,31 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {recentPosts.map((post) => (
-              <div
+              <Card
                 key={post.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                className="overflow-hidden group cursor-pointer"
               >
                 {/* Thumbnail */}
-                <div className="h-48 bg-gradient-to-br from-primary/10 to-primary/20 flex items-center justify-center text-6xl">
-                  {post.thumbnail}
+                <div className="h-48 bg-gradient-to-br from-primary/10 to-accent-purple/20 flex items-center justify-center text-6xl relative overflow-hidden">
+                  <span className="transition-transform group-hover:scale-110">{post.thumbnail}</span>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
 
                 {/* Content */}
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold text-text-primary text-lg">{post.title}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      post.status === 'published'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}>
+                    <h3 className="font-semibold text-text-primary text-lg group-hover:text-primary transition-colors">{post.title}</h3>
+                    <Badge variant={post.status === 'published' ? 'success' : 'primary'}>
                       {post.status}
-                    </span>
+                    </Badge>
                   </div>
 
                   {/* Platforms */}
-                  <div className="flex flex-wrap gap-2 mb-3">
+                  <div className="flex flex-wrap gap-2 mb-4">
                     {post.platforms.map((platform) => (
                       <span
                         key={platform}
-                        className="badge-primary text-xs"
+                        className="px-2 py-1 bg-primary/5 text-primary text-xs font-medium rounded-lg"
                       >
                         {platform}
                       </span>
@@ -329,39 +330,41 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Footer */}
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <span className="text-sm text-text-secondary">{post.date}</span>
-                    <div className="flex gap-2">
-                      <button className="text-primary hover:text-primary-hover text-sm font-medium">
+                    <div className="flex gap-3">
+                      <button className="text-primary hover:text-primary-hover text-sm font-medium transition-colors">
                         View
                       </button>
-                      <button className="text-text-secondary hover:text-primary text-sm font-medium">
+                      <button className="text-text-secondary hover:text-primary text-sm font-medium transition-colors">
                         Edit
                       </button>
                     </div>
                   </div>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
 
-          {/* Empty State (shown when no posts) */}
+          {/* Empty State */}
           {recentPosts.length === 0 && (
-            <div className="bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
+            <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
               <div className="text-6xl mb-4">📭</div>
               <h3 className="text-xl font-bold text-text-primary mb-2">No posts yet</h3>
               <p className="text-text-secondary mb-6">Get started by uploading your first piece of content</p>
               <Link href="/upload" className="btn-primary inline-flex items-center gap-2">
-                <span className="text-xl">+</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
                 Create Your First Post
               </Link>
             </div>
           )}
         </div>
 
-        {/* Quick Actions */}
-        <div className="mt-8 bg-gradient-brand rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
+        {/* Quick Actions CTA */}
+        <GradientBanner className="mt-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-xl font-bold mb-2">
                 {currentPlan === 'pro'
@@ -379,16 +382,22 @@ export default function DashboardPage() {
               </p>
             </div>
             {(remainingUploads === null || remainingUploads > 0) ? (
-              <Link href="/upload" className="btn-secondary bg-white text-primary border-0 hover:bg-gray-100">
-                Start Creating →
+              <Link href="/upload" className="group inline-flex items-center gap-2 px-6 py-3 bg-white text-primary rounded-xl font-semibold hover:bg-gray-50 transition-all shadow-lg whitespace-nowrap">
+                Start Creating
+                <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
               </Link>
             ) : (
-              <Link href="/settings" className="btn-secondary bg-white text-primary border-0 hover:bg-gray-100">
-                Upgrade Plan →
+              <Link href="/settings" className="group inline-flex items-center gap-2 px-6 py-3 bg-white text-primary rounded-xl font-semibold hover:bg-gray-50 transition-all shadow-lg whitespace-nowrap">
+                Upgrade Plan
+                <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
               </Link>
             )}
           </div>
-        </div>
+        </GradientBanner>
       </main>
     </div>
   )
