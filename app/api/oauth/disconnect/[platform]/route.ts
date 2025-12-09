@@ -1,4 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { SocialPlatform } from '@/lib/types/social'
+import { validatePlatform } from '@/lib/config/oauth'
+import { tokenManager } from '@/lib/services/oauth/TokenManager'
+
+// ============================================
+// DELETE /api/oauth/disconnect/[platform]
+// Disconnect a social media platform
+// ============================================
 
 export async function DELETE(
   request: NextRequest,
@@ -9,23 +17,45 @@ export async function DELETE(
     const userId = searchParams.get('userId') || 'default-user'
     const { platform } = await params
 
-    // In production, this would:
-    // 1. Remove tokens from database
-    // 2. Optionally revoke tokens with the platform
-    // 3. Log the disconnection
+    // Validate platform
+    if (!validatePlatform(platform)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Invalid platform: ${platform}`,
+        },
+        { status: 400 }
+      )
+    }
 
-    console.log(`Disconnecting ${platform} for user ${userId}`)
+    const validPlatform = platform as SocialPlatform
+
+    // Disconnect the platform
+    const disconnected = await tokenManager.disconnect(userId, validPlatform)
+
+    if (!disconnected) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `No connection found for ${platform}`,
+        },
+        { status: 404 }
+      )
+    }
 
     return NextResponse.json({
       success: true,
-      message: `${platform} disconnected successfully`,
-      platform
+      platform: validPlatform,
+      message: `Successfully disconnected from ${platform}`,
     })
 
-  } catch (error: any) {
-    console.error('OAuth disconnect error:', error)
+  } catch (error: unknown) {
+    console.error('Disconnect error:', error)
     return NextResponse.json(
-      { success: false, error: error.message },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to disconnect platform',
+      },
       { status: 500 }
     )
   }

@@ -1,0 +1,339 @@
+// Prisma Schema for ReGen - Universal Social Media Integration
+// Database: PostgreSQL (production) / SQLite (development)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String?
+  emailVerified DateTime?
+  image         String?
+  plan          PlanTier  @default(FREE)
+  planExpiresAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  socialConnections SocialConnection[]
+  contentUploads    ContentUpload[]
+  scheduledPosts    ScheduledPost[]
+  analyticsSnapshots AnalyticsSnapshot[]
+  sessions          Session[]
+  refreshTokens     RefreshToken[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  expiresAt    DateTime
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum PlanTier {
+  FREE
+  CREATOR
+  PRO
+}
+
+// ============================================
+// SOCIAL MEDIA CONNECTIONS
+// ============================================
+
+model SocialConnection {
+  id              String         @id @default(cuid())
+  userId          String
+  platform        SocialPlatform
+  platformUserId  String
+  username        String?
+  displayName     String?
+  profileImageUrl String?
+
+  // OAuth Tokens (encrypted at rest)
+  accessToken     String
+  refreshToken    String?
+  tokenExpiresAt  DateTime?
+  scopes          String[]
+
+  // Platform-specific metadata
+  metadata        Json?
+
+  // Status
+  isActive        Boolean  @default(true)
+  lastSyncAt      DateTime?
+  lastErrorAt     DateTime?
+  lastError       String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publishedPosts PublishedPost[]
+  analyticsSnapshots AnalyticsSnapshot[]
+
+  @@unique([userId, platform])
+  @@index([platform])
+  @@index([userId])
+}
+
+enum SocialPlatform {
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE
+  TWITTER
+  LINKEDIN
+  FACEBOOK
+  SNAPCHAT
+}
+
+// ============================================
+// CONTENT MANAGEMENT
+// ============================================
+
+model ContentUpload {
+  id           String      @id @default(cuid())
+  userId       String
+
+  // Original content
+  originalUrl  String
+  fileName     String
+  fileSize     Int
+  mimeType     String
+  duration     Int?        // For videos, in seconds
+
+  // Processed versions
+  thumbnailUrl String?
+  processedUrls Json?      // { platform: url } for platform-specific versions
+
+  // AI-generated content
+  generatedCaptions Json?  // { platform: { caption, hashtags } }
+  brandVoiceProfile String?
+
+  status       ContentStatus @default(PROCESSING)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduledPosts ScheduledPost[]
+  publishedPosts PublishedPost[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum ContentStatus {
+  PROCESSING
+  READY
+  FAILED
+  ARCHIVED
+}
+
+// ============================================
+// SCHEDULING & PUBLISHING
+// ============================================
+
+model ScheduledPost {
+  id              String         @id @default(cuid())
+  userId          String
+  contentUploadId String
+
+  // Publishing details
+  platforms       SocialPlatform[]
+  scheduledAt     DateTime
+  timezone        String         @default("UTC")
+
+  // Content for each platform
+  platformContent Json           // { platform: { caption, hashtags, settings } }
+
+  status          ScheduleStatus @default(PENDING)
+  processedAt     DateTime?
+  errorMessage    String?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentUpload ContentUpload @relation(fields: [contentUploadId], references: [id])
+  publishedPosts PublishedPost[]
+
+  @@index([userId])
+  @@index([scheduledAt])
+  @@index([status])
+}
+
+enum ScheduleStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  PARTIAL_FAILURE
+  FAILED
+  CANCELLED
+}
+
+model PublishedPost {
+  id                 String          @id @default(cuid())
+  scheduledPostId    String?
+  contentUploadId    String
+  socialConnectionId String
+
+  // Platform response
+  platform           SocialPlatform
+  platformPostId     String?
+  platformUrl        String?
+
+  // Content published
+  caption            String?
+  hashtags           String[]
+
+  status             PublishStatus   @default(PENDING)
+  errorMessage       String?
+  publishedAt        DateTime?
+
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  scheduledPost   ScheduledPost?   @relation(fields: [scheduledPostId], references: [id])
+  contentUpload   ContentUpload    @relation(fields: [contentUploadId], references: [id])
+  socialConnection SocialConnection @relation(fields: [socialConnectionId], references: [id])
+  analyticsData   PostAnalytics?
+
+  @@index([platform])
+  @@index([publishedAt])
+}
+
+enum PublishStatus {
+  PENDING
+  PROCESSING
+  PUBLISHED
+  FAILED
+  DELETED
+}
+
+// ============================================
+// ANALYTICS
+// ============================================
+
+model PostAnalytics {
+  id              String   @id @default(cuid())
+  publishedPostId String   @unique
+
+  // Engagement metrics
+  views           Int      @default(0)
+  likes           Int      @default(0)
+  comments        Int      @default(0)
+  shares          Int      @default(0)
+  saves           Int      @default(0)
+
+  // Video-specific metrics
+  avgWatchTime    Float?   // In seconds
+  completionRate  Float?   // Percentage 0-100
+
+  // Reach metrics
+  reach           Int      @default(0)
+  impressions     Int      @default(0)
+
+  // Audience demographics (JSON for flexibility)
+  demographics    Json?
+  locationData    Json?
+
+  // Retention data for videos
+  retentionCurve  Json?    // [{ timestamp: number, retention: number }]
+
+  lastSyncAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  publishedPost PublishedPost @relation(fields: [publishedPostId], references: [id], onDelete: Cascade)
+}
+
+model AnalyticsSnapshot {
+  id                 String          @id @default(cuid())
+  userId             String
+  socialConnectionId String
+  platform           SocialPlatform
+
+  // Account-level metrics
+  followers          Int             @default(0)
+  following          Int             @default(0)
+  totalPosts         Int             @default(0)
+
+  // Engagement metrics (aggregated)
+  avgEngagementRate  Float?
+  avgReach           Int?
+  avgImpressions     Int?
+
+  // Period metrics
+  periodStart        DateTime
+  periodEnd          DateTime
+
+  // Detailed breakdown
+  metricsBreakdown   Json?
+
+  createdAt          DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  socialConnection SocialConnection @relation(fields: [socialConnectionId], references: [id])
+
+  @@index([userId, platform])
+  @@index([periodStart, periodEnd])
+}
+
+// ============================================
+// RATE LIMITING & API USAGE
+// ============================================
+
+model ApiRateLimit {
+  id           String         @id @default(cuid())
+  platform     SocialPlatform
+  endpoint     String
+
+  // Rate limit configuration
+  maxRequests  Int
+  windowMs     Int            // Time window in milliseconds
+
+  // Current usage
+  currentCount Int            @default(0)
+  windowStart  DateTime       @default(now())
+
+  @@unique([platform, endpoint])
+}
+
+model WebhookEvent {
+  id           String         @id @default(cuid())
+  platform     SocialPlatform
+  eventType    String
+  payload      Json
+  processedAt  DateTime?
+  error        String?
+  createdAt    DateTime       @default(now())
+
+  @@index([platform, eventType])
+  @@index([processedAt])
+}

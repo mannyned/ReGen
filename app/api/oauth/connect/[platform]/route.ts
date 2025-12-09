@@ -1,51 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { SocialPlatform } from '@/lib/types/social'
+import { OAUTH_CONFIGS, isOAuthConfigured, validatePlatform } from '@/lib/config/oauth'
+import { oauthService } from '@/lib/services/oauth/OAuthService'
+import { validatePlatformParam, validationErrorResponse } from '@/lib/middleware/validation'
 
-type OAuthConfig = {
-  clientId?: string
-  clientSecret?: string
-  authUrl: string
-  scope: string
-}
-
-const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
-  instagram: {
-    clientId: process.env.INSTAGRAM_CLIENT_ID,
-    clientSecret: process.env.INSTAGRAM_CLIENT_SECRET,
-    // Instagram now uses Facebook Graph API (Basic Display is deprecated)
-    authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
-    scope: 'instagram_basic,instagram_content_publish,pages_read_engagement,pages_show_list'
-  },
-  tiktok: {
-    clientId: process.env.TIKTOK_CLIENT_ID,
-    clientSecret: process.env.TIKTOK_CLIENT_SECRET,
-    authUrl: 'https://www.tiktok.com/auth/authorize/',
-    scope: 'user.info.basic,video.publish'
-  },
-  youtube: {
-    clientId: process.env.YOUTUBE_CLIENT_ID,
-    clientSecret: process.env.YOUTUBE_CLIENT_SECRET,
-    authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-    scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube'
-  },
-  twitter: {
-    clientId: process.env.TWITTER_CLIENT_ID,
-    clientSecret: process.env.TWITTER_CLIENT_SECRET,
-    authUrl: 'https://twitter.com/i/oauth2/authorize',
-    scope: 'tweet.read tweet.write users.read offline.access'
-  },
-  linkedin: {
-    clientId: process.env.LINKEDIN_CLIENT_ID,
-    clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
-    authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
-    scope: 'r_liteprofile w_member_social'
-  },
-  facebook: {
-    clientId: process.env.FACEBOOK_CLIENT_ID,
-    clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-    authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
-    scope: 'pages_manage_posts,pages_read_engagement'
-  }
-}
+// ============================================
+// GET /api/oauth/connect/[platform]
+// Initiates OAuth flow for a platform
+// ============================================
 
 export async function GET(
   request: NextRequest,
@@ -56,53 +18,53 @@ export async function GET(
     const userId = searchParams.get('userId') || 'default-user'
     const { platform } = await params
 
-    const config = OAUTH_CONFIGS[platform]
-
-    if (!config) {
-      return NextResponse.json(
-        { error: `Platform ${platform} is not supported` },
-        { status: 400 }
-      )
+    // Validate platform
+    const validation = validatePlatformParam(platform)
+    if (!validation.valid) {
+      return validationErrorResponse(validation.errors)
     }
 
+    const validPlatform = platform as SocialPlatform
+
     // Check if OAuth credentials are configured
-    if (!config.clientId || !config.clientSecret) {
+    if (!isOAuthConfigured(validPlatform)) {
+      const envVars = [
+        `${platform.toUpperCase()}_CLIENT_ID`,
+        `${platform.toUpperCase()}_CLIENT_SECRET`,
+      ]
+
       return NextResponse.json({
+        success: false,
         setupRequired: true,
-        error: `${platform.toUpperCase()} OAuth is not configured.\n\nPlease add ${platform.toUpperCase()}_CLIENT_ID and ${platform.toUpperCase()}_CLIENT_SECRET to your .env.local file.`
+        error: `${platform.toUpperCase()} OAuth is not configured.`,
+        requiredEnvVars: envVars,
+        documentation: '/docs/OAUTH_SETUP_GUIDE.md',
       })
     }
 
-    // Generate OAuth state for security
-    const state = Buffer.from(JSON.stringify({
-      userId,
-      platform,
-      timestamp: Date.now()
-    })).toString('base64')
+    // Generate authorization URL
+    const { authUrl, codeVerifier } = oauthService.generateAuthorizationUrl(
+      validPlatform,
+      userId
+    )
 
-    // Build authorization URL
-    const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/oauth/callback/${platform}`
-
-    const authParams = new URLSearchParams({
-      client_id: config.clientId,
-      redirect_uri: redirectUri,
-      scope: config.scope,
-      response_type: 'code',
-      state: state
-    })
-
-    const authUrl = `${config.authUrl}?${authParams.toString()}`
+    // Store code verifier in session if PKCE is used
+    // In production, this would be stored in a secure session or cache
 
     return NextResponse.json({
+      success: true,
       authUrl,
-      platform,
-      message: 'Redirect to this URL to authorize'
+      platform: validPlatform,
+      message: 'Redirect to this URL to authorize',
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('OAuth connect error:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to initiate OAuth connection' },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to initiate OAuth connection',
+      },
       { status: 500 }
     )
   }
