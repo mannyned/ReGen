@@ -365,6 +365,7 @@ npm run lint     # Run ESLint
 
 ## Documentation
 
+- [User Guide](./docs/USER_GUIDE.md) - Complete user guide for all features
 - [OAuth Setup Guide](./docs/OAUTH_SETUP_GUIDE.md) - Configure OAuth for each platform
 - [Backend API Reference](./docs/BACKEND_API_REFERENCE.md) - Complete API documentation
 - [Caption Workflow](./docs/CAPTION_WORKFLOW.md) - Caption workflow feature documentation
