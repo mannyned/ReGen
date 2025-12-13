@@ -5,6 +5,22 @@ import Image from 'next/image'
 import { useState, useEffect } from 'react'
 
 // ==========================================
+// PLATFORM LOGO COMPONENT (RE-EXPORT)
+// ==========================================
+
+export {
+  PlatformLogo,
+  BRAND_COLORS as PLATFORM_BRAND_COLORS,
+  PLATFORM_NAMES,
+  SIZES as PLATFORM_LOGO_SIZES,
+  getPlatformBackground,
+  getPlatformDisplayName,
+  SUPPORTED_PLATFORMS,
+  type LogoSize,
+  type LogoVariant,
+} from './PlatformLogo'
+
+// ==========================================
 // ICON COMPONENTS
 // ==========================================
 

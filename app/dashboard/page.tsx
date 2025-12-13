@@ -5,7 +5,20 @@ import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { usePlan } from '../context/PlanContext'
 import { formatPlanBadge, getRemainingUploads } from '../config/plans'
-import { AppHeader, Card, StatCard, GradientBanner, Badge } from '../components/ui'
+import { AppHeader, Card, StatCard, GradientBanner, Badge, PlatformLogo } from '../components/ui'
+import type { SocialPlatform } from '@/lib/types/social'
+
+// Map display names to platform IDs
+const PLATFORM_ID_MAP: Record<string, SocialPlatform> = {
+  'Instagram': 'instagram',
+  'Twitter': 'twitter',
+  'X': 'twitter',
+  'LinkedIn': 'linkedin',
+  'Facebook': 'facebook',
+  'TikTok': 'tiktok',
+  'YouTube': 'youtube',
+  'Snapchat': 'snapchat',
+}
 
 export default function DashboardPage() {
   const { currentPlan, planFeatures, usedUploads } = usePlan()
@@ -320,12 +333,19 @@ export default function DashboardPage() {
                   {/* Platforms */}
                   <div className="flex flex-wrap gap-2 mb-4">
                     {post.platforms.map((platform) => (
-                      <span
+                      <div
                         key={platform}
-                        className="px-2 py-1 bg-primary/5 text-primary text-xs font-medium rounded-lg"
+                        className="flex items-center gap-1.5 px-2 py-1 bg-primary/5 rounded-lg"
                       >
-                        {platform}
-                      </span>
+                        <PlatformLogo
+                          platform={PLATFORM_ID_MAP[platform]}
+                          size="xs"
+                          variant="color"
+                        />
+                        <span className="text-primary text-xs font-medium">
+                          {platform}
+                        </span>
+                      </div>
                     ))}
                   </div>
 

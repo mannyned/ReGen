@@ -7,11 +7,26 @@ import Image from 'next/image'
 import { fileStorage } from '../utils/fileStorage'
 import { usePlan } from '../context/PlanContext'
 import BrandVoiceManager from '../components/BrandVoiceManager'
+import { CaptionWorkflow } from '../components/CaptionWorkflow'
 import { BrandVoiceProfile } from '../types/brandVoice'
+import type { SocialPlatform } from '@/lib/types/social'
+import type { PrimaryCaption, PlatformCaptionInstance, CaptionAnalyticsMetadata } from '@/lib/types/caption'
+import { PlatformLogo } from '../components/ui'
 
 type CaptionTone = 'professional' | 'engaging' | 'casual'
 type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'snapchat'
 type ContentType = 'post' | 'story'
+
+// Map local Platform type to SocialPlatform
+const PLATFORM_MAP: Record<Platform, SocialPlatform> = {
+  'instagram': 'instagram',
+  'tiktok': 'tiktok',
+  'youtube': 'youtube',
+  'facebook': 'facebook',
+  'x': 'twitter',
+  'linkedin': 'linkedin',
+  'snapchat': 'snapchat',
+}
 
 interface UploadedFile {
   id?: string
@@ -41,6 +56,9 @@ type Preview = {
   hashtags: string[]
   files: UploadedFile[]
   currentFileIndex: number
+  // Caption workflow metadata
+  usageMode?: 'identical' | 'manual_edit' | 'ai_adapted' | 'full_rewrite'
+  appliedAdaptations?: string[]
 }
 
 // Platform configuration
@@ -57,6 +75,11 @@ const PLATFORM_CONFIG = {
 export default function GeneratePage() {
   const router = useRouter()
   const { currentPlan } = usePlan()
+
+  // Mode: 'legacy' = old per-platform generation, 'workflow' = new caption workflow
+  const [mode, setMode] = useState<'legacy' | 'workflow'>('legacy')
+
+  // Legacy mode state
   const [generating, setGenerating] = useState(false)
   const [selectedTone, setSelectedTone] = useState<CaptionTone>('engaging')
   const [showToneSelector, setShowToneSelector] = useState(true)
@@ -67,6 +90,9 @@ export default function GeneratePage() {
   const [selectedPreviews, setSelectedPreviews] = useState<number[]>([])
   const [activeBrandVoice, setActiveBrandVoice] = useState<BrandVoiceProfile | null>(null)
   const [useBrandVoice, setUseBrandVoice] = useState(false)
+
+  // Caption workflow state
+  const [showCaptionWorkflow, setShowCaptionWorkflow] = useState(false)
 
   // Load upload data from localStorage and files from IndexedDB
   useEffect(() => {
@@ -98,7 +124,6 @@ export default function GeneratePage() {
 
           // Generate initial previews based on selected platforms
           const initialPreviews = parsed.selectedPlatforms.map((platform, index) => {
-            // Determine how many files this platform will use
             const filesForPlatform = getFilesForPlatform(platform, filesWithData, parsed.contentType)
 
             return {
@@ -121,7 +146,6 @@ export default function GeneratePage() {
           router.push('/upload')
         }
       } else {
-        // If no upload data, redirect back to upload page
         router.push('/upload')
       }
     }
@@ -144,13 +168,9 @@ export default function GeneratePage() {
 
   const getFilesForPlatform = (platform: Platform, files: UploadedFile[], contentType: ContentType): UploadedFile[] => {
     const limit = getPlatformLimit(platform, contentType)
-
-    // For single-content platforms with multiple files available,
-    // initially select the first file (user can change this later)
     if (limit === 1 && files.length > 1) {
       return [files[0]]
     }
-
     return files.slice(0, limit)
   }
 
@@ -194,7 +214,7 @@ export default function GeneratePage() {
 
   const handleEditCaption = (id: number, newCaption: string) => {
     setPreviews(prev =>
-      prev.map(p => p.id === id ? { ...p, caption: newCaption } : p)
+      prev.map(p => p.id === id ? { ...p, caption: newCaption, usageMode: 'manual_edit' } : p)
     )
   }
 
@@ -209,17 +229,8 @@ export default function GeneratePage() {
         return
       }
 
-      // Get the first file's data for AI analysis (if available)
       const imageData = preview.files[0]?.base64Data
 
-      console.log('Generating caption with OpenAI...')
-      console.log('Platform:', preview.platform)
-      console.log('Tone:', selectedTone)
-      console.log('Description:', uploadData.contentDescription || '(none)')
-      console.log('Hashtags:', uploadData.customHashtags || '(none)')
-      console.log('Image data:', imageData ? 'Present' : 'Not available')
-
-      // Use Brand Voice API if Pro user with active brand voice, otherwise use standard API
       const apiEndpoint = currentPlan === 'pro' && useBrandVoice && activeBrandVoice
         ? '/api/brand-voice/generate'
         : '/api/generate-caption'
@@ -243,12 +254,9 @@ export default function GeneratePage() {
             imageData: imageData,
           }
 
-      // Call the appropriate API
       const response = await fetch(apiEndpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
       })
 
@@ -258,16 +266,11 @@ export default function GeneratePage() {
       }
 
       const data = await response.json()
-      console.log('Generated caption:', data.caption)
 
-      // Update the preview with the new AI-generated caption
       setPreviews(prev =>
         prev.map(p =>
           p.id === id
-            ? {
-                ...p,
-                caption: data.caption
-              }
+            ? { ...p, caption: data.caption, usageMode: 'full_rewrite' }
             : p
         )
       )
@@ -318,13 +321,8 @@ export default function GeneratePage() {
     setPreviews(prev =>
       prev.map(p => {
         if (p.id === previewId && uploadData) {
-          // Replace the single file with the selected one
           const selectedFile = uploadData.files[fileIndex]
-          return {
-            ...p,
-            files: [selectedFile],
-            currentFileIndex: 0
-          }
+          return { ...p, files: [selectedFile], currentFileIndex: 0 }
         }
         return p
       })
@@ -343,7 +341,6 @@ export default function GeneratePage() {
       return
     }
 
-    // Save selected previews for schedule page (without base64 data to avoid quota issues)
     const selectedData = previews.filter(p => selectedPreviews.includes(p.id)).map(preview => ({
       ...preview,
       files: preview.files.map(file => ({
@@ -351,7 +348,6 @@ export default function GeneratePage() {
         name: file.name,
         type: file.type,
         size: file.size
-        // Exclude base64Data to avoid localStorage quota issues
       }))
     }))
 
@@ -364,6 +360,44 @@ export default function GeneratePage() {
     }
   }
 
+  // Caption Workflow handlers
+  const handleCaptionWorkflowComplete = (data: {
+    primaryCaption: PrimaryCaption
+    platformInstances: Record<SocialPlatform, PlatformCaptionInstance>
+    analyticsMetadata: CaptionAnalyticsMetadata[]
+  }) => {
+    // Convert workflow data to previews
+    const newPreviews: Preview[] = []
+
+    Object.entries(data.platformInstances).forEach(([platform, instance], index) => {
+      if (!instance.enabled) return
+
+      // Find matching platform in uploadData
+      const localPlatform = Object.entries(PLATFORM_MAP).find(([_, sp]) => sp === platform)?.[0] as Platform
+      if (!localPlatform || !uploadData) return
+
+      const filesForPlatform = getFilesForPlatform(localPlatform, uploadData.files, uploadData.contentType)
+
+      newPreviews.push({
+        id: index + 1,
+        platform: localPlatform,
+        icon: PLATFORM_CONFIG[localPlatform].icon,
+        format: PLATFORM_CONFIG[localPlatform].formats[uploadData.contentType],
+        caption: instance.caption,
+        hashtags: instance.hashtags,
+        files: filesForPlatform,
+        currentFileIndex: 0,
+        usageMode: instance.usageMode,
+        appliedAdaptations: instance.appliedAdaptations,
+      })
+    })
+
+    setPreviews(newPreviews)
+    setSelectedPreviews(newPreviews.map(p => p.id))
+    setShowCaptionWorkflow(false)
+    setMode('legacy') // Switch back to legacy view for final review
+  }
+
   if (!uploadData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -371,6 +405,54 @@ export default function GeneratePage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-text-secondary">Loading...</p>
         </div>
+      </div>
+    )
+  }
+
+  // Show Caption Workflow modal
+  if (showCaptionWorkflow) {
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Link href="/dashboard" className="flex items-center gap-3">
+                  <Image src="/logo.png" alt="ReGen Logo" width={168} height={168} className="object-contain" />
+                  <span className="text-2xl font-bold text-primary">ReGen</span>
+                </Link>
+                <span className="text-text-secondary text-sm">/ Caption Workflow</span>
+              </div>
+              <button
+                onClick={() => setShowCaptionWorkflow(false)}
+                className="text-text-secondary hover:text-text-primary px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-text-primary mb-2">Caption Workflow</h1>
+            <p className="text-text-secondary">
+              Generate a primary caption and distribute it across platforms with full control.
+            </p>
+          </div>
+
+          <CaptionWorkflow
+            availablePlatforms={uploadData.selectedPlatforms.map(p => PLATFORM_MAP[p])}
+            initialCaption={uploadData.contentDescription}
+            initialHashtags={uploadData.customHashtags.split(/[,\s]+/).filter(h => h.length > 0)}
+            contentDescription={uploadData.contentDescription}
+            imageData={uploadData.files[0]?.base64Data}
+            tone={selectedTone}
+            onComplete={handleCaptionWorkflowComplete}
+            onCancel={() => setShowCaptionWorkflow(false)}
+          />
+        </main>
       </div>
     )
   }
@@ -411,6 +493,48 @@ export default function GeneratePage() {
               📸 {uploadData.files.length} items uploaded • {uploadData.contentType} format
             </p>
           )}
+        </div>
+
+        {/* Caption Workflow CTA */}
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-6 mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <span className="text-2xl">📝</span>
+              </div>
+              <div>
+                <h3 className="font-semibold text-text-primary">Use Caption Workflow</h3>
+                <p className="text-sm text-text-secondary">
+                  Generate one primary caption and distribute it across platforms with full control over adaptations.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowCaptionWorkflow(true)}
+              className="px-6 py-3 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors flex items-center gap-2"
+            >
+              <span>✨</span>
+              Start Workflow
+            </button>
+          </div>
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="flex items-center gap-2 text-purple-700">
+              <span>🔒</span>
+              <span>Locked primary caption</span>
+            </div>
+            <div className="flex items-center gap-2 text-purple-700">
+              <span>🎯</span>
+              <span>Platform-specific adaptations</span>
+            </div>
+            <div className="flex items-center gap-2 text-purple-700">
+              <span>📊</span>
+              <span>Analytics tracking</span>
+            </div>
+            <div className="flex items-center gap-2 text-purple-700">
+              <span>✂️</span>
+              <span>No unwanted rewrites</span>
+            </div>
+          </div>
         </div>
 
         {/* Tone Selector */}
@@ -514,27 +638,36 @@ export default function GeneratePage() {
             <div
               key={preview.id}
               className={`bg-white rounded-2xl shadow-lg overflow-hidden transition-all ${
-                selectedPreviews.includes(preview.id)
-                  ? 'ring-2 ring-primary'
-                  : ''
+                selectedPreviews.includes(preview.id) ? 'ring-2 ring-primary' : ''
               }`}
             >
               <div className="p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl">{preview.icon}</span>
+                    <PlatformLogo platform={PLATFORM_MAP[preview.platform]} size="lg" variant="color" />
                     <div>
-                      <h3 className="text-xl font-bold text-text-primary">{preview.platform}</h3>
+                      <h3 className="text-xl font-bold text-text-primary capitalize">{preview.platform}</h3>
                       <p className="text-sm text-text-secondary">{preview.format}</p>
                       {preview.files.length > 1 && (
-                        <p className="text-xs text-primary mt-1">
-                          {preview.files.length} items available
-                        </p>
+                        <p className="text-xs text-primary mt-1">{preview.files.length} items available</p>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
+                    {/* Usage mode badge */}
+                    {preview.usageMode && (
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        preview.usageMode === 'identical' ? 'bg-green-100 text-green-700' :
+                        preview.usageMode === 'manual_edit' ? 'bg-blue-100 text-blue-700' :
+                        preview.usageMode === 'ai_adapted' ? 'bg-purple-100 text-purple-700' :
+                        'bg-orange-100 text-orange-700'
+                      }`}>
+                        {preview.usageMode === 'identical' ? 'Identical' :
+                         preview.usageMode === 'manual_edit' ? 'Edited' :
+                         preview.usageMode === 'ai_adapted' ? 'Adapted' : 'Rewritten'}
+                      </span>
+                    )}
                     <button
                       onClick={() => togglePreview(preview.id)}
                       className={`px-4 py-2 rounded-lg font-semibold transition-all ${
@@ -553,7 +686,6 @@ export default function GeneratePage() {
                   {/* Thumbnail(s) */}
                   <div className="md:col-span-1">
                     <div className="relative">
-                      {/* Main preview */}
                       <div className="aspect-square bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl flex items-center justify-center relative overflow-hidden">
                         {uploadData.uploadType === 'text' ? (
                           <div className="p-4 text-center">
@@ -621,21 +753,13 @@ export default function GeneratePage() {
                                   }`}
                                 >
                                   {file.base64Data ? (
-                                    <img
-                                      src={file.base64Data}
-                                      alt={`Option ${idx + 1}`}
-                                      className="w-full h-full object-cover"
-                                    />
+                                    <img src={file.base64Data} alt={`Option ${idx + 1}`} className="w-full h-full object-cover" />
                                   ) : (
-                                    <div className="w-full h-full bg-gray-200 flex items-center justify-center text-sm">
-                                      {idx + 1}
-                                    </div>
+                                    <div className="w-full h-full bg-gray-200 flex items-center justify-center text-sm">{idx + 1}</div>
                                   )}
                                   {isSelected && (
                                     <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                                      <span className="text-white bg-primary rounded-full w-6 h-6 flex items-center justify-center text-xs">
-                                        ✓
-                                      </span>
+                                      <span className="text-white bg-primary rounded-full w-6 h-6 flex items-center justify-center text-xs">✓</span>
                                     </div>
                                   )}
                                 </button>
@@ -653,27 +777,16 @@ export default function GeneratePage() {
                             <button
                               key={idx}
                               onClick={() => setPreviews(prev =>
-                                prev.map(p => p.id === preview.id
-                                  ? { ...p, currentFileIndex: idx }
-                                  : p
-                                )
+                                prev.map(p => p.id === preview.id ? { ...p, currentFileIndex: idx } : p)
                               )}
                               className={`w-12 h-12 rounded flex-shrink-0 overflow-hidden border-2 ${
-                                idx === preview.currentFileIndex
-                                  ? 'border-primary'
-                                  : 'border-gray-300'
+                                idx === preview.currentFileIndex ? 'border-primary' : 'border-gray-300'
                               }`}
                             >
                               {file.base64Data ? (
-                                <img
-                                  src={file.base64Data}
-                                  alt={`Thumb ${idx + 1}`}
-                                  className="w-full h-full object-cover"
-                                />
+                                <img src={file.base64Data} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
                               ) : (
-                                <div className="w-full h-full bg-gray-200 flex items-center justify-center text-xs">
-                                  {idx + 1}
-                                </div>
+                                <div className="w-full h-full bg-gray-200 flex items-center justify-center text-xs">{idx + 1}</div>
                               )}
                             </button>
                           ))}
@@ -751,6 +864,17 @@ export default function GeneratePage() {
                         />
                       )}
                     </div>
+
+                    {/* Applied adaptations */}
+                    {preview.appliedAdaptations && preview.appliedAdaptations.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {preview.appliedAdaptations.map((adaptation, idx) => (
+                          <span key={idx} className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">
+                            {adaptation}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Actions */}
                     <div className="flex gap-3 pt-4 border-t border-gray-200">

@@ -33,6 +33,7 @@ model User {
   analyticsSnapshots AnalyticsSnapshot[]
   sessions          Session[]
   refreshTokens     RefreshToken[]
+  exportJobs        ExportJob[]
 }
 
 model Session {
@@ -336,4 +337,77 @@ model WebhookEvent {
 
   @@index([platform, eventType])
   @@index([processedAt])
+}
+
+// ============================================
+// ANALYTICS EXPORT (PRO FEATURE)
+// ============================================
+
+model ExportJob {
+  id            String       @id @default(cuid())
+  userId        String
+
+  // Export configuration
+  format        ExportFormat
+  options       Json         // ExportOptions including filters
+
+  // Job status
+  status        ExportStatus @default(PENDING)
+  progress      Int          @default(0)
+  error         String?
+
+  // Output file details
+  fileName      String?
+  fileSize      Int?
+  fileUrl       String?      // Cloud storage URL in production
+
+  // Audit information
+  rowCount      Int?
+  platforms     SocialPlatform[]
+  dateRangeFrom DateTime?
+  dateRangeTo   DateTime?
+
+  // Timestamps
+  createdAt     DateTime     @default(now())
+  completedAt   DateTime?
+  expiresAt     DateTime?    // Auto-cleanup after expiration
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  auditLogs ExportAuditLog[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([expiresAt])
+}
+
+model ExportAuditLog {
+  id           String   @id @default(cuid())
+  exportJobId  String
+  userId       String
+
+  // Audit details
+  action       String   // 'created', 'downloaded', 'expired', 'deleted'
+  ipAddress    String?
+  userAgent    String?
+
+  createdAt    DateTime @default(now())
+
+  exportJob ExportJob @relation(fields: [exportJobId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([exportJobId])
+  @@index([createdAt])
+}
+
+enum ExportFormat {
+  CSV
+  PDF
+}
+
+enum ExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }

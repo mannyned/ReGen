@@ -4,10 +4,22 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { fileStorage, fileToBase64, generateFileId } from '../utils/fileStorage'
-import { AppHeader, Card, Badge } from '../components/ui'
+import { AppHeader, Card, Badge, PlatformLogo } from '../components/ui'
+import type { SocialPlatform } from '@/lib/types/social'
 
 type UploadType = 'video' | 'image' | 'text'
 type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'snapchat'
+
+// Map Platform type to SocialPlatform for logo component
+const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
+  'instagram': 'instagram',
+  'tiktok': 'tiktok',
+  'youtube': 'youtube',
+  'facebook': 'facebook',
+  'x': 'twitter',
+  'linkedin': 'linkedin',
+  'snapchat': 'snapchat',
+}
 type ContentType = 'post' | 'story'
 
 interface UploadedFileData {
@@ -538,8 +550,12 @@ export default function UploadPage() {
                     }`}
                   >
                     <div className="flex flex-col items-center gap-2">
-                      <div className={`w-12 h-12 ${platform.color} rounded-xl flex items-center justify-center text-2xl shadow-md transition-transform group-hover:scale-105`}>
-                        {platform.icon}
+                      <div className="w-12 h-12 flex items-center justify-center transition-transform group-hover:scale-105">
+                        <PlatformLogo
+                          platform={PLATFORM_ID_MAP[platform.id]}
+                          size="lg"
+                          variant="color"
+                        />
                       </div>
                       <span className={`font-medium text-sm ${isSelected ? 'text-primary' : 'text-text-primary'}`}>
                         {platform.name}

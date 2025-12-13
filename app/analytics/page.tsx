@@ -2,10 +2,23 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { AppHeader, Card, StatCard, GradientBanner, Badge } from '../components/ui'
+import { AppHeader, Card, StatCard, GradientBanner, Badge, PlatformLogo } from '../components/ui'
+import { ExportAnalytics } from '../components/ExportAnalytics'
+import type { SocialPlatform } from '@/lib/types/social'
 
 type TimeRange = '7' | '30' | '90' | '365'
 type PlanType = 'free' | 'creator' | 'pro'
+
+// Map display names to platform IDs
+const PLATFORM_ID_MAP: Record<string, SocialPlatform> = {
+  'Instagram': 'instagram',
+  'Twitter': 'twitter',
+  'LinkedIn': 'linkedin',
+  'Facebook': 'facebook',
+  'TikTok': 'tiktok',
+  'YouTube': 'youtube',
+  'Snapchat': 'snapchat',
+}
 
 interface AIRecommendation {
   id: string
@@ -234,26 +247,37 @@ export default function AnalyticsPage() {
                 </p>
               </div>
 
-              {/* Time Range Selector */}
-              <div className="flex gap-2 bg-white rounded-xl shadow-sm p-1.5">
-                {[
-                  { value: '7' as TimeRange, label: '7 Days' },
-                  { value: '30' as TimeRange, label: '30 Days' },
-                  { value: '90' as TimeRange, label: '90 Days' },
-                  { value: '365' as TimeRange, label: '1 Year' }
-                ].map(({ value, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => setTimeRange(value)}
-                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                      timeRange === value
-                        ? 'bg-primary text-white shadow-md'
-                        : 'text-text-secondary hover:bg-gray-100'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+              {/* Time Range Selector and Export Button */}
+              <div className="flex items-center gap-4">
+                <div className="flex gap-2 bg-white rounded-xl shadow-sm p-1.5">
+                  {[
+                    { value: '7' as TimeRange, label: '7 Days' },
+                    { value: '30' as TimeRange, label: '30 Days' },
+                    { value: '90' as TimeRange, label: '90 Days' },
+                    { value: '365' as TimeRange, label: '1 Year' }
+                  ].map(({ value, label }) => (
+                    <button
+                      key={value}
+                      onClick={() => setTimeRange(value)}
+                      className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                        timeRange === value
+                          ? 'bg-primary text-white shadow-md'
+                          : 'text-text-secondary hover:bg-gray-100'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Export Analytics Button - PRO Only */}
+                <ExportAnalytics
+                  userId="demo-user-id"
+                  userPlan={userPlan}
+                  onExportComplete={(jobId, format) => {
+                    console.log(`Export completed: ${jobId} (${format})`)
+                  }}
+                />
               </div>
             </div>
 
@@ -486,7 +510,14 @@ export default function AnalyticsPage() {
                 {platformData.map((platform) => (
                   <div key={platform.platform}>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="font-semibold text-text-primary">{platform.platform}</span>
+                      <div className="flex items-center gap-2">
+                        <PlatformLogo
+                          platform={PLATFORM_ID_MAP[platform.platform]}
+                          size="sm"
+                          variant="color"
+                        />
+                        <span className="font-semibold text-text-primary">{platform.platform}</span>
+                      </div>
                       <div className="flex items-center gap-4">
                         {userPlan === 'pro' && (
                           <>
@@ -595,6 +626,214 @@ export default function AnalyticsPage() {
                 </div>
               </Card>
             </div>
+
+            {/* Caption Usage Analytics - Pro Plan Only */}
+            {userPlan === 'pro' && (
+              <Card className="p-6 lg:p-8 mt-8" hover={false}>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-text-primary">📝 Caption Usage Analytics</h2>
+                    <p className="text-sm text-text-secondary mt-1">Compare performance of identical vs adapted captions</p>
+                  </div>
+                  <Badge variant="primary" className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                    Caption Workflow Insights
+                  </Badge>
+                </div>
+
+                {/* Usage Mode Distribution */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                    <p className="text-3xl font-bold text-green-600">42</p>
+                    <p className="text-sm text-green-700 font-medium">Identical</p>
+                    <p className="text-xs text-green-600/70">Same across platforms</p>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
+                    <p className="text-3xl font-bold text-purple-600">28</p>
+                    <p className="text-sm text-purple-700 font-medium">Adapted</p>
+                    <p className="text-xs text-purple-600/70">Rule-based changes</p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                    <p className="text-3xl font-bold text-blue-600">18</p>
+                    <p className="text-sm text-blue-700 font-medium">Edited</p>
+                    <p className="text-xs text-blue-600/70">Manual modifications</p>
+                  </div>
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
+                    <p className="text-3xl font-bold text-orange-600">9</p>
+                    <p className="text-sm text-orange-700 font-medium">Rewritten</p>
+                    <p className="text-xs text-orange-600/70">Full AI rewrites</p>
+                  </div>
+                </div>
+
+                {/* Performance Comparison Chart */}
+                <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                  <h3 className="font-semibold text-text-primary mb-4">Performance by Caption Mode</h3>
+                  <div className="space-y-4">
+                    {/* Identical */}
+                    <div className="flex items-center gap-4">
+                      <div className="w-24 text-sm font-medium text-text-primary">Identical</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-green-500 rounded-full" style={{ width: '68%' }}></div>
+                          </div>
+                          <span className="text-sm font-bold text-green-600 w-16">11.2%</span>
+                        </div>
+                        <p className="text-xs text-text-secondary">Avg engagement • 3,240 avg reach • 142 avg likes</p>
+                      </div>
+                    </div>
+                    {/* Adapted */}
+                    <div className="flex items-center gap-4">
+                      <div className="w-24 text-sm font-medium text-text-primary">Adapted</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-purple-500 rounded-full" style={{ width: '85%' }}></div>
+                          </div>
+                          <span className="text-sm font-bold text-purple-600 w-16">14.8%</span>
+                        </div>
+                        <p className="text-xs text-text-secondary">Avg engagement • 4,120 avg reach • 198 avg likes</p>
+                      </div>
+                    </div>
+                    {/* Manual Edit */}
+                    <div className="flex items-center gap-4">
+                      <div className="w-24 text-sm font-medium text-text-primary">Edited</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-500 rounded-full" style={{ width: '72%' }}></div>
+                          </div>
+                          <span className="text-sm font-bold text-blue-600 w-16">12.1%</span>
+                        </div>
+                        <p className="text-xs text-text-secondary">Avg engagement • 3,480 avg reach • 156 avg likes</p>
+                      </div>
+                    </div>
+                    {/* Full Rewrite */}
+                    <div className="flex items-center gap-4">
+                      <div className="w-24 text-sm font-medium text-text-primary">Rewritten</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-orange-500 rounded-full" style={{ width: '78%' }}></div>
+                          </div>
+                          <span className="text-sm font-bold text-orange-600 w-16">13.2%</span>
+                        </div>
+                        <p className="text-xs text-text-secondary">Avg engagement • 3,890 avg reach • 172 avg likes</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Adaptation Breakdown */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div className="bg-white border border-gray-200 rounded-xl p-5">
+                    <h4 className="font-semibold text-text-primary mb-3 flex items-center gap-2">
+                      <span>🏆</span> Top Performing Adaptations
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span>✂️</span>
+                          <span className="text-sm">Shorten</span>
+                        </div>
+                        <span className="text-sm font-bold text-green-600">+18% engagement</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span>📢</span>
+                          <span className="text-sm">Add CTA</span>
+                        </div>
+                        <span className="text-sm font-bold text-green-600">+15% engagement</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span>↵</span>
+                          <span className="text-sm">Add Line Breaks</span>
+                        </div>
+                        <span className="text-sm font-bold text-green-600">+12% engagement</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span>👔</span>
+                          <span className="text-sm">Professional Tone</span>
+                        </div>
+                        <span className="text-sm font-bold text-green-600">+9% engagement</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-gray-200 rounded-xl p-5">
+                    <h4 className="font-semibold text-text-primary mb-3 flex items-center gap-2">
+                      <span>📊</span> Platform Comparison
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <PlatformLogo platform="twitter" size="sm" variant="color" />
+                          <span className="text-sm">Twitter</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-bold text-purple-600">Adapted +32%</span>
+                          <p className="text-xs text-text-secondary">Shorten works best</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <PlatformLogo platform="linkedin" size="sm" variant="color" />
+                          <span className="text-sm">LinkedIn</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-bold text-purple-600">Adapted +28%</span>
+                          <p className="text-xs text-text-secondary">Professional tone wins</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <PlatformLogo platform="instagram" size="sm" variant="color" />
+                          <span className="text-sm">Instagram</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-bold text-green-600">Identical +5%</span>
+                          <p className="text-xs text-text-secondary">Full captions perform well</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <PlatformLogo platform="tiktok" size="sm" variant="color" />
+                          <span className="text-sm">TikTok</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-bold text-purple-600">Adapted +22%</span>
+                          <p className="text-xs text-text-secondary">Casual tone preferred</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Insight Banner */}
+                <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="text-4xl">💡</div>
+                    <div>
+                      <h4 className="font-bold text-lg mb-1">Key Insight</h4>
+                      <p className="text-white/90 text-sm mb-2">
+                        <strong>Adapted captions outperform identical by 32%</strong> on average.
+                        The "Shorten" adaptation shows the highest impact, especially on Twitter where
+                        character limits matter. Consider using platform-specific adaptations for all your posts.
+                      </p>
+                      <div className="flex gap-3 mt-3">
+                        <Link
+                          href="/generate"
+                          className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
+                        >
+                          Try Caption Workflow →
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
 
             {/* Content Calendar Insights - Pro Plan Only */}
             {userPlan === 'pro' && (

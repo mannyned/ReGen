@@ -6,10 +6,11 @@ ReGen is a modern SaaS application that helps content creators repurpose their c
 
 ### Core Features
 - **AI Content Generation** - Automatically generate captions, hashtags, and optimized content for each platform
+- **Caption Workflow** - Generate one primary caption and adapt it across platforms with 11 rule-based adaptations
 - **Multi-Platform Publishing** - Connect and publish to 7 platforms: Instagram, TikTok, YouTube, Twitter/X, LinkedIn, Facebook, and Snapchat
 - **Content Upload** - Drag-and-drop file upload with preview and validation
 - **Smart Scheduling** - Schedule posts for optimal engagement times
-- **Analytics Dashboard** - Track performance across all platforms
+- **Analytics Dashboard** - Track performance across all platforms with caption usage analytics
 - **Brand Voice AI** - Maintain consistent brand voice across all content (Pro)
 
 ### Supported Platforms
@@ -31,9 +32,11 @@ ReGen is a modern SaaS application that helps content creators repurpose their c
 | Uploads per month | 3 | Unlimited | Unlimited |
 | Platform connections | 2 | 7 | 7 |
 | AI captions | Basic | Advanced | Advanced |
+| Caption Workflow | ✓ | ✓ | ✓ |
 | Save Rate Analytics | - | ✓ | ✓ |
 | Location Analytics | - | - | ✓ |
 | Retention Analytics | - | - | ✓ |
+| Caption Usage Analytics | - | - | ✓ |
 | AI Recommendations | - | - | ✓ |
 | Brand Voice AI | - | - | ✓ |
 
@@ -59,6 +62,38 @@ ReGen is a modern SaaS application that helps content creators repurpose their c
 - Drop-off point detection
 - Completion rate tracking
 - AI optimization tips
+
+#### Caption Usage Analytics (Pro)
+- Compare identical vs adapted caption performance
+- Track engagement by caption mode (identical, adapted, edited, rewritten)
+- Top performing adaptations ranking
+- Platform-specific adaptation insights
+- AI-powered recommendations for caption optimization
+
+### Caption Workflow
+
+The Caption Workflow feature allows you to generate one primary caption and intelligently adapt it across multiple platforms:
+
+#### 11 Rule-Based Adaptations
+| Adaptation | Description | Best For |
+|------------|-------------|----------|
+| Shorten | Truncate at sentence/word boundaries | Twitter, Snapchat |
+| Remove Hashtags | Strip all hashtags | Snapchat |
+| Reduce Hashtags | Keep only top hashtags | Twitter, TikTok |
+| Remove Emojis | Strip all emojis | LinkedIn |
+| Reduce Emojis | Limit to professional level | LinkedIn |
+| Add Line Breaks | Add paragraph breaks | Instagram, LinkedIn |
+| Remove Line Breaks | Condense to single paragraph | Twitter |
+| Add CTA | Append call-to-action | YouTube, All |
+| Remove Mentions | Strip @mentions | Cross-posting |
+| Professional Tone | Adjust for business context | LinkedIn |
+| Casual Tone | Adjust for casual context | TikTok |
+
+#### Caption Usage Modes
+- **Identical** - Same caption across all platforms
+- **Adapted** - Rule-based modifications applied
+- **Edited** - Manual user modifications
+- **Rewritten** - Full AI rewrite requested
 
 ## Tech Stack
 
@@ -118,7 +153,9 @@ regen-app/
 │   │   ├── brand-voice/      # Brand voice AI
 │   │   └── generate-caption/ # AI caption generation
 │   ├── components/           # Reusable components
-│   │   └── ui/               # UI component library
+│   │   ├── ui/               # UI component library
+│   │   ├── CaptionWorkflow.tsx # Caption workflow component
+│   │   └── ExportAnalytics.tsx # Analytics export component
 │   ├── config/               # App configuration
 │   ├── context/              # React contexts
 │   ├── dashboard/            # User dashboard
@@ -330,6 +367,7 @@ npm run lint     # Run ESLint
 
 - [OAuth Setup Guide](./docs/OAUTH_SETUP_GUIDE.md) - Configure OAuth for each platform
 - [Backend API Reference](./docs/BACKEND_API_REFERENCE.md) - Complete API documentation
+- [Caption Workflow](./docs/CAPTION_WORKFLOW.md) - Caption workflow feature documentation
 - [Location Analytics Spec](./docs/LOCATION_ANALYTICS_SPEC.md) - Location analytics feature spec
 - [Save Rate & Retention Spec](./docs/SAVE_RATE_RETENTION_ANALYTICS_SPEC.md) - Analytics specs
 

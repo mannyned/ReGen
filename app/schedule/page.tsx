@@ -4,8 +4,22 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { fileStorage } from '../utils/fileStorage'
+import { PlatformLogo } from '../components/ui'
+import type { SocialPlatform } from '@/lib/types/social'
 
 type Platform = 'instagram' | 'twitter' | 'linkedin' | 'facebook' | 'tiktok' | 'youtube' | 'x' | 'snapchat'
+
+// Map Platform type to SocialPlatform for logo component
+const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
+  'instagram': 'instagram',
+  'twitter': 'twitter',
+  'x': 'twitter',
+  'linkedin': 'linkedin',
+  'facebook': 'facebook',
+  'tiktok': 'tiktok',
+  'youtube': 'youtube',
+  'snapchat': 'snapchat',
+}
 
 interface PreviewData {
   id: number
@@ -295,19 +309,24 @@ export default function SchedulePage() {
                   Select Platforms
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {platforms.map(({ name, label, icon }) => {
+                  {platforms.map(({ name, label }) => {
                     const isConnected = connectedAccounts.includes(name)
+                    const isSelected = selectedPlatforms.includes(name)
                     return (
                       <button
                         key={name}
                         onClick={() => togglePlatform(name)}
                         className={`flex items-center gap-3 p-4 rounded-lg font-semibold transition-all relative ${
-                          selectedPlatforms.includes(name)
+                          isSelected
                             ? 'bg-primary text-white shadow-lg hover:bg-primary-hover'
                             : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
                         }`}
                       >
-                        <span className="text-2xl">{icon}</span>
+                        <PlatformLogo
+                          platform={PLATFORM_ID_MAP[name]}
+                          size="md"
+                          variant={isSelected ? 'white' : 'color'}
+                        />
                         <span>{label}</span>
                         {!isConnected && (
                           <span className="absolute top-1 right-1 w-3 h-3 bg-orange-500 rounded-full" title="Not connected" />
@@ -473,10 +492,19 @@ export default function SchedulePage() {
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <h2 className="text-xl font-bold text-text-primary mb-6">Upcoming Posts</h2>
               <div className="space-y-4">
-                {upcomingPosts.map((post, index) => (
+                {upcomingPosts.map((post, index) => {
+                  const platformKey = post.platform.toLowerCase() as Platform
+                  return (
                   <div key={index} className="border border-gray-200 rounded-lg p-4 hover:border-primary transition-colors">
                     <div className="flex items-start justify-between mb-2">
-                      <span className="font-semibold text-text-primary">{post.platform}</span>
+                      <div className="flex items-center gap-2">
+                        <PlatformLogo
+                          platform={PLATFORM_ID_MAP[platformKey]}
+                          size="sm"
+                          variant="color"
+                        />
+                        <span className="font-semibold text-text-primary">{post.platform}</span>
+                      </div>
                       <span className="badge-primary text-xs">
                         {post.status}
                       </span>
@@ -491,7 +519,8 @@ export default function SchedulePage() {
                       </button>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
 
               {upcomingPosts.length === 0 && (
