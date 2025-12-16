@@ -1,6 +1,13 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, ReactNode } from 'react'
+import type { SocialPlatform } from '@/lib/types/social'
+
+// ============================================
+// TYPES
+// ============================================
+
+type UserPlan = 'free' | 'creator' | 'pro'
 
 interface TooltipProps {
   /** The content to display in the tooltip */
@@ -21,6 +28,25 @@ interface TooltipProps {
   icon?: ReactNode
   /** Additional CSS classes for the tooltip container */
   className?: string
+  /** Current platform context for platform-specific content */
+  platform?: SocialPlatform
+  /** User's plan for gating advanced features */
+  userPlan?: UserPlan
+  /** AI recommendation based on performance */
+  aiRecommendation?: string
+  /** Show AI recommendation section */
+  showAiHint?: boolean
+  /** Pro-only benchmark data */
+  benchmark?: {
+    industry: number
+    userAvg: number
+    trend: 'up' | 'down' | 'stable'
+    trendValue: number
+  }
+  /** Current metric value for comparison */
+  currentValue?: number
+  /** Metric key for platform-specific content */
+  metricKey?: keyof typeof MetricTooltips
 }
 
 interface TooltipPosition {
@@ -28,6 +54,302 @@ interface TooltipPosition {
   left: number
   actualPosition: 'top' | 'bottom' | 'left' | 'right'
 }
+
+// ============================================
+// PLATFORM-SPECIFIC METRIC EXPLANATIONS
+// ============================================
+
+interface PlatformExplanation {
+  base: string
+  platforms: Partial<Record<SocialPlatform, string>>
+}
+
+interface MetricTooltipConfig {
+  title: string
+  content: PlatformExplanation
+  icon: string
+  proInsight: string
+  actionHints: {
+    low: string
+    medium: string
+    high: string
+  }
+  thresholds: {
+    low: number
+    high: number
+  }
+}
+
+export const MetricTooltips: Record<string, MetricTooltipConfig> = {
+  sentiment: {
+    title: 'Sentiment Score',
+    icon: '😊',
+    content: {
+      base: 'Shows how positively your audience responds. Higher scores mean happier followers who engage and share more.',
+      platforms: {
+        instagram: 'On Instagram, positive sentiment drives saves and shares. Focus on inspiring, relatable content.',
+        tiktok: 'TikTok rewards authentic, entertaining content. High sentiment boosts your For You page reach.',
+        youtube: 'YouTube sentiment affects watch time. Positive reactions keep viewers watching longer.',
+        linkedin: 'Professional sentiment builds trust. Thought leadership content scores highest here.',
+        twitter: 'Twitter sentiment spreads fast. Positive tweets get retweeted more than negative ones.',
+        facebook: 'Facebook prioritizes meaningful interactions. Positive sentiment increases organic reach.',
+      }
+    },
+    proInsight: 'Your sentiment is 12% higher than industry average. Top creators maintain 80%+ positive sentiment.',
+    actionHints: {
+      low: 'Try asking questions to spark positive discussions',
+      medium: 'Good progress! Add more value-driven content to boost further',
+      high: 'Excellent! Keep creating content that resonates with your audience'
+    },
+    thresholds: { low: 50, high: 75 }
+  },
+  retention: {
+    title: 'Audience Retention',
+    icon: '👁️',
+    content: {
+      base: 'The average percentage of your videos viewers watch. Improve this by making your first 3 seconds compelling.',
+      platforms: {
+        instagram: 'Reels need a hook in the first second. Use text overlays to grab attention immediately.',
+        tiktok: 'TikTok viewers decide in 0.5 seconds. Start with movement, text, or a surprising visual.',
+        youtube: 'YouTube rewards watch time heavily. Strong intros and chapters help retention.',
+        linkedin: 'LinkedIn videos autoplay silently. Add captions and visual hooks for the scroll-stop.',
+        facebook: 'Facebook users scroll fast. Front-load your message in the first 3 seconds.',
+      }
+    },
+    proInsight: 'Videos with 65%+ retention get 3x more algorithmic distribution.',
+    actionHints: {
+      low: 'Hook viewers faster—put your best content in the first 3 seconds',
+      medium: 'Add pattern interrupts every 5-7 seconds to maintain attention',
+      high: 'Your hooks are working! Experiment with longer-form content'
+    },
+    thresholds: { low: 40, high: 65 }
+  },
+  virality: {
+    title: 'Virality Score',
+    icon: '🔥',
+    content: {
+      base: 'Measures how often your content gets shared beyond your followers. High scores mean your content is reaching new audiences.',
+      platforms: {
+        instagram: 'Instagram virality comes from Shares and Saves. Create "send to a friend" worthy content.',
+        tiktok: 'TikTok virality is driven by stitches, duets, and shares. Make content others want to remix.',
+        youtube: 'YouTube viral content gets embedded and shared. Timely, searchable topics perform best.',
+        linkedin: 'LinkedIn virality comes from comments and shares by industry leaders.',
+        twitter: 'Twitter virality = retweets + quote tweets. Hot takes and threads spread fastest.',
+        facebook: 'Facebook viral content triggers emotional responses and community sharing.',
+      }
+    },
+    proInsight: 'Content with virality score above 60 reaches 5x more non-followers.',
+    actionHints: {
+      low: 'Create more shareable content—tutorials, tips, or relatable moments',
+      medium: 'Add clear CTAs encouraging shares. Ask "Tag someone who needs this"',
+      high: 'You\'re creating viral content! Double down on these formats'
+    },
+    thresholds: { low: 30, high: 60 }
+  },
+  velocity: {
+    title: 'Content Velocity',
+    icon: '⚡',
+    content: {
+      base: 'Your posting frequency. Consistent posting (3-4x per week) typically performs better than sporadic bursts.',
+      platforms: {
+        instagram: 'Instagram rewards consistency. 1 post + 3-5 Stories daily is ideal for growth.',
+        tiktok: 'TikTok creators who post 1-3x daily see fastest growth. Quantity helps find winners.',
+        youtube: 'YouTube prefers consistent schedules. 1-2 videos per week builds subscriber loyalty.',
+        linkedin: 'LinkedIn engagement peaks with 3-5 posts per week. Daily posting can reduce reach.',
+        twitter: 'Twitter moves fast. 3-5 tweets daily keeps you visible in the feed.',
+        facebook: 'Facebook reach drops with over-posting. 1-2 quality posts daily is optimal.',
+      }
+    },
+    proInsight: 'Your posting velocity is optimal. Creators at your level average 3.5 posts/day.',
+    actionHints: {
+      low: 'Increase posting frequency gradually—aim for one more post per week',
+      medium: 'Good rhythm! Focus on maintaining consistency over time',
+      high: 'Strong velocity! Ensure quality isn\'t suffering from quantity'
+    },
+    thresholds: { low: 1.5, high: 4 }
+  },
+  crossPlatform: {
+    title: 'Cross-Platform Synergy',
+    icon: '🔗',
+    content: {
+      base: 'How well your content performs when shared across multiple platforms. Higher scores mean better multi-platform strategy.',
+      platforms: {
+        instagram: 'Instagram content repurposes well to Facebook and Pinterest with minor adjustments.',
+        tiktok: 'TikTok videos work on Reels and Shorts. Remove watermarks for best performance.',
+        youtube: 'YouTube content can be clipped for all short-form platforms effectively.',
+        linkedin: 'LinkedIn content adapts well to Twitter with a more casual tone adjustment.',
+        twitter: 'Twitter threads make great LinkedIn carousels and blog post outlines.',
+        facebook: 'Facebook content translates to Instagram and LinkedIn with formatting tweaks.',
+      }
+    },
+    proInsight: 'Multi-platform creators see 2.4x total reach vs single-platform focus.',
+    actionHints: {
+      low: 'Start repurposing your best content to one additional platform',
+      medium: 'Good synergy! Optimize your captions per platform for better results',
+      high: 'Excellent cross-platform strategy! Consider adding one more platform'
+    },
+    thresholds: { low: 50, high: 80 }
+  },
+  hashtags: {
+    title: 'Hashtag Performance',
+    icon: '#️⃣',
+    content: {
+      base: 'How effectively your hashtags help people discover your content. Mix popular and niche tags for best results.',
+      platforms: {
+        instagram: 'Instagram: Use 5-15 hashtags mixing popular (100K-1M) and niche (10K-100K) tags.',
+        tiktok: 'TikTok: 3-5 trending hashtags work best. Check Discover page for current trends.',
+        youtube: 'YouTube: Use tags in titles and descriptions. 5-8 relevant tags is optimal.',
+        linkedin: 'LinkedIn: 3-5 professional hashtags max. Industry-specific tags perform best.',
+        twitter: 'Twitter: 1-2 hashtags is ideal. More can reduce engagement by 17%.',
+        facebook: 'Facebook: Hashtags have minimal impact. Use 1-2 or none at all.',
+      }
+    },
+    proInsight: 'Your top-performing hashtag drives 23% of your discovery traffic.',
+    actionHints: {
+      low: 'Research trending hashtags in your niche using the Explore features',
+      medium: 'Good mix! Test removing underperforming hashtags to find winners',
+      high: 'Your hashtag strategy is working! Document your best performers'
+    },
+    thresholds: { low: 40, high: 70 }
+  },
+  engagement: {
+    title: 'Engagement Rate',
+    icon: '❤️',
+    content: {
+      base: 'The percentage of viewers who interact through likes, comments, or shares. Industry average is 3-6%.',
+      platforms: {
+        instagram: 'Instagram: 3-6% is good, 6%+ is excellent. Carousel posts typically get highest engagement.',
+        tiktok: 'TikTok: 4-8% is average due to FYP exposure. Comments weight heavily in the algorithm.',
+        youtube: 'YouTube: 4-5% like ratio is healthy. Comments boost algorithmic distribution.',
+        linkedin: 'LinkedIn: 2-4% is strong for B2B. Comments from connections amplify reach.',
+        twitter: 'Twitter: 1-3% is typical. Quote tweets signal higher value than likes.',
+        facebook: 'Facebook: 1-3% organic engagement. Meaningful comments beat reaction counts.',
+      }
+    },
+    proInsight: 'Your engagement is in the top 20% for your follower count bracket.',
+    actionHints: {
+      low: 'End posts with questions or CTAs to encourage comments',
+      medium: 'Respond to comments quickly to boost conversation rates',
+      high: 'Excellent engagement! Your audience is highly active'
+    },
+    thresholds: { low: 3, high: 8 }
+  },
+  reach: {
+    title: 'Reach',
+    icon: '👥',
+    content: {
+      base: 'The total number of unique accounts that saw your content. Growing reach means expanding your audience.',
+      platforms: {
+        instagram: 'Instagram reach depends on Explore page and hashtag performance. Reels boost reach significantly.',
+        tiktok: 'TikTok For You page can give any video massive reach regardless of follower count.',
+        youtube: 'YouTube reach grows through search, suggested videos, and subscriber notifications.',
+        linkedin: 'LinkedIn reach expands when connections engage, showing content to their network.',
+        twitter: 'Twitter reach multiplies through retweets and viral potential in replies.',
+        facebook: 'Facebook organic reach is limited. Groups and shares extend your visibility.',
+      }
+    },
+    proInsight: 'Your reach has grown 34% this month. Top 10% growth in your category.',
+    actionHints: {
+      low: 'Focus on shareable content and strategic hashtags to expand reach',
+      medium: 'Good growth! Collaborate with others in your niche for faster expansion',
+      high: 'Strong reach! Focus on converting viewers to engaged followers'
+    },
+    thresholds: { low: 1000, high: 10000 }
+  },
+  saveRate: {
+    title: 'Save Rate',
+    icon: '📌',
+    content: {
+      base: 'How often viewers save your posts for later. High save rates signal valuable content that algorithms favor.',
+      platforms: {
+        instagram: 'Instagram saves are a top-ranking signal. Educational and inspirational content gets saved most.',
+        tiktok: 'TikTok favorites indicate high-value content. Tutorials and tips get saved frequently.',
+        youtube: 'YouTube "Save to playlist" signals evergreen value. How-to content performs best.',
+        linkedin: 'LinkedIn saves indicate professional value. Save-worthy content includes industry insights.',
+        facebook: 'Facebook saves are underutilized but signal content worth revisiting.',
+      }
+    },
+    proInsight: 'Content with 5%+ save rate gets 40% more distribution.',
+    actionHints: {
+      low: 'Create more educational or reference-worthy content people want to revisit',
+      medium: 'Add "Save this for later" CTAs to remind viewers',
+      high: 'Your content is bookmark-worthy! Keep creating high-value posts'
+    },
+    thresholds: { low: 2, high: 5 }
+  },
+  hookScore: {
+    title: 'Hook Score',
+    icon: '🎣',
+    content: {
+      base: 'How well your video opening captures attention. The first 3 seconds are critical for keeping viewers watching.',
+      platforms: {
+        instagram: 'Reels: Start with movement or text. Static openings lose 60% of viewers.',
+        tiktok: 'TikTok: The first frame matters. Use pattern interrupts and direct address.',
+        youtube: 'YouTube Shorts: Skip intros entirely. Start with the payoff or a question.',
+        linkedin: 'LinkedIn: Professional hooks work—start with a bold statement or statistic.',
+        facebook: 'Facebook: Assume sound-off viewing. Visual hooks and captions are essential.',
+      }
+    },
+    proInsight: 'Your average hook score beats 78% of creators in your niche.',
+    actionHints: {
+      low: 'Study your top-performing video openings and replicate those patterns',
+      medium: 'Test different hook styles: questions, bold claims, or visual surprises',
+      high: 'Your hooks are working great! Document your winning formulas'
+    },
+    thresholds: { low: 50, high: 80 }
+  },
+  completionRate: {
+    title: 'Completion Rate',
+    icon: '✅',
+    content: {
+      base: 'The percentage of viewers who watch your entire video. Higher completion rates boost your content in algorithms.',
+      platforms: {
+        instagram: 'Reels: 15-30 second videos have highest completion. Keep it punchy.',
+        tiktok: 'TikTok: Shorter videos (7-15 sec) complete more but longer can work if compelling.',
+        youtube: 'YouTube: Structure content to maintain interest. Use chapters for longer videos.',
+        linkedin: 'LinkedIn: 30-90 second videos optimal. Get to the point quickly.',
+        facebook: 'Facebook: Front-load value. Most viewers drop off after 10 seconds.',
+      }
+    },
+    proInsight: 'Videos with 70%+ completion get prioritized in recommendations.',
+    actionHints: {
+      low: 'Trim content ruthlessly. Remove anything that doesn\'t add immediate value',
+      medium: 'Add visual variety every 3-5 seconds to maintain attention',
+      high: 'Excellent retention! Consider testing slightly longer content'
+    },
+    thresholds: { low: 30, high: 60 }
+  },
+}
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+function getPerformanceLevel(value: number, thresholds: { low: number; high: number }): 'low' | 'medium' | 'high' {
+  if (value < thresholds.low) return 'low'
+  if (value >= thresholds.high) return 'high'
+  return 'medium'
+}
+
+function getTrendIcon(trend: 'up' | 'down' | 'stable'): string {
+  switch (trend) {
+    case 'up': return '↗️'
+    case 'down': return '↘️'
+    case 'stable': return '→'
+  }
+}
+
+function getTrendColor(trend: 'up' | 'down' | 'stable'): string {
+  switch (trend) {
+    case 'up': return 'text-green-400'
+    case 'down': return 'text-red-400'
+    case 'stable': return 'text-gray-400'
+  }
+}
+
+// ============================================
+// TOOLTIP COMPONENT
+// ============================================
 
 export function Tooltip({
   content,
@@ -39,15 +361,39 @@ export function Tooltip({
   showIcon = true,
   icon,
   className = '',
+  platform,
+  userPlan = 'free',
+  aiRecommendation,
+  showAiHint = false,
+  benchmark,
+  currentValue,
+  metricKey,
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false)
   const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [isAnimating, setIsAnimating] = useState(false)
 
   const triggerRef = useRef<HTMLButtonElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const showTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Get metric config if metricKey provided
+  const metricConfig = metricKey ? MetricTooltips[metricKey] : null
+
+  // Determine content to show
+  const displayTitle = title || metricConfig?.title || ''
+  const displayContent = metricConfig
+    ? (platform && metricConfig.content.platforms[platform])
+      ? metricConfig.content.platforms[platform]!
+      : metricConfig.content.base
+    : content
+
+  // Get AI hint based on performance
+  const aiHint = metricConfig && currentValue !== undefined
+    ? metricConfig.actionHints[getPerformanceLevel(currentValue, metricConfig.thresholds)]
+    : aiRecommendation
 
   // Detect mobile device
   useEffect(() => {
@@ -67,14 +413,13 @@ export function Tooltip({
     const tooltipRect = tooltipRef.current.getBoundingClientRect()
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
-    const padding = 12 // Padding from viewport edges
-    const offset = 8 // Gap between trigger and tooltip
+    const padding = 12
+    const offset = 8
 
     let actualPosition = position
     let top = 0
     let left = 0
 
-    // Calculate initial position based on preference
     const positions = {
       top: {
         top: triggerRect.top - tooltipRect.height - offset,
@@ -94,7 +439,6 @@ export function Tooltip({
       },
     }
 
-    // Try preferred position first, then fallback to others
     const positionOrder: Array<'top' | 'bottom' | 'left' | 'right'> = [position]
     if (position === 'top' || position === 'bottom') {
       positionOrder.push(position === 'top' ? 'bottom' : 'top', 'right', 'left')
@@ -104,8 +448,6 @@ export function Tooltip({
 
     for (const pos of positionOrder) {
       const { top: testTop, left: testLeft } = positions[pos]
-
-      // Check if this position fits within viewport
       const fitsTop = testTop >= padding
       const fitsBottom = testTop + tooltipRect.height <= viewportHeight - padding
       const fitsLeft = testLeft >= padding
@@ -119,7 +461,6 @@ export function Tooltip({
       }
     }
 
-    // If no position fits perfectly, use the preferred position and clamp to viewport
     if (top === 0 && left === 0) {
       const preferred = positions[position]
       top = Math.max(padding, Math.min(preferred.top, viewportHeight - tooltipRect.height - padding))
@@ -130,7 +471,7 @@ export function Tooltip({
     return { top, left, actualPosition }
   }, [position])
 
-  // Show tooltip
+  // Show tooltip with animation
   const showTooltip = useCallback(() => {
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current)
@@ -139,26 +480,27 @@ export function Tooltip({
 
     showTimeoutRef.current = setTimeout(() => {
       setIsVisible(true)
+      setIsAnimating(true)
     }, showDelay)
   }, [showDelay])
 
-  // Hide tooltip
+  // Hide tooltip with animation
   const hideTooltip = useCallback(() => {
     if (showTimeoutRef.current) {
       clearTimeout(showTimeoutRef.current)
       showTimeoutRef.current = null
     }
 
+    setIsAnimating(false)
     hideTimeoutRef.current = setTimeout(() => {
       setIsVisible(false)
       setTooltipPosition(null)
-    }, hideDelay)
+    }, hideDelay + 150) // Add time for exit animation
   }, [hideDelay])
 
   // Update position when tooltip becomes visible
   useEffect(() => {
     if (isVisible && tooltipRef.current) {
-      // Use requestAnimationFrame to ensure tooltip is rendered before calculating position
       requestAnimationFrame(() => {
         const pos = calculatePosition()
         setTooltipPosition(pos)
@@ -177,8 +519,11 @@ export function Tooltip({
         tooltipRef.current &&
         !tooltipRef.current.contains(event.target as Node)
       ) {
-        setIsVisible(false)
-        setTooltipPosition(null)
+        setIsAnimating(false)
+        setTimeout(() => {
+          setIsVisible(false)
+          setTooltipPosition(null)
+        }, 150)
       }
     }
 
@@ -191,15 +536,18 @@ export function Tooltip({
     }
   }, [isVisible, isMobile])
 
-  // Handle escape key to close tooltip
+  // Handle escape key
   useEffect(() => {
     if (!isVisible) return
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setIsVisible(false)
-        setTooltipPosition(null)
-        triggerRef.current?.focus()
+        setIsAnimating(false)
+        setTimeout(() => {
+          setIsVisible(false)
+          setTooltipPosition(null)
+          triggerRef.current?.focus()
+        }, 150)
       }
     }
 
@@ -207,7 +555,7 @@ export function Tooltip({
     return () => document.removeEventListener('keydown', handleEscape)
   }, [isVisible])
 
-  // Cleanup timeouts on unmount
+  // Cleanup timeouts
   useEffect(() => {
     return () => {
       if (showTimeoutRef.current) clearTimeout(showTimeoutRef.current)
@@ -218,11 +566,17 @@ export function Tooltip({
   // Handle mobile tap
   const handleTap = () => {
     if (isMobile) {
-      setIsVisible(!isVisible)
+      if (isVisible) {
+        setIsAnimating(false)
+        setTimeout(() => setIsVisible(false), 150)
+      } else {
+        setIsVisible(true)
+        setIsAnimating(true)
+      }
     }
   }
 
-  // Get arrow position class based on actual position
+  // Get arrow classes
   const getArrowClass = () => {
     const pos = tooltipPosition?.actualPosition || position
     switch (pos) {
@@ -239,7 +593,19 @@ export function Tooltip({
     }
   }
 
+  // Animation classes
+  const getAnimationClass = () => {
+    const pos = tooltipPosition?.actualPosition || position
+    const baseTransform = pos === 'top' ? 'translate-y-1' : pos === 'bottom' ? '-translate-y-1' : pos === 'left' ? 'translate-x-1' : '-translate-x-1'
+
+    if (isAnimating && tooltipPosition) {
+      return 'opacity-100 translate-y-0 translate-x-0 scale-100'
+    }
+    return `opacity-0 ${baseTransform} scale-95`
+  }
+
   const tooltipId = `tooltip-${Math.random().toString(36).substr(2, 9)}`
+  const isPro = userPlan === 'pro'
 
   return (
     <span className={`inline-flex items-center gap-1 ${className}`}>
@@ -247,7 +613,7 @@ export function Tooltip({
       <button
         ref={triggerRef}
         type="button"
-        className="inline-flex items-center justify-center w-4 h-4 text-text-secondary/60 hover:text-text-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-1 rounded-full"
+        className="inline-flex items-center justify-center w-4 h-4 text-text-secondary/50 hover:text-primary transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-1 rounded-full hover:scale-110 active:scale-95"
         onMouseEnter={!isMobile ? showTooltip : undefined}
         onMouseLeave={!isMobile ? hideTooltip : undefined}
         onFocus={showTooltip}
@@ -255,11 +621,11 @@ export function Tooltip({
         onClick={handleTap}
         aria-describedby={isVisible ? tooltipId : undefined}
         aria-expanded={isVisible}
-        aria-label={`More information about ${title || 'this metric'}`}
+        aria-label={`More information about ${displayTitle || 'this metric'}`}
       >
         {icon || (
           <svg
-            className="w-3.5 h-3.5"
+            className="w-3.5 h-3.5 transition-transform duration-200"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -271,19 +637,20 @@ export function Tooltip({
         )}
       </button>
 
-      {/* Tooltip Portal */}
+      {/* Tooltip */}
       {isVisible && (
         <div
           ref={tooltipRef}
           id={tooltipId}
           role="tooltip"
           className={`
-            fixed z-[100] max-w-[240px] px-3 py-2
-            bg-gray-800 text-white text-sm rounded-lg shadow-lg
-            transform transition-opacity duration-150
-            ${tooltipPosition ? 'opacity-100' : 'opacity-0'}
+            fixed z-[100] w-72 max-w-[90vw]
+            bg-gray-800 text-white rounded-xl
+            shadow-2xl shadow-black/20
+            transform transition-all duration-200 ease-out
             after:content-[''] after:absolute after:border-[6px]
             ${getArrowClass()}
+            ${getAnimationClass()}
           `}
           style={{
             top: tooltipPosition?.top ?? -9999,
@@ -292,62 +659,130 @@ export function Tooltip({
           onMouseEnter={!isMobile ? showTooltip : undefined}
           onMouseLeave={!isMobile ? hideTooltip : undefined}
         >
-          {title && (
-            <p className="font-semibold text-white mb-1">{title}</p>
+          {/* Header */}
+          <div className="px-4 pt-3 pb-2 border-b border-gray-700/50">
+            <div className="flex items-center gap-2">
+              {metricConfig && (
+                <span className="text-lg">{metricConfig.icon}</span>
+              )}
+              <h4 className="font-semibold text-white">{displayTitle}</h4>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="px-4 py-3">
+            <p className="text-gray-300 text-sm leading-relaxed">{displayContent}</p>
+
+            {/* Platform Badge */}
+            {platform && metricConfig?.content.platforms[platform] && (
+              <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 bg-gray-700/50 rounded-full">
+                <span className="text-xs text-gray-400">Optimized for</span>
+                <span className="text-xs font-medium text-primary capitalize">{platform}</span>
+              </div>
+            )}
+          </div>
+
+          {/* AI Recommendation (visible to all users if showAiHint or has aiHint) */}
+          {(showAiHint || aiHint) && aiHint && (
+            <div className="px-4 py-3 bg-gradient-to-r from-purple-900/30 to-pink-900/30 border-t border-gray-700/50">
+              <div className="flex items-start gap-2">
+                <span className="text-sm">💡</span>
+                <div>
+                  <p className="text-xs font-medium text-purple-300 mb-0.5">What to do next</p>
+                  <p className="text-xs text-gray-300">{aiHint}</p>
+                </div>
+              </div>
+            </div>
           )}
-          <p className="text-gray-200 leading-relaxed">{content}</p>
+
+          {/* Pro-Only Insights */}
+          {isPro && benchmark && (
+            <div className="px-4 py-3 bg-gradient-to-r from-primary/10 to-accent-purple/10 border-t border-gray-700/50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-primary flex items-center gap-1">
+                  <span>⭐</span> Pro Insights
+                </span>
+                <span className={`text-xs font-medium flex items-center gap-1 ${getTrendColor(benchmark.trend)}`}>
+                  {getTrendIcon(benchmark.trend)} {benchmark.trendValue > 0 ? '+' : ''}{benchmark.trendValue}%
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-gray-400">Industry Avg</p>
+                  <p className="text-sm font-semibold text-white">{benchmark.industry}%</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Your Average</p>
+                  <p className="text-sm font-semibold text-white">{benchmark.userAvg}%</p>
+                </div>
+              </div>
+              {metricConfig?.proInsight && (
+                <p className="mt-2 text-xs text-gray-400 italic">{metricConfig.proInsight}</p>
+              )}
+            </div>
+          )}
+
+          {/* Upgrade prompt for non-Pro users when benchmark would be shown */}
+          {!isPro && userPlan !== 'free' && metricConfig && (
+            <div className="px-4 py-2 bg-gray-900/50 border-t border-gray-700/50">
+              <p className="text-xs text-gray-400 flex items-center gap-1">
+                <span>⭐</span>
+                <span>Upgrade to Pro for benchmarks & trends</span>
+              </p>
+            </div>
+          )}
         </div>
       )}
     </span>
   )
 }
 
-// Pre-built metric tooltips for analytics
-export const MetricTooltips = {
-  sentiment: {
-    title: 'Sentiment Score',
-    content: 'Shows how positively your audience responds. Higher scores mean happier followers who are more likely to engage and share.',
-  },
-  retention: {
-    title: 'Audience Retention',
-    content: 'The average percentage of your videos viewers watch. Improve this by making your first 3 seconds more compelling.',
-  },
-  virality: {
-    title: 'Virality Score',
-    content: 'Measures how often your content gets shared beyond your followers. High scores mean your content is reaching new audiences.',
-  },
-  velocity: {
-    title: 'Content Velocity',
-    content: 'Your posting frequency. Consistent posting (3-4x per week) typically performs better than sporadic bursts.',
-  },
-  crossPlatform: {
-    title: 'Cross-Platform Synergy',
-    content: 'How well your content performs when shared across multiple platforms. Higher scores mean better multi-platform strategy.',
-  },
-  hashtags: {
-    title: 'Hashtag Performance',
-    content: 'How effectively your hashtags help people discover your content. Try mixing popular and niche tags for best results.',
-  },
-  engagement: {
-    title: 'Engagement Rate',
-    content: 'The percentage of viewers who interact with your content through likes, comments, or shares. Industry average is 3-6%.',
-  },
-  reach: {
-    title: 'Reach',
-    content: 'The total number of unique accounts that saw your content. Growing reach means expanding your audience.',
-  },
-  saveRate: {
-    title: 'Save Rate',
-    content: 'How often viewers save your posts for later. High save rates signal valuable content that algorithms favor.',
-  },
-  hookScore: {
-    title: 'Hook Score',
-    content: 'How well your video opening captures attention. The first 3 seconds are critical for keeping viewers watching.',
-  },
-  completionRate: {
-    title: 'Completion Rate',
-    content: 'The percentage of viewers who watch your entire video. Higher completion rates boost your content in algorithms.',
-  },
+// ============================================
+// METRIC INFO ICON COMPONENT (Simplified Usage)
+// ============================================
+
+interface MetricInfoProps {
+  metric: keyof typeof MetricTooltips
+  platform?: SocialPlatform
+  userPlan?: UserPlan
+  currentValue?: number
+  benchmark?: {
+    industry: number
+    userAvg: number
+    trend: 'up' | 'down' | 'stable'
+    trendValue: number
+  }
+  children?: ReactNode
+  className?: string
+}
+
+export function MetricInfo({
+  metric,
+  platform,
+  userPlan = 'free',
+  currentValue,
+  benchmark,
+  children,
+  className = '',
+}: MetricInfoProps) {
+  const config = MetricTooltips[metric]
+  if (!config) return <>{children}</>
+
+  return (
+    <Tooltip
+      metricKey={metric}
+      content={config.content.base}
+      title={config.title}
+      platform={platform}
+      userPlan={userPlan}
+      currentValue={currentValue}
+      benchmark={benchmark}
+      showAiHint={currentValue !== undefined}
+      className={className}
+    >
+      {children}
+    </Tooltip>
+  )
 }
 
 export default Tooltip

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { AppHeader, Card, StatCard, GradientBanner, Badge, PlatformLogo, Tooltip, MetricTooltips } from '../components/ui'
+import { AppHeader, Card, StatCard, GradientBanner, Badge, PlatformLogo, MetricInfo } from '../components/ui'
 import { ExportAnalytics } from '../components/ExportAnalytics'
 import type { SocialPlatform } from '@/lib/types/social'
 
@@ -32,6 +32,7 @@ export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('30')
   const [userPlan, setUserPlan] = useState<PlanType>('free')
   const [mounted, setMounted] = useState(false)
+  const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatform>('instagram')
 
   useEffect(() => {
     setMounted(true)
@@ -475,30 +476,155 @@ export default function AnalyticsPage() {
 
             {/* Advanced Metrics - Pro Plan Only */}
             {userPlan === 'pro' && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-                {[
-                  { icon: '😊', label: 'Sentiment', value: advancedMetrics.sentimentScore, suffix: '%', color: 'text-green-600', sublabel: 'Positive', tooltipKey: 'sentiment' as const },
-                  { icon: '👁️', label: 'Retention', value: advancedMetrics.audienceRetention, suffix: '%', color: 'text-text-secondary', sublabel: 'Avg watch', tooltipKey: 'retention' as const },
-                  { icon: '🔥', label: 'Virality', value: advancedMetrics.viralityScore, suffix: '', color: 'text-orange-600', sublabel: 'Score', tooltipKey: 'virality' as const },
-                  { icon: '⚡', label: 'Velocity', value: advancedMetrics.contentVelocity, suffix: '', color: 'text-text-secondary', sublabel: 'Posts/day', tooltipKey: 'velocity' as const },
-                  { icon: '🔗', label: 'Cross-Platform', value: advancedMetrics.crossPlatformSynergy, suffix: '%', color: 'text-blue-600', sublabel: 'Synergy', tooltipKey: 'crossPlatform' as const },
-                  { icon: '#️⃣', label: 'Hashtags', value: advancedMetrics.hashtagPerformance, suffix: '%', color: 'text-purple-600', sublabel: 'Performance', tooltipKey: 'hashtags' as const }
-                ].map((metric) => (
-                  <Card key={metric.label} className="p-4" hover={false}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xl">{metric.icon}</span>
-                      <Tooltip
-                        title={MetricTooltips[metric.tooltipKey].title}
-                        content={MetricTooltips[metric.tooltipKey].content}
-                        position="top"
-                      >
-                        <span className="text-xs text-text-secondary font-medium">{metric.label}</span>
-                      </Tooltip>
-                    </div>
-                    <p className="text-2xl font-bold text-text-primary">{metric.value}{metric.suffix}</p>
-                    <p className={`text-xs ${metric.color}`}>{metric.sublabel}</p>
-                  </Card>
-                ))}
+              <div className="mb-8">
+                {/* Platform Filter for Tooltips */}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-text-primary">Advanced Metrics</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-text-secondary">Platform context:</span>
+                    <select
+                      value={selectedPlatform}
+                      onChange={(e) => setSelectedPlatform(e.target.value as SocialPlatform)}
+                      className="text-xs px-2 py-1 border border-gray-200 rounded-lg bg-white text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    >
+                      <option value="instagram">Instagram</option>
+                      <option value="tiktok">TikTok</option>
+                      <option value="youtube">YouTube</option>
+                      <option value="linkedin">LinkedIn</option>
+                      <option value="twitter">Twitter</option>
+                      <option value="facebook">Facebook</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  {[
+                    {
+                      icon: '😊',
+                      label: 'Sentiment',
+                      value: advancedMetrics.sentimentScore,
+                      suffix: '%',
+                      color: 'text-green-600',
+                      sublabel: 'Positive',
+                      metricKey: 'sentiment' as const,
+                      benchmark: { industry: 72, userAvg: 78, trend: 'up' as const, trendValue: 8 }
+                    },
+                    {
+                      icon: '👁️',
+                      label: 'Retention',
+                      value: advancedMetrics.audienceRetention,
+                      suffix: '%',
+                      color: 'text-text-secondary',
+                      sublabel: 'Avg watch',
+                      metricKey: 'retention' as const,
+                      benchmark: { industry: 55, userAvg: 65, trend: 'up' as const, trendValue: 12 }
+                    },
+                    {
+                      icon: '🔥',
+                      label: 'Virality',
+                      value: advancedMetrics.viralityScore,
+                      suffix: '',
+                      color: 'text-orange-600',
+                      sublabel: 'Score',
+                      metricKey: 'virality' as const,
+                      benchmark: { industry: 38, userAvg: 42, trend: 'stable' as const, trendValue: 2 }
+                    },
+                    {
+                      icon: '⚡',
+                      label: 'Velocity',
+                      value: advancedMetrics.contentVelocity,
+                      suffix: '',
+                      color: 'text-text-secondary',
+                      sublabel: 'Posts/day',
+                      metricKey: 'velocity' as const,
+                      benchmark: { industry: 2.8, userAvg: 3.2, trend: 'up' as const, trendValue: 15 }
+                    },
+                    {
+                      icon: '🔗',
+                      label: 'Cross-Platform',
+                      value: advancedMetrics.crossPlatformSynergy,
+                      suffix: '%',
+                      color: 'text-blue-600',
+                      sublabel: 'Synergy',
+                      metricKey: 'crossPlatform' as const,
+                      benchmark: { industry: 65, userAvg: 85, trend: 'up' as const, trendValue: 22 }
+                    },
+                    {
+                      icon: '#️⃣',
+                      label: 'Hashtags',
+                      value: advancedMetrics.hashtagPerformance,
+                      suffix: '%',
+                      color: 'text-purple-600',
+                      sublabel: 'Performance',
+                      metricKey: 'hashtags' as const,
+                      benchmark: { industry: 58, userAvg: 72, trend: 'down' as const, trendValue: -3 }
+                    }
+                  ].map((metric) => (
+                    <Card key={metric.label} className="p-4 group hover:shadow-lg transition-shadow" hover={false}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xl group-hover:scale-110 transition-transform">{metric.icon}</span>
+                        <MetricInfo
+                          metric={metric.metricKey}
+                          platform={selectedPlatform}
+                          userPlan={userPlan}
+                          currentValue={metric.value}
+                          benchmark={metric.benchmark}
+                        >
+                          <span className="text-xs text-text-secondary font-medium">{metric.label}</span>
+                        </MetricInfo>
+                      </div>
+                      <p className="text-2xl font-bold text-text-primary">{metric.value}{metric.suffix}</p>
+                      <div className="flex items-center justify-between">
+                        <p className={`text-xs ${metric.color}`}>{metric.sublabel}</p>
+                        <span className={`text-xs font-medium ${
+                          metric.benchmark.trend === 'up' ? 'text-green-500' :
+                          metric.benchmark.trend === 'down' ? 'text-red-500' : 'text-gray-400'
+                        }`}>
+                          {metric.benchmark.trend === 'up' ? '↑' : metric.benchmark.trend === 'down' ? '↓' : '→'}
+                          {Math.abs(metric.benchmark.trendValue)}%
+                        </span>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Advanced Metrics Teaser - Creator Plan Only */}
+            {userPlan === 'creator' && (
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-text-primary">Advanced Metrics</h3>
+                  <Badge variant="gray" className="bg-purple-100 text-purple-700">
+                    ⭐ Pro Feature
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  {[
+                    { icon: '😊', label: 'Sentiment', metricKey: 'sentiment' as const },
+                    { icon: '👁️', label: 'Retention', metricKey: 'retention' as const },
+                    { icon: '🔥', label: 'Virality', metricKey: 'virality' as const },
+                    { icon: '⚡', label: 'Velocity', metricKey: 'velocity' as const },
+                    { icon: '🔗', label: 'Cross-Platform', metricKey: 'crossPlatform' as const },
+                    { icon: '#️⃣', label: 'Hashtags', metricKey: 'hashtags' as const }
+                  ].map((metric) => (
+                    <Card key={metric.label} className="p-4 relative overflow-hidden" hover={false}>
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/80 to-gray-50/80 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                        <span className="text-2xl opacity-50">🔒</span>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2 opacity-50">
+                        <span className="text-xl">{metric.icon}</span>
+                        <MetricInfo
+                          metric={metric.metricKey}
+                          userPlan={userPlan}
+                        >
+                          <span className="text-xs text-text-secondary font-medium">{metric.label}</span>
+                        </MetricInfo>
+                      </div>
+                      <p className="text-2xl font-bold text-text-primary opacity-50">--</p>
+                      <p className="text-xs text-text-secondary opacity-50">Upgrade to Pro</p>
+                    </Card>
+                  ))}
+                </div>
               </div>
             )}
 
