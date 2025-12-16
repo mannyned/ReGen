@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { AppHeader, Card, StatCard, GradientBanner, Badge, PlatformLogo } from '../components/ui'
+import { AppHeader, Card, StatCard, GradientBanner, Badge, PlatformLogo, Tooltip, MetricTooltips } from '../components/ui'
 import { ExportAnalytics } from '../components/ExportAnalytics'
 import type { SocialPlatform } from '@/lib/types/social'
 
@@ -477,17 +477,23 @@ export default function AnalyticsPage() {
             {userPlan === 'pro' && (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
                 {[
-                  { icon: '😊', label: 'Sentiment', value: advancedMetrics.sentimentScore, suffix: '%', color: 'text-green-600', sublabel: 'Positive' },
-                  { icon: '👁️', label: 'Retention', value: advancedMetrics.audienceRetention, suffix: '%', color: 'text-text-secondary', sublabel: 'Avg watch' },
-                  { icon: '🔥', label: 'Virality', value: advancedMetrics.viralityScore, suffix: '', color: 'text-orange-600', sublabel: 'Score' },
-                  { icon: '⚡', label: 'Velocity', value: advancedMetrics.contentVelocity, suffix: '', color: 'text-text-secondary', sublabel: 'Posts/day' },
-                  { icon: '🔗', label: 'Cross-Platform', value: advancedMetrics.crossPlatformSynergy, suffix: '%', color: 'text-blue-600', sublabel: 'Synergy' },
-                  { icon: '#️⃣', label: 'Hashtags', value: advancedMetrics.hashtagPerformance, suffix: '%', color: 'text-purple-600', sublabel: 'Performance' }
+                  { icon: '😊', label: 'Sentiment', value: advancedMetrics.sentimentScore, suffix: '%', color: 'text-green-600', sublabel: 'Positive', tooltipKey: 'sentiment' as const },
+                  { icon: '👁️', label: 'Retention', value: advancedMetrics.audienceRetention, suffix: '%', color: 'text-text-secondary', sublabel: 'Avg watch', tooltipKey: 'retention' as const },
+                  { icon: '🔥', label: 'Virality', value: advancedMetrics.viralityScore, suffix: '', color: 'text-orange-600', sublabel: 'Score', tooltipKey: 'virality' as const },
+                  { icon: '⚡', label: 'Velocity', value: advancedMetrics.contentVelocity, suffix: '', color: 'text-text-secondary', sublabel: 'Posts/day', tooltipKey: 'velocity' as const },
+                  { icon: '🔗', label: 'Cross-Platform', value: advancedMetrics.crossPlatformSynergy, suffix: '%', color: 'text-blue-600', sublabel: 'Synergy', tooltipKey: 'crossPlatform' as const },
+                  { icon: '#️⃣', label: 'Hashtags', value: advancedMetrics.hashtagPerformance, suffix: '%', color: 'text-purple-600', sublabel: 'Performance', tooltipKey: 'hashtags' as const }
                 ].map((metric) => (
                   <Card key={metric.label} className="p-4" hover={false}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xl">{metric.icon}</span>
-                      <span className="text-xs text-text-secondary font-medium">{metric.label}</span>
+                      <Tooltip
+                        title={MetricTooltips[metric.tooltipKey].title}
+                        content={MetricTooltips[metric.tooltipKey].content}
+                        position="top"
+                      >
+                        <span className="text-xs text-text-secondary font-medium">{metric.label}</span>
+                      </Tooltip>
                     </div>
                     <p className="text-2xl font-bold text-text-primary">{metric.value}{metric.suffix}</p>
                     <p className={`text-xs ${metric.color}`}>{metric.sublabel}</p>

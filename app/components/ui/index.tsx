@@ -20,6 +20,8 @@ export {
   type LogoVariant,
 } from './PlatformLogo'
 
+export { Tooltip, MetricTooltips } from './Tooltip'
+
 // ==========================================
 // ICON COMPONENTS
 // ==========================================
