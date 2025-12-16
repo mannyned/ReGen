@@ -22,6 +22,18 @@ export {
 
 export { Tooltip, MetricTooltips, MetricInfo } from './Tooltip'
 
+export {
+  LockIcon,
+  Skeleton,
+  BlurredChart,
+  LockedValue,
+  LockedMetricCard,
+  LockedFeatureBanner,
+  UpgradeModal,
+  TrialCountdownBanner,
+  PersonalizedUpgradePrompt
+} from './LockedMetric'
+
 // ==========================================
 // ICON COMPONENTS
 // ==========================================
@@ -254,13 +266,31 @@ interface CardProps {
   children: React.ReactNode
   className?: string
   hover?: boolean
+  onClick?: () => void
+  onMouseEnter?: () => void
+  onMouseLeave?: () => void
 }
 
-export function Card({ children, className = '', hover = true }: CardProps) {
+export function Card({
+  children,
+  className = '',
+  hover = true,
+  onClick,
+  onMouseEnter,
+  onMouseLeave
+}: CardProps) {
   return (
-    <div className={`bg-white rounded-2xl shadow-lg border border-gray-100 ${
-      hover ? 'transition-all duration-300 hover:shadow-xl hover:-translate-y-1' : ''
-    } ${className}`}>
+    <div
+      className={`bg-white rounded-2xl shadow-lg border border-gray-100 ${
+        hover ? 'transition-all duration-300 hover:shadow-xl hover:-translate-y-1' : ''
+      } ${className}`}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => e.key === 'Enter' && onClick() : undefined}
+    >
       {children}
     </div>
   )

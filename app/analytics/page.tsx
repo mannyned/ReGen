@@ -2,8 +2,24 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { AppHeader, Card, StatCard, GradientBanner, Badge, PlatformLogo, MetricInfo } from '../components/ui'
+import {
+  AppHeader,
+  Card,
+  StatCard,
+  GradientBanner,
+  Badge,
+  PlatformLogo,
+  MetricInfo,
+  LockedMetricCard,
+  LockedFeatureBanner,
+  UpgradeModal,
+  TrialCountdownBanner,
+  PersonalizedUpgradePrompt,
+  BlurredChart,
+  LockIcon
+} from '../components/ui'
 import { ExportAnalytics } from '../components/ExportAnalytics'
+import { useUpgradeIntent, LockedMetricId } from '../context/UpgradeIntentContext'
 import type { SocialPlatform } from '@/lib/types/social'
 
 type TimeRange = '7' | '30' | '90' | '365'
@@ -33,6 +49,12 @@ export default function AnalyticsPage() {
   const [userPlan, setUserPlan] = useState<PlanType>('free')
   const [mounted, setMounted] = useState(false)
   const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatform>('instagram')
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [upgradeModalMetric, setUpgradeModalMetric] = useState<LockedMetricId | null>(null)
+  const [activeTrialMetric, setActiveTrialMetric] = useState<LockedMetricId | null>(null)
+
+  // Upgrade intent tracking
+  const upgradeIntent = useUpgradeIntent()
 
   useEffect(() => {
     setMounted(true)
@@ -45,6 +67,24 @@ export default function AnalyticsPage() {
       setUserPlan('free')
     }
   }, [])
+
+  // Handle opening the upgrade modal
+  const handleOpenUpgradeModal = (metricId: LockedMetricId) => {
+    setUpgradeModalMetric(metricId)
+    setShowUpgradeModal(true)
+    upgradeIntent.trackInteraction({
+      metricId,
+      interactionType: 'click',
+      source: 'card'
+    })
+  }
+
+  // Handle starting a trial
+  const handleStartTrial = (metricId: LockedMetricId) => {
+    upgradeIntent.startTrial(metricId, 5 * 60 * 1000) // 5 minutes
+    setActiveTrialMetric(metricId)
+    setShowUpgradeModal(false)
+  }
 
   const platformData = [
     { platform: 'Instagram', posts: 24, engagement: 12.5, reach: 5200, growth: 2.3, bestTime: '6PM-8PM' },
@@ -323,53 +363,199 @@ export default function AnalyticsPage() {
               </GradientBanner>
             )}
 
-            {/* Pro Features Section - Creator Plan Only */}
+            {/* CREATOR PLAN: Polished Advanced Analytics Section */}
             {userPlan === 'creator' && (
-              <Card className="p-6 mb-8 bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 border-2 border-purple-200" hover={false}>
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                      <span className="text-2xl">⭐</span>
+              <>
+                {/* Section Header - Clear separation */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-2xl font-bold text-text-primary">Advanced Analytics</h2>
+                      <Badge variant="gradient" className="flex items-center gap-1">
+                        <LockIcon size="sm" className="text-white" />
+                        Pro Feature
+                      </Badge>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-text-primary text-lg">Unlock Pro Analytics</h3>
-                      <p className="text-sm text-text-secondary">Get these powerful features with Pro Plan</p>
-                    </div>
+                    <Link
+                      href="/settings"
+                      className="hidden sm:flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:opacity-90 transition-all shadow-lg hover:shadow-xl"
+                    >
+                      <span>⭐</span>
+                      Upgrade to Pro
+                    </Link>
                   </div>
-                  <Link
-                    href="/settings"
-                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:opacity-90 transition-opacity shadow-lg hover:shadow-xl"
-                  >
-                    Upgrade to Pro - $29/mo
-                  </Link>
+                  <p className="text-text-secondary">
+                    Unlock deep insights with sentiment analysis, retention tracking, and AI-powered recommendations.
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[
-                    { href: '/analytics/location', icon: '🌍', title: 'Location Analytics', desc: 'See where your audience engages by country, region & city' },
-                    { href: '/analytics/retention', icon: '📊', title: 'Retention Graphs', desc: 'Video retention curves, drop-off detection & hook scoring' },
-                    { href: null, icon: '🤖', title: 'AI Recommendations', desc: 'Personalized insights to boost your performance' },
-                    { href: null, icon: '📈', title: 'Advanced Metrics', desc: 'Sentiment, virality score, hashtag performance & more' },
-                    { href: null, icon: '⏰', title: 'Best Posting Times', desc: 'Optimal times for each platform based on your audience' },
-                    { href: null, icon: '📅', title: 'Calendar Insights', desc: 'Peak days, optimal frequency & content mix analysis' }
-                  ].map((feature) => {
-                    const content = (
-                      <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-purple-100 hover:border-purple-300 hover:shadow-md transition-all">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="text-2xl">{feature.icon}</span>
-                          <h4 className="font-semibold text-text-primary group-hover:text-purple-600 transition-colors">{feature.title}</h4>
-                        </div>
-                        <p className="text-sm text-text-secondary">{feature.desc}</p>
-                      </div>
-                    )
-                    return feature.href ? (
-                      <Link key={feature.title} href={feature.href} className="group">{content}</Link>
-                    ) : (
-                      <div key={feature.title}>{content}</div>
-                    )
-                  })}
+                {/* Personalized Upgrade Prompt - Shows based on interaction */}
+                <PersonalizedUpgradePrompt className="mb-6" />
+
+                {/* Locked Feature Banners */}
+                <div className="space-y-4 mb-8">
+                  <LockedFeatureBanner
+                    metricId="locationAnalytics"
+                    icon="🌍"
+                    title="Location of Engagement"
+                    description="See where your audience engages the most — by country, region, and city"
+                    previewStats={[
+                      { label: 'Countries', value: '47' },
+                      { label: 'Cities', value: '234' }
+                    ]}
+                    gradientFrom="from-blue-500"
+                    gradientTo="to-purple-600"
+                  />
+
+                  <LockedFeatureBanner
+                    metricId="retentionGraphs"
+                    icon="📊"
+                    title="Retention Graph Analytics"
+                    description="See exactly where viewers drop off and optimize your video hooks"
+                    previewStats={[
+                      { label: 'Hook Score', value: '82%' },
+                      { label: 'Completion', value: '28%' }
+                    ]}
+                    gradientFrom="from-orange-500"
+                    gradientTo="to-red-500"
+                  />
+
+                  <LockedFeatureBanner
+                    metricId="aiRecommendations"
+                    icon="🤖"
+                    title="AI-Powered Recommendations"
+                    description="Get personalized insights and actionable tips to boost your performance"
+                    previewStats={[
+                      { label: 'Tips', value: '12' },
+                      { label: 'Impact', value: '+32%' }
+                    ]}
+                    gradientFrom="from-emerald-500"
+                    gradientTo="to-teal-600"
+                  />
                 </div>
-              </Card>
+
+                {/* Advanced Metrics Grid - Locked Cards */}
+                <div className="mb-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+                      Advanced Metrics
+                      <span className="text-xs font-normal text-text-secondary">(Click to preview)</span>
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <LockedMetricCard
+                      metricId="sentiment"
+                      icon="😊"
+                      label="Sentiment"
+                      sublabel="Audience mood"
+                      chartType="line"
+                      onUpgradeClick={() => handleOpenUpgradeModal('sentiment')}
+                      previewValue="78%"
+                      previewTrend={{ value: 8, positive: true }}
+                      userPlan={userPlan}
+                    />
+                    <LockedMetricCard
+                      metricId="retention"
+                      icon="👁️"
+                      label="Retention"
+                      sublabel="Avg watch"
+                      chartType="area"
+                      onUpgradeClick={() => handleOpenUpgradeModal('retention')}
+                      previewValue="65%"
+                      previewTrend={{ value: 12, positive: true }}
+                      userPlan={userPlan}
+                    />
+                    <LockedMetricCard
+                      metricId="virality"
+                      icon="🔥"
+                      label="Virality"
+                      sublabel="Share potential"
+                      chartType="bar"
+                      onUpgradeClick={() => handleOpenUpgradeModal('virality')}
+                      previewValue="42"
+                      previewTrend={{ value: 2, positive: true }}
+                      userPlan={userPlan}
+                    />
+                    <LockedMetricCard
+                      metricId="velocity"
+                      icon="⚡"
+                      label="Velocity"
+                      sublabel="Posts/day"
+                      chartType="line"
+                      onUpgradeClick={() => handleOpenUpgradeModal('velocity')}
+                      previewValue="3.2"
+                      previewTrend={{ value: 15, positive: true }}
+                      userPlan={userPlan}
+                    />
+                    <LockedMetricCard
+                      metricId="crossPlatform"
+                      icon="🔗"
+                      label="Cross-Platform"
+                      sublabel="Synergy score"
+                      chartType="pie"
+                      onUpgradeClick={() => handleOpenUpgradeModal('crossPlatform')}
+                      previewValue="85%"
+                      previewTrend={{ value: 22, positive: true }}
+                      userPlan={userPlan}
+                    />
+                    <LockedMetricCard
+                      metricId="bestPostingTimes"
+                      icon="#️⃣"
+                      label="Hashtags"
+                      sublabel="Performance"
+                      chartType="bar"
+                      onUpgradeClick={() => handleOpenUpgradeModal('bestPostingTimes')}
+                      previewValue="72%"
+                      previewTrend={{ value: 3, positive: false }}
+                      userPlan={userPlan}
+                    />
+                  </div>
+                </div>
+
+                {/* Pro Benefits Summary Card */}
+                <Card className="p-6 bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 border-2 border-purple-200 mb-8" hover={false}>
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div>
+                      <h3 className="font-bold text-text-primary text-xl mb-2 flex items-center gap-2">
+                        <span className="text-2xl">⭐</span>
+                        Unlock All Pro Features
+                      </h3>
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                        {[
+                          '📍 Location Analytics',
+                          '📊 Retention Graphs',
+                          '🤖 AI Recommendations',
+                          '😊 Sentiment Analysis',
+                          '🔥 Virality Scoring',
+                          '⏰ Best Posting Times',
+                          '📅 Calendar Insights',
+                          '📝 Caption Analytics'
+                        ].map((feature) => (
+                          <div key={feature} className="flex items-center gap-2 text-sm text-text-secondary">
+                            <span className="text-green-500">✓</span>
+                            {feature}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-center lg:items-end gap-3">
+                      <div className="text-center lg:text-right">
+                        <p className="text-3xl font-bold text-purple-600">$29<span className="text-lg font-normal text-text-secondary">/mo</span></p>
+                        <p className="text-xs text-text-secondary">Cancel anytime</p>
+                      </div>
+                      <Link
+                        href="/settings"
+                        className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:opacity-90 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                      >
+                        Upgrade to Pro
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </Link>
+                    </div>
+                  </div>
+                </Card>
+              </>
             )}
 
             {/* Key Metrics Cards */}
@@ -589,44 +775,6 @@ export default function AnalyticsPage() {
               </div>
             )}
 
-            {/* Advanced Metrics Teaser - Creator Plan Only */}
-            {userPlan === 'creator' && (
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-text-primary">Advanced Metrics</h3>
-                  <Badge variant="gray" className="bg-purple-100 text-purple-700">
-                    ⭐ Pro Feature
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  {[
-                    { icon: '😊', label: 'Sentiment', metricKey: 'sentiment' as const },
-                    { icon: '👁️', label: 'Retention', metricKey: 'retention' as const },
-                    { icon: '🔥', label: 'Virality', metricKey: 'virality' as const },
-                    { icon: '⚡', label: 'Velocity', metricKey: 'velocity' as const },
-                    { icon: '🔗', label: 'Cross-Platform', metricKey: 'crossPlatform' as const },
-                    { icon: '#️⃣', label: 'Hashtags', metricKey: 'hashtags' as const }
-                  ].map((metric) => (
-                    <Card key={metric.label} className="p-4 relative overflow-hidden" hover={false}>
-                      <div className="absolute inset-0 bg-gradient-to-br from-white/80 to-gray-50/80 backdrop-blur-[2px] z-10 flex items-center justify-center">
-                        <span className="text-2xl opacity-50">🔒</span>
-                      </div>
-                      <div className="flex items-center gap-2 mb-2 opacity-50">
-                        <span className="text-xl">{metric.icon}</span>
-                        <MetricInfo
-                          metric={metric.metricKey}
-                          userPlan={userPlan}
-                        >
-                          <span className="text-xs text-text-secondary font-medium">{metric.label}</span>
-                        </MetricInfo>
-                      </div>
-                      <p className="text-2xl font-bold text-text-primary opacity-50">--</p>
-                      <p className="text-xs text-text-secondary opacity-50">Upgrade to Pro</p>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Platform Performance */}
             <Card className="p-6 lg:p-8 mb-8" hover={false}>
@@ -761,54 +909,87 @@ export default function AnalyticsPage() {
 
             {/* Caption Usage Analytics Teaser - Creator Plan Only */}
             {userPlan === 'creator' && (
-              <Card className="p-6 lg:p-8 mt-8 relative overflow-hidden" hover={false}>
-                {/* Blur overlay */}
-                <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex items-center justify-center">
-                  <div className="text-center p-8">
-                    <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="text-3xl">📝</span>
-                    </div>
-                    <h3 className="text-xl font-bold text-text-primary mb-2">Caption Usage Analytics</h3>
-                    <p className="text-text-secondary mb-4 max-w-md">
-                      See how your identical vs adapted captions perform. Pro users see +32% better engagement with adapted captions.
-                    </p>
-                    <Link
-                      href="/settings"
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity"
-                    >
-                      <span>⭐</span>
-                      Upgrade to Pro
-                    </Link>
+              <Card
+                className="p-6 lg:p-8 mt-8 relative overflow-hidden group cursor-pointer border-2 border-transparent hover:border-purple-300 transition-all"
+                hover={false}
+                onClick={() => handleOpenUpgradeModal('captionUsage')}
+                onMouseEnter={() => upgradeIntent.trackHoverStart('captionUsage', 'card')}
+                onMouseLeave={() => upgradeIntent.trackHoverEnd('captionUsage')}
+              >
+                {/* Gradient border effect on hover */}
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
+
+                {/* Lock overlay that appears on hover */}
+                <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl">
+                  <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-4 transform group-hover:scale-110 transition-transform">
+                    <LockIcon size="lg" className="text-white" />
                   </div>
+                  <h3 className="text-xl font-bold text-text-primary mb-2">Caption Usage Analytics</h3>
+                  <p className="text-text-secondary mb-4 max-w-md text-center px-4">
+                    See how your identical vs adapted captions perform. Pro users see <span className="font-semibold text-green-600">+32% better engagement</span> with adapted captions.
+                  </p>
+                  <Link
+                    href="/settings"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-lg"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span>⭐</span>
+                    Upgrade to Pro
+                  </Link>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleStartTrial('captionUsage')
+                    }}
+                    className="mt-2 text-sm text-purple-600 hover:text-purple-700 font-medium"
+                  >
+                    👁️ Preview for 5 minutes (Free)
+                  </button>
                 </div>
 
-                {/* Blurred preview content */}
-                <div className="opacity-50">
+                {/* Preview content with sophisticated blur */}
+                <div className="relative">
                   <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h2 className="text-2xl font-bold text-text-primary">📝 Caption Usage Analytics</h2>
-                      <p className="text-sm text-text-secondary mt-1">Compare performance of identical vs adapted captions</p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl">📝</span>
+                      <div>
+                        <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+                          Caption Usage Analytics
+                          <Badge variant="gradient" className="text-xs">Pro</Badge>
+                        </h2>
+                        <p className="text-sm text-text-secondary">Compare performance of identical vs adapted captions</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+
+                  {/* Usage Mode Distribution - Blurred */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 opacity-60 blur-[1px]">
                     <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-                      <p className="text-3xl font-bold text-green-600">--</p>
+                      <p className="text-3xl font-bold text-green-600">42</p>
                       <p className="text-sm text-green-700 font-medium">Identical</p>
+                      <p className="text-xs text-green-600/70">Same across platforms</p>
                     </div>
                     <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
-                      <p className="text-3xl font-bold text-purple-600">--</p>
+                      <p className="text-3xl font-bold text-purple-600">28</p>
                       <p className="text-sm text-purple-700 font-medium">Adapted</p>
+                      <p className="text-xs text-purple-600/70">Rule-based changes</p>
                     </div>
                     <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
-                      <p className="text-3xl font-bold text-blue-600">--</p>
+                      <p className="text-3xl font-bold text-blue-600">18</p>
                       <p className="text-sm text-blue-700 font-medium">Edited</p>
+                      <p className="text-xs text-blue-600/70">Manual modifications</p>
                     </div>
                     <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
-                      <p className="text-3xl font-bold text-orange-600">--</p>
+                      <p className="text-3xl font-bold text-orange-600">9</p>
                       <p className="text-sm text-orange-700 font-medium">Rewritten</p>
+                      <p className="text-xs text-orange-600/70">Full AI rewrites</p>
                     </div>
                   </div>
-                  <div className="bg-gray-50 rounded-xl p-6 h-32"></div>
+
+                  {/* Blurred Chart Preview */}
+                  <div className="opacity-50">
+                    <BlurredChart type="bar" height={100} />
+                  </div>
                 </div>
               </Card>
             )}
@@ -1100,6 +1281,31 @@ export default function AnalyticsPage() {
               </div>
             </div>
           </>
+        )}
+
+        {/* Upgrade Modal */}
+        <UpgradeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          metricId={upgradeModalMetric}
+          onStartTrial={handleStartTrial}
+        />
+
+        {/* Trial Countdown Banner */}
+        {activeTrialMetric && (
+          <TrialCountdownBanner
+            metricId={activeTrialMetric}
+            label={
+              activeTrialMetric === 'captionUsage' ? 'Caption Analytics' :
+              activeTrialMetric === 'sentiment' ? 'Sentiment Score' :
+              activeTrialMetric === 'retention' ? 'Retention Rate' :
+              activeTrialMetric === 'virality' ? 'Virality Score' :
+              activeTrialMetric === 'velocity' ? 'Content Velocity' :
+              activeTrialMetric === 'crossPlatform' ? 'Cross-Platform' :
+              'Advanced Metrics'
+            }
+            onExpired={() => setActiveTrialMetric(null)}
+          />
         )}
       </main>
     </div>
