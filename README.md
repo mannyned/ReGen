@@ -34,11 +34,22 @@ ReGen is a modern SaaS application that helps content creators repurpose their c
 | AI captions | Basic | Advanced | Advanced |
 | Caption Workflow | ✓ | ✓ | ✓ |
 | Save Rate Analytics | - | ✓ | ✓ |
-| Location Analytics | - | - | ✓ |
-| Retention Analytics | - | - | ✓ |
-| Caption Usage Analytics | - | - | ✓ |
-| AI Recommendations | - | - | ✓ |
+| Location Analytics | - | Locked Preview | ✓ |
+| Retention Analytics | - | Locked Preview | ✓ |
+| Caption Usage Analytics | - | Locked Preview | ✓ |
+| Advanced Metrics | - | Locked Preview | ✓ |
+| AI Recommendations | - | Locked Preview | ✓ |
 | Brand Voice AI | - | - | ✓ |
+| 5-Min Trial Previews | - | ✓ | - |
+
+### Creator Plan - Locked Metrics Experience
+
+Creator users see a polished preview of Pro features with:
+- **Name-Only Metrics**: Sentiment, Retention, Virality, Velocity, Cross-Platform displayed as locked cards
+- **Blurred Chart Previews**: Visual indicators of what data looks like
+- **Hover-to-Reveal CTAs**: Non-intrusive upgrade prompts on interaction
+- **5-Minute Trial Previews**: Temporary unlock to try any metric
+- **Personalized Upgrade Prompts**: Contextual messaging based on interest
 
 ### Analytics Features
 
@@ -154,10 +165,16 @@ regen-app/
 │   │   └── generate-caption/ # AI caption generation
 │   ├── components/           # Reusable components
 │   │   ├── ui/               # UI component library
+│   │   │   ├── index.tsx     # Component exports
+│   │   │   ├── PlatformLogo.tsx # Platform logos
+│   │   │   ├── Tooltip.tsx   # Platform-aware tooltips
+│   │   │   └── LockedMetric.tsx # Locked metric components
 │   │   ├── CaptionWorkflow.tsx # Caption workflow component
 │   │   └── ExportAnalytics.tsx # Analytics export component
 │   ├── config/               # App configuration
 │   ├── context/              # React contexts
+│   │   ├── PlanContext.tsx   # User plan management
+│   │   └── UpgradeIntentContext.tsx # Upgrade tracking
 │   ├── dashboard/            # User dashboard
 │   ├── generate/             # Content generation
 │   ├── login/                # Login page
@@ -314,12 +331,26 @@ OPENAI_API_KEY=
 
 The app uses a custom UI component library located in `app/components/ui/`:
 
+#### Core Components
 - **AppHeader** - Responsive navigation with mobile menu
-- **Card** - Container with shadow and hover effects
+- **Card** - Container with shadow and hover effects (supports onClick, keyboard nav)
 - **StatCard** - Metric display with trend indicators
-- **Badge** - Status indicators (success, primary, gray)
+- **Badge** - Status indicators (success, primary, gray, gradient)
 - **GradientBanner** - CTA sections with gradient backgrounds
 - **EmptyState** - Placeholder for empty content areas
+- **Tooltip** - Platform-aware metric explanations with AI hints
+- **MetricInfo** - Simplified tooltip wrapper for metrics
+
+#### Locked Metric Components
+- **LockIcon** - Animated SVG lock with size variants (sm, md, lg, xl)
+- **Skeleton** - Loading placeholders (text, chart, card, circular)
+- **BlurredChart** - SVG chart previews (line, bar, pie, area)
+- **LockedValue** - Locked value display with optional lock icon
+- **LockedMetricCard** - Interactive locked metric with hover effects
+- **LockedFeatureBanner** - Full-width feature preview with stats
+- **UpgradeModal** - Conversion modal with trial option
+- **TrialCountdownBanner** - Floating countdown during preview
+- **PersonalizedUpgradePrompt** - Dynamic upgrade messaging
 
 ### Animations
 
@@ -327,6 +358,18 @@ The app uses a custom UI component library located in `app/components/ui/`:
 - `animate-slide-up` - Slide up on mount
 - `animate-scale-in` - Scale in on mount
 - `animate-float` - Continuous floating effect
+- `animate-lock-pulse` - Pulsing lock icon
+- `animate-shimmer` - Skeleton loading shimmer
+- `animate-slide-in-bottom` - Slide in from bottom
+- `animate-bounce-in` - Bounce in effect
+
+### Accessibility
+
+- Full keyboard navigation (Enter key support)
+- ARIA roles and labels for screen readers
+- Focus ring styles (purple theme)
+- Mobile tap highlight removal
+- `prefers-reduced-motion` support
 
 ## Rate Limits
 
@@ -345,6 +388,52 @@ npm run build    # Build for production
 npm run start    # Start production server
 npm run lint     # Run ESLint
 ```
+
+## Upgrade Intent Tracking
+
+The app includes a sophisticated upgrade intent tracking system for optimizing Creator → Pro conversion:
+
+### Features
+- **Interaction Tracking**: Records hover, tap, click, and long-hover events on locked metrics
+- **Intent Scoring**: Calculates upgrade intent score (0-100) based on engagement patterns
+- **Persistence**: 7-day localStorage history for returning users
+- **Trial System**: 5-minute temporary unlocks for any locked metric
+- **Personalization**: Dynamic prompts based on most-interacted metrics
+
+### Implementation
+```typescript
+// Track interactions
+upgradeIntent.trackInteraction({
+  metricId: 'sentiment',
+  interactionType: 'hover',
+  duration: 2500,
+  source: 'card'
+})
+
+// Start trial preview
+upgradeIntent.startTrial('retention', 5 * 60 * 1000)
+
+// Get personalized prompt
+const prompt = upgradeIntent.getPersonalizedPrompt('virality')
+
+// Check upgrade intent score
+const { upgradeIntentScore, topMetrics } = upgradeIntent.getInteractionSummary()
+```
+
+### Metrics Tracked
+| Metric ID | Display Name | Category |
+|-----------|--------------|----------|
+| sentiment | Sentiment Score | Advanced |
+| retention | Retention Rate | Advanced |
+| virality | Virality Index | Advanced |
+| velocity | Content Velocity | Advanced |
+| crossPlatform | Cross-Platform Sync | Advanced |
+| locationAnalytics | Location Analytics | Feature |
+| retentionGraphs | Retention Graphs | Feature |
+| aiRecommendations | AI Recommendations | Feature |
+| captionUsage | Caption Usage | Feature |
+| calendarInsights | Calendar Insights | Feature |
+| bestPostingTimes | Best Posting Times | Feature |
 
 ## Security Features
 
