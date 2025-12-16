@@ -627,6 +627,60 @@ export default function AnalyticsPage() {
               </Card>
             </div>
 
+            {/* Caption Usage Analytics Teaser - Creator Plan Only */}
+            {userPlan === 'creator' && (
+              <Card className="p-6 lg:p-8 mt-8 relative overflow-hidden" hover={false}>
+                {/* Blur overlay */}
+                <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex items-center justify-center">
+                  <div className="text-center p-8">
+                    <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-3xl">📝</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-text-primary mb-2">Caption Usage Analytics</h3>
+                    <p className="text-text-secondary mb-4 max-w-md">
+                      See how your identical vs adapted captions perform. Pro users see +32% better engagement with adapted captions.
+                    </p>
+                    <Link
+                      href="/settings"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity"
+                    >
+                      <span>⭐</span>
+                      Upgrade to Pro
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Blurred preview content */}
+                <div className="opacity-50">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-text-primary">📝 Caption Usage Analytics</h2>
+                      <p className="text-sm text-text-secondary mt-1">Compare performance of identical vs adapted captions</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                      <p className="text-3xl font-bold text-green-600">--</p>
+                      <p className="text-sm text-green-700 font-medium">Identical</p>
+                    </div>
+                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
+                      <p className="text-3xl font-bold text-purple-600">--</p>
+                      <p className="text-sm text-purple-700 font-medium">Adapted</p>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                      <p className="text-3xl font-bold text-blue-600">--</p>
+                      <p className="text-sm text-blue-700 font-medium">Edited</p>
+                    </div>
+                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
+                      <p className="text-3xl font-bold text-orange-600">--</p>
+                      <p className="text-sm text-orange-700 font-medium">Rewritten</p>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-6 h-32"></div>
+                </div>
+              </Card>
+            )}
+
             {/* Caption Usage Analytics - Pro Plan Only */}
             {userPlan === 'pro' && (
               <Card className="p-6 lg:p-8 mt-8" hover={false}>
