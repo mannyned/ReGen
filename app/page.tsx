@@ -51,7 +51,7 @@ const features = [
   {
     icon: '/voice-shield.png',
     title: 'Brand Voice AI',
-    description: 'ReGen learns your unique tone from past posts. Stay authentic and consistent across all platforms.',
+    description: 'ReGenr learns your unique tone from past posts. Stay authentic and consistent across all platforms.',
     gradient: false,
   },
   {
@@ -151,18 +151,16 @@ export default function Home() {
           <div className="flex items-center justify-between h-16 lg:h-20">
             {/* Logo */}
             <a href="/" className="flex items-center gap-2 group">
-              <div className="relative w-10 h-10 lg:w-12 lg:h-12 transition-transform group-hover:scale-105">
+              <div className="relative h-8 lg:h-10 transition-transform group-hover:scale-105">
                 <Image
-                  src="/logo.png"
-                  alt="ReGen Logo"
-                  fill
-                  className="object-contain"
+                  src="/logo-regenr-header.svg"
+                  alt="ReGenr Logo"
+                  width={140}
+                  height={40}
+                  className="h-full w-auto"
                   priority
                 />
               </div>
-              <span className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-primary to-accent-purple bg-clip-text text-transparent">
-                ReGen
-              </span>
             </a>
 
             {/* Desktop Navigation */}
@@ -228,7 +226,7 @@ export default function Home() {
             </h1>
 
             <p className="text-lg sm:text-xl md:text-2xl mb-10 text-white/85 max-w-3xl mx-auto leading-relaxed animate-slide-up stagger-1">
-              Upload once — ReGen instantly transforms your videos, images, and text into scroll-stopping posts for TikTok, Instagram, YouTube, and more.
+              Upload once — ReGenr instantly transforms your videos, images, and text into scroll-stopping posts for TikTok, Instagram, YouTube, and more.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up stagger-2">
@@ -291,7 +289,7 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               <p className="text-xl md:text-2xl font-bold text-primary">
-                ReGen does all that — automatically.
+                ReGenr does all that — automatically.
               </p>
             </div>
           </div>
@@ -487,10 +485,9 @@ export default function Home() {
             {/* Brand */}
             <div className="col-span-2 md:col-span-1">
               <a href="/" className="flex items-center gap-2 mb-4">
-                <div className="relative w-10 h-10">
-                  <Image src="/logo.png" alt="ReGen Logo" fill className="object-contain" />
+                <div className="relative h-8">
+                  <Image src="/logo-regenr-header.svg" alt="ReGenr Logo" width={120} height={32} className="h-full w-auto brightness-0 invert" />
                 </div>
-                <span className="text-xl font-bold">ReGen</span>
               </a>
               <p className="text-gray-400 text-sm leading-relaxed">
                 Regenerate your content. Rule every platform.
@@ -533,7 +530,7 @@ export default function Home() {
           {/* Bottom */}
           <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-gray-400 text-sm">
-              © 2025 ReGen. All rights reserved.
+              © 2025 ReGenr. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
               {/* Social Icons */}

@@ -162,18 +162,16 @@ export function AppHeader({ currentPage, showSchedule = true, planBadge, userIco
           {/* Logo */}
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="flex items-center gap-2 group">
-              <div className="relative w-10 h-10 lg:w-12 lg:h-12 transition-transform group-hover:scale-105">
+              <div className="relative h-8 lg:h-10 transition-transform group-hover:scale-105">
                 <Image
-                  src="/logo.png"
-                  alt="ReGen Logo"
-                  fill
-                  className="object-contain"
+                  src="/logo-regenr-header.svg"
+                  alt="ReGenr Logo"
+                  width={140}
+                  height={40}
+                  className="h-full w-auto"
                   priority
                 />
               </div>
-              <span className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-primary to-accent-purple bg-clip-text text-transparent">
-                ReGen
-              </span>
             </Link>
             <span className="text-text-secondary text-sm hidden sm:inline">/ {currentPage.charAt(0).toUpperCase() + currentPage.slice(1)}</span>
             {planBadge && (

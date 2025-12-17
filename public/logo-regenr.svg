@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="400" height="120">
+  <defs>
+    <!-- Main gradient for text -->
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#B47CFF"/>
+      <stop offset="50%" stop-color="#5EDFFF"/>
+      <stop offset="100%" stop-color="#4DFFD2"/>
+    </linearGradient>
+
+    <!-- Glow filter -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Subtle outer glow -->
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Glow layer (behind text) -->
+  <text x="200" y="78"
+        font-family="'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        font-size="64"
+        font-weight="600"
+        letter-spacing="-1"
+        text-anchor="middle"
+        fill="url(#textGradient)"
+        opacity="0.3"
+        filter="url(#softGlow)">
+    ReGenr
+  </text>
+
+  <!-- Main text -->
+  <text x="200" y="78"
+        font-family="'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        font-size="64"
+        font-weight="600"
+        letter-spacing="-1"
+        text-anchor="middle"
+        fill="url(#textGradient)"
+        filter="url(#glow)">
+    ReGenr
+  </text>
+</svg>
