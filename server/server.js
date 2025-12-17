@@ -79,7 +79,7 @@ app.use((err, req, res, next) => {
 
 // Start server
 const server = app.listen(PORT, () => {
-  console.log(`🚀 ReGen server running on port ${PORT}`);
+  console.log(`🚀 ReGenr server running on port ${PORT}`);
   console.log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`💾 S3 Storage: ${process.env.S3_BUCKET ? 'Enabled' : 'Local fallback'}`);
   console.log(`🤖 OpenAI API: ${process.env.OPENAI_API_KEY ? 'Enabled' : 'Fallback mode'}`);

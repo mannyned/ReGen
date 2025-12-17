@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Caption Workflow system in ReGen allows creators to generate a single **Primary Caption** for a source platform and then distribute that exact caption across multiple other platforms. The key principle is that **creators retain full control** over caption generation and distribution - no AI modifications occur without explicit user action.
+The Caption Workflow system in ReGenr allows creators to generate a single **Primary Caption** for a source platform and then distribute that exact caption across multiple other platforms. The key principle is that **creators retain full control** over caption generation and distribution - no AI modifications occur without explicit user action.
 
 ## Core Principles
 

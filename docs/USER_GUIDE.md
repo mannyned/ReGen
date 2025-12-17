@@ -1,6 +1,6 @@
-# ReGen User Guide
+# ReGenr User Guide
 
-Welcome to ReGen - your AI-powered content repurposing platform. This guide will walk you through all features and help you get the most out of the app.
+Welcome to ReGenr - your AI-powered content repurposing platform. This guide will walk you through all features and help you get the most out of the app.
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@ Welcome to ReGen - your AI-powered content repurposing platform. This guide will
 
 ### Creating an Account
 
-1. Visit the ReGen homepage
+1. Visit the ReGenr homepage
 2. Click **Sign Up**
 3. Enter your email and create a password
 4. Verify your email address
@@ -30,7 +30,7 @@ Welcome to ReGen - your AI-powered content repurposing platform. This guide will
 
 1. Go to **Settings** from the navigation menu
 2. Click **Connect** next to each platform you want to use
-3. Authorize ReGen in the platform's OAuth flow
+3. Authorize ReGenr in the platform's OAuth flow
 4. Once connected, you'll see a green checkmark
 
 **Supported Platforms:**
@@ -102,7 +102,7 @@ Track your latest actions including:
 
 ### Caption Generation
 
-ReGen uses AI to create optimized captions for each platform.
+ReGenr uses AI to create optimized captions for each platform.
 
 #### Tone Selection
 Choose your caption style:

@@ -189,7 +189,7 @@ export class GoogleSheetsExportService {
     const spreadsheet = await sheets.spreadsheets.create({
       requestBody: {
         properties: {
-          title: `ReGen Analytics Export - ${new Date().toLocaleDateString()}`,
+          title: `ReGenr Analytics Export - ${new Date().toLocaleDateString()}`,
         },
         sheets: [
           {
@@ -359,7 +359,7 @@ export class GoogleSheetsExportService {
     const platforms = [...new Set(analyticsData.map((p) => p.platform))]
 
     return [
-      ['ReGen Analytics Export Summary'],
+      ['ReGenr Analytics Export Summary'],
       [''],
       ['Generated', new Date().toLocaleString()],
       ['Date Range', `${dateFrom} - ${dateTo}`],
@@ -371,7 +371,7 @@ export class GoogleSheetsExportService {
       ['Average Engagement Rate', `${avgEngagementRate.toFixed(2)}%`],
       ['Platforms', platforms.join(', ')],
       [''],
-      ['Powered by ReGen - https://regen.app'],
+      ['Powered by ReGenr - https://regen.app'],
     ]
   }
 
@@ -517,7 +517,7 @@ export class GoogleSheetsExportService {
           },
           cell: {
             userEnteredFormat: {
-              backgroundColor: { red: 0.39, green: 0.4, blue: 0.95 }, // ReGen primary color
+              backgroundColor: { red: 0.39, green: 0.4, blue: 0.95 }, // ReGenr primary color
               textFormat: {
                 foregroundColor: { red: 1, green: 1, blue: 1 },
                 bold: true,
@@ -591,7 +591,7 @@ export class GoogleSheetsExportService {
       await sheets.spreadsheets.create({
         requestBody: {
           properties: {
-            title: 'ReGen Connection Test',
+            title: 'ReGenr Connection Test',
           },
         },
       })

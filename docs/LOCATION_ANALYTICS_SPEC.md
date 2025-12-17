@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document provides a complete production-ready specification for implementing "Location of Engagement" analytics in the ReGen app. The feature enables creators to understand **where** their audience engages most, broken down by country, region, and city, with insights into which content formats perform best by geography.
+This document provides a complete production-ready specification for implementing "Location of Engagement" analytics in the ReGenr app. The feature enables creators to understand **where** their audience engages most, broken down by country, region, and city, with insights into which content formats perform best by geography.
 
 > **Access Control:** This is a **Pro-only feature**. Free and Creator plan users will see an upgrade prompt when accessing `/analytics/location`. The feature is gated via `hasLocationAnalytics()` in `app/config/plans.ts`.
 
@@ -638,7 +638,7 @@ GROUP BY g.country_code, g.country_name, g.region_name, f.name, f.category, s.us
 ### 3.3 NoSQL Alternative (MongoDB Schema)
 
 ```javascript
-// For JSON-based storage (current ReGen pattern)
+// For JSON-based storage (current ReGenr pattern)
 // File: server/data/location_analytics.json
 
 {
@@ -2901,8 +2901,8 @@ async function migrateToPostgres() {
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 | 2024-01-31 | ReGen Team | Initial specification |
+| 1.0 | 2024-01-31 | ReGenr Team | Initial specification |
 
 ---
 
-*This document serves as the complete technical specification for implementing Location of Engagement analytics in the ReGen application. For questions or clarifications, refer to the implementation code examples or contact the development team.*
+*This document serves as the complete technical specification for implementing Location of Engagement analytics in the ReGenr application. For questions or clarifications, refer to the implementation code examples or contact the development team.*

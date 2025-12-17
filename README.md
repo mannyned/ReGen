@@ -1,6 +1,6 @@
-# ReGen - AI-Powered Content Repurposing Platform
+# ReGenr - AI-Powered Content Repurposing Platform
 
-ReGen is a modern SaaS application that helps content creators repurpose their content across multiple social media platforms using AI. Built with Next.js 16, React 19, and TypeScript.
+ReGenr is a modern SaaS application that helps content creators repurpose their content across multiple social media platforms using AI. Built with Next.js 16, React 19, and TypeScript.
 
 ## Features
 
@@ -204,7 +204,7 @@ regen-app/
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/mannyned/ReGen.git
+git clone https://github.com/mannyned/ReGenr.git
 cd regen-app
 ```
 

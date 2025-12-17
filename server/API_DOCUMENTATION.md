@@ -1,6 +1,6 @@
-# ReGen API Documentation
+# ReGenr API Documentation
 
-Complete API documentation for the ReGen content repurposing platform.
+Complete API documentation for the ReGenr content repurposing platform.
 
 ## Base URL
 ```

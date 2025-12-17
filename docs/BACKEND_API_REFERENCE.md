@@ -1,8 +1,8 @@
-# ReGen Backend API Reference
+# ReGenr Backend API Reference
 
 ## Overview
 
-ReGen's backend provides a comprehensive API for managing social media integrations across 7 platforms:
+ReGenr's backend provides a comprehensive API for managing social media integrations across 7 platforms:
 - Instagram
 - TikTok
 - YouTube

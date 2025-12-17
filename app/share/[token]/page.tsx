@@ -128,7 +128,7 @@ export default function SharePage({ params }: PageProps) {
           <div className="inline-flex items-center gap-2 mb-4">
             <span className="text-3xl">✨</span>
             <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              ReGen
+              ReGenr
             </span>
           </div>
           <h1 className="text-xl font-semibold text-gray-900">Analytics Report</h1>
@@ -243,7 +243,7 @@ export default function SharePage({ params }: PageProps) {
           <p className="text-sm text-gray-500">
             Powered by{' '}
             <a href="/" className="text-indigo-600 hover:text-indigo-700">
-              ReGen
+              ReGenr
             </a>{' '}
             • AI-Powered Analytics
           </p>

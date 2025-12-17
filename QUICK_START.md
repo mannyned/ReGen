@@ -2,7 +2,7 @@
 
 ## What's Been Implemented
 
-Your ReGen app now has a complete OAuth integration system for securely connecting social media accounts:
+Your ReGenr app now has a complete OAuth integration system for securely connecting social media accounts:
 
 ✅ **Backend OAuth Infrastructure**
 - OAuth configuration for 6 platforms (Instagram, Twitter, LinkedIn, Facebook, TikTok, YouTube)

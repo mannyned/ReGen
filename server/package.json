@@ -1,7 +1,7 @@
 {
   "name": "regen-server",
   "version": "1.0.0",
-  "description": "ReGen MVP Backend API",
+  "description": "ReGenr MVP Backend API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

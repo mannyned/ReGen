@@ -176,11 +176,11 @@ export default function GeneratePage() {
 
   const generateDefaultCaption = (platform: Platform, contentType: ContentType): string => {
     const captions: Record<Platform, string> = {
-      tiktok: 'Transform your content strategy with AI! 🚀 See how ReGen helps creators save 10+ hours per week.',
-      instagram: 'Swipe to see how AI is changing content creation 👉\n\nReGen transforms one video into posts for every platform. No more manual editing!',
-      youtube: 'The SECRET to posting on every platform without burnout | Try ReGen today',
-      facebook: 'Check out how AI is revolutionizing content creation! 🎯\n\nWith ReGen, one upload = content for all platforms.',
-      x: 'Creators: Stop wasting hours on manual repurposing.\n\nReGen AI:\n• Upload once\n• Generate for all platforms\n• Edit & schedule\n• Track performance\n\nGame changer 🔥',
+      tiktok: 'Transform your content strategy with AI! 🚀 See how ReGenr helps creators save 10+ hours per week.',
+      instagram: 'Swipe to see how AI is changing content creation 👉\n\nReGenr transforms one video into posts for every platform. No more manual editing!',
+      youtube: 'The SECRET to posting on every platform without burnout | Try ReGenr today',
+      facebook: 'Check out how AI is revolutionizing content creation! 🎯\n\nWith ReGenr, one upload = content for all platforms.',
+      x: 'Creators: Stop wasting hours on manual repurposing.\n\nReGenr AI:\n• Upload once\n• Generate for all platforms\n• Edit & schedule\n• Track performance\n\nGame changer 🔥',
       linkedin: 'Content repurposing doesn\'t have to be painful.\n\nI\'ve been using AI to transform one video into platform-specific posts for TikTok, Instagram, YouTube, and more.\n\nThe result? 10+ hours saved per week and 3x more engagement.\n\nHere\'s my workflow:',
       snapchat: 'New content drop! 💫 Created with AI magic ✨'
     }
@@ -419,8 +419,8 @@ export default function GeneratePage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Link href="/dashboard" className="flex items-center gap-3">
-                  <Image src="/logo.png" alt="ReGen Logo" width={168} height={168} className="object-contain" />
-                  <span className="text-2xl font-bold text-primary">ReGen</span>
+                  <Image src="/logo.png" alt="ReGenr Logo" width={168} height={168} className="object-contain" />
+                  <span className="text-2xl font-bold text-primary">ReGenr</span>
                 </Link>
                 <span className="text-text-secondary text-sm">/ Caption Workflow</span>
               </div>
@@ -465,8 +465,8 @@ export default function GeneratePage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Link href="/dashboard" className="flex items-center gap-3">
-                <Image src="/logo.png" alt="ReGen Logo" width={168} height={168} className="object-contain" />
-                <span className="text-2xl font-bold text-primary">ReGen</span>
+                <Image src="/logo.png" alt="ReGenr Logo" width={168} height={168} className="object-contain" />
+                <span className="text-2xl font-bold text-primary">ReGenr</span>
               </Link>
               <span className="text-text-secondary text-sm">/ AI Repurpose Results</span>
             </div>
@@ -486,7 +486,7 @@ export default function GeneratePage() {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-text-primary mb-2">AI Repurpose Results</h1>
           <p className="text-text-secondary text-lg">
-            ReGen created {previews.length} optimized previews for your selected platforms
+            ReGenr created {previews.length} optimized previews for your selected platforms
           </p>
           {uploadData.files.length > 1 && (
             <p className="text-primary text-sm mt-2">

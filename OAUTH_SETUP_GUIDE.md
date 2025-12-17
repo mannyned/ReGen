@@ -1,11 +1,11 @@
-# OAuth Setup Guide for ReGen
+# OAuth Setup Guide for ReGenr
 
-This guide will help you set up OAuth connections for each social media platform to enable secure posting from ReGen.
+This guide will help you set up OAuth connections for each social media platform to enable secure posting from ReGenr.
 
 ## Prerequisites
 
 - A developer account on each platform you want to integrate
-- Your ReGen backend running on `http://localhost:3000` (or your production URL)
+- Your ReGenr backend running on `http://localhost:3000` (or your production URL)
 
 ## General Setup Steps
 
@@ -175,7 +175,7 @@ YOUTUBE_CLIENT_SECRET=your-client-secret
 2. Fill in all the credentials you obtained
 3. Add a secure TOKEN_ENCRYPTION_KEY (random string)
 4. Restart your server: `npm run dev`
-5. Go to Settings in the ReGen app
+5. Go to Settings in the ReGenr app
 6. Click "Connect" on any platform to test OAuth
 
 ---
@@ -185,7 +185,7 @@ YOUTUBE_CLIENT_SECRET=your-client-secret
 1. Click "Connect Instagram" (or any platform)
 2. You should be redirected to the platform's authorization page
 3. Approve the permissions
-4. You'll be redirected back to ReGen
+4. You'll be redirected back to ReGenr
 5. The platform should now show as "Connected" in Settings
 
 ---

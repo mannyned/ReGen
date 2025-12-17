@@ -3,7 +3,7 @@
 // ============================================
 //
 // This file contains official brand asset information and usage guidelines
-// for all supported social media platforms in the ReGen app.
+// for all supported social media platforms in the ReGenr app.
 //
 // IMPORTANT: All logos are trademarks of their respective owners.
 // Always refer to official brand guidelines before using these assets.

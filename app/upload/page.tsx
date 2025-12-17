@@ -581,7 +581,7 @@ export default function UploadPage() {
 
             <div className="mt-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
               <p className="text-sm text-text-primary">
-                <span className="font-bold text-primary">{selectedPlatforms.length} platforms</span> selected — ReGen will create optimized versions for each
+                <span className="font-bold text-primary">{selectedPlatforms.length} platforms</span> selected — ReGenr will create optimized versions for each
               </p>
             </div>
 

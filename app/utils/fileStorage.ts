@@ -1,7 +1,7 @@
 // IndexedDB utility for storing large file data
 // This solves the localStorage quota limitation
 
-const DB_NAME = 'ReGenFileStorage'
+const DB_NAME = 'ReGenrFileStorage'
 const DB_VERSION = 1
 const STORE_NAME = 'uploadedFiles'
 

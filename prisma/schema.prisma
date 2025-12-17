@@ -1,4 +1,4 @@
-// Prisma Schema for ReGen - Universal Social Media Integration
+// Prisma Schema for ReGenr - Universal Social Media Integration
 // Database: PostgreSQL (production) / SQLite (development)
 
 generator client {

@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document provides a complete production-ready specification for implementing two new analytics features in the ReGen app:
+This document provides a complete production-ready specification for implementing two new analytics features in the ReGenr app:
 
 1. **Save Rate Analytics** - Available to Creator + Pro users
 2. **Retention Graph Analytics** - Available to Pro users only
@@ -715,7 +715,7 @@ CREATE INDEX idx_insights_active ON analytics_insights(user_id, is_dismissed, va
 ### 5.2 NoSQL Alternative (MongoDB/JSON)
 
 ```javascript
-// For current ReGen JSON-based storage pattern
+// For current ReGenr JSON-based storage pattern
 // File: server/data/save_rate_analytics.json
 
 {
@@ -2554,4 +2554,4 @@ This specification provides a complete implementation plan for:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 | 2024-01-31 | ReGen Team | Initial specification |
+| 1.0 | 2024-01-31 | ReGenr Team | Initial specification |

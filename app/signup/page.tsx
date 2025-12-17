@@ -37,14 +37,14 @@ export default function SignupPage() {
             <div className="relative w-12 h-12 transition-transform group-hover:scale-110">
               <Image
                 src="/logo.png"
-                alt="ReGen Logo"
+                alt="ReGenr Logo"
                 fill
                 className="object-contain"
                 priority
               />
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-primary to-accent-purple bg-clip-text text-transparent">
-              ReGen
+              ReGenr
             </span>
           </Link>
         </div>

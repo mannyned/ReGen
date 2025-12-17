@@ -20,7 +20,7 @@ interface WhiteLabelOptions {
   companyLogo?: string
   primaryColor?: string
   secondaryColor?: string
-  hideReGenBranding?: boolean
+  hideReGenrBranding?: boolean
 }
 
 interface ExportOptions {
@@ -595,16 +595,16 @@ export function ExportAnalytics({
                           <label className="flex items-center gap-3 cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={options.whiteLabel?.hideReGenBranding || false}
+                              checked={options.whiteLabel?.hideReGenrBranding || false}
                               onChange={(e) =>
                                 setOptions((prev) => ({
                                   ...prev,
-                                  whiteLabel: { ...prev.whiteLabel!, hideReGenBranding: e.target.checked },
+                                  whiteLabel: { ...prev.whiteLabel!, hideReGenrBranding: e.target.checked },
                                 }))
                               }
                               className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                             />
-                            <span className="text-sm text-gray-700">Hide ReGen branding</span>
+                            <span className="text-sm text-gray-700">Hide ReGenr branding</span>
                           </label>
                         </div>
                       )}

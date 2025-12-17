@@ -9,7 +9,7 @@ process.env.JWT_SECRET = 'test-secret';
 
 const app = require('../server');
 
-describe('ReGen API Tests', () => {
+describe('ReGenr API Tests', () => {
   let testJobId;
   let testScheduleId;
 

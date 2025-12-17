@@ -32,14 +32,14 @@ export default function LoginPage() {
             <div className="relative w-12 h-12 transition-transform group-hover:scale-110">
               <Image
                 src="/logo.png"
-                alt="ReGen Logo"
+                alt="ReGenr Logo"
                 fill
                 className="object-contain"
                 priority
               />
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-primary to-accent-purple bg-clip-text text-transparent">
-              ReGen
+              ReGenr
             </span>
           </Link>
         </div>
@@ -47,7 +47,7 @@ export default function LoginPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-text-primary mb-2">Welcome Back</h1>
-          <p className="text-text-secondary">Sign in to continue to ReGen</p>
+          <p className="text-text-secondary">Sign in to continue to ReGenr</p>
         </div>
 
         {/* Form */}

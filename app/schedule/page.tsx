@@ -124,8 +124,8 @@ export default function SchedulePage() {
       // Prepare content data from selected previews
       const contentData = {
         platforms: selectedPlatforms,
-        caption: selectedPreviews[0]?.caption || 'Test post from ReGen',
-        hashtags: selectedPreviews[0]?.hashtags || ['#ReGen', '#TestMode'],
+        caption: selectedPreviews[0]?.caption || 'Test post from ReGenr',
+        hashtags: selectedPreviews[0]?.hashtags || ['#ReGenr', '#TestMode'],
         files: selectedPreviews[0]?.files?.map(f => ({
           name: f.name,
           type: f.type,
@@ -210,8 +210,8 @@ export default function SchedulePage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Link href="/dashboard" className="flex items-center gap-3">
-                <Image src="/logo.png" alt="ReGen Logo" width={168} height={168} className="object-contain" />
-                <span className="text-2xl font-bold text-primary">ReGen</span>
+                <Image src="/logo.png" alt="ReGenr Logo" width={168} height={168} className="object-contain" />
+                <span className="text-2xl font-bold text-primary">ReGenr</span>
               </Link>
               <span className="text-text-secondary text-sm">/ Schedule</span>
             </div>

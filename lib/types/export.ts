@@ -49,7 +49,7 @@ export interface WhiteLabelOptions {
   secondaryColor?: string // Hex color code
   accentColor?: string // Hex color code
   footerText?: string
-  hideReGenBranding?: boolean
+  hideReGenrBranding?: boolean
   customCoverImage?: string // URL to cover image
 }
 

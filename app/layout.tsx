@@ -8,7 +8,7 @@ import PlanSwitcher from './components/PlanSwitcher'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'ReGen - AI Content Repurposing',
+  title: 'ReGenr - AI Content Repurposing',
   description: 'Transform one video into content for every platform with AI magic',
 }
 
