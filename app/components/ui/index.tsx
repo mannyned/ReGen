@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
+import { SignOutButton } from '@/components/auth'
 
 // ==========================================
 // PLATFORM LOGO COMPONENT (RE-EXPORT)
@@ -148,6 +149,7 @@ export function AppHeader({ currentPage, showSchedule = true, planBadge, userIco
     { href: '/upload', label: 'Upload', active: currentPage === 'upload' },
     ...(showSchedule ? [{ href: '/schedule', label: 'Schedule', active: currentPage === 'schedule' }] : []),
     { href: '/analytics', label: 'Analytics', active: currentPage === 'analytics' },
+    { href: '/pricing', label: 'Pricing', active: currentPage === 'pricing' },
     { href: '/settings', label: 'Settings', active: currentPage === 'settings' },
   ]
 
@@ -201,6 +203,7 @@ export function AppHeader({ currentPage, showSchedule = true, planBadge, userIco
                 {userIcon}
               </div>
             )}
+            <SignOutButton variant="ghost" size="sm" className="ml-2" />
           </nav>
 
           {/* Mobile Menu Button */}
@@ -216,7 +219,7 @@ export function AppHeader({ currentPage, showSchedule = true, planBadge, userIco
 
       {/* Mobile Menu */}
       <div className={`md:hidden overflow-hidden transition-all duration-300 ${
-        mobileMenuOpen ? 'max-h-80 border-t border-gray-100' : 'max-h-0'
+        mobileMenuOpen ? 'max-h-96 border-t border-gray-100' : 'max-h-0'
       }`}>
         <div className="px-4 py-4 space-y-1 bg-white">
           {navItems.map((item) => (
@@ -233,6 +236,13 @@ export function AppHeader({ currentPage, showSchedule = true, planBadge, userIco
               {item.label}
             </Link>
           ))}
+          <div className="pt-3 mt-3 border-t border-gray-100">
+            <SignOutButton
+              variant="danger"
+              size="md"
+              className="w-full justify-center"
+            />
+          </div>
         </div>
       </div>
     </header>

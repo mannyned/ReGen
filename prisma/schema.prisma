@@ -11,8 +11,71 @@ datasource db {
 }
 
 // ============================================
-// USER & AUTHENTICATION
+// USER & AUTHENTICATION (Supabase Auth Integration)
 // ============================================
+
+// Profile table - linked to Supabase auth.users
+// This is the primary user entity for application data.
+// The id is a UUID that matches auth.users.id from Supabase.
+//
+// Supabase manages authentication (auth.users table).
+// We manage application-level user data (profiles table).
+
+model Profile {
+  id          String   @id @db.Uuid  // UUID from Supabase auth.users.id
+  email       String   @unique
+  displayName String?  @map("display_name")
+  avatarUrl   String?  @map("avatar_url")
+  tier        UserTier @default(FREE)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Stripe subscription fields
+  stripeCustomerId       String?   @unique @map("stripe_customer_id")
+  stripeSubscriptionId   String?   @unique @map("stripe_subscription_id")
+  stripeSubscriptionStatus SubscriptionStatus? @map("stripe_subscription_status")
+  stripePriceId          String?   @map("stripe_price_id")
+  stripeCurrentPeriodEnd DateTime? @map("stripe_current_period_end")
+
+  // Relations - Profile is the main entity for all user data
+  socialConnections  SocialConnection[]
+  oauthConnections   OAuthConnection[]
+  contentUploads     ContentUpload[]
+  scheduledPosts     ScheduledPost[]
+  analyticsSnapshots AnalyticsSnapshot[]
+  exportJobs         ExportJob[]
+
+  @@index([stripeCustomerId])
+  @@map("profiles")
+}
+
+// User tier/subscription levels
+enum UserTier {
+  FREE
+  CREATOR
+  PRO
+
+  @@map("user_tier")
+}
+
+// Stripe subscription status (mirrors Stripe's subscription statuses)
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  TRIALING
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+
+  @@map("subscription_status")
+}
+
+// ============================================
+// LEGACY USER MODEL (Deprecated - Migrate to Profile)
+// ============================================
+// Keeping for backward compatibility during migration.
+// New code should use Profile with Supabase Auth.
 
 model User {
   id            String    @id @default(cuid())
@@ -26,16 +89,12 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  // Relations
-  socialConnections SocialConnection[]
-  contentUploads    ContentUpload[]
-  scheduledPosts    ScheduledPost[]
-  analyticsSnapshots AnalyticsSnapshot[]
-  sessions          Session[]
-  refreshTokens     RefreshToken[]
-  exportJobs        ExportJob[]
+  // Relations (legacy)
+  sessions      Session[]
+  refreshTokens RefreshToken[]
 }
 
+// Legacy session model (Supabase handles sessions now)
 model Session {
   id           String   @id @default(cuid())
   userId       String
@@ -48,6 +107,7 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// Legacy refresh token model (Supabase handles tokens now)
 model RefreshToken {
   id        String   @id @default(cuid())
   userId    String
@@ -58,6 +118,7 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// Legacy plan tier enum (use UserTier for new code)
 enum PlanTier {
   FREE
   CREATOR
@@ -70,38 +131,39 @@ enum PlanTier {
 
 model SocialConnection {
   id              String         @id @default(cuid())
-  userId          String
+  profileId       String         @map("profile_id") @db.Uuid
   platform        SocialPlatform
-  platformUserId  String
+  platformUserId  String         @map("platform_user_id")
   username        String?
-  displayName     String?
-  profileImageUrl String?
+  displayName     String?        @map("display_name")
+  profileImageUrl String?        @map("profile_image_url")
 
   // OAuth Tokens (encrypted at rest)
-  accessToken     String
-  refreshToken    String?
-  tokenExpiresAt  DateTime?
+  accessToken     String         @map("access_token")
+  refreshToken    String?        @map("refresh_token")
+  tokenExpiresAt  DateTime?      @map("token_expires_at")
   scopes          String[]
 
   // Platform-specific metadata
   metadata        Json?
 
   // Status
-  isActive        Boolean  @default(true)
-  lastSyncAt      DateTime?
-  lastErrorAt     DateTime?
-  lastError       String?
+  isActive        Boolean  @default(true) @map("is_active")
+  lastSyncAt      DateTime? @map("last_sync_at")
+  lastErrorAt     DateTime? @map("last_error_at")
+  lastError       String?   @map("last_error")
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   publishedPosts PublishedPost[]
   analyticsSnapshots AnalyticsSnapshot[]
 
-  @@unique([userId, platform])
+  @@unique([profileId, platform])
   @@index([platform])
-  @@index([userId])
+  @@index([profileId])
+  @@map("social_connections")
 }
 
 enum SocialPlatform {
@@ -115,38 +177,79 @@ enum SocialPlatform {
 }
 
 // ============================================
+// UNIVERSAL OAUTH CONNECTIONS
+// ============================================
+
+// New OAuth connection model for the universal OAuth engine
+// Uses string provider field for flexibility with new platforms
+// Tokens are AES-256-GCM encrypted at rest
+
+model OAuthConnection {
+  id                String    @id @default(cuid())
+  profileId         String    @map("profile_id") @db.Uuid
+  provider          String    // Provider ID: 'meta', 'tiktok', 'google', 'x', 'linkedin'
+  providerAccountId String    @map("provider_account_id")
+
+  // Encrypted OAuth tokens (AES-256-GCM)
+  accessTokenEnc    String    @map("access_token_enc")
+  refreshTokenEnc   String?   @map("refresh_token_enc")
+
+  // Token metadata
+  scopes            String[]
+  expiresAt         DateTime? @map("expires_at")
+
+  // Provider-specific data (pages, channels, business accounts, etc.)
+  metadata          Json?     @default("{}")
+
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  profile           Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  // Constraints
+  @@unique([profileId, provider])
+  @@index([provider])
+  @@index([profileId])
+  @@index([expiresAt])
+  @@map("oauth_connections")
+}
+
+// ============================================
 // CONTENT MANAGEMENT
 // ============================================
 
 model ContentUpload {
   id           String      @id @default(cuid())
-  userId       String
+  profileId    String      @map("profile_id") @db.Uuid
 
   // Original content
-  originalUrl  String
-  fileName     String
-  fileSize     Int
-  mimeType     String
+  originalUrl  String      @map("original_url")
+  fileName     String      @map("file_name")
+  fileSize     Int         @map("file_size")
+  mimeType     String      @map("mime_type")
   duration     Int?        // For videos, in seconds
 
   // Processed versions
-  thumbnailUrl String?
-  processedUrls Json?      // { platform: url } for platform-specific versions
+  thumbnailUrl  String?    @map("thumbnail_url")
+  processedUrls Json?      @map("processed_urls")
 
   // AI-generated content
-  generatedCaptions Json?  // { platform: { caption, hashtags } }
-  brandVoiceProfile String?
+  generatedCaptions Json?  @map("generated_captions")
+  brandVoiceProfile String? @map("brand_voice_profile")
 
   status       ContentStatus @default(PROCESSING)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   scheduledPosts ScheduledPost[]
   publishedPosts PublishedPost[]
 
-  @@index([userId])
+  @@index([profileId])
   @@index([status])
+  @@map("content_uploads")
 }
 
 enum ContentStatus {
@@ -162,31 +265,32 @@ enum ContentStatus {
 
 model ScheduledPost {
   id              String         @id @default(cuid())
-  userId          String
-  contentUploadId String
+  profileId       String         @map("profile_id") @db.Uuid
+  contentUploadId String         @map("content_upload_id")
 
   // Publishing details
   platforms       SocialPlatform[]
-  scheduledAt     DateTime
+  scheduledAt     DateTime       @map("scheduled_at")
   timezone        String         @default("UTC")
 
   // Content for each platform
-  platformContent Json           // { platform: { caption, hashtags, settings } }
+  platformContent Json           @map("platform_content")
 
   status          ScheduleStatus @default(PENDING)
-  processedAt     DateTime?
-  errorMessage    String?
+  processedAt     DateTime?      @map("processed_at")
+  errorMessage    String?        @map("error_message")
 
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   contentUpload ContentUpload @relation(fields: [contentUploadId], references: [id])
   publishedPosts PublishedPost[]
 
-  @@index([userId])
+  @@index([profileId])
   @@index([scheduledAt])
   @@index([status])
+  @@map("scheduled_posts")
 }
 
 enum ScheduleStatus {
@@ -276,34 +380,35 @@ model PostAnalytics {
 
 model AnalyticsSnapshot {
   id                 String          @id @default(cuid())
-  userId             String
-  socialConnectionId String
+  profileId          String          @map("profile_id") @db.Uuid
+  socialConnectionId String          @map("social_connection_id")
   platform           SocialPlatform
 
   // Account-level metrics
   followers          Int             @default(0)
   following          Int             @default(0)
-  totalPosts         Int             @default(0)
+  totalPosts         Int             @default(0) @map("total_posts")
 
   // Engagement metrics (aggregated)
-  avgEngagementRate  Float?
-  avgReach           Int?
-  avgImpressions     Int?
+  avgEngagementRate  Float?          @map("avg_engagement_rate")
+  avgReach           Int?            @map("avg_reach")
+  avgImpressions     Int?            @map("avg_impressions")
 
   // Period metrics
-  periodStart        DateTime
-  periodEnd          DateTime
+  periodStart        DateTime        @map("period_start")
+  periodEnd          DateTime        @map("period_end")
 
   // Detailed breakdown
-  metricsBreakdown   Json?
+  metricsBreakdown   Json?           @map("metrics_breakdown")
 
-  createdAt          DateTime        @default(now())
+  createdAt          DateTime        @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   socialConnection SocialConnection @relation(fields: [socialConnectionId], references: [id])
 
-  @@index([userId, platform])
+  @@index([profileId, platform])
   @@index([periodStart, periodEnd])
+  @@map("analytics_snapshots")
 }
 
 // ============================================
@@ -345,7 +450,7 @@ model WebhookEvent {
 
 model ExportJob {
   id            String       @id @default(cuid())
-  userId        String
+  profileId     String       @map("profile_id") @db.Uuid
 
   // Export configuration
   format        ExportFormat
@@ -357,47 +462,49 @@ model ExportJob {
   error         String?
 
   // Output file details
-  fileName      String?
-  fileSize      Int?
-  fileUrl       String?      // Cloud storage URL in production
+  fileName      String?      @map("file_name")
+  fileSize      Int?         @map("file_size")
+  fileUrl       String?      @map("file_url")
 
   // Audit information
-  rowCount      Int?
+  rowCount      Int?         @map("row_count")
   platforms     SocialPlatform[]
-  dateRangeFrom DateTime?
-  dateRangeTo   DateTime?
+  dateRangeFrom DateTime?    @map("date_range_from")
+  dateRangeTo   DateTime?    @map("date_range_to")
 
   // Timestamps
-  createdAt     DateTime     @default(now())
-  completedAt   DateTime?
-  expiresAt     DateTime?    // Auto-cleanup after expiration
+  createdAt     DateTime     @default(now()) @map("created_at")
+  completedAt   DateTime?    @map("completed_at")
+  expiresAt     DateTime?    @map("expires_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   auditLogs ExportAuditLog[]
 
-  @@index([userId])
+  @@index([profileId])
   @@index([status])
   @@index([createdAt])
   @@index([expiresAt])
+  @@map("export_jobs")
 }
 
 model ExportAuditLog {
   id           String   @id @default(cuid())
-  exportJobId  String
-  userId       String
+  exportJobId  String   @map("export_job_id")
+  profileId    String   @map("profile_id") @db.Uuid
 
   // Audit details
   action       String   // 'created', 'downloaded', 'expired', 'deleted'
-  ipAddress    String?
-  userAgent    String?
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
 
-  createdAt    DateTime @default(now())
+  createdAt    DateTime @default(now()) @map("created_at")
 
   exportJob ExportJob @relation(fields: [exportJobId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([profileId])
   @@index([exportJobId])
   @@index([createdAt])
+  @@map("export_audit_logs")
 }
 
 enum ExportFormat {
@@ -410,4 +517,48 @@ enum ExportStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+// ============================================
+// NOTIFICATION TRACKING
+// ============================================
+
+model NotificationLog {
+  id          String           @id @default(cuid())
+  profileId   String           @map("profile_id") @db.Uuid
+  type        NotificationType
+  channel     NotificationChannel @default(EMAIL)
+  recipient   String           // Email address or phone number
+  subject     String?
+  metadata    Json?            // Additional context (subscriptionId, interval, etc.)
+  sentAt      DateTime         @default(now()) @map("sent_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  @@index([profileId])
+  @@index([type])
+  @@index([sentAt])
+  @@map("notification_logs")
+}
+
+enum NotificationType {
+  SUBSCRIPTION_WELCOME
+  SUBSCRIPTION_RENEWED
+  SUBSCRIPTION_CANCELLED
+  SUBSCRIPTION_REACTIVATED
+  SUBSCRIPTION_EXPIRING
+  PAYMENT_FAILED
+  PAYMENT_SUCCEEDED
+  WELCOME
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+
+  @@map("notification_type")
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+
+  @@map("notification_channel")
 }
