@@ -81,16 +81,19 @@ export function hasMinimumPlan(userPlan: PlanTier, minimumPlan: PlanTier): boole
 
 /**
  * Check if user is PRO
+ * Handles both uppercase (Prisma) and lowercase plan tiers
  */
-export function isProUser(userPlan: PlanTier): boolean {
-  return userPlan === 'pro'
+export function isProUser(userPlan: PlanTier | string): boolean {
+  return userPlan.toLowerCase() === 'pro'
 }
 
 /**
  * Check if user is Creator or higher
+ * Handles both uppercase (Prisma) and lowercase plan tiers
  */
-export function isCreatorOrHigher(userPlan: PlanTier): boolean {
-  return ROLE_HIERARCHY[userPlan] >= ROLE_HIERARCHY.creator
+export function isCreatorOrHigher(userPlan: PlanTier | string): boolean {
+  const normalizedPlan = userPlan.toLowerCase() as PlanTier
+  return ROLE_HIERARCHY[normalizedPlan] >= ROLE_HIERARCHY.creator
 }
 
 // ============================================
