@@ -171,9 +171,16 @@ export async function processExpiringSubscriptions(): Promise<JobResult> {
 
       try {
         // Get subscription from Stripe
-        const subscription = await stripe.subscriptions.retrieve(
+        const subscriptionResponse = await stripe.subscriptions.retrieve(
           profile.stripeSubscriptionId
         );
+
+        // Cast subscription to access properties (Stripe SDK v20+ type changes)
+        const subscription = subscriptionResponse as unknown as {
+          id: string;
+          cancel_at_period_end: boolean;
+          current_period_end: number;
+        };
 
         // Only process subscriptions scheduled for cancellation
         if (!subscription.cancel_at_period_end) {
