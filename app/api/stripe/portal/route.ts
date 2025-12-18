@@ -67,17 +67,26 @@ export const GET = createHandler(
     const priceId = subscription.items.data[0]?.price.id;
     const subscriptionTier = priceId ? getTierFromPriceId(priceId) : null;
 
+    // Cast subscription to access properties (Stripe SDK v20+ type changes)
+    const sub = subscription as unknown as {
+      id: string;
+      status: string;
+      current_period_end: number;
+      cancel_at_period_end: boolean;
+      cancel_at: number | null;
+    };
+
     return successResponse({
       hasSubscription: true,
       tier: user!.tier,
       subscription: {
-        id: subscription.id,
-        status: subscription.status,
+        id: sub.id,
+        status: sub.status,
         tier: subscriptionTier,
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        cancelAt: subscription.cancel_at
-          ? new Date(subscription.cancel_at * 1000).toISOString()
+        currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
+        cancelAtPeriodEnd: sub.cancel_at_period_end,
+        cancelAt: sub.cancel_at
+          ? new Date(sub.cancel_at * 1000).toISOString()
           : null,
       },
     });
