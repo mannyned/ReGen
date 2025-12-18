@@ -216,11 +216,11 @@ export class TwitterPublisher extends BasePlatformPublisher {
 
   private async createTweet(
     accessToken: string,
-    content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> },
+    content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> | object },
     mediaId?: string
   ): Promise<{ id: string }> {
     const text = this.formatCaption(content)
-    const settings = content.settings || {}
+    const settings = (content.settings || {}) as Record<string, unknown>
 
     const tweetData: Record<string, unknown> = {
       text: text.substring(0, 280), // Twitter character limit

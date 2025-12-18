@@ -114,10 +114,10 @@ export class YouTubePublisher extends BasePlatformPublisher {
   private async initializeResumableUpload(
     accessToken: string,
     media: ContentPayload,
-    content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> },
+    content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> | object },
     scheduledAt?: Date
   ): Promise<string> {
-    const settings = content.settings || {}
+    const settings = (content.settings || {}) as Record<string, unknown>
     const tags = content.hashtags?.map(tag => tag.replace('#', '')) || []
 
     const videoMetadata = {
