@@ -303,7 +303,7 @@ async function handleInvoicePaid(event: Stripe.Event): Promise<void> {
   let nextBillingDate: Date | undefined;
 
   if (invoice.subscription) {
-    const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string) as Stripe.Subscription & { current_period_end: number };
+    const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string) as unknown as Stripe.Subscription & { current_period_end: number };
     nextBillingDate = new Date(subscription.current_period_end * 1000);
   }
 
