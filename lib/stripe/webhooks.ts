@@ -131,7 +131,11 @@ async function handleSubscriptionCreated(event: Stripe.Event): Promise<void> {
  * Fired when a subscription is changed (upgrade, downgrade, cancel).
  */
 async function handleSubscriptionUpdated(event: Stripe.Event): Promise<void> {
-  const subscription = event.data.object as Stripe.Subscription;
+  const subscription = event.data.object as Stripe.Subscription & {
+    current_period_end: number;
+    cancel_at_period_end: boolean;
+    cancel_at: number | null;
+  };
 
   // Find profile by subscription ID
   const profile = await prisma.profile.findFirst({
@@ -295,7 +299,7 @@ async function handleInvoicePaid(event: Stripe.Event): Promise<void> {
   let nextBillingDate: Date | undefined;
 
   if (invoice.subscription) {
-    const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+    const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string) as Stripe.Subscription & { current_period_end: number };
     nextBillingDate = new Date(subscription.current_period_end * 1000);
   }
 
