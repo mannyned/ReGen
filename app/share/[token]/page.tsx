@@ -148,8 +148,8 @@ export default function SharePage({ params }: PageProps) {
               <div className="flex-1">
                 <p className="font-medium text-gray-900">Shared Analytics Export</p>
                 <p className="text-sm text-gray-500">
-                  {linkInfo?.remainingDownloads !== null
-                    ? `${linkInfo.remainingDownloads} downloads remaining`
+                  {linkInfo?.remainingDownloads != null
+                    ? `${linkInfo?.remainingDownloads} downloads remaining`
                     : 'Unlimited downloads'}
                 </p>
               </div>
