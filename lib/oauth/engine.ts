@@ -39,6 +39,7 @@ import {
 } from './errors';
 import { encrypt, decrypt, generateSecureRandom, encryptOptional, decryptOptional } from '../crypto/encrypt';
 import { prisma } from '../db';
+import type { Prisma } from '@prisma/client';
 
 // ============================================
 // PROVIDER REGISTRY
@@ -504,7 +505,7 @@ async function storeConnection(data: OAuthConnectionData): Promise<void> {
     refreshTokenEnc: encryptOptional(data.refreshToken),
     scopes: data.scopes,
     expiresAt: data.expiresAt,
-    metadata: data.metadata || {},
+    metadata: (data.metadata || {}) as Prisma.InputJsonValue,
   };
 
   await prisma.oAuthConnection.upsert({
