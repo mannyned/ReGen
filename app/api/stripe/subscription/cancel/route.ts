@@ -49,19 +49,27 @@ export const POST = createHandler(
       cancel_at_period_end: true,
     });
 
+    // Cast subscription to access properties (Stripe SDK v20+ type changes)
+    const sub = canceledSubscription as unknown as {
+      id: string;
+      status: string;
+      current_period_end: number;
+      cancel_at_period_end: boolean;
+    };
+
     logger.info('Subscription cancelled', {
       profileId: user!.profileId,
       subscriptionId: subscription.id,
-      currentPeriodEnd: new Date(canceledSubscription.current_period_end * 1000).toISOString(),
+      currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
     });
 
     return successResponse({
       success: true,
       subscription: {
-        id: canceledSubscription.id,
-        status: canceledSubscription.status,
-        cancelAtPeriodEnd: canceledSubscription.cancel_at_period_end,
-        currentPeriodEnd: new Date(canceledSubscription.current_period_end * 1000).toISOString(),
+        id: sub.id,
+        status: sub.status,
+        cancelAtPeriodEnd: sub.cancel_at_period_end,
+        currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
       },
     });
   },
@@ -100,6 +108,14 @@ export const DELETE = createHandler(
       cancel_at_period_end: false,
     });
 
+    // Cast subscription to access properties (Stripe SDK v20+ type changes)
+    const reactivatedSub = reactivatedSubscription as unknown as {
+      id: string;
+      status: string;
+      current_period_end: number;
+      cancel_at_period_end: boolean;
+    };
+
     logger.info('Subscription reactivated', {
       profileId: user!.profileId,
       subscriptionId: subscription.id,
@@ -108,10 +124,10 @@ export const DELETE = createHandler(
     return successResponse({
       success: true,
       subscription: {
-        id: reactivatedSubscription.id,
-        status: reactivatedSubscription.status,
-        cancelAtPeriodEnd: reactivatedSubscription.cancel_at_period_end,
-        currentPeriodEnd: new Date(reactivatedSubscription.current_period_end * 1000).toISOString(),
+        id: reactivatedSub.id,
+        status: reactivatedSub.status,
+        cancelAtPeriodEnd: reactivatedSub.cancel_at_period_end,
+        currentPeriodEnd: new Date(reactivatedSub.current_period_end * 1000).toISOString(),
       },
     });
   },
