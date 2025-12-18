@@ -177,7 +177,7 @@ export class SnapchatPublisher extends BasePlatformPublisher {
     accessToken: string,
     orgId: string,
     mediaId: string,
-    content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> }
+    content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> | object }
   ): Promise<string> {
     const headline = this.formatCaption(content).substring(0, 34) // Snapchat headline limit
 
@@ -209,7 +209,7 @@ export class SnapchatPublisher extends BasePlatformPublisher {
     accessToken: string,
     orgId: string,
     creativeId: string,
-    content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> }
+    content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> | object }
   ): Promise<{ id: string; url: string }> {
     // For business accounts, this creates an ad
     // For creator accounts with organic access, this would be different
