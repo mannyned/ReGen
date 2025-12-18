@@ -199,7 +199,7 @@ async function handleSubscriptionUpdated(event: Stripe.Event): Promise<void> {
       profileId,
       subscriptionId: subscription.id,
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-      tier,
+      tier: tier ?? undefined,
     }).catch((error) => {
       logger.error('Failed to send cancellation email', { profileId, error });
     });
