@@ -346,10 +346,9 @@ export function arrayFromString<T extends z.ZodTypeAny>(itemSchema: T) {
   return z
     .union([z.array(itemSchema), z.string()])
     .transform((val) => {
-      if (Array.isArray(val)) return val;
-      return val.split(',').map((s) => s.trim()).filter(Boolean);
-    })
-    .pipe(z.array(itemSchema));
+      if (Array.isArray(val)) return val as z.infer<typeof itemSchema>[];
+      return val.split(',').map((s) => s.trim()).filter(Boolean) as z.infer<typeof itemSchema>[];
+    });
 }
 
 /**
