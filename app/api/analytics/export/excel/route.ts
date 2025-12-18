@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
     const excelService = new ExcelExportService()
     const result = await excelService.generateExcelExport(
       user.id,
-      user.plan,
+      user.plan.toLowerCase() as 'free' | 'creator' | 'pro',
       options,
       analyticsData
     )
