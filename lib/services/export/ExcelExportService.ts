@@ -67,7 +67,7 @@ export class ExcelExportService {
     }
 
     // Generate buffer
-    const buffer = await workbook.xlsx.writeBuffer() as Buffer
+    const buffer = await workbook.xlsx.writeBuffer() as unknown as Buffer
 
     const fileName = this.generateFileName(userId, options.filters)
 
