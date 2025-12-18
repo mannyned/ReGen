@@ -112,10 +112,12 @@ export class MemoryStore implements RateLimitStore {
  * Requires REDIS_URL environment variable.
  */
 export class RedisStore implements RateLimitStore {
-  private redis: RedisClient | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private redis: any = null;
   private connecting = false;
 
-  private async getClient(): Promise<RedisClient | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async getClient(): Promise<any> {
     if (this.redis) return this.redis;
     if (this.connecting) return null;
 
@@ -219,15 +221,6 @@ export class RedisStore implements RateLimitStore {
     }
   }
 }
-
-// Type for Redis client
-type RedisClient = {
-  connect(): Promise<void>;
-  quit(): Promise<void>;
-  get(key: string): Promise<string | null>;
-  set(key: string, value: string, options?: { PX?: number }): Promise<void>;
-  del(key: string): Promise<void>;
-};
 
 // ============================================
 // STORE FACTORY
