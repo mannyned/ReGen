@@ -184,7 +184,7 @@ async function getUserTier(
       .from('profiles')
       .select('tier')
       .eq('id', userId)
-      .single();
+      .single<{ tier: string }>();
 
     if (error || !data) {
       return 'FREE';
