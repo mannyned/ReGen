@@ -362,13 +362,14 @@ export function GradientBanner({ children, className = '' }: GradientBannerProps
 
 interface BadgeProps {
   children: React.ReactNode
-  variant?: 'primary' | 'success' | 'warning' | 'error' | 'gray' | 'gradient'
+  variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'gray' | 'gradient'
   className?: string
 }
 
 export function Badge({ children, variant = 'primary', className = '' }: BadgeProps) {
   const variants = {
     primary: 'bg-primary/10 text-primary',
+    secondary: 'bg-blue-100 text-blue-700',
     success: 'bg-green-100 text-green-700',
     warning: 'bg-yellow-100 text-yellow-700',
     error: 'bg-red-100 text-red-700',
