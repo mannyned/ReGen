@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { scheduledReportService } from '@/lib/services/export/ScheduledReportService'
-import { createProOnlyMiddleware } from '@/lib/middleware/roleGuard'
+import { isProUser } from '@/lib/middleware/roleGuard'
 import type { ScheduledReportCreateInput } from '@/lib/types/export'
 import type { PlanTier } from '@prisma/client'
 
@@ -39,10 +39,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Check PRO access
-    const middleware = createProOnlyMiddleware()
-    const accessCheck = middleware({ user })
-
-    if (!accessCheck.allowed) {
+    if (!isProUser(user.plan)) {
       return NextResponse.json(
         {
           error: 'Forbidden',
@@ -85,10 +82,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check PRO access
-    const middleware = createProOnlyMiddleware()
-    const accessCheck = middleware({ user })
-
-    if (!accessCheck.allowed) {
+    if (!isProUser(user.plan)) {
       return NextResponse.json(
         {
           error: 'Forbidden',

@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { ExcelExportService } from '@/lib/services/export/ExcelExportService'
-import { createProOnlyMiddleware } from '@/lib/middleware/roleGuard'
+import { isProUser } from '@/lib/middleware/roleGuard'
 import type { ExportOptions, NormalizedPostAnalytics } from '@/lib/types/export'
 import type { PlanTier } from '@prisma/client'
 
@@ -98,14 +98,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Check PRO access
-    const middleware = createProOnlyMiddleware()
-    const accessCheck = middleware({ user })
-
-    if (!accessCheck.allowed) {
+    if (!isProUser(user.plan)) {
       return NextResponse.json(
         {
           error: 'Forbidden',
-          message: accessCheck.message || 'Excel export requires PRO plan',
+          message: 'Excel export requires PRO plan',
           upgradeUrl: '/pricing',
         },
         { status: 403 }
