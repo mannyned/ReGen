@@ -246,26 +246,28 @@ export default function AnalyticsPage() {
                   <p className="text-xs text-text-secondary/70">This switcher is for testing purposes only</p>
                 </div>
                 <div className="flex gap-2">
-                  {(['free', 'creator', 'pro'] as PlanType[]).map((plan) => (
-                    <button
-                      key={plan}
-                      onClick={() => {
-                        setUserPlan(plan)
-                        localStorage.setItem('userPlan', plan)
-                      }}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                        userPlan === plan
-                          ? plan === 'pro'
-                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                            : plan === 'creator'
-                            ? 'bg-primary text-white'
-                            : 'bg-blue-500 text-white'
-                          : 'bg-white text-text-secondary hover:bg-gray-50'
-                      }`}
-                    >
-                      {plan}
-                    </button>
-                  ))}
+                  {(['free', 'creator', 'pro'] as PlanType[]).map((plan) => {
+                    const isActive = userPlan === plan
+                    const activeClass = plan === 'pro'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                      : plan === 'creator'
+                      ? 'bg-primary text-white'
+                      : 'bg-blue-500 text-white'
+                    return (
+                      <button
+                        key={plan}
+                        onClick={() => {
+                          setUserPlan(plan)
+                          localStorage.setItem('userPlan', plan)
+                        }}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                          isActive ? activeClass : 'bg-white text-text-secondary hover:bg-gray-50'
+                        }`}
+                      >
+                        {plan}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -1257,26 +1259,28 @@ export default function AnalyticsPage() {
                   <p className="text-xs text-text-secondary/70">This switcher is for testing purposes only</p>
                 </div>
                 <div className="flex gap-2">
-                  {(['free', 'creator', 'pro'] as PlanType[]).map((plan) => (
-                    <button
-                      key={plan}
-                      onClick={() => {
-                        setUserPlan(plan)
-                        localStorage.setItem('userPlan', plan)
-                      }}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                        userPlan === plan
-                          ? plan === 'pro'
-                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                            : plan === 'creator'
-                            ? 'bg-primary text-white'
-                            : 'bg-blue-500 text-white'
-                          : 'bg-white text-text-secondary hover:bg-gray-50'
-                      }`}
-                    >
-                      {plan} Plan
-                    </button>
-                  ))}
+                  {(['free', 'creator', 'pro'] as PlanType[]).map((plan) => {
+                    const isActive = userPlan === plan
+                    const activeClass = plan === 'pro'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                      : plan === 'creator'
+                      ? 'bg-primary text-white'
+                      : 'bg-blue-500 text-white'
+                    return (
+                      <button
+                        key={plan}
+                        onClick={() => {
+                          setUserPlan(plan)
+                          localStorage.setItem('userPlan', plan)
+                        }}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                          isActive ? activeClass : 'bg-white text-text-secondary hover:bg-gray-50'
+                        }`}
+                      >
+                        {plan} Plan
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </div>
