@@ -313,7 +313,7 @@ interface StatCardProps {
   value: string | number
   icon: string
   trend?: {
-    value: string
+    value: string | number
     positive?: boolean
   }
   subtitle?: string
