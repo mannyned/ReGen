@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
     )
 
     // Return the Excel file
-    return new NextResponse(result.buffer, {
+    return new NextResponse(new Uint8Array(result.buffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
