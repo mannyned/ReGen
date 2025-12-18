@@ -137,7 +137,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       subject,
       html: emailHtml,
       text: emailText,
-      reply_to: replyTo,
+      replyTo: replyTo,
     });
 
     if (result.error) {
