@@ -17,6 +17,7 @@ import {
 export async function GET(request: NextRequest) {
   const { identity, response } = await requireVerifiedIdentity(request);
   if (response) return response;
+  if (!identity) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const tier = identity.tier;
 
