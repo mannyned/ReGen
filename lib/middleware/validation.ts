@@ -139,8 +139,9 @@ export async function validateRequestBody<T>(
   // Run custom validators
   if (schema.validators) {
     for (const [field, validator] of Object.entries(schema.validators)) {
-      if (validator && body[field as keyof T] !== undefined) {
-        const error = validator(body[field as keyof T])
+      const validatorFn = validator as ((value: unknown) => string | null) | undefined
+      if (validatorFn && body[field as keyof T] !== undefined) {
+        const error = validatorFn(body[field as keyof T])
         if (error) {
           errors.push({ field, message: error })
         }
