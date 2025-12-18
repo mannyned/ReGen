@@ -18,6 +18,8 @@ export interface PlanConfig {
   seats: number;
   popular?: boolean;
   features: PlanFeature[];
+  cta?: string;
+  ctaVariant?: 'primary' | 'secondary';
 }
 
 interface PricingCardProps {
