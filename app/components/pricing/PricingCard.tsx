@@ -19,7 +19,7 @@ export interface PlanConfig {
   popular?: boolean;
   features: PlanFeature[];
   cta?: string;
-  ctaVariant?: 'primary' | 'secondary';
+  ctaVariant?: 'primary' | 'secondary' | 'gradient';
 }
 
 interface PricingCardProps {
