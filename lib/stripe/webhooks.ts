@@ -273,7 +273,11 @@ async function handleSubscriptionDeleted(event: Stripe.Event): Promise<void> {
  * Fired when an invoice is paid (subscription renewal).
  */
 async function handleInvoicePaid(event: Stripe.Event): Promise<void> {
-  const invoice = event.data.object as Stripe.Invoice;
+  const invoice = event.data.object as Stripe.Invoice & {
+    subscription: string | null;
+    billing_reason: string | null;
+    hosted_invoice_url: string | null;
+  };
 
   logger.info('Invoice paid', {
     invoiceId: invoice.id,
