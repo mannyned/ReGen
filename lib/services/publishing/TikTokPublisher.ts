@@ -143,14 +143,14 @@ export class TikTokPublisher extends BasePlatformPublisher {
   private async createPost(
     accessToken: string,
     publishId: string,
-    content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> },
+    content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> | object },
     scheduledAt?: Date
   ): Promise<{
     publish_id: string
     share_url: string
   }> {
     const caption = this.formatCaption(content)
-    const settings = content.settings || {}
+    const settings = (content.settings || {}) as Record<string, unknown>
 
     const postData: Record<string, unknown> = {
       publish_id: publishId,
