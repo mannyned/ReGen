@@ -131,14 +131,17 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       throw new Error('Email must have either html or text content');
     }
 
-    const result = await resend.emails.send({
+    // Build email options, only including defined properties
+    const emailOptions: Parameters<typeof resend.emails.send>[0] = {
       from,
       to: Array.isArray(to) ? to : [to],
       subject,
-      html: emailHtml,
-      text: emailText,
-      replyTo: replyTo,
-    });
+      ...(emailHtml && { html: emailHtml }),
+      ...(emailText && { text: emailText }),
+      ...(replyTo && { replyTo }),
+    };
+
+    const result = await resend.emails.send(emailOptions);
 
     if (result.error) {
       logger.error('Failed to send email', {
