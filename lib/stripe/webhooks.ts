@@ -220,7 +220,7 @@ async function handleSubscriptionUpdated(event: Stripe.Event): Promise<void> {
     await sendSubscriptionReactivatedEmail({
       profileId,
       subscriptionId: subscription.id,
-      tier,
+      tier: tier ?? undefined,
     }).catch((error) => {
       logger.error('Failed to send reactivation email', { profileId, error });
     });
