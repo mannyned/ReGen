@@ -132,7 +132,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     }
 
     // Build email options, only including defined properties
-    const emailOptions: Parameters<typeof resend.emails.send>[0] = {
+    const emailOptions = {
       from,
       to: Array.isArray(to) ? to : [to],
       subject,
@@ -141,7 +141,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       ...(replyTo && { replyTo }),
     };
 
-    const result = await resend.emails.send(emailOptions);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await resend.emails.send(emailOptions as any);
 
     if (result.error) {
       logger.error('Failed to send email', {
