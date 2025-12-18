@@ -176,11 +176,11 @@ export class LinkedInPublisher extends BasePlatformPublisher {
   private async createShare(
     accessToken: string,
     authorUrn: string,
-    content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> },
+    content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> | object },
     assetUrn?: string
   ): Promise<{ id: string }> {
     const commentary = this.formatCaption(content)
-    const settings = content.settings || {}
+    const settings = (content.settings || {}) as Record<string, unknown>
 
     const shareData: Record<string, unknown> = {
       author: authorUrn,
