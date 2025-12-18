@@ -272,16 +272,18 @@ export async function previewProration(
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
-  const invoice = await stripe.invoices.retrieveUpcoming({
+  const invoice = await stripe.invoices.createPreview({
     customer: customerId,
     subscription: subscriptionId,
-    subscription_items: [
-      {
-        id: subscription.items.data[0].id,
-        price: newPriceId,
-      },
-    ],
-    subscription_proration_behavior: 'create_prorations',
+    subscription_details: {
+      items: [
+        {
+          id: subscription.items.data[0].id,
+          price: newPriceId,
+        },
+      ],
+      proration_behavior: 'create_prorations',
+    },
   });
 
   return invoice;
