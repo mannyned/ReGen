@@ -41,11 +41,12 @@ export default function SettingsPage() {
   const [showSaveToast, setShowSaveToast] = useState(false)
 
   // Profile state
-  const [displayName, setDisplayName] = useState('Alex Morgan')
-  const [username, setUsername] = useState('alexmorgan')
-  const [email, setEmail] = useState('alex@example.com')
+  const [displayName, setDisplayName] = useState('')
+  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [bio, setBio] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
+  const [profileLoading, setProfileLoading] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Security state
@@ -82,11 +83,37 @@ export default function SettingsPage() {
   useEffect(() => {
     setMounted(true)
 
-    // Load user plan
-    const savedPlan = localStorage.getItem('userPlan')
-    if (savedPlan) {
-      setUserPlan(savedPlan as 'free' | 'creator' | 'pro')
+    // Fetch user profile from API
+    async function fetchUserProfile() {
+      try {
+        const response = await fetch('/api/auth/me')
+        if (response.ok) {
+          const data = await response.json()
+          setDisplayName(data.displayName || data.email?.split('@')[0] || '')
+          setUsername(data.email?.split('@')[0] || '')
+          setEmail(data.email || '')
+          setAvatarUrl(data.avatarUrl || '')
+
+          // Set plan from database
+          if (data.tier) {
+            const tier = data.tier.toLowerCase() as 'free' | 'creator' | 'pro'
+            setUserPlan(tier)
+            localStorage.setItem('userPlan', tier)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error)
+        // Fallback to localStorage for plan
+        const savedPlan = localStorage.getItem('userPlan')
+        if (savedPlan) {
+          setUserPlan(savedPlan as 'free' | 'creator' | 'pro')
+        }
+      } finally {
+        setProfileLoading(false)
+      }
     }
+
+    fetchUserProfile()
 
     // Initialize platforms
     const initializePlatforms = async () => {
