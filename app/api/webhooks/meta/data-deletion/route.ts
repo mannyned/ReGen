@@ -99,29 +99,29 @@ export async function POST(request: NextRequest) {
     // Generate confirmation code
     const confirmationCode = generateConfirmationCode();
 
-    // Find and delete the user's OAuth account data
+    // Find and delete the user's OAuth connection data
     try {
-      // Find the OAuth account by provider account ID
-      const oauthAccount = await prisma.oAuthAccount.findFirst({
+      // Find the OAuth connection by provider account ID
+      const oauthConnection = await prisma.oAuthConnection.findFirst({
         where: {
           provider: 'meta',
           providerAccountId: metaUserId,
         },
       });
 
-      if (oauthAccount) {
-        // Delete the OAuth account (this removes the connection)
-        await prisma.oAuthAccount.delete({
-          where: { id: oauthAccount.id },
+      if (oauthConnection) {
+        // Delete the OAuth connection (this removes the connection)
+        await prisma.oAuthConnection.delete({
+          where: { id: oauthConnection.id },
         });
 
-        console.log('[Meta Data Deletion] Deleted OAuth account for user:', metaUserId);
+        console.log('[Meta Data Deletion] Deleted OAuth connection for user:', metaUserId);
 
         // Optionally: Delete related data (posts, analytics, etc.)
         // This depends on your data model and retention policy
-        // await prisma.post.deleteMany({ where: { userId: oauthAccount.profileId, platform: 'meta' } });
+        // await prisma.publishedPost.deleteMany({ where: { profileId: oauthConnection.profileId, platform: 'meta' } });
       } else {
-        console.log('[Meta Data Deletion] No OAuth account found for Meta user:', metaUserId);
+        console.log('[Meta Data Deletion] No OAuth connection found for Meta user:', metaUserId);
       }
     } catch (dbError) {
       console.error('[Meta Data Deletion] Database error:', dbError);
