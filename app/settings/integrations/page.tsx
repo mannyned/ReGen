@@ -17,6 +17,7 @@ const mockTeamSeats: TeamSeat[] = [
     displayName: 'You',
     role: 'owner',
     joinedAt: new Date(),
+    invitedAt: new Date(),
   },
 ];
 
