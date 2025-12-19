@@ -65,6 +65,9 @@ export const PUBLIC_ROUTES: RouteConfig[] = [
 
   // Public share pages
   { path: '/share', prefix: true },
+
+  // Data deletion status (Meta requirement)
+  { path: '/data-deletion-status' },
 ];
 
 /**
