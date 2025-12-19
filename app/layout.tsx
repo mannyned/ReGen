@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { PlanProvider } from './context/PlanContext'
 import { UpgradeIntentProvider } from './context/UpgradeIntentContext'
+import { ToastProvider } from './components/ui/Toast'
 import PlanSwitcher from './components/PlanSwitcher'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -22,8 +23,10 @@ export default function RootLayout({
       <body className={inter.className}>
         <PlanProvider>
           <UpgradeIntentProvider>
-            {children}
-            <PlanSwitcher />
+            <ToastProvider>
+              {children}
+              <PlanSwitcher />
+            </ToastProvider>
           </UpgradeIntentProvider>
         </PlanProvider>
       </body>
