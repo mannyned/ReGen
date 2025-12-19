@@ -6,13 +6,10 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
 
-  // Skip TypeScript and ESLint errors during build
+  // Skip TypeScript errors during build
   // This allows deployment while issues are being fixed
   typescript: {
     ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
   },
 
   images: {
