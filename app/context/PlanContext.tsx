@@ -10,6 +10,7 @@ interface PlanContextType {
   usedUploads: number
   incrementUploads: () => void
   resetUploads: () => void
+  isLoading: boolean
 }
 
 const PlanContext = createContext<PlanContextType | undefined>(undefined)
@@ -18,22 +19,49 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   const [currentPlan, setCurrentPlan] = useState<PlanType>('free')
   const [usedUploads, setUsedUploads] = useState(0)
   const [planFeatures, setPlanFeatures] = useState<PlanFeatures>(getPlan('free'))
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Load plan from localStorage on mount
+  // Fetch plan from database on mount, fallback to localStorage
   useEffect(() => {
-    const savedPlan = localStorage.getItem('userPlan') as PlanType
-    const savedUploads = localStorage.getItem('usedUploads')
+    async function fetchUserTier() {
+      try {
+        // Try to get tier from authenticated user
+        const response = await fetch('/api/auth/me')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.tier) {
+            const tier = data.tier.toLowerCase() as PlanType
+            if (['free', 'creator', 'pro'].includes(tier)) {
+              setCurrentPlan(tier)
+              setPlanFeatures(getPlan(tier))
+              localStorage.setItem('userPlan', tier)
+              setIsLoading(false)
+              return
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user tier:', error)
+      }
 
-    if (savedPlan && ['free', 'creator', 'pro'].includes(savedPlan)) {
-      setCurrentPlan(savedPlan)
-      setPlanFeatures(getPlan(savedPlan))
+      // Fallback to localStorage if not authenticated or fetch failed
+      const savedPlan = localStorage.getItem('userPlan') as PlanType
+      if (savedPlan && ['free', 'creator', 'pro'].includes(savedPlan)) {
+        setCurrentPlan(savedPlan)
+        setPlanFeatures(getPlan(savedPlan))
+      }
+      setIsLoading(false)
     }
 
+    fetchUserTier()
+
+    // Load uploads counter
+    const savedUploads = localStorage.getItem('usedUploads')
     if (savedUploads) {
       setUsedUploads(parseInt(savedUploads, 10))
     }
 
-    // Reset uploads counter monthly (mock - resets on page load for demo)
+    // Reset uploads counter monthly
     const lastReset = localStorage.getItem('uploadsLastReset')
     const now = new Date()
     const lastResetDate = lastReset ? new Date(lastReset) : null
@@ -71,7 +99,8 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         planFeatures,
         usedUploads,
         incrementUploads,
-        resetUploads
+        resetUploads,
+        isLoading
       }}
     >
       {children}
