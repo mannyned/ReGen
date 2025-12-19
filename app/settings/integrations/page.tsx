@@ -16,7 +16,7 @@ const mockTeamSeats: TeamSeat[] = [
     email: 'you@example.com',
     displayName: 'You',
     role: 'owner',
-    joinedAt: new Date().toISOString(),
+    joinedAt: new Date(),
   },
 ];
 
