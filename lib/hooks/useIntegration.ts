@@ -16,6 +16,16 @@ interface UseIntegrationReturn {
   error: string | null;
 }
 
+// Map platform IDs to OAuth provider IDs
+const platformToProvider: Record<PlatformId, string> = {
+  meta: 'meta',
+  tiktok: 'tiktok',
+  youtube: 'google', // YouTube uses Google OAuth
+  twitter: 'x',
+  linkedin: 'linkedin',
+  snapchat: 'snapchat',
+};
+
 export function useIntegration(options: UseIntegrationOptions = {}): UseIntegrationReturn {
   const [isConnecting, setIsConnecting] = useState<PlatformId | null>(null);
   const [isDisconnecting, setIsDisconnecting] = useState<PlatformId | null>(null);
@@ -26,56 +36,47 @@ export function useIntegration(options: UseIntegrationOptions = {}): UseIntegrat
     setError(null);
 
     try {
-      // Initiate OAuth flow
-      const response = await fetch(`/api/integrations/${platform}/connect`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const provider = platformToProvider[platform];
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to initiate connection');
-      }
-
-      const { authUrl } = await response.json();
-
-      // Open OAuth popup or redirect
+      // Open OAuth popup - redirect directly to start endpoint
       const width = 600;
       const height = 700;
       const left = window.screenX + (window.outerWidth - width) / 2;
       const top = window.screenY + (window.outerHeight - height) / 2;
 
       const popup = window.open(
-        authUrl,
+        `/api/auth/${provider}/start`,
         `${platform}-oauth`,
         `width=${width},height=${height},left=${left},top=${top},popup=1`
       );
 
-      // Listen for OAuth callback
-      const handleMessage = (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) return;
-
-        if (event.data?.type === 'oauth-success' && event.data?.platform === platform) {
-          window.removeEventListener('message', handleMessage);
-          setIsConnecting(null);
-          options.onSuccess?.(platform);
-        }
-
-        if (event.data?.type === 'oauth-error' && event.data?.platform === platform) {
-          window.removeEventListener('message', handleMessage);
-          setIsConnecting(null);
-          setError(event.data.error || 'Connection failed');
-          options.onError?.(platform, event.data.error);
-        }
-      };
-
-      window.addEventListener('message', handleMessage);
-
-      // Poll for popup close (user cancelled)
+      // Poll for popup close and check URL for success/error
       const checkClosed = setInterval(() => {
+        try {
+          // Check if popup navigated back to our domain with success/error
+          if (popup?.location?.href?.includes('/settings/integrations')) {
+            const url = new URL(popup.location.href);
+            const connected = url.searchParams.get('connected');
+            const errorCode = url.searchParams.get('error');
+
+            clearInterval(checkClosed);
+            popup.close();
+            setIsConnecting(null);
+
+            if (connected) {
+              options.onSuccess?.(platform);
+            } else if (errorCode) {
+              const errorMsg = `Connection failed: ${errorCode}`;
+              setError(errorMsg);
+              options.onError?.(platform, errorMsg);
+            }
+          }
+        } catch {
+          // Cross-origin error - popup is on provider's domain, keep polling
+        }
+
         if (popup?.closed) {
           clearInterval(checkClosed);
-          window.removeEventListener('message', handleMessage);
           setIsConnecting(null);
         }
       }, 500);
@@ -93,7 +94,9 @@ export function useIntegration(options: UseIntegrationOptions = {}): UseIntegrat
     setError(null);
 
     try {
-      const response = await fetch(`/api/integrations/${platform}/disconnect`, {
+      const provider = platformToProvider[platform];
+
+      const response = await fetch(`/api/auth/${provider}/disconnect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
