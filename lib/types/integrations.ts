@@ -26,8 +26,8 @@ export interface ConnectionStatus {
   accountName?: string;
   accountId?: string;
   avatarUrl?: string;
-  connectedAt?: Date;
-  expiresAt?: Date;
+  connectedAt?: Date | string;
+  expiresAt?: Date | string;
   scopes?: string[];
 }
 
