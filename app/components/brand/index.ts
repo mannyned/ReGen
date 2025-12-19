@@ -1,0 +1,1 @@
+export { ReGenrLogo } from './ReGenrLogo';
