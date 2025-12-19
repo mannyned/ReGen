@@ -28,38 +28,55 @@ interface SignedRequest {
  * Parse and verify Meta's signed request
  */
 function parseSignedRequest(signedRequest: string): SignedRequest | null {
-  if (!APP_SECRET) {
-    console.error('[Meta Data Deletion] APP_SECRET not configured');
+  try {
+    if (!APP_SECRET) {
+      console.error('[Meta Data Deletion] APP_SECRET not configured');
+      return null;
+    }
+
+    const parts = signedRequest.split('.');
+    if (parts.length !== 2) {
+      console.error('[Meta Data Deletion] Invalid signed request format');
+      return null;
+    }
+
+    const [encodedSig, payload] = parts;
+
+    if (!encodedSig || !payload) {
+      console.error('[Meta Data Deletion] Invalid signed request format');
+      return null;
+    }
+
+    // Decode the signature
+    const sig = Buffer.from(encodedSig.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+
+    // Decode the payload
+    const data = JSON.parse(
+      Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8')
+    ) as SignedRequest;
+
+    // Verify the signature
+    const expectedSig = crypto
+      .createHmac('sha256', APP_SECRET)
+      .update(payload)
+      .digest();
+
+    // Ensure buffers are same length for timingSafeEqual
+    if (sig.length !== expectedSig.length) {
+      console.error('[Meta Data Deletion] Signature length mismatch');
+      return null;
+    }
+
+    if (!crypto.timingSafeEqual(sig, expectedSig)) {
+      console.error('[Meta Data Deletion] Invalid signature');
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('[Meta Data Deletion] Error parsing signed request:', error);
     return null;
   }
-
-  const [encodedSig, payload] = signedRequest.split('.');
-
-  if (!encodedSig || !payload) {
-    console.error('[Meta Data Deletion] Invalid signed request format');
-    return null;
-  }
-
-  // Decode the signature
-  const sig = Buffer.from(encodedSig.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
-
-  // Decode the payload
-  const data = JSON.parse(
-    Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8')
-  ) as SignedRequest;
-
-  // Verify the signature
-  const expectedSig = crypto
-    .createHmac('sha256', APP_SECRET)
-    .update(payload)
-    .digest();
-
-  if (!crypto.timingSafeEqual(sig, expectedSig)) {
-    console.error('[Meta Data Deletion] Invalid signature');
-    return null;
-  }
-
-  return data;
 }
 
 /**
@@ -71,8 +88,19 @@ function generateConfirmationCode(): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
-    const signedRequest = formData.get('signed_request') as string;
+    let signedRequest: string | null = null;
+
+    // Try to parse form data
+    try {
+      const formData = await request.formData();
+      signedRequest = formData.get('signed_request') as string;
+    } catch {
+      console.error('[Meta Data Deletion] Failed to parse form data');
+      return NextResponse.json(
+        { error: 'Invalid request body' },
+        { status: 400 }
+      );
+    }
 
     if (!signedRequest) {
       console.error('[Meta Data Deletion] Missing signed_request');
