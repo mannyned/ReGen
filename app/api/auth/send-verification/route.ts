@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { verificationStore } from '@/lib/verification-store'
 
-// Initialize Resend with API key
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy initialize Resend client
+let resendClient: Resend | null = null
+function getResend(): Resend | null {
+  if (!process.env.RESEND_API_KEY) return null
+  if (!resendClient) {
+    resendClient = new Resend(process.env.RESEND_API_KEY)
+  }
+  return resendClient
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,7 +28,8 @@ export async function POST(request: NextRequest) {
     verificationStore.setCode(email, code, 10) // 10 minutes expiry
 
     // Check if Resend API key is configured
-    if (!process.env.RESEND_API_KEY) {
+    const resend = getResend()
+    if (!resend) {
       // Development mode: return the code in response for testing
       console.log(`[DEV MODE] Verification code for ${email}: ${code}`)
       return NextResponse.json({
