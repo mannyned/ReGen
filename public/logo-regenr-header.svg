@@ -6,26 +6,16 @@
       <stop offset="50%" stop-color="#5EDFFF"/>
       <stop offset="100%" stop-color="#4DFFD2"/>
     </linearGradient>
-
-    <!-- Subtle glow -->
-    <filter id="subtleGlow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
   </defs>
 
-  <!-- Main text -->
+  <!-- Main text - sharp, no blur -->
   <text x="80" y="34"
         font-family="'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-        font-size="32"
-        font-weight="600"
-        letter-spacing="-1"
+        font-size="34"
+        font-weight="700"
+        letter-spacing="-0.5"
         text-anchor="middle"
-        fill="url(#textGradient)"
-        filter="url(#subtleGlow)">
+        fill="url(#textGradient)">
     ReGenr
   </text>
 </svg>

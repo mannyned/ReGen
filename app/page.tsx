@@ -151,12 +151,12 @@ export default function Home() {
           <div className="flex items-center justify-between h-16 lg:h-20">
             {/* Logo */}
             <a href="/" className="flex items-center gap-2 group">
-              <div className="relative h-8 lg:h-10 transition-transform group-hover:scale-105">
+              <div className="relative h-10 lg:h-12 transition-transform group-hover:scale-105">
                 <Image
                   src="/logo-regenr-header.svg"
                   alt="ReGenr Logo"
-                  width={140}
-                  height={40}
+                  width={180}
+                  height={54}
                   className="h-full w-auto"
                   priority
                 />
@@ -270,28 +270,28 @@ export default function Home() {
       </section>
 
       {/* Problem Section */}
-      <section className="py-20 lg:py-28 bg-white relative">
+      <section className="py-24 lg:py-32 bg-white relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-50 mb-8">
-              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+          <div className="max-w-4xl mx-auto flex flex-col items-center text-center">
+            {/* Centered Logo */}
+            <div className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 relative mb-12">
+              <Image
+                src="/brand/regenr_problem_logo_1024.png"
+                alt="ReGenr"
+                fill
+                className="object-contain"
+              />
             </div>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-text-primary mb-6 tracking-tight">
-              The Problem
+
+            {/* Problem Statement */}
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-text-primary mb-8 tracking-tight leading-snug max-w-3xl">
+              Creators spend more time reshaping content for different platforms than actually creating it.
             </h2>
-            <p className="text-xl text-text-secondary mb-8 leading-relaxed">
-              Creators spend <span className="text-primary font-semibold">hours</span> cutting clips, rewriting captions, resizing images, and reformatting the same posts for every platform.
+
+            {/* Solution Statement */}
+            <p className="text-lg md:text-xl lg:text-2xl text-primary font-bold leading-relaxed max-w-2xl">
+              ReGenr regenerates one piece of content into platform-ready formats automatically.
             </p>
-            <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-primary/5 border border-primary/20">
-              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <p className="text-xl md:text-2xl font-bold text-primary">
-                ReGenr does all that — automatically.
-              </p>
-            </div>
           </div>
         </div>
       </section>

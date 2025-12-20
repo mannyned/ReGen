@@ -43,7 +43,7 @@ export default function RootLayout({
           <UpgradeIntentProvider>
             <ToastProvider>
               {children}
-              <PlanSwitcher />
+              {process.env.NODE_ENV === 'development' && <PlanSwitcher />}
             </ToastProvider>
           </UpgradeIntentProvider>
         </PlanProvider>

@@ -3,9 +3,22 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { AppHeader, Card, GradientBanner, Badge } from '../components/ui'
+import { AppHeader, Card, GradientBanner, Badge, PlatformLogo } from '../components/ui'
+import type { SocialPlatform } from '@/lib/types/social'
 
 type SettingsSection = 'profile' | 'security' | 'notifications' | 'subscription' | 'team' | 'connections' | 'danger'
+
+// Map platform IDs to SocialPlatform for logo component
+const PLATFORM_ID_MAP: Record<string, SocialPlatform> = {
+  'instagram': 'instagram',
+  'tiktok': 'tiktok',
+  'youtube': 'youtube',
+  'facebook': 'facebook',
+  'twitter': 'twitter',
+  'x': 'twitter',
+  'linkedin': 'linkedin',
+  'snapchat': 'snapchat',
+}
 
 type Platform = {
   id: string
@@ -921,8 +934,12 @@ export default function SettingsPage() {
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 bg-gradient-to-br ${platform.color} rounded-xl flex items-center justify-center text-xl shadow-lg`}>
-                            {platform.icon}
+                          <div className="w-12 h-12 flex items-center justify-center">
+                            <PlatformLogo
+                              platform={PLATFORM_ID_MAP[platform.id] || 'instagram'}
+                              size="lg"
+                              variant="color"
+                            />
                           </div>
                           <div>
                             <h3 className="font-bold text-text-primary">{platform.name}</h3>
