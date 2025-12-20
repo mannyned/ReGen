@@ -3,11 +3,14 @@
  *
  * Returns the current authenticated user's profile information.
  * Used for checking authentication state on the client side.
+ *
+ * Includes beta access information for UI display.
  */
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
+import { getClientTierInfo, type ProfileWithBeta } from '@/lib/tiers/effective-tier';
 
 export async function GET() {
   try {
@@ -25,7 +28,7 @@ export async function GET() {
       );
     }
 
-    // Get profile from database
+    // Get profile from database (including beta fields)
     const profile = await prisma.profile.findUnique({
       where: { id: user.id },
       select: {
@@ -34,6 +37,8 @@ export async function GET() {
         displayName: true,
         avatarUrl: true,
         tier: true,
+        betaUser: true,
+        betaExpiresAt: true,
         createdAt: true,
         stripeCustomerId: true,
         stripeSubscriptionStatus: true,
@@ -47,8 +52,32 @@ export async function GET() {
         email: user.email,
         tier: 'FREE',
         emailVerified: !!user.email_confirmed_at,
+        tierInfo: {
+          effectiveTier: 'FREE',
+          actualTier: 'FREE',
+          isBetaPro: false,
+          betaDaysRemaining: null,
+          betaExpiringSoon: false,
+          platformLimit: 2,
+          hasTeamAccess: false,
+          maxTeamSeats: 0,
+        },
       });
     }
+
+    // Build profile with beta fields for tier calculation
+    const profileWithBeta: ProfileWithBeta = {
+      id: profile.id,
+      email: profile.email,
+      tier: profile.tier,
+      betaUser: profile.betaUser,
+      betaExpiresAt: profile.betaExpiresAt,
+      displayName: profile.displayName,
+      avatarUrl: profile.avatarUrl,
+    };
+
+    // Get effective tier info
+    const tierInfo = getClientTierInfo(profileWithBeta);
 
     return NextResponse.json({
       id: profile.id,
@@ -60,6 +89,11 @@ export async function GET() {
       createdAt: profile.createdAt,
       hasSubscription: !!profile.stripeCustomerId,
       subscriptionStatus: profile.stripeSubscriptionStatus,
+      // Beta access info
+      betaUser: profile.betaUser,
+      betaExpiresAt: profile.betaExpiresAt,
+      // Effective tier info (includes beta)
+      tierInfo,
     });
   } catch (error) {
     console.error('Error fetching user:', error);

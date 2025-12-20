@@ -30,6 +30,10 @@ model Profile {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  // Beta Pro Access (temporary Pro access for beta testers)
+  betaUser      Boolean   @default(false) @map("beta_user")
+  betaExpiresAt DateTime? @map("beta_expires_at")
+
   // Stripe subscription fields
   stripeCustomerId       String?   @unique @map("stripe_customer_id")
   stripeSubscriptionId   String?   @unique @map("stripe_subscription_id")
@@ -46,6 +50,7 @@ model Profile {
   exportJobs         ExportJob[]
 
   @@index([stripeCustomerId])
+  @@index([betaUser])
   @@map("profiles")
 }
 

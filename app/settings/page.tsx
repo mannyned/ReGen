@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { AppHeader, Card, GradientBanner, Badge, PlatformLogo } from '../components/ui'
+import { BetaProBadge, BetaSubscriptionCard, OverLimitWarning } from '../components/BetaProBadge'
 import type { SocialPlatform } from '@/lib/types/social'
 
 type SettingsSection = 'profile' | 'security' | 'notifications' | 'subscription' | 'team' | 'connections' | 'danger'
@@ -80,6 +81,10 @@ export default function SettingsPage() {
 
   // Subscription state
   const [userPlan, setUserPlan] = useState<'free' | 'creator' | 'pro'>('creator')
+  const [effectivePlan, setEffectivePlan] = useState<'free' | 'creator' | 'pro'>('creator')
+  const [isBetaPro, setIsBetaPro] = useState(false)
+  const [betaDaysRemaining, setBetaDaysRemaining] = useState<number | null>(null)
+  const [betaExpiresAt, setBetaExpiresAt] = useState<string | null>(null)
 
   // Team state
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
@@ -112,6 +117,19 @@ export default function SettingsPage() {
             const tier = data.tier.toLowerCase() as 'free' | 'creator' | 'pro'
             setUserPlan(tier)
             localStorage.setItem('userPlan', tier)
+          }
+
+          // Set beta info from tierInfo
+          if (data.tierInfo) {
+            const effectiveTier = data.tierInfo.effectiveTier?.toLowerCase() as 'free' | 'creator' | 'pro'
+            setEffectivePlan(effectiveTier || userPlan)
+            setIsBetaPro(data.tierInfo.isBetaPro || false)
+            setBetaDaysRemaining(data.tierInfo.betaDaysRemaining)
+          }
+
+          // Set beta expiration
+          if (data.betaExpiresAt) {
+            setBetaExpiresAt(data.betaExpiresAt)
           }
         }
       } catch (error) {
@@ -257,8 +275,8 @@ export default function SettingsPage() {
     { id: 'profile', label: 'Profile', icon: '👤' },
     { id: 'security', label: 'Security', icon: '🔒' },
     { id: 'notifications', label: 'Notifications', icon: '🔔' },
-    { id: 'subscription', label: 'Subscription', icon: '💳', show: userPlan !== 'free' },
-    { id: 'team', label: 'Team', icon: '👥', show: userPlan === 'pro' },
+    { id: 'subscription', label: 'Subscription', icon: '💳', show: userPlan !== 'free' || isBetaPro },
+    { id: 'team', label: 'Team', icon: '👥', show: effectivePlan === 'pro' },
     { id: 'connections', label: 'Connections', icon: '🔗' },
     { id: 'danger', label: 'Danger Zone', icon: '⚠️' },
   ].filter(item => item.show !== false)
@@ -640,33 +658,49 @@ export default function SettingsPage() {
             )}
 
             {/* Subscription Section */}
-            {activeSection === 'subscription' && userPlan !== 'free' && (
+            {activeSection === 'subscription' && (userPlan !== 'free' || isBetaPro) && (
               <div className="space-y-6">
-                <Card className="p-6 lg:p-8" hover={false}>
-                  <h2 className="text-2xl font-bold text-text-primary mb-6">Current Plan</h2>
+                {/* Beta Pro Card */}
+                {isBetaPro && (
+                  <BetaSubscriptionCard
+                    isBetaPro={true}
+                    daysRemaining={betaDaysRemaining}
+                    expiresAt={betaExpiresAt}
+                    actualTier={userPlan.toUpperCase()}
+                    onUpgrade={() => window.location.href = '/pricing'}
+                  />
+                )}
 
-                  <div className="p-6 bg-gradient-to-r from-primary/5 to-accent-purple/5 rounded-2xl border border-primary/20 mb-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
-                          <span className="text-3xl">{userPlan === 'pro' ? '🚀' : '🌟'}</span>
+                {/* Regular Plan Card (only show if not beta) */}
+                {!isBetaPro && (
+                  <Card className="p-6 lg:p-8" hover={false}>
+                    <h2 className="text-2xl font-bold text-text-primary mb-6">Current Plan</h2>
+
+                    <div className="p-6 bg-gradient-to-r from-primary/5 to-accent-purple/5 rounded-2xl border border-primary/20 mb-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <span className="text-3xl">{userPlan === 'pro' ? '🚀' : '🌟'}</span>
+                          </div>
+                          <div>
+                            <p className="font-bold text-text-primary text-xl">
+                              {userPlan === 'pro' ? 'Pro Plan' : 'Creator Plan'}
+                            </p>
+                            <p className="text-text-secondary">
+                              {userPlan === 'pro' ? '$29/month' : '$12/month'} • Renews Jan 15, 2025
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-text-primary text-xl">
-                            {userPlan === 'pro' ? 'Pro Plan' : 'Creator Plan'}
-                          </p>
-                          <p className="text-text-secondary">
-                            {userPlan === 'pro' ? '$29/month' : '$12/month'} • Renews Jan 15, 2025
-                          </p>
-                        </div>
+                        {userPlan === 'creator' && (
+                          <button className="btn-primary">Upgrade to Pro</button>
+                        )}
                       </div>
-                      {userPlan === 'creator' && (
-                        <button className="btn-primary">Upgrade to Pro</button>
-                      )}
                     </div>
-                  </div>
+                  </Card>
+                )}
 
-                  {/* Usage Stats */}
+                {/* Usage Stats */}
+                <Card className="p-6 lg:p-8" hover={false}>
                   <div className="space-y-4">
                     <h3 className="font-semibold text-text-primary">Usage this period</h3>
 
@@ -674,13 +708,13 @@ export default function SettingsPage() {
                       <div className="flex justify-between text-sm mb-1">
                         <span className="text-text-secondary">Generations</span>
                         <span className="font-medium text-text-primary">
-                          {userPlan === 'pro' ? '347 / unlimited' : '423 / 500'}
+                          {effectivePlan === 'pro' ? '347 / unlimited' : '423 / 500'}
                         </span>
                       </div>
                       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary rounded-full"
-                          style={{ width: userPlan === 'pro' ? '35%' : '85%' }}
+                          style={{ width: effectivePlan === 'pro' ? '35%' : '85%' }}
                         />
                       </div>
                     </div>
@@ -689,18 +723,18 @@ export default function SettingsPage() {
                       <div className="flex justify-between text-sm mb-1">
                         <span className="text-text-secondary">Storage</span>
                         <span className="font-medium text-text-primary">
-                          {userPlan === 'pro' ? '2.3 GB / 100 GB' : '4.2 GB / 10 GB'}
+                          {effectivePlan === 'pro' ? '2.3 GB / 100 GB' : '4.2 GB / 10 GB'}
                         </span>
                       </div>
                       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary rounded-full"
-                          style={{ width: userPlan === 'pro' ? '2%' : '42%' }}
+                          style={{ width: effectivePlan === 'pro' ? '2%' : '42%' }}
                         />
                       </div>
                     </div>
 
-                    {userPlan === 'pro' && (
+                    {effectivePlan === 'pro' && (
                       <div>
                         <div className="flex justify-between text-sm mb-1">
                           <span className="text-text-secondary">Team Seats</span>
@@ -717,69 +751,74 @@ export default function SettingsPage() {
                   </div>
                 </Card>
 
-                <Card className="p-6 lg:p-8" hover={false}>
-                  <h2 className="text-2xl font-bold text-text-primary mb-6">Payment Method</h2>
+                {/* Payment & Billing - Only show for paid subscriptions, not beta */}
+                {!isBetaPro && (
+                  <>
+                    <Card className="p-6 lg:p-8" hover={false}>
+                      <h2 className="text-2xl font-bold text-text-primary mb-6">Payment Method</h2>
 
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-8 bg-gradient-to-r from-blue-600 to-blue-800 rounded flex items-center justify-center text-white text-xs font-bold">
-                        VISA
-                      </div>
-                      <div>
-                        <p className="font-medium text-text-primary">Visa ending in 4242</p>
-                        <p className="text-sm text-text-secondary">Expires 12/2026</p>
-                      </div>
-                    </div>
-                    <button className="text-primary font-medium hover:underline">Update</button>
-                  </div>
-                </Card>
-
-                <Card className="p-6 lg:p-8" hover={false}>
-                  <h2 className="text-2xl font-bold text-text-primary mb-6">Billing History</h2>
-
-                  <div className="space-y-3">
-                    {[
-                      { date: 'Dec 15, 2024', amount: userPlan === 'pro' ? '$29.00' : '$12.00', status: 'Paid' },
-                      { date: 'Nov 15, 2024', amount: userPlan === 'pro' ? '$29.00' : '$12.00', status: 'Paid' },
-                      { date: 'Oct 15, 2024', amount: userPlan === 'pro' ? '$29.00' : '$12.00', status: 'Paid' },
-                    ].map((invoice, i) => (
-                      <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                         <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                            <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
+                          <div className="w-12 h-8 bg-gradient-to-r from-blue-600 to-blue-800 rounded flex items-center justify-center text-white text-xs font-bold">
+                            VISA
                           </div>
                           <div>
-                            <p className="font-medium text-text-primary">{invoice.date}</p>
-                            <p className="text-sm text-text-secondary">{invoice.amount}</p>
+                            <p className="font-medium text-text-primary">Visa ending in 4242</p>
+                            <p className="text-sm text-text-secondary">Expires 12/2026</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <Badge variant="success">{invoice.status}</Badge>
-                          <button className="text-primary text-sm font-medium hover:underline">
-                            Download
-                          </button>
-                        </div>
+                        <button className="text-primary font-medium hover:underline">Update</button>
                       </div>
-                    ))}
-                  </div>
-                </Card>
+                    </Card>
 
-                <Card className="p-6 lg:p-8 border-orange-200" hover={false}>
-                  <h2 className="text-xl font-bold text-orange-600 mb-4">Cancel Subscription</h2>
-                  <p className="text-text-secondary mb-6">
-                    Your plan will remain active until Jan 15, 2025. After that, you'll be switched to the Free plan.
-                  </p>
-                  <button className="px-4 py-2 border-2 border-orange-200 text-orange-600 rounded-xl font-medium hover:bg-orange-50 transition-colors">
-                    Cancel subscription
-                  </button>
-                </Card>
+                    <Card className="p-6 lg:p-8" hover={false}>
+                      <h2 className="text-2xl font-bold text-text-primary mb-6">Billing History</h2>
+
+                      <div className="space-y-3">
+                        {[
+                          { date: 'Dec 15, 2024', amount: userPlan === 'pro' ? '$29.00' : '$12.00', status: 'Paid' },
+                          { date: 'Nov 15, 2024', amount: userPlan === 'pro' ? '$29.00' : '$12.00', status: 'Paid' },
+                          { date: 'Oct 15, 2024', amount: userPlan === 'pro' ? '$29.00' : '$12.00', status: 'Paid' },
+                        ].map((invoice, i) => (
+                          <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                                <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              </div>
+                              <div>
+                                <p className="font-medium text-text-primary">{invoice.date}</p>
+                                <p className="text-sm text-text-secondary">{invoice.amount}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <Badge variant="success">{invoice.status}</Badge>
+                              <button className="text-primary text-sm font-medium hover:underline">
+                                Download
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+
+                    <Card className="p-6 lg:p-8 border-orange-200" hover={false}>
+                      <h2 className="text-xl font-bold text-orange-600 mb-4">Cancel Subscription</h2>
+                      <p className="text-text-secondary mb-6">
+                        Your plan will remain active until Jan 15, 2025. After that, you'll be switched to the Free plan.
+                      </p>
+                      <button className="px-4 py-2 border-2 border-orange-200 text-orange-600 rounded-xl font-medium hover:bg-orange-50 transition-colors">
+                        Cancel subscription
+                      </button>
+                    </Card>
+                  </>
+                )}
               </div>
             )}
 
             {/* Team Section */}
-            {activeSection === 'team' && userPlan === 'pro' && (
+            {activeSection === 'team' && effectivePlan === 'pro' && (
               <div className="space-y-6">
                 <Card className="p-6 lg:p-8" hover={false}>
                   <div className="flex items-center justify-between mb-6">
