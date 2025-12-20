@@ -27,6 +27,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
+import { UserTier } from '@prisma/client';
 
 export const runtime = 'nodejs';
 
@@ -109,12 +110,43 @@ export async function POST(request: NextRequest) {
     // Create profile record in database
     // This creates the application-level user data
     try {
+      // Check if there's a beta invite for this email
+      const betaInvite = await prisma.betaInvite.findUnique({
+        where: { email: email.toLowerCase() },
+      });
+
+      let tier: UserTier = UserTier.FREE;
+      let betaUser = false;
+      let betaExpiresAt: Date | null = null;
+
+      if (betaInvite && !betaInvite.usedAt) {
+        // User has a beta invite - upgrade to PRO with expiration
+        tier = UserTier.PRO;
+        betaUser = true;
+        betaExpiresAt = new Date();
+        betaExpiresAt.setDate(betaExpiresAt.getDate() + betaInvite.durationDays);
+
+        // Mark the invite as used
+        await prisma.betaInvite.update({
+          where: { id: betaInvite.id },
+          data: { usedAt: new Date() },
+        });
+
+        console.log('[Signup] Beta invite claimed:', {
+          email: email.toLowerCase(),
+          durationDays: betaInvite.durationDays,
+          expiresAt: betaExpiresAt.toISOString(),
+        });
+      }
+
       await prisma.profile.create({
         data: {
           id: authData.user.id,
           email: email.toLowerCase(),
           displayName: displayName || email.split('@')[0],
-          tier: 'FREE',
+          tier,
+          betaUser,
+          betaExpiresAt,
         },
       });
     } catch (profileError) {

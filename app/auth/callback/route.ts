@@ -24,6 +24,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
+import { UserTier } from '@prisma/client';
 
 export const runtime = 'nodejs';
 
@@ -92,6 +93,35 @@ export async function GET(request: NextRequest) {
           user.user_metadata?.picture ||
           null;
 
+        // Check if there's a beta invite for this email
+        const betaInvite = await prisma.betaInvite.findUnique({
+          where: { email },
+        });
+
+        let tier: UserTier = UserTier.FREE;
+        let betaUser = false;
+        let betaExpiresAt: Date | null = null;
+
+        if (betaInvite && !betaInvite.usedAt) {
+          // User has a beta invite - upgrade to PRO with expiration
+          tier = UserTier.PRO;
+          betaUser = true;
+          betaExpiresAt = new Date();
+          betaExpiresAt.setDate(betaExpiresAt.getDate() + betaInvite.durationDays);
+
+          // Mark the invite as used
+          await prisma.betaInvite.update({
+            where: { id: betaInvite.id },
+            data: { usedAt: new Date() },
+          });
+
+          console.log('[Auth Callback] Beta invite claimed:', {
+            email,
+            durationDays: betaInvite.durationDays,
+            expiresAt: betaExpiresAt.toISOString(),
+          });
+        }
+
         // Create new profile
         await prisma.profile.create({
           data: {
@@ -99,11 +129,13 @@ export async function GET(request: NextRequest) {
             email,
             displayName,
             avatarUrl,
-            tier: 'FREE',
+            tier,
+            betaUser,
+            betaExpiresAt,
           },
         });
 
-        console.log('[Auth Callback] Created new profile for user:', user.id);
+        console.log('[Auth Callback] Created new profile for user:', user.id, { tier, betaUser });
       } else {
         // Optionally update profile with latest OAuth data
         const updates: Record<string, string | undefined> = {};

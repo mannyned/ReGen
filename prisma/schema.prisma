@@ -581,3 +581,22 @@ model WaitlistEntry {
   @@index([createdAt])
   @@map("waitlist_entries")
 }
+
+// ============================================
+// BETA INVITES (Pre-registration)
+// ============================================
+
+/// Beta invite for users who haven't signed up yet.
+/// When they sign up, they automatically get PRO tier with beta expiration.
+model BetaInvite {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  durationDays Int       @default(30) @map("duration_days")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  usedAt       DateTime? @map("used_at")  // When the user signed up and claimed the invite
+  expiresAt    DateTime? @map("expires_at")  // When the invite itself expires (optional)
+
+  @@index([email])
+  @@index([createdAt])
+  @@map("beta_invites")
+}

@@ -64,6 +64,9 @@ export enum EmailTemplates {
   WELCOME = 'welcome',
   PASSWORD_RESET = 'password_reset',
   EMAIL_VERIFICATION = 'email_verification',
+
+  // Beta events
+  BETA_INVITE = 'beta_invite',
 }
 
 // ============================================
@@ -233,6 +236,7 @@ function getTemplates(): Record<EmailTemplates, (data: Record<string, unknown>) 
     [EmailTemplates.WELCOME]: renderWelcome,
     [EmailTemplates.PASSWORD_RESET]: renderPasswordReset,
     [EmailTemplates.EMAIL_VERIFICATION]: renderEmailVerification,
+    [EmailTemplates.BETA_INVITE]: renderBetaInvite,
   };
 }
 
@@ -633,6 +637,68 @@ function renderEmailVerification(data: Record<string, unknown>): RenderedEmail {
   `, 'Verify your ReGenr email address');
 
   const text = `Verify Your Email\n\nClick here to verify: ${verifyUrl}`;
+  return { html, text };
+}
+
+// ============================================
+// BETA TEMPLATES
+// ============================================
+
+function renderBetaInvite(data: Record<string, unknown>): RenderedEmail {
+  const durationDays = (data.durationDays as number) || 30;
+  const signupUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://regenr.app'}/signup`;
+
+  const html = baseTemplate(`
+    <h1 style="margin: 0 0 16px; font-size: 24px; font-weight: 700; color: #111827;">
+      You're Invited to ReGenr Pro Beta! 🎉
+    </h1>
+    <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #4b5563;">
+      Great news! You've been invited to join the exclusive <strong>ReGenr Pro Beta</strong> program.
+    </p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f0fdf4; border-radius: 12px; margin-bottom: 24px; border: 1px solid #bbf7d0;">
+      <tr>
+        <td style="padding: 20px;">
+          <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #166534;">
+            What you get:
+          </p>
+          <ul style="margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.8; color: #15803d;">
+            <li><strong>${durationDays} days</strong> of free Pro access</li>
+            <li>AI-powered caption generation</li>
+            <li>Advanced scheduling & analytics</li>
+            <li>Priority support</li>
+            <li>All Pro features unlocked</li>
+          </ul>
+        </td>
+      </tr>
+    </table>
+    <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #4b5563;">
+      Simply sign up with this email address and you'll automatically receive Pro access for ${durationDays} days - no credit card required!
+    </p>
+    ${button('Sign Up Now', signupUrl)}
+    <p style="margin: 24px 0 0; font-size: 14px; color: #6b7280;">
+      Questions? Reply to this email or reach out at support@regenr.app
+    </p>
+  `, `You're invited to ReGenr Pro Beta - ${durationDays} days free!`);
+
+  const text = `
+You're Invited to ReGenr Pro Beta!
+
+Great news! You've been invited to join the exclusive ReGenr Pro Beta program.
+
+What you get:
+- ${durationDays} days of free Pro access
+- AI-powered caption generation
+- Advanced scheduling & analytics
+- Priority support
+- All Pro features unlocked
+
+Simply sign up with this email address and you'll automatically receive Pro access for ${durationDays} days - no credit card required!
+
+Sign Up Now: ${signupUrl}
+
+Questions? Reply to this email or reach out at support@regenr.app
+`;
+
   return { html, text };
 }
 

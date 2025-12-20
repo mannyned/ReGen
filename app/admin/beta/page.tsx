@@ -9,6 +9,15 @@ interface BetaUser {
   betaExpiresAt: string | null;
   daysRemaining: number;
   isExpired: boolean;
+  type: 'user';
+}
+
+interface BetaInvite {
+  id: string;
+  email: string;
+  durationDays: number;
+  createdAt: string;
+  type: 'invite';
 }
 
 interface BetaListResponse {
@@ -16,14 +25,18 @@ interface BetaListResponse {
   count: number;
   activeCount: number;
   expiredCount: number;
+  inviteCount: number;
   users: BetaUser[];
+  invites: BetaInvite[];
 }
 
 interface AssignResponse {
   success: boolean;
   assigned: number;
+  invited: number;
   skipped: number;
-  notFound: string[];
+  emailsSent: number;
+  emailsFailed: number;
   expiresAt: string;
 }
 
@@ -36,8 +49,10 @@ export default function AdminBetaPage() {
 
   // Beta users list
   const [betaUsers, setBetaUsers] = useState<BetaUser[]>([]);
+  const [betaInvites, setBetaInvites] = useState<BetaInvite[]>([]);
   const [activeCount, setActiveCount] = useState(0);
   const [expiredCount, setExpiredCount] = useState(0);
+  const [inviteCount, setInviteCount] = useState(0);
 
   // Form state
   const [emails, setEmails] = useState('');
@@ -81,8 +96,10 @@ export default function AdminBetaPage() {
 
       const data: BetaListResponse = await response.json();
       setBetaUsers(data.users);
+      setBetaInvites(data.invites || []);
       setActiveCount(data.activeCount);
       setExpiredCount(data.expiredCount);
+      setInviteCount(data.inviteCount || 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -103,6 +120,7 @@ export default function AdminBetaPage() {
     setApiKey('');
     setIsAuthenticated(false);
     setBetaUsers([]);
+    setBetaInvites([]);
   };
 
   const handleAssign = async (e: React.FormEvent) => {
@@ -141,12 +159,24 @@ export default function AdminBetaPage() {
 
       const data: AssignResponse = await response.json();
 
-      let message = `Assigned ${data.assigned} user(s) beta access.`;
-      if (data.skipped > 0) {
-        message += ` ${data.skipped} already had beta access.`;
+      let message = '';
+      if (data.assigned > 0) {
+        message += `Assigned ${data.assigned} existing user(s) beta access. `;
       }
-      if (data.notFound.length > 0) {
-        message += ` Not found: ${data.notFound.join(', ')}`;
+      if (data.invited > 0) {
+        message += `Invited ${data.invited} new email(s). `;
+        if (data.emailsSent > 0) {
+          message += `${data.emailsSent} invite email(s) sent. `;
+        }
+        if (data.emailsFailed > 0) {
+          message += `${data.emailsFailed} email(s) failed to send. `;
+        }
+      }
+      if (data.skipped > 0) {
+        message += `${data.skipped} already had beta access.`;
+      }
+      if (!message) {
+        message = 'No changes made.';
       }
 
       setSuccess(message);
@@ -193,8 +223,42 @@ export default function AdminBetaPage() {
     }
   };
 
+  const handleCancelInvite = async (email: string) => {
+    if (!confirm(`Cancel beta invite for ${email}?`)) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch('/api/admin/beta', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': apiKey,
+        },
+        body: JSON.stringify({
+          emails: [email],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to cancel invite');
+      }
+
+      setSuccess(`Cancelled invite for ${email}`);
+      fetchBetaUsers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleRevokeAll = async () => {
-    if (!confirm('Revoke beta access for ALL users? This cannot be undone.')) {
+    if (!confirm('Revoke beta access for ALL users AND cancel all invites? This cannot be undone.')) {
       return;
     }
 
@@ -298,12 +362,12 @@ export default function AdminBetaPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-4 gap-4 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
             <p className="text-3xl font-bold text-gray-900 dark:text-white">
               {betaUsers.length}
             </p>
-            <p className="text-gray-600 dark:text-gray-400 text-sm">Total Beta Users</p>
+            <p className="text-gray-600 dark:text-gray-400 text-sm">Beta Users</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
             <p className="text-3xl font-bold text-green-600">{activeCount}</p>
@@ -312,6 +376,10 @@ export default function AdminBetaPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
             <p className="text-3xl font-bold text-orange-600">{expiredCount}</p>
             <p className="text-gray-600 dark:text-gray-400 text-sm">Expired</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+            <p className="text-3xl font-bold text-violet-600">{inviteCount}</p>
+            <p className="text-gray-600 dark:text-gray-400 text-sm">Pending Invites</p>
           </div>
         </div>
 
@@ -470,6 +538,70 @@ export default function AdminBetaPage() {
               {isLoading ? 'Refreshing...' : 'Refresh List'}
             </button>
           </div>
+        </div>
+
+        {/* Pending Invites List */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 mt-8">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Pending Invites
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+            These emails will automatically get PRO access when they sign up.
+          </p>
+
+          {betaInvites.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+              No pending invites.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left py-3 px-2 text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Email
+                    </th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Duration
+                    </th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Invited
+                    </th>
+                    <th className="text-right py-3 px-2 text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {betaInvites.map((invite) => (
+                    <tr
+                      key={invite.id}
+                      className="border-b border-gray-100 dark:border-gray-700/50"
+                    >
+                      <td className="py-3 px-2 text-gray-900 dark:text-white">
+                        {invite.email}
+                      </td>
+                      <td className="py-3 px-2 text-gray-600 dark:text-gray-400">
+                        {invite.durationDays} days
+                      </td>
+                      <td className="py-3 px-2 text-gray-600 dark:text-gray-400">
+                        {formatDate(invite.createdAt)}
+                      </td>
+                      <td className="py-3 px-2 text-right">
+                        <button
+                          onClick={() => handleCancelInvite(invite.email)}
+                          disabled={isLoading}
+                          className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                        >
+                          Cancel
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>

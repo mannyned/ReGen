@@ -28,15 +28,26 @@ export default function DashboardPage() {
     setMounted(true)
   }, [])
 
-  // Mock data - would come from API in production
-  const stats = {
-    repurposesDone: currentPlan === 'free' ? 3 : currentPlan === 'creator' ? 47 : 238,
-    totalEngagement: currentPlan === 'free' ? '1.2K' : currentPlan === 'creator' ? '12.5K' : '148.7K',
-    averageReach: currentPlan === 'free' ? '450' : currentPlan === 'creator' ? '2.3K' : '15.8K',
-    postsThisWeek: currentPlan === 'free' ? 2 : currentPlan === 'creator' ? 8 : 32
-  }
+  // In production, show empty state. In development, show mock data for testing UI.
+  const isProduction = process.env.NODE_ENV === 'production'
 
-  const recentPosts = currentPlan === 'free'
+  const stats = isProduction
+    ? {
+        repurposesDone: 0,
+        totalEngagement: '0',
+        averageReach: '0',
+        postsThisWeek: 0
+      }
+    : {
+        repurposesDone: currentPlan === 'free' ? 3 : currentPlan === 'creator' ? 47 : 238,
+        totalEngagement: currentPlan === 'free' ? '1.2K' : currentPlan === 'creator' ? '12.5K' : '148.7K',
+        averageReach: currentPlan === 'free' ? '450' : currentPlan === 'creator' ? '2.3K' : '15.8K',
+        postsThisWeek: currentPlan === 'free' ? 2 : currentPlan === 'creator' ? 8 : 32
+      }
+
+  const recentPosts: Array<{ id: number; title: string; platforms: string[]; date: string; thumbnail: string; status: string }> = isProduction
+    ? []
+    : currentPlan === 'free'
     ? [
         { id: 1, title: 'Welcome Post', platforms: ['Instagram'], date: '2 hours ago', thumbnail: '📸', status: 'published' },
         { id: 2, title: 'First TikTok', platforms: ['TikTok'], date: '1 day ago', thumbnail: '🎵', status: 'published' },
