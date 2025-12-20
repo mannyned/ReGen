@@ -64,6 +64,7 @@ export const PUBLIC_ROUTES: RouteConfig[] = [
   { path: '/api/webhooks', prefix: true }, // Webhook endpoints (Meta, etc.)
   { path: '/api/admin', prefix: true }, // Admin endpoints (use API key auth)
   { path: '/api/waitlist', prefix: true }, // Waitlist signup
+  { path: '/admin', prefix: true }, // Admin pages (use API key auth)
 
   // Public share pages
   { path: '/share', prefix: true },
