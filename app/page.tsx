@@ -130,6 +130,36 @@ const pricingPlans = [
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [email, setEmail] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' })
+
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setSubmitStatus({ type: null, message: '' })
+
+    try {
+      const response = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, source: 'landing' })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setSubmitStatus({ type: 'success', message: data.message })
+        setEmail('')
+      } else {
+        setSubmitStatus({ type: 'error', message: data.error || 'Something went wrong' })
+      }
+    } catch {
+      setSubmitStatus({ type: 'error', message: 'Network error. Please try again.' })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   useEffect(() => {
     const handleScroll = () => {
@@ -443,22 +473,37 @@ export default function Home() {
             Be among the first to experience the future of content repurposing. Limited spots available.
           </p>
 
-          <form className="max-w-lg mx-auto" onSubmit={(e) => e.preventDefault()}>
+          <form className="max-w-lg mx-auto" onSubmit={handleWaitlistSubmit}>
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="email"
                 placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="flex-1 px-6 py-4 rounded-xl text-text-primary bg-white focus:ring-4 focus:ring-white/30 focus:outline-none transition-all shadow-lg"
                 required
+                disabled={isSubmitting}
               />
               <button
                 type="submit"
-                className="group inline-flex items-center justify-center px-8 py-4 bg-white text-primary rounded-xl font-semibold hover:bg-gray-50 transition-all duration-300 hover:-translate-y-0.5 shadow-xl whitespace-nowrap"
+                disabled={isSubmitting}
+                className="group inline-flex items-center justify-center px-8 py-4 bg-white text-primary rounded-xl font-semibold hover:bg-gray-50 transition-all duration-300 hover:-translate-y-0.5 shadow-xl whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                Join Now
-                <ArrowRightIcon />
+                {isSubmitting ? 'Joining...' : 'Join Now'}
+                {!isSubmitting && <ArrowRightIcon />}
               </button>
             </div>
+
+            {/* Status Message */}
+            {submitStatus.type && (
+              <div className={`mt-4 px-4 py-3 rounded-xl text-sm font-medium ${
+                submitStatus.type === 'success'
+                  ? 'bg-green-500/20 text-white border border-green-400/30'
+                  : 'bg-red-500/20 text-white border border-red-400/30'
+              }`}>
+                {submitStatus.message}
+              </div>
+            )}
           </form>
 
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/70 mt-8">

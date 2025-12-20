@@ -562,3 +562,17 @@ enum NotificationChannel {
 
   @@map("notification_channel")
 }
+
+// ============================================
+// WAITLIST
+// ============================================
+
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String?  // Where they signed up from (landing, pricing, etc.)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("waitlist_entries")
+}
