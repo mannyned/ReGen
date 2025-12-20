@@ -89,7 +89,7 @@ const faqs = [
   },
   {
     question: 'Can I add more team seats to Pro?',
-    answer: 'Pro includes up to 10 seats. Need more? Contact us about our Enterprise plan with custom seat limits, SSO, and dedicated support.',
+    answer: 'Pro includes 3 team seats. Need more? Contact us at support@regenr.app for additional seats and pricing info.',
   },
   {
     question: 'Is my data secure?',
