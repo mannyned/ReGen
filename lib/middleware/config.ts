@@ -62,6 +62,8 @@ export const PUBLIC_ROUTES: RouteConfig[] = [
   { path: '/api/tiers' }, // Public tier info
   { path: '/api/public', prefix: true },
   { path: '/api/webhooks', prefix: true }, // Webhook endpoints (Meta, etc.)
+  { path: '/api/admin', prefix: true }, // Admin endpoints (use API key auth)
+  { path: '/api/waitlist', prefix: true }, // Waitlist signup
 
   // Public share pages
   { path: '/share', prefix: true },
