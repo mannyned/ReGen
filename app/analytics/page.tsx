@@ -56,17 +56,34 @@ export default function AnalyticsPage() {
   // Upgrade intent tracking
   const upgradeIntent = useUpgradeIntent()
 
+  const isProduction = process.env.NODE_ENV === 'production'
+
   useEffect(() => {
     setMounted(true)
-    const savedPlan = localStorage.getItem('userPlan')
-    if (savedPlan === 'pro') {
-      setUserPlan('pro')
-    } else if (savedPlan === 'creator') {
-      setUserPlan('creator')
+
+    // In production, fetch actual user tier from API
+    if (isProduction) {
+      fetch('/api/auth/me')
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.tier) {
+            const tier = data.tier.toLowerCase() as PlanType
+            setUserPlan(tier === 'pro' ? 'pro' : tier === 'creator' ? 'creator' : 'free')
+          }
+        })
+        .catch(() => setUserPlan('free'))
     } else {
-      setUserPlan('free')
+      // In development, use localStorage for testing
+      const savedPlan = localStorage.getItem('userPlan')
+      if (savedPlan === 'pro') {
+        setUserPlan('pro')
+      } else if (savedPlan === 'creator') {
+        setUserPlan('creator')
+      } else {
+        setUserPlan('free')
+      }
     }
-  }, [])
+  }, [isProduction])
 
   // Handle opening the upgrade modal
   const handleOpenUpgradeModal = (metricId: LockedMetricId) => {
@@ -86,7 +103,8 @@ export default function AnalyticsPage() {
     setShowUpgradeModal(false)
   }
 
-  const platformData = [
+  // In production, show empty state. In development, show mock data for testing.
+  const platformData = isProduction ? [] : [
     { platform: 'Instagram', posts: 24, engagement: 12.5, reach: 5200, growth: 2.3, bestTime: '6PM-8PM' },
     { platform: 'Twitter', posts: 45, engagement: 8.3, reach: 3800, growth: -1.2, bestTime: '12PM-2PM' },
     { platform: 'LinkedIn', posts: 18, engagement: 15.2, reach: 2900, growth: 5.7, bestTime: '9AM-11AM' },
@@ -94,13 +112,13 @@ export default function AnalyticsPage() {
     { platform: 'TikTok', posts: 28, engagement: 18.7, reach: 6500, growth: 8.9, bestTime: '5PM-7PM' }
   ]
 
-  const topFormats = [
+  const topFormats = isProduction ? [] : [
     { type: 'Video', count: 42, avgEngagement: 14.2, trend: 'up' },
     { type: 'Image', count: 38, avgEngagement: 11.5, trend: 'stable' },
     { type: 'Text', count: 27, avgEngagement: 8.9, trend: 'down' }
   ]
 
-  const aiRecommendations: AIRecommendation[] = [
+  const aiRecommendations: AIRecommendation[] = isProduction ? [] : [
     {
       id: '1',
       title: 'Post More Videos on TikTok',
@@ -138,13 +156,33 @@ export default function AnalyticsPage() {
     }
   ]
 
-  const advancedMetrics = {
+  const advancedMetrics = isProduction ? {
+    sentimentScore: 0,
+    audienceRetention: 0,
+    viralityScore: 0,
+    contentVelocity: 0,
+    crossPlatformSynergy: 0,
+    hashtagPerformance: 0
+  } : {
     sentimentScore: 78,
     audienceRetention: 65,
     viralityScore: 42,
     contentVelocity: 3.2,
     crossPlatformSynergy: 85,
     hashtagPerformance: 72
+  }
+
+  // Stats for production vs development
+  const stats = isProduction ? {
+    totalPosts: '0',
+    totalReach: '0',
+    avgEngagement: '0%',
+    aiGenerated: '0'
+  } : {
+    totalPosts: '147',
+    totalReach: '22.5K',
+    avgEngagement: '12.3%',
+    aiGenerated: '89'
   }
 
   if (!mounted) return null
@@ -238,39 +276,41 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* Plan Switcher for Testing */}
-            <div className="mt-16 p-6 bg-gray-100 rounded-xl w-full max-w-2xl">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-text-secondary mb-1">Test Different Plans (Development Only)</p>
-                  <p className="text-xs text-text-secondary/70">This switcher is for testing purposes only</p>
-                </div>
-                <div className="flex gap-2">
-                  {(['free', 'creator', 'pro'] as PlanType[]).map((plan) => {
-                    const isActive = userPlan === plan
-                    const activeClass = plan === 'pro'
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                      : plan === 'creator'
-                      ? 'bg-primary text-white'
-                      : 'bg-blue-500 text-white'
-                    return (
-                      <button
-                        key={plan}
-                        onClick={() => {
-                          setUserPlan(plan)
-                          localStorage.setItem('userPlan', plan)
-                        }}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                          isActive ? activeClass : 'bg-white text-text-secondary hover:bg-gray-50'
-                        }`}
-                      >
-                        {plan}
-                      </button>
-                    )
-                  })}
+            {/* Plan Switcher for Testing - Development Only */}
+            {!isProduction && (
+              <div className="mt-16 p-6 bg-gray-100 rounded-xl w-full max-w-2xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-text-secondary mb-1">Test Different Plans (Development Only)</p>
+                    <p className="text-xs text-text-secondary/70">This switcher is for testing purposes only</p>
+                  </div>
+                  <div className="flex gap-2">
+                    {(['free', 'creator', 'pro'] as PlanType[]).map((plan) => {
+                      const isActive = userPlan === plan
+                      const activeClass = plan === 'pro'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                        : plan === 'creator'
+                        ? 'bg-primary text-white'
+                        : 'bg-blue-500 text-white'
+                      return (
+                        <button
+                          key={plan}
+                          onClick={() => {
+                            setUserPlan(plan)
+                            localStorage.setItem('userPlan', plan)
+                          }}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                            isActive ? activeClass : 'bg-white text-text-secondary hover:bg-gray-50'
+                          }`}
+                        >
+                          {plan}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         ) : (
           <>
@@ -562,10 +602,10 @@ export default function AnalyticsPage() {
 
             {/* Key Metrics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <StatCard label="Total Posts" value="147" icon="📊" trend={{ value: 12, positive: true }} />
-              <StatCard label="Total Reach" value="22.5K" icon="👥" trend={{ value: 24, positive: true }} />
-              <StatCard label="Avg Engagement" value="12.3%" icon="❤️" trend={{ value: 5.2, positive: true }} />
-              <StatCard label="AI Generated" value="89" icon="✨" subtitle="60% of total posts" />
+              <StatCard label="Total Posts" value={stats.totalPosts} icon="📊" trend={isProduction ? undefined : { value: 12, positive: true }} />
+              <StatCard label="Total Reach" value={stats.totalReach} icon="👥" trend={isProduction ? undefined : { value: 24, positive: true }} />
+              <StatCard label="Avg Engagement" value={stats.avgEngagement} icon="❤️" trend={isProduction ? undefined : { value: 5.2, positive: true }} />
+              <StatCard label="AI Generated" value={stats.aiGenerated} icon="✨" subtitle={isProduction ? undefined : "60% of total posts"} />
             </div>
 
             {/* Feature Cards */}
@@ -788,55 +828,63 @@ export default function AnalyticsPage() {
                   </Badge>
                 )}
               </div>
-              <div className="space-y-6">
-                {platformData.map((platform) => (
-                  <div key={platform.platform}>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <PlatformLogo
-                          platform={PLATFORM_ID_MAP[platform.platform]}
-                          size="sm"
-                          variant="color"
+              {platformData.length === 0 ? (
+                <div className="text-center py-12">
+                  <span className="text-5xl mb-4 block">📊</span>
+                  <p className="text-text-secondary">No platform data yet.</p>
+                  <p className="text-sm text-text-secondary/70">Start posting to see your performance across platforms.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {platformData.map((platform) => (
+                    <div key={platform.platform}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <PlatformLogo
+                            platform={PLATFORM_ID_MAP[platform.platform]}
+                            size="sm"
+                            variant="color"
+                          />
+                          <span className="font-semibold text-text-primary">{platform.platform}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          {userPlan === 'pro' && (
+                            <>
+                              <span className="text-xs text-text-secondary">
+                                Best time: <span className="font-medium text-primary">{platform.bestTime}</span>
+                              </span>
+                              <span className={`text-xs font-medium ${platform.growth > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {platform.growth > 0 ? '↑' : '↓'} {Math.abs(platform.growth)}%
+                              </span>
+                            </>
+                          )}
+                          <span className="text-sm text-text-secondary">{platform.posts} posts</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 mb-2">
+                        <div>
+                          <p className="text-xs text-text-secondary mb-1">Engagement Rate</p>
+                          <p className="text-lg font-bold text-primary">{platform.engagement}%</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-text-secondary mb-1">Reach</p>
+                          <p className="text-lg font-bold text-text-primary">{platform.reach.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-text-secondary mb-1">Avg per Post</p>
+                          <p className="text-lg font-bold text-text-primary">{Math.round(platform.reach / platform.posts)}</p>
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div
+                          className="bg-gradient-primary h-3 rounded-full transition-all duration-500"
+                          style={{ width: `${platform.engagement * 5}%` }}
                         />
-                        <span className="font-semibold text-text-primary">{platform.platform}</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        {userPlan === 'pro' && (
-                          <>
-                            <span className="text-xs text-text-secondary">
-                              Best time: <span className="font-medium text-primary">{platform.bestTime}</span>
-                            </span>
-                            <span className={`text-xs font-medium ${platform.growth > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {platform.growth > 0 ? '↑' : '↓'} {Math.abs(platform.growth)}%
-                            </span>
-                          </>
-                        )}
-                        <span className="text-sm text-text-secondary">{platform.posts} posts</span>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4 mb-2">
-                      <div>
-                        <p className="text-xs text-text-secondary mb-1">Engagement Rate</p>
-                        <p className="text-lg font-bold text-primary">{platform.engagement}%</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-text-secondary mb-1">Reach</p>
-                        <p className="text-lg font-bold text-text-primary">{platform.reach.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-text-secondary mb-1">Avg per Post</p>
-                        <p className="text-lg font-bold text-text-primary">{Math.round(platform.reach / platform.posts)}</p>
-                      </div>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="bg-gradient-primary h-3 rounded-full transition-all duration-500"
-                        style={{ width: `${platform.engagement * 5}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -850,62 +898,78 @@ export default function AnalyticsPage() {
                     </Badge>
                   )}
                 </div>
-                <div className="space-y-6">
-                  {topFormats.map((format, index) => (
-                    <div key={format.type} className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary font-bold text-lg">
-                        #{index + 1}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-semibold text-text-primary">{format.type}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-primary">{format.avgEngagement}%</span>
-                            {userPlan === 'pro' && (
-                              <span className={`text-xs ${
-                                format.trend === 'up' ? 'text-green-600' :
-                                format.trend === 'down' ? 'text-red-600' : 'text-text-secondary'
-                              }`}>
-                                {format.trend === 'up' ? '↑' : format.trend === 'down' ? '↓' : '→'}
-                              </span>
-                            )}
-                          </div>
+                {topFormats.length === 0 ? (
+                  <div className="text-center py-12">
+                    <span className="text-5xl mb-4 block">🎬</span>
+                    <p className="text-text-secondary">No format data yet.</p>
+                    <p className="text-sm text-text-secondary/70">Upload content to see which formats perform best.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {topFormats.map((format, index) => (
+                      <div key={format.type} className="flex items-center gap-4">
+                        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary font-bold text-lg">
+                          #{index + 1}
                         </div>
-                        <p className="text-sm text-text-secondary">{format.count} posts</p>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-semibold text-text-primary">{format.type}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-primary">{format.avgEngagement}%</span>
+                              {userPlan === 'pro' && (
+                                <span className={`text-xs ${
+                                  format.trend === 'up' ? 'text-green-600' :
+                                  format.trend === 'down' ? 'text-red-600' : 'text-text-secondary'
+                                }`}>
+                                  {format.trend === 'up' ? '↑' : format.trend === 'down' ? '↓' : '→'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-sm text-text-secondary">{format.count} posts</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </Card>
 
               {/* AI Impact */}
               <Card className="p-6 lg:p-8" hover={false}>
                 <h2 className="text-2xl font-bold text-text-primary mb-6">AI Impact</h2>
-                <div className="space-y-6">
-                  <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-text-primary font-medium">With AI Captions</span>
-                      <span className="text-3xl">✨</span>
-                    </div>
-                    <p className="text-4xl font-bold text-primary mb-2">14.8%</p>
-                    <p className="text-sm text-text-secondary">Average engagement rate</p>
+                {isProduction ? (
+                  <div className="text-center py-12">
+                    <span className="text-5xl mb-4 block">✨</span>
+                    <p className="text-text-secondary">No AI data yet.</p>
+                    <p className="text-sm text-text-secondary/70">Use AI captions to see their impact on engagement.</p>
                   </div>
-
-                  <div className="bg-gray-100 rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-text-primary font-medium">Without AI Captions</span>
-                      <span className="text-3xl">📝</span>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-text-primary font-medium">With AI Captions</span>
+                        <span className="text-3xl">✨</span>
+                      </div>
+                      <p className="text-4xl font-bold text-primary mb-2">14.8%</p>
+                      <p className="text-sm text-text-secondary">Average engagement rate</p>
                     </div>
-                    <p className="text-4xl font-bold text-text-secondary mb-2">11.2%</p>
-                    <p className="text-sm text-text-secondary">Average engagement rate</p>
-                  </div>
 
-                  <GradientBanner className="!p-6">
-                    <p className="text-sm font-medium mb-1">Performance Improvement</p>
-                    <p className="text-5xl font-bold">+32%</p>
-                    <p className="text-sm mt-2 opacity-90">AI captions perform significantly better</p>
-                  </GradientBanner>
-                </div>
+                    <div className="bg-gray-100 rounded-xl p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-text-primary font-medium">Without AI Captions</span>
+                        <span className="text-3xl">📝</span>
+                      </div>
+                      <p className="text-4xl font-bold text-text-secondary mb-2">11.2%</p>
+                      <p className="text-sm text-text-secondary">Average engagement rate</p>
+                    </div>
+
+                    <GradientBanner className="!p-6">
+                      <p className="text-sm font-medium mb-1">Performance Improvement</p>
+                      <p className="text-5xl font-bold">+32%</p>
+                      <p className="text-sm mt-2 opacity-90">AI captions perform significantly better</p>
+                    </GradientBanner>
+                  </div>
+                )}
               </Card>
             </div>
 
@@ -1228,62 +1292,72 @@ export default function AnalyticsPage() {
             {/* Recent Activity */}
             <Card className="p-6 lg:p-8 mt-8" hover={false}>
               <h2 className="text-2xl font-bold text-text-primary mb-6">Recent Activity</h2>
-              <div className="space-y-2">
-                {[
-                  { action: 'Post published on Instagram', time: '2 hours ago', icon: '📷', performance: userPlan === 'pro' ? '+15% above average' : null },
-                  { action: 'AI caption generated', time: '4 hours ago', icon: '✨', performance: userPlan === 'pro' ? 'Predicted engagement: 14.2%' : null },
-                  { action: 'Post scheduled for LinkedIn', time: '6 hours ago', icon: '💼', performance: userPlan === 'pro' ? 'Optimal time selected' : null },
-                  { action: 'Video uploaded', time: '1 day ago', icon: '🎬', performance: userPlan === 'pro' ? '92% quality score' : null }
-                ].map((activity, index) => (
-                  <div key={index} className="flex items-center gap-4 p-4 hover:bg-background rounded-xl transition-colors">
-                    <span className="text-3xl">{activity.icon}</span>
-                    <div className="flex-1">
-                      <p className="font-medium text-text-primary">{activity.action}</p>
-                      <div className="flex items-center gap-4">
-                        <p className="text-sm text-text-secondary">{activity.time}</p>
-                        {activity.performance && (
-                          <p className="text-sm text-primary font-medium">{activity.performance}</p>
-                        )}
+              {isProduction ? (
+                <div className="text-center py-12">
+                  <span className="text-5xl mb-4 block">📋</span>
+                  <p className="text-text-secondary">No recent activity.</p>
+                  <p className="text-sm text-text-secondary/70">Your activity will appear here once you start creating content.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {[
+                    { action: 'Post published on Instagram', time: '2 hours ago', icon: '📷', performance: userPlan === 'pro' ? '+15% above average' : null },
+                    { action: 'AI caption generated', time: '4 hours ago', icon: '✨', performance: userPlan === 'pro' ? 'Predicted engagement: 14.2%' : null },
+                    { action: 'Post scheduled for LinkedIn', time: '6 hours ago', icon: '💼', performance: userPlan === 'pro' ? 'Optimal time selected' : null },
+                    { action: 'Video uploaded', time: '1 day ago', icon: '🎬', performance: userPlan === 'pro' ? '92% quality score' : null }
+                  ].map((activity, index) => (
+                    <div key={index} className="flex items-center gap-4 p-4 hover:bg-background rounded-xl transition-colors">
+                      <span className="text-3xl">{activity.icon}</span>
+                      <div className="flex-1">
+                        <p className="font-medium text-text-primary">{activity.action}</p>
+                        <div className="flex items-center gap-4">
+                          <p className="text-sm text-text-secondary">{activity.time}</p>
+                          {activity.performance && (
+                            <p className="text-sm text-primary font-medium">{activity.performance}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </Card>
 
-            {/* Plan Switcher for Testing */}
-            <div className="mt-12 p-6 bg-gray-100 rounded-xl">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-text-secondary mb-1">Test Different Plans (Development Only)</p>
-                  <p className="text-xs text-text-secondary/70">This switcher is for testing purposes only</p>
-                </div>
-                <div className="flex gap-2">
-                  {(['free', 'creator', 'pro'] as PlanType[]).map((plan) => {
-                    const isActive = userPlan === plan
-                    const activeClass = plan === 'pro'
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                      : plan === 'creator'
-                      ? 'bg-primary text-white'
-                      : 'bg-blue-500 text-white'
-                    return (
-                      <button
-                        key={plan}
-                        onClick={() => {
-                          setUserPlan(plan)
-                          localStorage.setItem('userPlan', plan)
-                        }}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                          isActive ? activeClass : 'bg-white text-text-secondary hover:bg-gray-50'
-                        }`}
-                      >
-                        {plan} Plan
-                      </button>
-                    )
-                  })}
+            {/* Plan Switcher for Testing - Development Only */}
+            {!isProduction && (
+              <div className="mt-12 p-6 bg-gray-100 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-text-secondary mb-1">Test Different Plans (Development Only)</p>
+                    <p className="text-xs text-text-secondary/70">This switcher is for testing purposes only</p>
+                  </div>
+                  <div className="flex gap-2">
+                    {(['free', 'creator', 'pro'] as PlanType[]).map((plan) => {
+                      const isActive = userPlan === plan
+                      const activeClass = plan === 'pro'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                        : plan === 'creator'
+                        ? 'bg-primary text-white'
+                        : 'bg-blue-500 text-white'
+                      return (
+                        <button
+                          key={plan}
+                          onClick={() => {
+                            setUserPlan(plan)
+                            localStorage.setItem('userPlan', plan)
+                          }}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                            isActive ? activeClass : 'bg-white text-text-secondary hover:bg-gray-50'
+                          }`}
+                        >
+                          {plan} Plan
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </>
         )}
 
