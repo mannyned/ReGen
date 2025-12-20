@@ -183,10 +183,15 @@ export default function PricingPage() {
             </Link>
 
             <div className="flex items-center gap-4">
-              {user.isAuthenticated ? (
+              {isLoadingUser ? (
+                <div className="h-8 w-24 bg-gray-200 rounded-lg animate-pulse" />
+              ) : user.isAuthenticated ? (
                 <>
-                  <Link href="/dashboard" className="text-text-secondary hover:text-primary font-medium transition-colors">
-                    Dashboard
+                  <Link href="/dashboard" className="flex items-center gap-2 text-text-secondary hover:text-primary font-medium transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Back to Dashboard
                   </Link>
                   <span className="px-3 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-medium">
                     {user.tier}
