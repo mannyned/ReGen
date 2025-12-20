@@ -47,11 +47,13 @@ export default function SchedulePage() {
   const [testMode, setTestMode] = useState(true) // Default to test mode for safety
 
   const platforms: { name: Platform; label: string; icon: string }[] = [
+    { name: 'tiktok', label: 'TikTok', icon: '🎵' },
     { name: 'instagram', label: 'Instagram', icon: '📷' },
-    { name: 'twitter', label: 'Twitter', icon: '🐦' },
-    { name: 'linkedin', label: 'LinkedIn', icon: '💼' },
+    { name: 'youtube', label: 'YouTube', icon: '▶️' },
     { name: 'facebook', label: 'Facebook', icon: '👥' },
-    { name: 'tiktok', label: 'TikTok', icon: '🎵' }
+    { name: 'x', label: 'X (Twitter)', icon: '𝕏' },
+    { name: 'linkedin', label: 'LinkedIn', icon: '💼' },
+    { name: 'snapchat', label: 'Snapchat', icon: '👻' }
   ]
 
   // Load connected accounts and selected previews
@@ -308,7 +310,7 @@ export default function SchedulePage() {
                 <label className="block text-sm font-medium text-text-secondary mb-3">
                   Select Platforms
                 </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                   {platforms.map(({ name, label }) => {
                     const isConnected = connectedAccounts.includes(name)
                     const isSelected = selectedPlatforms.includes(name)
