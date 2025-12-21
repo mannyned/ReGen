@@ -25,9 +25,16 @@ export async function GET() {
       error: authError,
     } = await supabase.auth.getUser();
 
+    // Debug logging
+    console.log('[/api/auth/me] Auth check:', {
+      hasUser: !!user,
+      userId: user?.id,
+      authError: authError?.message,
+    });
+
     if (authError || !user) {
       return NextResponse.json(
-        { error: 'Not authenticated' },
+        { error: 'Not authenticated', debug: authError?.message },
         { status: 401 }
       );
     }
