@@ -1188,8 +1188,8 @@ export default function SettingsPage() {
                   </Card>
                 )}
 
-                {/* No team yet - show invite section */}
-                {!teamData && canManageTeam !== false && (
+                {/* No team yet - show invite section for PRO users */}
+                {!teamData && !teamLoading && (
                   <Card className="p-6 lg:p-8" hover={false}>
                     <h2 className="text-2xl font-bold text-text-primary mb-6">Invite Your First Team Member</h2>
 
