@@ -85,6 +85,7 @@ export const PUBLIC_PATTERNS: RegExp[] = [
   /^\/robots\.txt$/,
   /^\/sitemap\.xml$/,
   /^\/manifest\.json$/,
+  /^\/site\.webmanifest$/,
 
   // Static assets
   /\.(png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot)$/,
