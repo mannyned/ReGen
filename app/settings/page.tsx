@@ -1031,8 +1031,39 @@ export default function SettingsPage() {
                       <p className="text-text-secondary mb-6 max-w-md mx-auto">
                         Your Pro plan includes 3 team seats. Invite teammates to collaborate on content and share your workspace.
                       </p>
-                      <p className="text-sm text-text-secondary">
-                        Start by inviting your first team member below.
+                    </div>
+
+                    {/* Invite Form */}
+                    <div className="border-t border-gray-200 pt-6 mt-2">
+                      <h3 className="text-lg font-semibold text-text-primary mb-4">Invite Your First Team Member</h3>
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex-1">
+                          <input
+                            type="email"
+                            value={inviteEmail}
+                            onChange={(e) => setInviteEmail(e.target.value)}
+                            className="input-primary"
+                            placeholder="teammate@email.com"
+                          />
+                        </div>
+                        <select
+                          value={inviteRole}
+                          onChange={(e) => setInviteRole(e.target.value as 'ADMIN' | 'MEMBER')}
+                          className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        >
+                          <option value="MEMBER">Member</option>
+                          <option value="ADMIN">Admin</option>
+                        </select>
+                        <button
+                          onClick={handleInvite}
+                          disabled={!inviteEmail || isLoading}
+                          className="btn-primary whitespace-nowrap"
+                        >
+                          {isLoading ? 'Sending...' : 'Send Invite'}
+                        </button>
+                      </div>
+                      <p className="text-sm text-text-secondary mt-4">
+                        Invites expire after 7 days. Your team will be created when you send your first invite.
                       </p>
                     </div>
                   </Card>
@@ -1184,44 +1215,6 @@ export default function SettingsPage() {
 
                     <p className="text-sm text-text-secondary mt-4">
                       Invites expire after 7 days. Team members can access shared workspaces and collaborate on content.
-                    </p>
-                  </Card>
-                )}
-
-                {/* No team yet - show invite section for PRO users */}
-                {!teamData && !teamLoading && (
-                  <Card className="p-6 lg:p-8" hover={false}>
-                    <h2 className="text-2xl font-bold text-text-primary mb-6">Invite Your First Team Member</h2>
-
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-1">
-                        <input
-                          type="email"
-                          value={inviteEmail}
-                          onChange={(e) => setInviteEmail(e.target.value)}
-                          className="input-primary"
-                          placeholder="teammate@email.com"
-                        />
-                      </div>
-                      <select
-                        value={inviteRole}
-                        onChange={(e) => setInviteRole(e.target.value as 'ADMIN' | 'MEMBER')}
-                        className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      >
-                        <option value="MEMBER">Member</option>
-                        <option value="ADMIN">Admin</option>
-                      </select>
-                      <button
-                        onClick={handleInvite}
-                        disabled={!inviteEmail || isLoading}
-                        className="btn-primary whitespace-nowrap"
-                      >
-                        {isLoading ? 'Sending...' : 'Send Invite'}
-                      </button>
-                    </div>
-
-                    <p className="text-sm text-text-secondary mt-4">
-                      Invites expire after 7 days. Your team will be created when you send your first invite.
                     </p>
                   </Card>
                 )}
