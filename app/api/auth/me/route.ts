@@ -17,9 +17,12 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  let step = 'init';
   try {
+    step = 'createClient';
     const supabase = await createClient();
 
+    step = 'getUser';
     const {
       data: { user },
       error: authError,
@@ -38,6 +41,8 @@ export async function GET() {
         { status: 401 }
       );
     }
+
+    step = 'prismaQuery';
 
     // Get profile from database (including beta fields)
     const profile = await prisma.profile.findUnique({
@@ -109,7 +114,7 @@ export async function GET() {
   } catch (error) {
     console.error('Error fetching user:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', step, message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
