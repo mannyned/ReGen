@@ -49,6 +49,11 @@ model Profile {
   analyticsSnapshots AnalyticsSnapshot[]
   exportJobs         ExportJob[]
 
+  // Team relations
+  ownedTeam       Team?        @relation("TeamOwner")
+  teamMembership  TeamMember?
+  sentTeamInvites TeamInvite[]
+
   @@index([stripeCustomerId])
   @@index([betaUser])
   @@map("profiles")
@@ -599,4 +604,78 @@ model BetaInvite {
   @@index([email])
   @@index([createdAt])
   @@map("beta_invites")
+}
+
+// ============================================
+// TEAM MANAGEMENT (PRO FEATURE)
+// ============================================
+
+/// Team role enum for role-based access control
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+
+  @@map("team_role")
+}
+
+/// Team - A workspace owned by a PRO user that can have multiple members
+/// Owner is the PRO subscriber who pays for the team
+model Team {
+  id        String   @id @default(cuid())
+  name      String   @default("My Team")
+  ownerId   String   @unique @map("owner_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  owner   Profile      @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members TeamMember[]
+  invites TeamInvite[]
+
+  @@index([ownerId])
+  @@map("teams")
+}
+
+/// TeamMember - Links a user to a team with a specific role
+/// Users can only be a member of one team at a time
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String   @map("team_id")
+  userId   String   @unique @map("user_id") @db.Uuid
+  role     TeamRole @default(MEMBER)
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  // Relations
+  team Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+/// TeamInvite - Pending invitation to join a team
+/// Expires after 7 days if not accepted
+model TeamInvite {
+  id          String   @id @default(cuid())
+  teamId      String   @map("team_id")
+  email       String
+  role        TeamRole @default(MEMBER)
+  invitedById String   @map("invited_by_id") @db.Uuid
+  token       String   @unique @default(cuid())
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  team      Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  invitedBy Profile @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, email])
+  @@index([teamId])
+  @@index([email])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("team_invites")
 }

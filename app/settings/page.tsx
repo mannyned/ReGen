@@ -87,12 +87,17 @@ export default function SettingsPage() {
   const [betaExpiresAt, setBetaExpiresAt] = useState<string | null>(null)
 
   // Team state
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
-    { id: '1', name: 'Alex Morgan', email: 'alex@example.com', role: 'owner', joinedDate: 'Oct 2024' },
-    { id: '2', name: 'Jordan Lee', email: 'jordan@example.com', role: 'admin', joinedDate: 'Nov 2024' },
-  ])
+  const [teamData, setTeamData] = useState<{
+    id: string;
+    name: string;
+    role: 'OWNER' | 'ADMIN' | 'MEMBER';
+    members: TeamMember[];
+    invites: Array<{ id: string; email: string; role: string; expiresAt: string }>;
+    seats: { total: number; used: number; pending: number; available: number };
+  } | null>(null)
+  const [teamLoading, setTeamLoading] = useState(true)
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member')
+  const [inviteRole, setInviteRole] = useState<'ADMIN' | 'MEMBER'>('MEMBER')
 
   // Platforms state
   const [platforms, setPlatforms] = useState<Platform[]>([])
@@ -185,6 +190,40 @@ export default function SettingsPage() {
     }
 
     initializePlatforms()
+
+    // Fetch team data
+    async function fetchTeamData() {
+      try {
+        const response = await fetch('/api/team')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.team) {
+            // Transform API data to match our UI format
+            const members: TeamMember[] = data.team.members.map((m: any) => ({
+              id: m.id,
+              name: m.user.displayName || m.user.email.split('@')[0],
+              email: m.user.email,
+              role: m.role.toLowerCase() as 'owner' | 'admin' | 'member',
+              joinedDate: new Date(m.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            }))
+            setTeamData({
+              id: data.team.id,
+              name: data.team.name,
+              role: data.team.role,
+              members,
+              invites: data.team.invites || [],
+              seats: data.team.seats,
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch team data:', error)
+      } finally {
+        setTeamLoading(false)
+      }
+    }
+
+    fetchTeamData()
   }, [])
 
   // Handle platform connect
@@ -254,22 +293,173 @@ export default function SettingsPage() {
   const handleInvite = async () => {
     if (!inviteEmail) return
     setIsLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsLoading(false)
-    setInviteEmail('')
-    alert(`Invite sent to ${inviteEmail}`)
+    try {
+      const response = await fetch('/api/team/invites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+      })
+      const data = await response.json()
+      if (response.ok) {
+        setInviteEmail('')
+        // Refresh team data
+        const teamResponse = await fetch('/api/team')
+        if (teamResponse.ok) {
+          const teamData = await teamResponse.json()
+          if (teamData.team) {
+            const members: TeamMember[] = teamData.team.members.map((m: any) => ({
+              id: m.id,
+              name: m.user.displayName || m.user.email.split('@')[0],
+              email: m.user.email,
+              role: m.role.toLowerCase() as 'owner' | 'admin' | 'member',
+              joinedDate: new Date(m.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            }))
+            setTeamData({
+              id: teamData.team.id,
+              name: teamData.team.name,
+              role: teamData.team.role,
+              members,
+              invites: teamData.team.invites || [],
+              seats: teamData.team.seats,
+            })
+          }
+        }
+        setShowSaveToast(true)
+        setTimeout(() => setShowSaveToast(false), 3000)
+      } else {
+        alert(data.error || 'Failed to send invite')
+      }
+    } catch {
+      alert('Failed to send invite')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Handle remove member
-  const handleRemoveMember = (memberId: string) => {
-    if (confirm('Remove this team member? They will lose access immediately.')) {
-      setTeamMembers(teamMembers.filter(m => m.id !== memberId))
+  const handleRemoveMember = async (memberId: string) => {
+    if (!confirm('Remove this team member? They will lose access immediately.')) return
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/team/members/${memberId}`, {
+        method: 'DELETE',
+      })
+      if (response.ok) {
+        // Refresh team data
+        const teamResponse = await fetch('/api/team')
+        if (teamResponse.ok) {
+          const teamData = await teamResponse.json()
+          if (teamData.team) {
+            const members: TeamMember[] = teamData.team.members.map((m: any) => ({
+              id: m.id,
+              name: m.user.displayName || m.user.email.split('@')[0],
+              email: m.user.email,
+              role: m.role.toLowerCase() as 'owner' | 'admin' | 'member',
+              joinedDate: new Date(m.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            }))
+            setTeamData({
+              id: teamData.team.id,
+              name: teamData.team.name,
+              role: teamData.team.role,
+              members,
+              invites: teamData.team.invites || [],
+              seats: teamData.team.seats,
+            })
+          }
+        }
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to remove member')
+      }
+    } catch {
+      alert('Failed to remove member')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Handle change member role
+  const handleChangeRole = async (memberId: string, newRole: 'ADMIN' | 'MEMBER') => {
+    try {
+      const response = await fetch(`/api/team/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      })
+      if (response.ok) {
+        // Refresh team data
+        const teamResponse = await fetch('/api/team')
+        if (teamResponse.ok) {
+          const teamData = await teamResponse.json()
+          if (teamData.team) {
+            const members: TeamMember[] = teamData.team.members.map((m: any) => ({
+              id: m.id,
+              name: m.user.displayName || m.user.email.split('@')[0],
+              email: m.user.email,
+              role: m.role.toLowerCase() as 'owner' | 'admin' | 'member',
+              joinedDate: new Date(m.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            }))
+            setTeamData({
+              id: teamData.team.id,
+              name: teamData.team.name,
+              role: teamData.team.role,
+              members,
+              invites: teamData.team.invites || [],
+              seats: teamData.team.seats,
+            })
+          }
+        }
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to change role')
+      }
+    } catch {
+      alert('Failed to change role')
+    }
+  }
+
+  // Handle cancel invite
+  const handleCancelInvite = async (inviteId: string) => {
+    if (!confirm('Cancel this invite?')) return
+    try {
+      const response = await fetch(`/api/team/invites/${inviteId}`, {
+        method: 'DELETE',
+      })
+      if (response.ok) {
+        // Refresh team data
+        const teamResponse = await fetch('/api/team')
+        if (teamResponse.ok) {
+          const teamData = await teamResponse.json()
+          if (teamData.team) {
+            const members: TeamMember[] = teamData.team.members.map((m: any) => ({
+              id: m.id,
+              name: m.user.displayName || m.user.email.split('@')[0],
+              email: m.user.email,
+              role: m.role.toLowerCase() as 'owner' | 'admin' | 'member',
+              joinedDate: new Date(m.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            }))
+            setTeamData({
+              id: teamData.team.id,
+              name: teamData.team.name,
+              role: teamData.team.role,
+              members,
+              invites: teamData.team.invites || [],
+              seats: teamData.team.seats,
+            })
+          }
+        }
+      }
+    } catch {
+      alert('Failed to cancel invite')
     }
   }
 
   const connectedCount = platforms.filter(p => p.connected).length
-  const usedSeats = teamMembers.length
-  const totalSeats = 3
+  const usedSeats = teamData?.seats.used || 0
+  const totalSeats = teamData?.seats.total || 3
+  const teamMembers = teamData?.members || []
+  const canManageTeam = teamData?.role === 'OWNER' || teamData?.role === 'ADMIN'
+  const isOwner = teamData?.role === 'OWNER'
 
   const navigationItems = [
     { id: 'profile', label: 'Profile', icon: '👤' },
@@ -820,67 +1010,101 @@ export default function SettingsPage() {
             {/* Team Section */}
             {activeSection === 'team' && effectivePlan === 'pro' && (
               <div className="space-y-6">
-                <Card className="p-6 lg:p-8" hover={false}>
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h2 className="text-2xl font-bold text-text-primary">Team Members</h2>
-                      <p className="text-text-secondary">{usedSeats} of {totalSeats} seats used</p>
+                {teamLoading ? (
+                  <Card className="p-6 lg:p-8" hover={false}>
+                    <div className="animate-pulse space-y-4">
+                      <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                      <div className="space-y-3 mt-6">
+                        <div className="h-16 bg-gray-100 rounded-xl"></div>
+                        <div className="h-16 bg-gray-100 rounded-xl"></div>
+                      </div>
                     </div>
-                    {usedSeats < totalSeats && (
-                      <Badge variant="primary">{totalSeats - usedSeats} seat{totalSeats - usedSeats !== 1 ? 's' : ''} available</Badge>
-                    )}
-                  </div>
-
-                  {/* Seat Usage Bar */}
-                  <div className="mb-6">
-                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden flex">
-                      {teamMembers.map((member, i) => (
-                        <div
-                          key={member.id}
-                          className={`h-full ${
-                            member.role === 'owner' ? 'bg-primary' :
-                            member.role === 'admin' ? 'bg-accent-purple' : 'bg-primary/60'
-                          }`}
-                          style={{ width: `${100 / totalSeats}%` }}
-                        />
-                      ))}
+                  </Card>
+                ) : !teamData ? (
+                  <Card className="p-6 lg:p-8" hover={false}>
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+                        <span className="text-3xl">👥</span>
+                      </div>
+                      <h2 className="text-2xl font-bold text-text-primary mb-2">Create Your Team</h2>
+                      <p className="text-text-secondary mb-6 max-w-md mx-auto">
+                        Your Pro plan includes 3 team seats. Invite teammates to collaborate on content and share your workspace.
+                      </p>
+                      <p className="text-sm text-text-secondary">
+                        Start by inviting your first team member below.
+                      </p>
                     </div>
-                  </div>
+                  </Card>
+                ) : (
+                  <Card className="p-6 lg:p-8" hover={false}>
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h2 className="text-2xl font-bold text-text-primary">{teamData.name}</h2>
+                        <p className="text-text-secondary">{usedSeats} of {totalSeats} seats used</p>
+                      </div>
+                      {teamData.seats.available > 0 && (
+                        <Badge variant="primary">{teamData.seats.available} seat{teamData.seats.available !== 1 ? 's' : ''} available</Badge>
+                      )}
+                    </div>
 
-                  {/* Team Members List */}
-                  <div className="space-y-3">
-                    {teamMembers.map((member) => (
-                      <div key={member.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent-purple flex items-center justify-center">
-                            <span className="text-lg text-white font-bold">
-                              {member.name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium text-text-primary">{member.name}</p>
-                              <Badge variant={member.role === 'owner' ? 'primary' : member.role === 'admin' ? 'secondary' : 'gray'}>
-                                {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-                              </Badge>
+                    {/* Seat Usage Bar */}
+                    <div className="mb-6">
+                      <div className="h-3 bg-gray-100 rounded-full overflow-hidden flex">
+                        {teamMembers.map((member) => (
+                          <div
+                            key={member.id}
+                            className={`h-full ${
+                              member.role === 'owner' ? 'bg-primary' :
+                              member.role === 'admin' ? 'bg-accent-purple' : 'bg-primary/60'
+                            }`}
+                            style={{ width: `${100 / totalSeats}%` }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Team Members List */}
+                    <div className="space-y-3">
+                      {teamMembers.map((member) => (
+                        <div key={member.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent-purple flex items-center justify-center">
+                              <span className="text-lg text-white font-bold">
+                                {member.name.charAt(0).toUpperCase()}
+                              </span>
                             </div>
-                            <p className="text-sm text-text-secondary">{member.email}</p>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-text-primary">{member.name}</p>
+                                <Badge variant={member.role === 'owner' ? 'primary' : member.role === 'admin' ? 'secondary' : 'gray'}>
+                                  {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-text-secondary">{member.email}</p>
+                            </div>
                           </div>
-                        </div>
-                        {member.role !== 'owner' && (
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={member.role}
-                              onChange={(e) => {
-                                setTeamMembers(teamMembers.map(m =>
-                                  m.id === member.id ? { ...m, role: e.target.value as 'admin' | 'member' } : m
-                                ))
-                              }}
-                              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                            >
-                              <option value="admin">Admin</option>
-                              <option value="member">Member</option>
-                            </select>
+                          {member.role !== 'owner' && isOwner && (
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={member.role.toUpperCase()}
+                                onChange={(e) => handleChangeRole(member.id, e.target.value as 'ADMIN' | 'MEMBER')}
+                                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                              >
+                                <option value="ADMIN">Admin</option>
+                                <option value="MEMBER">Member</option>
+                              </select>
+                              <button
+                                onClick={() => handleRemoveMember(member.id)}
+                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                          {member.role !== 'owner' && !isOwner && canManageTeam && member.role === 'member' && (
                             <button
                               onClick={() => handleRemoveMember(member.id)}
                               className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
@@ -889,15 +1113,45 @@ export default function SettingsPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
                             </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Pending Invites */}
+                    {teamData.invites.length > 0 && canManageTeam && (
+                      <div className="mt-6 pt-6 border-t border-gray-200">
+                        <h3 className="font-semibold text-text-primary mb-3">Pending Invites</h3>
+                        <div className="space-y-2">
+                          {teamData.invites.map((invite) => (
+                            <div key={invite.id} className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
+                                  <span className="text-sm">✉️</span>
+                                </div>
+                                <div>
+                                  <p className="font-medium text-text-primary text-sm">{invite.email}</p>
+                                  <p className="text-xs text-text-secondary">
+                                    {invite.role} • Expires {new Date(invite.expiresAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleCancelInvite(invite.id)}
+                                className="text-sm text-red-600 hover:underline"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </Card>
+                    )}
+                  </Card>
+                )}
 
                 {/* Invite Section */}
-                {usedSeats < totalSeats ? (
+                {canManageTeam && (teamData?.seats.available || 0) > 0 && (
                   <Card className="p-6 lg:p-8" hover={false}>
                     <h2 className="text-2xl font-bold text-text-primary mb-6">Invite Team Member</h2>
 
@@ -913,11 +1167,11 @@ export default function SettingsPage() {
                       </div>
                       <select
                         value={inviteRole}
-                        onChange={(e) => setInviteRole(e.target.value as 'admin' | 'member')}
+                        onChange={(e) => setInviteRole(e.target.value as 'ADMIN' | 'MEMBER')}
                         className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20"
                       >
-                        <option value="member">Member</option>
-                        <option value="admin">Admin</option>
+                        <option value="MEMBER">Member</option>
+                        <option value="ADMIN">Admin</option>
                       </select>
                       <button
                         onClick={handleInvite}
@@ -932,7 +1186,48 @@ export default function SettingsPage() {
                       Invites expire after 7 days. Team members can access shared workspaces and collaborate on content.
                     </p>
                   </Card>
-                ) : (
+                )}
+
+                {/* No team yet - show invite section */}
+                {!teamData && canManageTeam !== false && (
+                  <Card className="p-6 lg:p-8" hover={false}>
+                    <h2 className="text-2xl font-bold text-text-primary mb-6">Invite Your First Team Member</h2>
+
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="flex-1">
+                        <input
+                          type="email"
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          className="input-primary"
+                          placeholder="teammate@email.com"
+                        />
+                      </div>
+                      <select
+                        value={inviteRole}
+                        onChange={(e) => setInviteRole(e.target.value as 'ADMIN' | 'MEMBER')}
+                        className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      >
+                        <option value="MEMBER">Member</option>
+                        <option value="ADMIN">Admin</option>
+                      </select>
+                      <button
+                        onClick={handleInvite}
+                        disabled={!inviteEmail || isLoading}
+                        className="btn-primary whitespace-nowrap"
+                      >
+                        {isLoading ? 'Sending...' : 'Send Invite'}
+                      </button>
+                    </div>
+
+                    <p className="text-sm text-text-secondary mt-4">
+                      Invites expire after 7 days. Your team will be created when you send your first invite.
+                    </p>
+                  </Card>
+                )}
+
+                {/* All seats taken */}
+                {teamData && (teamData.seats.available || 0) <= 0 && canManageTeam && (
                   <Card className="p-6 lg:p-8 border-orange-200" hover={false}>
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -941,11 +1236,11 @@ export default function SettingsPage() {
                       <div>
                         <h3 className="font-bold text-text-primary mb-1">All seats taken</h3>
                         <p className="text-text-secondary mb-4">
-                          Your Pro plan includes 3 seats and they're all in use. Remove a team member to invite someone new.
+                          Your Pro plan includes {totalSeats} seats and they're all in use. Remove a team member or cancel a pending invite to add someone new.
                         </p>
-                        <button className="text-primary font-medium hover:underline">
-                          Contact us about Enterprise
-                        </button>
+                        <a href="mailto:support@regenr.app" className="text-primary font-medium hover:underline">
+                          Contact us about additional seats
+                        </a>
                       </div>
                     </div>
                   </Card>

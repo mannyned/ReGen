@@ -67,6 +67,9 @@ export enum EmailTemplates {
 
   // Beta events
   BETA_INVITE = 'beta_invite',
+
+  // Team events
+  TEAM_INVITE = 'team_invite',
 }
 
 // ============================================
@@ -237,6 +240,7 @@ function getTemplates(): Record<EmailTemplates, (data: Record<string, unknown>) 
     [EmailTemplates.PASSWORD_RESET]: renderPasswordReset,
     [EmailTemplates.EMAIL_VERIFICATION]: renderEmailVerification,
     [EmailTemplates.BETA_INVITE]: renderBetaInvite,
+    [EmailTemplates.TEAM_INVITE]: renderTeamInvite,
   };
 }
 
@@ -697,6 +701,84 @@ Simply sign up with this email address and you'll automatically receive Pro acce
 Sign Up Now: ${signupUrl}
 
 Questions? Reply to this email or reach out at support@regenr.app
+`;
+
+  return { html, text };
+}
+
+// ============================================
+// TEAM TEMPLATES
+// ============================================
+
+function renderTeamInvite(data: Record<string, unknown>): RenderedEmail {
+  const teamName = (data.teamName as string) || 'a team';
+  const inviterEmail = (data.inviterEmail as string) || 'A team owner';
+  const role = (data.role as string) || 'Member';
+  const token = (data.token as string) || '';
+  const expiresAt = (data.expiresAt as string) || '';
+
+  const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://regenr.app'}/team/invite?token=${token}`;
+
+  // Calculate days until expiration
+  let expiresIn = '7 days';
+  if (expiresAt) {
+    const expDate = new Date(expiresAt);
+    const now = new Date();
+    const daysLeft = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    expiresIn = daysLeft === 1 ? '1 day' : `${daysLeft} days`;
+  }
+
+  const roleDescription = role === 'ADMIN'
+    ? 'As an Admin, you can invite new members and manage the team.'
+    : 'As a Member, you can collaborate on content with the team.';
+
+  const html = baseTemplate(`
+    <h1 style="margin: 0 0 16px; font-size: 24px; font-weight: 700; color: #111827;">
+      You're Invited to Join ${teamName}! 🎉
+    </h1>
+    <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #4b5563;">
+      <strong>${inviterEmail}</strong> has invited you to join their team on ReGenr as a <strong>${role}</strong>.
+    </p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f0fdf4; border-radius: 12px; margin-bottom: 24px; border: 1px solid #bbf7d0;">
+      <tr>
+        <td style="padding: 20px;">
+          <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #166534;">
+            What you get as a team member:
+          </p>
+          <ul style="margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.8; color: #15803d;">
+            <li>Full access to Pro features</li>
+            <li>Shared workspace with ${teamName}</li>
+            <li>Collaborate on content and scheduling</li>
+            <li>Access to team analytics</li>
+          </ul>
+          <p style="margin: 16px 0 0; font-size: 14px; color: #166534;">
+            ${roleDescription}
+          </p>
+        </td>
+      </tr>
+    </table>
+    ${button('Accept Invitation', acceptUrl)}
+    <p style="margin: 24px 0 0; font-size: 14px; color: #6b7280;">
+      This invitation expires in <strong>${expiresIn}</strong>. If you don't want to join, you can safely ignore this email.
+    </p>
+  `, `You're invited to join ${teamName} on ReGenr!`);
+
+  const text = `
+You're Invited to Join ${teamName}!
+
+${inviterEmail} has invited you to join their team on ReGenr as a ${role}.
+
+What you get as a team member:
+- Full access to Pro features
+- Shared workspace with ${teamName}
+- Collaborate on content and scheduling
+- Access to team analytics
+
+${roleDescription}
+
+Accept Invitation: ${acceptUrl}
+
+This invitation expires in ${expiresIn}. If you don't want to join, you can safely ignore this email.
 `;
 
   return { html, text };
