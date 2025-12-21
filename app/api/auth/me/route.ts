@@ -12,6 +12,10 @@ import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 import { getClientTierInfo, type ProfileWithBeta } from '@/lib/tiers/effective-tier';
 
+// Ensure fresh data on every request (no caching)
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const supabase = await createClient();

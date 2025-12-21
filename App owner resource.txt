@@ -1,0 +1,13 @@
+Beta User page
+url: https://regenr.app/admin/beta
+ADMIN API key: 53a6335176d33ac4c61b73666f3e8eaaf7ca9a42f504258192747560ce825a4a
+
+App Domain info:
+Namecheap
+Account login: mannyned
+Pswd: OrlandO24@
+
+NonReply Email Infor
+Go to www.resend.com
+Account login: support@regenr.app
+Pswd: KenzoEyram234@#$
