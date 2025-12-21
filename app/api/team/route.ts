@@ -30,6 +30,14 @@ export async function GET(request: NextRequest) {
     const ownedTeam = await prisma.team.findUnique({
       where: { ownerId: user!.profileId },
       include: {
+        owner: {
+          select: {
+            id: true,
+            email: true,
+            displayName: true,
+            avatarUrl: true,
+          },
+        },
         members: {
           include: {
             user: {
@@ -70,12 +78,7 @@ export async function GET(request: NextRequest) {
               userId: user!.profileId,
               role: 'OWNER' as TeamRole,
               joinedAt: ownedTeam.createdAt,
-              user: {
-                id: user!.profileId,
-                email: user!.email,
-                displayName: null, // Will be fetched client-side
-                avatarUrl: null,
-              },
+              user: ownedTeam.owner,
             },
             ...ownedTeam.members.map((m) => ({
               id: m.id,
