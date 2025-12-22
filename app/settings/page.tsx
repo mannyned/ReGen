@@ -1035,7 +1035,7 @@ export default function SettingsPage() {
 
                     {/* Invite Form */}
                     <div className="border-t border-gray-200 pt-6 mt-2">
-                      <h3 className="text-lg font-semibold text-text-primary mb-4">Invite Your First Team Member Now</h3>
+                      <h3 className="text-lg font-semibold text-text-primary mb-4">Invite Your First Team Member</h3>
                       <div className="flex flex-col sm:flex-row gap-4">
                         <div className="flex-1">
                           <input
