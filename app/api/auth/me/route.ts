@@ -46,6 +46,26 @@ export async function GET() {
         createdAt: true,
         stripeCustomerId: true,
         stripeSubscriptionStatus: true,
+        // Check team membership
+        teamMembership: {
+          select: {
+            id: true,
+            role: true,
+            team: {
+              select: {
+                id: true,
+                name: true,
+                owner: {
+                  select: {
+                    tier: true,
+                    betaUser: true,
+                    betaExpiresAt: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -60,6 +80,7 @@ export async function GET() {
           effectiveTier: 'FREE',
           actualTier: 'FREE',
           isBetaPro: false,
+          isTeamMember: false,
           betaDaysRemaining: null,
           betaExpiringSoon: false,
           platformLimit: 2,
@@ -67,6 +88,18 @@ export async function GET() {
           maxTeamSeats: 0,
         },
       });
+    }
+
+    // Check if user is a team member (not owner) - they inherit PRO access
+    const isTeamMember = !!profile.teamMembership;
+    let teamMemberPro = false;
+
+    if (isTeamMember && profile.teamMembership?.team?.owner) {
+      const owner = profile.teamMembership.team.owner;
+      // Check if team owner has active PRO access (paid or beta)
+      const ownerIsPro = owner.tier === 'PRO' ||
+        (owner.betaUser && owner.betaExpiresAt && new Date(owner.betaExpiresAt) > new Date());
+      teamMemberPro = ownerIsPro;
     }
 
     // Build profile with beta fields for tier calculation
@@ -81,7 +114,19 @@ export async function GET() {
     };
 
     // Get effective tier info
-    const tierInfo = getClientTierInfo(profileWithBeta);
+    let tierInfo = getClientTierInfo(profileWithBeta);
+
+    // Override with team member PRO access if applicable
+    if (teamMemberPro && tierInfo.effectiveTier !== 'PRO') {
+      tierInfo = {
+        ...tierInfo,
+        effectiveTier: 'PRO',
+        isTeamMember: true,
+        platformLimit: -1, // Unlimited
+        hasTeamAccess: true,
+        maxTeamSeats: 0, // Team members can't invite others
+      };
+    }
 
     return NextResponse.json({
       id: profile.id,

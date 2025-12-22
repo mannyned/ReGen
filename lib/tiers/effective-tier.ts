@@ -250,6 +250,7 @@ export interface ClientTierInfo {
   effectiveTier: UserTier;
   actualTier: UserTier;
   isBetaPro: boolean;
+  isTeamMember?: boolean;
   betaDaysRemaining: number | null;
   betaExpiringSoon: boolean;
   platformLimit: number;
