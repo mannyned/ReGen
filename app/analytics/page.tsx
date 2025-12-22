@@ -25,6 +25,20 @@ import type { SocialPlatform } from '@/lib/types/social'
 type TimeRange = '7' | '30' | '90' | '365'
 type PlanType = 'free' | 'creator' | 'pro'
 
+// Analytics permission types
+interface AnalyticsPermissions {
+  canViewContentAnalytics: boolean;
+  canViewAccountAnalytics: boolean;
+  canManageAnalyticsSettings: boolean;
+  teamContext: {
+    teamId: string;
+    teamName: string;
+    userRole: 'owner' | 'admin' | 'member';
+    allowMemberAccountAnalytics: boolean;
+  } | null;
+  reason?: string;
+}
+
 // Map display names to platform IDs
 const PLATFORM_ID_MAP: Record<string, SocialPlatform> = {
   'Instagram': 'instagram',
@@ -52,6 +66,8 @@ export default function AnalyticsPage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [upgradeModalMetric, setUpgradeModalMetric] = useState<LockedMetricId | null>(null)
   const [activeTrialMetric, setActiveTrialMetric] = useState<LockedMetricId | null>(null)
+  const [analyticsPermissions, setAnalyticsPermissions] = useState<AnalyticsPermissions | null>(null)
+  const [isTeamMember, setIsTeamMember] = useState(false)
 
   // Upgrade intent tracking
   const upgradeIntent = useUpgradeIntent()
@@ -70,8 +86,22 @@ export default function AnalyticsPage() {
             const tier = data.tier.toLowerCase() as PlanType
             setUserPlan(tier === 'pro' ? 'pro' : tier === 'creator' ? 'creator' : 'free')
           }
+          // Check if user is a team member (not owner)
+          if (data?.tierInfo?.isTeamMember) {
+            setIsTeamMember(true)
+          }
         })
         .catch(() => setUserPlan('free'))
+
+      // Fetch analytics permissions for team members
+      fetch('/api/analytics/permissions')
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && !data.error) {
+            setAnalyticsPermissions(data)
+          }
+        })
+        .catch(() => {})
     } else {
       // In development, use localStorage for testing
       const savedPlan = localStorage.getItem('userPlan')
@@ -609,35 +639,63 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Feature Cards */}
+            {/* Location Analytics - Account-level, requires permission */}
             {userPlan === 'pro' && (
-              <Link href="/analytics/location" className="block mb-6 group">
-                <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl p-6 hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl group-hover:scale-[1.01] transform">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="text-5xl">🌍</div>
-                      <div>
-                        <h3 className="text-xl font-bold mb-1">Location of Engagement</h3>
-                        <p className="text-white/90 text-sm">See where your audience engages the most — by country, region, and city</p>
+              analyticsPermissions?.canViewAccountAnalytics === false && isTeamMember ? (
+                // Locked state for team members without account analytics access
+                <div className="block mb-6">
+                  <div className="bg-gradient-to-r from-gray-400 to-gray-500 text-white rounded-2xl p-6 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]" />
+                    <div className="relative flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="text-5xl opacity-50">🌍</div>
+                        <div>
+                          <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
+                            Location of Engagement
+                            <span className="text-sm bg-white/20 px-2 py-0.5 rounded-full">🔒 Admin Only</span>
+                          </h3>
+                          <p className="text-white/70 text-sm">Account-level analytics are admin-only.</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right hidden md:block">
-                        <p className="text-2xl font-bold">47</p>
-                        <p className="text-xs text-white/80">Countries</p>
-                      </div>
-                      <div className="text-right hidden md:block">
-                        <p className="text-2xl font-bold">234</p>
-                        <p className="text-xs text-white/80">Cities</p>
-                      </div>
-                      <div className="ml-4 bg-white/20 rounded-full p-3 group-hover:bg-white/30 transition-colors">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
+                      <div className="flex items-center gap-3">
+                        <div className="text-center px-4 py-2 bg-white/10 rounded-xl">
+                          <p className="text-xs text-white/70 mb-1">Your analytics access is managed by</p>
+                          <p className="text-sm font-medium">the workspace admin</p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </Link>
+              ) : (
+                <Link href="/analytics/location" className="block mb-6 group">
+                  <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl p-6 hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl group-hover:scale-[1.01] transform">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="text-5xl">🌍</div>
+                        <div>
+                          <h3 className="text-xl font-bold mb-1">Location of Engagement</h3>
+                          <p className="text-white/90 text-sm">See where your audience engages the most — by country, region, and city</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right hidden md:block">
+                          <p className="text-2xl font-bold">47</p>
+                          <p className="text-xs text-white/80">Countries</p>
+                        </div>
+                        <div className="text-right hidden md:block">
+                          <p className="text-2xl font-bold">234</p>
+                          <p className="text-xs text-white/80">Cities</p>
+                        </div>
+                        <div className="ml-4 bg-white/20 rounded-full p-3 group-hover:bg-white/30 transition-colors">
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              )
             )}
 
             {(userPlan === 'creator' || userPlan === 'pro') && (
@@ -671,7 +729,34 @@ export default function AnalyticsPage() {
               </Link>
             )}
 
+            {/* Retention Analytics - Account-level, requires permission */}
             {userPlan === 'pro' && (
+              analyticsPermissions?.canViewAccountAnalytics === false && isTeamMember ? (
+                // Locked state for team members without account analytics access
+                <div className="block mb-8">
+                  <div className="bg-gradient-to-r from-gray-400 to-gray-500 text-white rounded-2xl p-6 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]" />
+                    <div className="relative flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="text-5xl opacity-50">📊</div>
+                        <div>
+                          <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
+                            Retention Graph Analytics
+                            <span className="text-sm bg-white/20 px-2 py-0.5 rounded-full">🔒 Admin Only</span>
+                          </h3>
+                          <p className="text-white/70 text-sm">Account-level analytics are admin-only.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-center px-4 py-2 bg-white/10 rounded-xl">
+                          <p className="text-xs text-white/70 mb-1">Your analytics access is managed by</p>
+                          <p className="text-sm font-medium">the workspace admin</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
               <Link href="/analytics/retention" className="block mb-8 group">
                 <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl p-6 hover:from-orange-600 hover:to-red-600 transition-all shadow-lg hover:shadow-xl group-hover:scale-[1.01] transform">
                   <div className="flex items-center justify-between">
@@ -700,6 +785,7 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
               </Link>
+              )
             )}
 
             {/* Advanced Metrics - Pro Plan Only */}

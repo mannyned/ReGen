@@ -64,6 +64,7 @@ const plans: PlanConfig[] = [
       { text: 'Advanced Metrics', included: true },
       { text: 'Calendar Insights', included: true },
       { text: 'Team access (3 seats)', included: true, highlight: true },
+      { text: 'Role-based analytics permissions', included: true },
     ],
     cta: 'Go Pro',
     ctaVariant: 'primary',
@@ -90,6 +91,10 @@ const faqs = [
   {
     question: 'Can I add more team seats to Pro?',
     answer: 'Pro includes 3 team seats. Need more? Contact us at support@regenr.app for additional seats and pricing info.',
+  },
+  {
+    question: 'What analytics can team members see?',
+    answer: 'By default, team members can view content performance analytics (save rates, engagement metrics). Account-level analytics (location, retention, cross-platform insights) are admin-only. Team owners can enable full analytics access for members in Settings.',
   },
   {
     question: 'Is my data secure?',
@@ -343,6 +348,7 @@ export default function PricingPage() {
                     { feature: 'AI Recommendations', free: false, creator: false, pro: true },
                     { feature: 'Advanced Metrics', free: false, creator: false, pro: true },
                     { feature: 'Calendar Insights', free: false, creator: false, pro: true },
+                    { feature: 'Role-based analytics', free: false, creator: false, pro: true },
                     { feature: 'Team seats', free: '1', creator: '1', pro: '3' },
                   ].map((row, idx) => (
                     <tr key={idx} className="border-b border-gray-100 last:border-0">

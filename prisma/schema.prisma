@@ -6,9 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================
@@ -628,6 +627,11 @@ model Team {
   ownerId   String   @unique @map("owner_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Analytics permissions (workspace-level toggle)
+  // When true, team members can view account-level analytics
+  // When false (default), members can only view content-level analytics
+  allowMemberAccountAnalytics Boolean @default(false) @map("allow_member_account_analytics")
 
   // Relations
   owner   Profile      @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)

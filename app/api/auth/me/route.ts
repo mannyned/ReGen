@@ -98,7 +98,7 @@ export async function GET() {
       const owner = profile.teamMembership.team.owner;
       // Check if team owner has active PRO access (paid or beta)
       const ownerIsPro = owner.tier === 'PRO' ||
-        (owner.betaUser && owner.betaExpiresAt && new Date(owner.betaExpiresAt) > new Date());
+        !!(owner.betaUser && owner.betaExpiresAt && new Date(owner.betaExpiresAt) > new Date());
       teamMemberPro = ownerIsPro;
     }
 

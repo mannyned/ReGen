@@ -71,6 +71,8 @@ export async function GET(request: NextRequest) {
           name: ownedTeam.name,
           createdAt: ownedTeam.createdAt,
           role: 'OWNER' as TeamRole,
+          // Analytics permissions
+          allowMemberAccountAnalytics: (ownedTeam as any).allowMemberAccountAnalytics ?? false,
           members: [
             // Include owner as first member
             {
@@ -155,6 +157,8 @@ export async function GET(request: NextRequest) {
           name: team.name,
           createdAt: team.createdAt,
           role: membership.role,
+          // Analytics permissions (read-only for members)
+          allowMemberAccountAnalytics: (team as any).allowMemberAccountAnalytics ?? false,
           members: [
             // Include owner as first member
             {

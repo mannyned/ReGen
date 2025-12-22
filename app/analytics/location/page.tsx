@@ -19,12 +19,28 @@ import type {
 function ProOnlyGate({ children }: { children: React.ReactNode }) {
   const { currentPlan } = usePlan();
   const [mounted, setMounted] = useState(false);
+  const [analyticsPermissions, setAnalyticsPermissions] = useState<{
+    canViewAccountAnalytics: boolean;
+    teamContext: { userRole: string } | null;
+  } | null>(null);
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+
+    // Fetch analytics permissions
+    fetch('/api/analytics/permissions')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && !data.error) {
+          setAnalyticsPermissions(data);
+        }
+        setPermissionsLoaded(true);
+      })
+      .catch(() => setPermissionsLoaded(true));
   }, []);
 
-  if (!mounted) {
+  if (!mounted || !permissionsLoaded) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-text-secondary">Loading...</div>
@@ -33,6 +49,9 @@ function ProOnlyGate({ children }: { children: React.ReactNode }) {
   }
 
   const hasAccess = hasLocationAnalytics(currentPlan);
+  const isTeamMemberWithoutAccess = analyticsPermissions?.teamContext &&
+    analyticsPermissions.teamContext.userRole === 'member' &&
+    analyticsPermissions.canViewAccountAnalytics === false;
 
   if (!hasAccess) {
     return (
@@ -116,6 +135,65 @@ function ProOnlyGate({ children }: { children: React.ReactNode }) {
           <div className="mt-8 text-center text-text-secondary text-sm">
             Your current plan: <span className="font-medium text-text-primary capitalize">{currentPlan}</span>
           </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Team member without account analytics access
+  if (isTeamMemberWithoutAccess) {
+    return (
+      <div className="min-h-screen bg-background">
+        <AppHeader currentPage="analytics" />
+
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28">
+          {/* Back Button */}
+          <Link
+            href="/analytics"
+            className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors mb-8 group"
+          >
+            <svg className="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Analytics
+          </Link>
+
+          <Card className="overflow-hidden" hover={false}>
+            {/* Locked Header */}
+            <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-6xl mb-4 opacity-50">🌍</div>
+                  <Badge variant="gray" className="bg-gray-200 text-gray-600">
+                    🔒 Admin Only
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-8 text-center">
+              <h2 className="text-2xl font-bold text-text-primary mb-4">
+                Account Analytics
+              </h2>
+              <p className="text-text-secondary mb-6 max-w-lg mx-auto">
+                Account-level analytics are admin-only. Your analytics access is managed by the workspace admin.
+              </p>
+
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 max-w-md mx-auto">
+                <p className="text-sm text-text-secondary">
+                  You can still view <strong>content performance</strong> analytics on the main Analytics page.
+                </p>
+              </div>
+
+              <Link
+                href="/analytics"
+                className="inline-flex items-center mt-6 px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-hover transition-colors"
+              >
+                Back to Analytics
+              </Link>
+            </div>
+          </Card>
         </main>
       </div>
     );
