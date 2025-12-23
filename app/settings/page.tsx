@@ -101,6 +101,11 @@ export default function SettingsPage() {
   const [inviteRole, setInviteRole] = useState<'ADMIN' | 'MEMBER'>('MEMBER')
   const [analyticsToggleLoading, setAnalyticsToggleLoading] = useState(false)
 
+  // Invite modal state
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [inviteStep, setInviteStep] = useState<1 | 2 | 3>(1)
+  const [inviteAnalyticsAccess, setInviteAnalyticsAccess] = useState(false)
+
   // Platforms state
   const [platforms, setPlatforms] = useState<Platform[]>([])
 
@@ -292,11 +297,37 @@ export default function SettingsPage() {
     }
   }
 
+  // Open invite modal
+  const openInviteModal = () => {
+    setInviteEmail('')
+    setInviteRole('MEMBER')
+    setInviteStep(1)
+    setInviteAnalyticsAccess(teamData?.allowMemberAccountAnalytics ?? false)
+    setShowInviteModal(true)
+  }
+
+  // Close invite modal
+  const closeInviteModal = () => {
+    setShowInviteModal(false)
+    setInviteStep(1)
+    setInviteEmail('')
+    setInviteRole('MEMBER')
+  }
+
   // Handle invite
   const handleInvite = async () => {
     if (!inviteEmail) return
     setIsLoading(true)
     try {
+      // If role is MEMBER and analytics access changed, update the team setting first
+      if (inviteRole === 'MEMBER' && teamData && inviteAnalyticsAccess !== teamData.allowMemberAccountAnalytics) {
+        await fetch('/api/team/settings', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ allowMemberAccountAnalytics: inviteAnalyticsAccess }),
+        })
+      }
+
       const response = await fetch('/api/team/invites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -305,6 +336,7 @@ export default function SettingsPage() {
       const data = await response.json()
       if (response.ok) {
         setInviteEmail('')
+        closeInviteModal()
         // Refresh team data
         const teamResponse = await fetch('/api/team')
         if (teamResponse.ok) {
@@ -521,6 +553,233 @@ export default function SettingsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             <span className="font-medium">Saved</span>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={closeInviteModal}
+          />
+
+          {/* Modal */}
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-fade-in">
+            {/* Close button */}
+            <button
+              onClick={closeInviteModal}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Step indicator */}
+            <div className="flex items-center justify-center gap-2 mb-6">
+              {[1, 2, 3].map((step) => (
+                <div
+                  key={step}
+                  className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                    step === inviteStep
+                      ? 'bg-primary'
+                      : step < inviteStep
+                      ? 'bg-primary/50'
+                      : 'bg-gray-200'
+                  }`}
+                />
+              ))}
+            </div>
+
+            {/* Step 1: Email */}
+            {inviteStep === 1 && (
+              <div>
+                <h2 className="text-xl font-bold text-text-primary mb-2 text-center">
+                  Invite Team Member
+                </h2>
+                <p className="text-text-secondary text-center mb-6">
+                  Enter the email address of the person you want to invite
+                </p>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  className="input-primary mb-4"
+                  placeholder="teammate@email.com"
+                  autoFocus
+                />
+                <button
+                  onClick={() => setInviteStep(2)}
+                  disabled={!inviteEmail || !inviteEmail.includes('@')}
+                  className="btn-primary w-full"
+                >
+                  Continue
+                </button>
+              </div>
+            )}
+
+            {/* Step 2: Role */}
+            {inviteStep === 2 && (
+              <div>
+                <h2 className="text-xl font-bold text-text-primary mb-2 text-center">
+                  Select Role
+                </h2>
+                <p className="text-text-secondary text-center mb-6">
+                  Choose the role for <span className="font-medium text-text-primary">{inviteEmail}</span>
+                </p>
+                <div className="space-y-3 mb-6">
+                  <button
+                    onClick={() => setInviteRole('ADMIN')}
+                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                      inviteRole === 'ADMIN'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        inviteRole === 'ADMIN' ? 'border-primary' : 'border-gray-300'
+                      }`}>
+                        {inviteRole === 'ADMIN' && (
+                          <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-text-primary">Admin</p>
+                        <p className="text-sm text-text-secondary">Full access to all features including analytics and team management</p>
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setInviteRole('MEMBER')}
+                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                      inviteRole === 'MEMBER'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        inviteRole === 'MEMBER' ? 'border-primary' : 'border-gray-300'
+                      }`}>
+                        {inviteRole === 'MEMBER' && (
+                          <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-text-primary">Member</p>
+                        <p className="text-sm text-text-secondary">Access to content and basic features. Analytics access controlled by you.</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setInviteStep(1)}
+                    className="flex-1 px-4 py-3 border-2 border-gray-200 text-text-primary font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setInviteStep(3)}
+                    className="flex-1 btn-primary"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Analytics Access & Confirm */}
+            {inviteStep === 3 && (
+              <div>
+                <h2 className="text-xl font-bold text-text-primary mb-2 text-center">
+                  {inviteRole === 'ADMIN' ? 'Confirm Invitation' : 'Analytics Access'}
+                </h2>
+                <p className="text-text-secondary text-center mb-6">
+                  {inviteRole === 'ADMIN'
+                    ? 'Review and send the invitation'
+                    : 'Choose what analytics this member can access'
+                  }
+                </p>
+
+                {/* Summary */}
+                <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent-purple flex items-center justify-center">
+                      <span className="text-white font-bold">
+                        {inviteEmail.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-text-primary">{inviteEmail}</p>
+                      <p className="text-sm text-text-secondary">
+                        Will be invited as <span className="font-medium">{inviteRole === 'ADMIN' ? 'Admin' : 'Member'}</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Analytics toggle for Members */}
+                {inviteRole === 'MEMBER' && (
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div>
+                        <p className="font-medium text-text-primary">Account Analytics Access</p>
+                        <p className="text-sm text-text-secondary">
+                          Allow access to location, retention, and account insights
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setInviteAnalyticsAccess(!inviteAnalyticsAccess)}
+                        className={`relative w-12 h-6 rounded-full transition-colors ${
+                          inviteAnalyticsAccess ? 'bg-primary' : 'bg-gray-300'
+                        }`}
+                      >
+                        <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                          inviteAnalyticsAccess ? 'translate-x-6' : ''
+                        }`} />
+                      </button>
+                    </div>
+                    <p className="text-xs text-text-secondary mt-2">
+                      {inviteAnalyticsAccess
+                        ? 'This member will see all analytics including account-level insights.'
+                        : 'This member will only see content performance analytics.'
+                      }
+                    </p>
+                  </div>
+                )}
+
+                {/* Admin full access note */}
+                {inviteRole === 'ADMIN' && (
+                  <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                    <p className="text-sm text-purple-700">
+                      <span className="font-medium">Admins have full access</span> to all analytics,
+                      team management, and can invite other members.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setInviteStep(2)}
+                    className="flex-1 px-4 py-3 border-2 border-gray-200 text-text-primary font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleInvite}
+                    disabled={isLoading}
+                    className="flex-1 btn-primary"
+                  >
+                    {isLoading ? 'Sending...' : 'Send Invitation'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1069,35 +1328,18 @@ export default function SettingsPage() {
                       </p>
                     </div>
 
-                    {/* Invite Form */}
+                    {/* Invite Button */}
                     <div className="border-t border-gray-200 pt-6 mt-2">
                       <h3 className="text-lg font-semibold text-text-primary mb-4">Invite Your First Team Member</h3>
-                      <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="flex-1">
-                          <input
-                            type="email"
-                            value={inviteEmail}
-                            onChange={(e) => setInviteEmail(e.target.value)}
-                            className="input-primary"
-                            placeholder="teammate@email.com"
-                          />
-                        </div>
-                        <select
-                          value={inviteRole}
-                          onChange={(e) => setInviteRole(e.target.value as 'ADMIN' | 'MEMBER')}
-                          className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        >
-                          <option value="MEMBER">Member</option>
-                          <option value="ADMIN">Admin</option>
-                        </select>
-                        <button
-                          onClick={handleInvite}
-                          disabled={!inviteEmail || isLoading}
-                          className="btn-primary whitespace-nowrap"
-                        >
-                          {isLoading ? 'Sending...' : 'Send Invite'}
-                        </button>
-                      </div>
+                      <button
+                        onClick={openInviteModal}
+                        className="btn-primary flex items-center gap-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Invite Team Member
+                      </button>
                       <p className="text-sm text-text-secondary mt-4">
                         Invites expire after 7 days. Your team will be created when you send your first invite.
                       </p>
@@ -1256,38 +1498,23 @@ export default function SettingsPage() {
                 {/* Invite Section */}
                 {canManageTeam && (teamData?.seats.available || 0) > 0 && (
                   <Card className="p-6 lg:p-8" hover={false}>
-                    <h2 className="text-2xl font-bold text-text-primary mb-6">Invite Team Member</h2>
-
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-1">
-                        <input
-                          type="email"
-                          value={inviteEmail}
-                          onChange={(e) => setInviteEmail(e.target.value)}
-                          className="input-primary"
-                          placeholder="teammate@email.com"
-                        />
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-2xl font-bold text-text-primary">Invite Team Member</h2>
+                        <p className="text-sm text-text-secondary mt-1">
+                          {teamData?.seats.available} seat{teamData?.seats.available !== 1 ? 's' : ''} available
+                        </p>
                       </div>
-                      <select
-                        value={inviteRole}
-                        onChange={(e) => setInviteRole(e.target.value as 'ADMIN' | 'MEMBER')}
-                        className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      >
-                        <option value="MEMBER">Member</option>
-                        <option value="ADMIN">Admin</option>
-                      </select>
                       <button
-                        onClick={handleInvite}
-                        disabled={!inviteEmail || isLoading}
-                        className="btn-primary whitespace-nowrap"
+                        onClick={openInviteModal}
+                        className="btn-primary flex items-center gap-2"
                       >
-                        {isLoading ? 'Sending...' : 'Send Invite'}
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Send Invite
                       </button>
                     </div>
-
-                    <p className="text-sm text-text-secondary mt-4">
-                      Invites expire after 7 days. Team members can access shared workspaces and collaborate on content.
-                    </p>
                   </Card>
                 )}
 
