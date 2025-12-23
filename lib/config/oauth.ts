@@ -123,8 +123,8 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
   // FACEBOOK
   // ============================================
   facebook: {
-    clientId: process.env.FACEBOOK_CLIENT_ID || '',
-    clientSecret: process.env.FACEBOOK_CLIENT_SECRET || '',
+    clientId: process.env.FACEBOOK_CLIENT_ID || process.env.META_CLIENT_ID || '',
+    clientSecret: process.env.FACEBOOK_CLIENT_SECRET || process.env.META_CLIENT_SECRET || '',
     authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
     tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
     refreshUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
