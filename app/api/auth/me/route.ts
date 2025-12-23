@@ -129,22 +129,24 @@ export async function GET() {
     }
 
     // Debug: Log team membership info
+    console.log('[Auth Me Debug]', {
+      email: profile.email,
+      tier: profile.tier,
+      hasTeamMembership: !!profile.teamMembership,
+      hasTeam: !!profile.teamMembership?.team,
+      hasOwner: !!profile.teamMembership?.team?.owner,
+      teamMembershipRaw: JSON.stringify(profile.teamMembership),
+    });
+
     const ownerInfo = profile.teamMembership?.team?.owner;
     console.log('[Auth Me]', {
       email: profile.email,
-      tier: profile.tier,
       isTeamMember,
       teamMemberPro,
-      teamMembership: profile.teamMembership ? {
-        id: profile.teamMembership.id,
-        role: profile.teamMembership.role,
-        teamId: profile.teamMembership.team?.id,
-      } : null,
       ownerInfo: ownerInfo ? {
         tier: ownerInfo.tier,
         betaUser: ownerInfo.betaUser,
         betaExpiresAt: ownerInfo.betaExpiresAt,
-        betaActive: ownerInfo.betaUser && ownerInfo.betaExpiresAt && new Date(ownerInfo.betaExpiresAt) > new Date(),
       } : null,
       effectiveTier: tierInfo.effectiveTier,
     });
