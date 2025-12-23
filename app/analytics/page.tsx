@@ -82,8 +82,10 @@ export default function AnalyticsPage() {
       fetch('/api/auth/me')
         .then(res => res.ok ? res.json() : null)
         .then(data => {
-          if (data?.tier) {
-            const tier = data.tier.toLowerCase() as PlanType
+          // Use effectiveTier which includes team member PRO access
+          const effectiveTier = data?.tierInfo?.effectiveTier || data?.tier
+          if (effectiveTier) {
+            const tier = effectiveTier.toLowerCase() as PlanType
             setUserPlan(tier === 'pro' ? 'pro' : tier === 'creator' ? 'creator' : 'free')
           }
           // Check if user is a team member (not owner)
