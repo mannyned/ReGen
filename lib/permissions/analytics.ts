@@ -192,6 +192,8 @@ export async function canViewAccountAnalytics(userId: string): Promise<boolean> 
 export async function getAnalyticsPermissions(userId: string): Promise<AnalyticsPermission> {
   const workspace = await getWorkspaceForUser(userId);
 
+  console.log('[getAnalyticsPermissions] userId:', userId, 'workspace:', JSON.stringify(workspace, null, 2));
+
   if (!workspace) {
     return {
       canViewContentAnalytics: false,
@@ -204,6 +206,8 @@ export async function getAnalyticsPermissions(userId: string): Promise<Analytics
 
   const isOwnerOrAdmin = workspace.isOwner || workspace.memberRole === 'ADMIN';
   const canViewAccount = isOwnerOrAdmin || workspace.allowMemberAccountAnalytics;
+
+  console.log('[getAnalyticsPermissions] isOwnerOrAdmin:', isOwnerOrAdmin, 'memberRole:', workspace.memberRole, 'canViewAccount:', canViewAccount);
 
   return {
     canViewContentAnalytics: true, // All Pro team members
