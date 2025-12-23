@@ -66,6 +66,7 @@ export const PUBLIC_ROUTES: RouteConfig[] = [
   { path: '/api/waitlist', prefix: true }, // Waitlist signup
   { path: '/admin', prefix: true }, // Admin pages (use API key auth)
   { path: '/api/team/invites/validate' }, // Invite validation (no auth needed)
+  { path: '/api/team/invites/accept' }, // Invite acceptance (auth handled in route)
 
   // Public share pages
   { path: '/share', prefix: true },
