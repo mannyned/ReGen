@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 interface PasswordStrength {
@@ -12,20 +12,54 @@ interface PasswordStrength {
   color: string;
 }
 
-export default function SignupPage() {
+interface InviteContext {
+  teamName: string;
+  role: string;
+  email: string;
+}
+
+function SignupContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  // Check for invite token in URL
+  const inviteToken = searchParams.get('invite_token');
+  const prefilledEmail = searchParams.get('email');
 
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [inviteContext, setInviteContext] = useState<InviteContext | null>(null);
 
   // Form fields
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(prefilledEmail || '');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
 
   // Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Fetch invite details if token is present
+  useEffect(() => {
+    if (inviteToken) {
+      fetch(`/api/team/invites/validate?token=${inviteToken}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.valid) {
+            setInviteContext({
+              teamName: data.invite.teamName,
+              role: data.invite.role,
+              email: data.invite.email,
+            });
+            // Pre-fill email if not already set
+            if (!email && data.invite.email) {
+              setEmail(data.invite.email);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [inviteToken, email]);
 
   // Calculate password strength
   const getPasswordStrength = (pwd: string): PasswordStrength => {
@@ -84,11 +118,16 @@ export default function SignupPage() {
     setErrors({});
 
     try {
+      // Determine redirect URL after email verification
+      const redirectPath = inviteToken
+        ? `/team/invite?token=${inviteToken}`
+        : '/dashboard';
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectPath)}`,
           data: {
             display_name: displayName,
             full_name: displayName,
@@ -112,10 +151,13 @@ export default function SignupPage() {
       // Check if email confirmation is required
       if (data.user && !data.session) {
         // Email confirmation required - redirect to verify page
-        router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
+        const verifyUrl = inviteToken
+          ? `/auth/verify-email?email=${encodeURIComponent(email)}&invite_token=${inviteToken}`
+          : `/auth/verify-email?email=${encodeURIComponent(email)}`;
+        router.push(verifyUrl);
       } else if (data.session) {
         // No email confirmation required (or auto-confirmed)
-        router.push('/dashboard');
+        router.push(redirectPath);
       }
     } catch (error) {
       console.error('Signup error:', error);
@@ -176,10 +218,23 @@ export default function SignupPage() {
           </Link>
         </div>
 
+        {/* Invite Banner */}
+        {inviteContext && (
+          <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 mb-6">
+            <p className="text-sm text-primary font-medium text-center">
+              You've been invited to join <strong>{inviteContext.teamName}</strong> as {inviteContext.role === 'ADMIN' ? 'an Admin' : 'a Member'}
+            </p>
+          </div>
+        )}
+
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-text-primary mb-2">Create your account</h1>
-          <p className="text-text-secondary">Get started in seconds</p>
+          <h1 className="text-3xl font-bold text-text-primary mb-2">
+            {inviteContext ? 'Create your account' : 'Create your account'}
+          </h1>
+          <p className="text-text-secondary">
+            {inviteContext ? 'Sign up to accept your team invitation' : 'Get started in seconds'}
+          </p>
         </div>
 
         {/* Social Sign-In Buttons */}
@@ -378,5 +433,27 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-brand p-4">
+      <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md text-center">
+        <div className="animate-pulse">
+          <div className="w-12 h-12 bg-gray-200 rounded-full mx-auto mb-6" />
+          <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto mb-4" />
+          <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <SignupContent />
+    </Suspense>
   );
 }
