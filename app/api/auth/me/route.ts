@@ -71,7 +71,6 @@ export async function GET() {
 
     if (!profile) {
       // Profile doesn't exist yet - return basic user info
-      console.log('[Auth Me] No profile found for user:', user.id, user.email);
       return NextResponse.json({
         id: user.id,
         email: user.email,
@@ -128,29 +127,6 @@ export async function GET() {
         maxTeamSeats: 0, // Team members can't invite others
       };
     }
-
-    // Debug: Log team membership info
-    console.log('[Auth Me Debug]', {
-      email: profile.email,
-      tier: profile.tier,
-      hasTeamMembership: !!profile.teamMembership,
-      hasTeam: !!profile.teamMembership?.team,
-      hasOwner: !!profile.teamMembership?.team?.owner,
-      teamMembershipRaw: JSON.stringify(profile.teamMembership),
-    });
-
-    const ownerInfo = profile.teamMembership?.team?.owner;
-    console.log('[Auth Me]', {
-      email: profile.email,
-      isTeamMember,
-      teamMemberPro,
-      ownerInfo: ownerInfo ? {
-        tier: ownerInfo.tier,
-        betaUser: ownerInfo.betaUser,
-        betaExpiresAt: ownerInfo.betaExpiresAt,
-      } : null,
-      effectiveTier: tierInfo.effectiveTier,
-    });
 
     return NextResponse.json({
       id: profile.id,
