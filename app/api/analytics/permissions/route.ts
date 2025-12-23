@@ -26,6 +26,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       ...permissions,
       copy: ANALYTICS_COPY,
+      // Debug info (remove in production)
+      _debug: {
+        userId: user!.profileId,
+        teamContext: permissions.teamContext,
+      },
     });
   } catch (error) {
     console.error('[Analytics Permissions Error]', error);
