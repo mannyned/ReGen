@@ -9,8 +9,8 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
   // INSTAGRAM (via Facebook Graph API)
   // ============================================
   instagram: {
-    clientId: process.env.INSTAGRAM_CLIENT_ID || '',
-    clientSecret: process.env.INSTAGRAM_CLIENT_SECRET || '',
+    clientId: process.env.META_CLIENT_ID || process.env.INSTAGRAM_CLIENT_ID || '',
+    clientSecret: process.env.META_CLIENT_SECRET || process.env.INSTAGRAM_CLIENT_SECRET || '',
     authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
     tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
     refreshUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
