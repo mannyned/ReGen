@@ -128,6 +128,21 @@ export async function GET() {
       };
     }
 
+    // Debug: Log team membership info
+    console.log('[Auth Me]', {
+      email: profile.email,
+      tier: profile.tier,
+      isTeamMember,
+      teamMemberPro,
+      teamMembership: profile.teamMembership ? {
+        id: profile.teamMembership.id,
+        role: profile.teamMembership.role,
+        teamId: profile.teamMembership.team?.id,
+        ownerTier: profile.teamMembership.team?.owner?.tier,
+      } : null,
+      effectiveTier: tierInfo.effectiveTier,
+    });
+
     return NextResponse.json({
       id: profile.id,
       email: profile.email,

@@ -94,6 +94,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the membership and delete the invite in a transaction
+    console.log('[Accept Invite] Creating membership', {
+      email: user!.email,
+      teamId: invite.teamId,
+      role: invite.role,
+      inviteId: invite.id,
+    });
+
     const [membership] = await prisma.$transaction([
       prisma.teamMember.create({
         data: {
@@ -114,6 +121,11 @@ export async function POST(request: NextRequest) {
         where: { id: invite.id },
       }),
     ]);
+
+    console.log('[Accept Invite] Success', {
+      membershipId: membership.id,
+      teamName: membership.team.name,
+    });
 
     return NextResponse.json({
       success: true,
