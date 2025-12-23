@@ -99,7 +99,6 @@ export default function SettingsPage() {
   const [teamLoading, setTeamLoading] = useState(true)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'ADMIN' | 'MEMBER'>('MEMBER')
-  const [analyticsToggleLoading, setAnalyticsToggleLoading] = useState(false)
 
   // Invite modal state
   const [showInviteModal, setShowInviteModal] = useState(false)
@@ -493,34 +492,6 @@ export default function SettingsPage() {
     }
   }
 
-  // Handle analytics permission toggle
-  const handleAnalyticsToggle = async () => {
-    if (!teamData) return
-    setAnalyticsToggleLoading(true)
-    try {
-      const newValue = !teamData.allowMemberAccountAnalytics
-      const response = await fetch('/api/team/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ allowMemberAccountAnalytics: newValue }),
-      })
-      const data = await response.json()
-      if (response.ok) {
-        setTeamData({
-          ...teamData,
-          allowMemberAccountAnalytics: newValue,
-        })
-        setShowSaveToast(true)
-        setTimeout(() => setShowSaveToast(false), 3000)
-      } else {
-        alert(data.error || 'Failed to update analytics settings')
-      }
-    } catch {
-      alert('Failed to update analytics settings')
-    } finally {
-      setAnalyticsToggleLoading(false)
-    }
-  }
 
   const connectedCount = platforms.filter(p => p.connected).length
   const usedSeats = teamData?.seats.used || 0
@@ -1456,42 +1427,6 @@ export default function SettingsPage() {
                         </div>
                       </div>
                     )}
-                  </Card>
-                )}
-
-                {/* Analytics Access Section - Owner/Admin only */}
-                {teamData && canManageTeam && (
-                  <Card className="p-6 lg:p-8" hover={false}>
-                    <h2 className="text-2xl font-bold text-text-primary mb-2">Analytics Access</h2>
-                    <p className="text-text-secondary mb-6">
-                      Control what analytics team members can view
-                    </p>
-
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                      <div className="flex-1">
-                        <p className="font-medium text-text-primary">
-                          Allow team members to view account-level analytics
-                        </p>
-                        <p className="text-sm text-text-secondary mt-1">
-                          When off, members can still see content performance.
-                        </p>
-                      </div>
-                      <button
-                        onClick={handleAnalyticsToggle}
-                        disabled={analyticsToggleLoading}
-                        className={`w-14 h-8 rounded-full transition-colors relative flex-shrink-0 ml-4 ${
-                          teamData.allowMemberAccountAnalytics ? 'bg-primary' : 'bg-gray-300'
-                        } ${analyticsToggleLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-sm transition-transform ${
-                          teamData.allowMemberAccountAnalytics ? 'translate-x-7' : 'translate-x-1'
-                        }`} />
-                      </button>
-                    </div>
-
-                    <p className="text-xs text-text-secondary mt-4">
-                      Account analytics include follower growth, account insights, and cross-platform metrics.
-                    </p>
                   </Card>
                 )}
 
