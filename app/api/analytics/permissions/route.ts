@@ -21,16 +21,9 @@ export async function GET(request: NextRequest) {
   try {
     const permissions = await getAnalyticsPermissions(user!.profileId);
 
-    console.log('[Analytics Permissions] User:', user!.profileId, 'Permissions:', JSON.stringify(permissions, null, 2));
-
     return NextResponse.json({
       ...permissions,
       copy: ANALYTICS_COPY,
-      // Debug info (remove in production)
-      _debug: {
-        userId: user!.profileId,
-        teamContext: permissions.teamContext,
-      },
     });
   } catch (error) {
     console.error('[Analytics Permissions Error]', error);
