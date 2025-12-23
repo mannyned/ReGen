@@ -129,6 +129,7 @@ export async function GET() {
     }
 
     // Debug: Log team membership info
+    const ownerInfo = profile.teamMembership?.team?.owner;
     console.log('[Auth Me]', {
       email: profile.email,
       tier: profile.tier,
@@ -138,7 +139,12 @@ export async function GET() {
         id: profile.teamMembership.id,
         role: profile.teamMembership.role,
         teamId: profile.teamMembership.team?.id,
-        ownerTier: profile.teamMembership.team?.owner?.tier,
+      } : null,
+      ownerInfo: ownerInfo ? {
+        tier: ownerInfo.tier,
+        betaUser: ownerInfo.betaUser,
+        betaExpiresAt: ownerInfo.betaExpiresAt,
+        betaActive: ownerInfo.betaUser && ownerInfo.betaExpiresAt && new Date(ownerInfo.betaExpiresAt) > new Date(),
       } : null,
       effectiveTier: tierInfo.effectiveTier,
     });
