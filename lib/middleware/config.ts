@@ -65,9 +65,13 @@ export const PUBLIC_ROUTES: RouteConfig[] = [
   { path: '/api/admin', prefix: true }, // Admin endpoints (use API key auth)
   { path: '/api/waitlist', prefix: true }, // Waitlist signup
   { path: '/admin', prefix: true }, // Admin pages (use API key auth)
+  { path: '/api/team/invites/validate' }, // Invite validation (no auth needed)
 
   // Public share pages
   { path: '/share', prefix: true },
+
+  // Team invite page (needs to be public for new users)
+  { path: '/team/invite' },
 
   // Data deletion status (Meta requirement)
   { path: '/data-deletion-status' },
