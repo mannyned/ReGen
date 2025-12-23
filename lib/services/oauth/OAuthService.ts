@@ -309,22 +309,47 @@ export class OAuthService {
   }
 
   private async fetchInstagramProfile(accessToken: string): Promise<SocialProfile> {
-    const response = await fetch(
-      `${API_BASE_URLS.instagram}/me?fields=id,username,name,profile_picture_url,followers_count,follows_count&access_token=${accessToken}`
+    // Instagram Graph API requires getting the Instagram Business Account through Facebook Pages
+    // Step 1: Get Facebook Pages the user manages
+    const pagesResponse = await fetch(
+      `${API_BASE_URLS.instagram}/me/accounts?fields=id,name,access_token&access_token=${accessToken}`
     )
 
-    if (!response.ok) throw new Error('Failed to fetch Instagram profile')
-
-    const data = await response.json()
-
-    return {
-      platformUserId: data.id,
-      username: data.username,
-      displayName: data.name,
-      profileImageUrl: data.profile_picture_url,
-      followers: data.followers_count,
-      following: data.follows_count,
+    if (!pagesResponse.ok) {
+      throw new Error('Failed to fetch Facebook Pages for Instagram')
     }
+
+    const pagesData = await pagesResponse.json()
+    const pages = pagesData.data || []
+
+    if (pages.length === 0) {
+      throw new Error('No Facebook Pages found. Instagram Business accounts require a linked Facebook Page.')
+    }
+
+    // Step 2: Find Instagram Business Account linked to a Page
+    for (const page of pages) {
+      const igResponse = await fetch(
+        `${API_BASE_URLS.instagram}/${page.id}?fields=instagram_business_account{id,username,name,profile_picture_url,followers_count,follows_count}&access_token=${page.access_token}`
+      )
+
+      if (!igResponse.ok) continue
+
+      const igData = await igResponse.json()
+      const igAccount = igData.instagram_business_account
+
+      if (igAccount) {
+        return {
+          platformUserId: igAccount.id,
+          username: igAccount.username,
+          displayName: igAccount.name || igAccount.username,
+          profileImageUrl: igAccount.profile_picture_url,
+          followers: igAccount.followers_count,
+          following: igAccount.follows_count,
+        }
+      }
+    }
+
+    throw new Error('No Instagram Business Account found linked to your Facebook Pages. Make sure your Instagram account is a Business or Creator account connected to a Facebook Page.')
   }
 
   private async fetchTikTokProfile(accessToken: string): Promise<SocialProfile> {
