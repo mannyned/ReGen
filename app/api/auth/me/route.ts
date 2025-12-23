@@ -71,6 +71,7 @@ export async function GET() {
 
     if (!profile) {
       // Profile doesn't exist yet - return basic user info
+      console.log('[Auth Me] No profile found for user:', user.id, user.email);
       return NextResponse.json({
         id: user.id,
         email: user.email,
