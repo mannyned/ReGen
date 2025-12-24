@@ -162,6 +162,9 @@ export const PROTECTED_API_ROUTES: ProtectedRouteConfig[] = [
   // Analytics
   { path: '/api/analytics', prefix: true },
 
+  // Publishing
+  { path: '/api/publish', prefix: true },
+
   // AI features - Creator+
   { path: '/api/generate', prefix: true, requiredTier: 'CREATOR' },
   { path: '/api/ai', prefix: true, requiredTier: 'CREATOR' },
