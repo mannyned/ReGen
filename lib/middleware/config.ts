@@ -64,6 +64,7 @@ export const PUBLIC_ROUTES: RouteConfig[] = [
   { path: '/api/webhooks', prefix: true }, // Webhook endpoints (Meta, etc.)
   { path: '/api/admin', prefix: true }, // Admin endpoints (use API key auth)
   { path: '/api/waitlist', prefix: true }, // Waitlist signup
+  { path: '/api/publish/mock' }, // Mock publish endpoint for testing (no auth needed)
   { path: '/admin', prefix: true }, // Admin pages (use API key auth)
   { path: '/api/team/invites/validate' }, // Invite validation (no auth needed)
   { path: '/api/team/invites/accept' }, // Invite acceptance (auth handled in route)

@@ -168,6 +168,11 @@ export default function SchedulePage() {
 
       const result = await response.json()
 
+      if (!response.ok) {
+        console.error('Publish API error:', response.status, result)
+        throw new Error(`API error ${response.status}: ${result.error || JSON.stringify(result)}`)
+      }
+
       if (result.success) {
         // Show success message
         setShowSuccess(true)
@@ -186,11 +191,11 @@ export default function SchedulePage() {
           }, 3000)
         }
       } else {
-        throw new Error(result.error || 'Failed to publish')
+        throw new Error(result.error || 'Publish returned success: false')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error publishing now:', error)
-      alert(`Failed to publish. ${testMode ? '(Test Mode)' : ''} Please try again.`)
+      alert(`Failed to publish. ${error.message || 'Unknown error'}`)
     }
   }
 
