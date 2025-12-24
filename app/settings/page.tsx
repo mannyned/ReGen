@@ -1438,14 +1438,14 @@ export default function SettingsPage() {
                   </Card>
                 )}
 
-                {/* Invite Section */}
-                {canManageTeam && (teamData?.seats.available || 0) > 0 && (
+                {/* Invite Section - Only show when seats available AND user can manage */}
+                {canManageTeam && teamData && teamData.seats.available > 0 && (
                   <Card className="p-6 lg:p-8" hover={false}>
                     <div className="flex items-center justify-between">
                       <div>
                         <h2 className="text-2xl font-bold text-text-primary">Invite Team Member</h2>
                         <p className="text-sm text-text-secondary mt-1">
-                          {teamData?.seats.available} seat{teamData?.seats.available !== 1 ? 's' : ''} available
+                          {teamData.seats.available} seat{teamData.seats.available !== 1 ? 's' : ''} available
                         </p>
                       </div>
                       <button
@@ -1461,8 +1461,8 @@ export default function SettingsPage() {
                   </Card>
                 )}
 
-                {/* All seats taken */}
-                {teamData && (teamData.seats.available || 0) <= 0 && canManageTeam && (
+                {/* All seats taken - Show when no seats available */}
+                {teamData && teamData.seats.available <= 0 && canManageTeam && (
                   <Card className="p-6 lg:p-8 border-orange-200" hover={false}>
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -1471,11 +1471,14 @@ export default function SettingsPage() {
                       <div>
                         <h3 className="font-bold text-text-primary mb-1">All seats taken</h3>
                         <p className="text-text-secondary mb-4">
-                          Your Pro plan includes {totalSeats} seats and they're all in use. Remove a team member or cancel a pending invite to add someone new.
+                          Your Pro plan includes {teamData.seats.total} seats and they're all in use ({teamData.seats.used} members{teamData.seats.pending > 0 ? `, ${teamData.seats.pending} pending invite${teamData.seats.pending !== 1 ? 's' : ''}` : ''}).
+                          {isOwner ? ' Remove a team member or cancel a pending invite to add someone new.' : ' Ask the team owner to free up a seat.'}
                         </p>
-                        <a href="mailto:support@regenr.app" className="text-primary font-medium hover:underline">
-                          Contact us about additional seats
-                        </a>
+                        {isOwner && (
+                          <a href="mailto:support@regenr.app" className="text-primary font-medium hover:underline">
+                            Contact us about additional seats
+                          </a>
+                        )}
                       </div>
                     </div>
                   </Card>
