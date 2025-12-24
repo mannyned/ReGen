@@ -71,6 +71,7 @@ export const PUBLIC_ROUTES: RouteConfig[] = [
   { path: '/api/oauth/callback', prefix: true }, // OAuth callback (handles code exchange)
   { path: '/api/oauth/disconnect', prefix: true }, // OAuth disconnect
   { path: '/api/oauth/status', prefix: true }, // OAuth status check
+  { path: '/api/oauth/debug' }, // OAuth debug endpoint
 
   // Public share pages
   { path: '/share', prefix: true },
