@@ -97,6 +97,7 @@ export default function SettingsPage() {
     invites: Array<{ id: string; email: string; role: string; expiresAt: string }>;
     seats: { total: number; used: number; pending: number; available: number };
     allowMemberAccountAnalytics: boolean;
+    canInvite: boolean; // Server-side flag for whether user can send invites
   } | null>(null)
   const [teamLoading, setTeamLoading] = useState(true)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -228,6 +229,7 @@ export default function SettingsPage() {
               invites: data.team.invites || [],
               seats: data.team.seats,
               allowMemberAccountAnalytics: data.team.allowMemberAccountAnalytics ?? false,
+              canInvite: data.team.canInvite ?? false,
             })
           }
         }
@@ -364,6 +366,7 @@ export default function SettingsPage() {
               invites: teamData.team.invites || [],
               seats: teamData.team.seats,
               allowMemberAccountAnalytics: teamData.team.allowMemberAccountAnalytics ?? false,
+              canInvite: teamData.team.canInvite ?? false,
             })
           }
         }
@@ -408,6 +411,7 @@ export default function SettingsPage() {
               invites: teamData.team.invites || [],
               seats: teamData.team.seats,
               allowMemberAccountAnalytics: teamData.team.allowMemberAccountAnalytics ?? false,
+              canInvite: teamData.team.canInvite ?? false,
             })
           }
         }
@@ -451,6 +455,7 @@ export default function SettingsPage() {
               invites: teamData.team.invites || [],
               seats: teamData.team.seats,
               allowMemberAccountAnalytics: teamData.team.allowMemberAccountAnalytics ?? false,
+              canInvite: teamData.team.canInvite ?? false,
             })
           }
         }
@@ -491,6 +496,7 @@ export default function SettingsPage() {
               invites: teamData.team.invites || [],
               seats: teamData.team.seats,
               allowMemberAccountAnalytics: teamData.team.allowMemberAccountAnalytics ?? false,
+              canInvite: teamData.team.canInvite ?? false,
             })
           }
         }
@@ -1438,8 +1444,8 @@ export default function SettingsPage() {
                   </Card>
                 )}
 
-                {/* Invite Section - Only show when seats available AND user can manage */}
-                {canManageTeam && teamData && teamData.seats.available > 0 && (
+                {/* Invite Section - Only show when server says user can invite */}
+                {teamData && teamData.canInvite && (
                   <Card className="p-6 lg:p-8" hover={false}>
                     <div className="flex items-center justify-between">
                       <div>
@@ -1461,8 +1467,8 @@ export default function SettingsPage() {
                   </Card>
                 )}
 
-                {/* All seats taken - Show when no seats available */}
-                {teamData && teamData.seats.available <= 0 && canManageTeam && (
+                {/* All seats taken - Show when user can manage but can't invite (seats full) */}
+                {teamData && !teamData.canInvite && canManageTeam && (
                   <Card className="p-6 lg:p-8 border-orange-200" hover={false}>
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">

@@ -64,6 +64,18 @@ export async function GET(request: NextRequest) {
       // Calculate seats
       const usedSeats = 1 + ownedTeam.members.length; // Owner + members
       const pendingInvites = ownedTeam.invites.length;
+      const availableSeats = MAX_TEAM_SEATS - usedSeats - pendingInvites;
+
+      // Debug logging
+      console.log('[Team API - Owner View]', {
+        userId: user!.profileId,
+        teamId: ownedTeam.id,
+        membersCount: ownedTeam.members.length,
+        usedSeats,
+        pendingInvites,
+        availableSeats,
+        canInvite: availableSeats > 0,
+      });
 
       return NextResponse.json({
         team: {
@@ -101,8 +113,10 @@ export async function GET(request: NextRequest) {
             total: MAX_TEAM_SEATS,
             used: usedSeats,
             pending: pendingInvites,
-            available: MAX_TEAM_SEATS - usedSeats - pendingInvites,
+            available: availableSeats,
           },
+          // Explicit flag for whether this user can send invites
+          canInvite: availableSeats > 0,
         },
       });
     }
@@ -147,9 +161,21 @@ export async function GET(request: NextRequest) {
 
     if (membership) {
       const team = membership.team;
-      const usedSeats = 1 + team.members.length;
+      const usedSeats = 1 + team.members.length; // Owner + all team members
       const pendingInvites = team.invites.length;
+      const availableSeats = MAX_TEAM_SEATS - usedSeats - pendingInvites;
       const canManageInvites = membership.role === 'ADMIN';
+
+      // Debug logging
+      console.log('[Team API - Member View]', {
+        userId: user!.profileId,
+        teamId: team.id,
+        membersCount: team.members.length,
+        usedSeats,
+        pendingInvites,
+        availableSeats,
+        canInvite: canManageInvites && availableSeats > 0,
+      });
 
       return NextResponse.json({
         team: {
@@ -190,8 +216,10 @@ export async function GET(request: NextRequest) {
             total: MAX_TEAM_SEATS,
             used: usedSeats,
             pending: pendingInvites,
-            available: MAX_TEAM_SEATS - usedSeats - pendingInvites,
+            available: availableSeats,
           },
+          // Explicit flag for whether this user can send invites
+          canInvite: canManageInvites && availableSeats > 0,
         },
       });
     }
