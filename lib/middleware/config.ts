@@ -158,6 +158,8 @@ export const PROTECTED_API_ROUTES: ProtectedRouteConfig[] = [
   // Content
   { path: '/api/posts', prefix: true },
   { path: '/api/schedule', prefix: true },
+
+  // Media uploads
   { path: '/api/uploads', prefix: true },
 
   // Analytics

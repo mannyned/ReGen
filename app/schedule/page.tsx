@@ -142,28 +142,97 @@ export default function SchedulePage() {
     }
 
     try {
-      // Prepare content data from selected previews
-      const contentData = {
-        platforms: selectedPlatforms,
-        caption: selectedPreviews[0]?.caption || 'Test post from ReGenr',
-        hashtags: selectedPreviews[0]?.hashtags || ['#ReGenr', '#TestMode'],
-        files: selectedPreviews[0]?.files?.map(f => ({
-          name: f.name,
-          type: f.type,
-          size: f.size
-        })) || [],
-        scheduleTime: 'immediate'
+      const preview = selectedPreviews[0]
+      const caption = preview?.caption || 'Test post from ReGenr'
+      const hashtags = preview?.hashtags || ['#ReGenr', '#TestMode']
+
+      // For test mode, use simplified data format
+      if (testMode) {
+        const mockData = {
+          platforms: selectedPlatforms,
+          caption,
+          hashtags,
+          files: preview?.files?.map(f => ({
+            name: f.name,
+            type: f.type,
+            size: f.size
+          })) || [],
+          scheduleTime: 'immediate'
+        }
+
+        const response = await fetch('/api/publish/mock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(mockData),
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          console.error('Publish API error:', response.status, result)
+          throw new Error(`API error ${response.status}: ${result.error || JSON.stringify(result)}`)
+        }
+
+        if (result.success) {
+          setShowSuccess(true)
+          setPostMode('now')
+          setTimeout(() => {
+            window.location.href = '/test-results'
+          }, 2000)
+        } else {
+          throw new Error(result.error || 'Publish returned success: false')
+        }
+        return
       }
 
-      // Use mock API in test mode, real publish API otherwise
-      const apiEndpoint = testMode ? '/api/publish/mock' : '/api/publish'
+      // Real publish mode - upload files first then publish
+      let mediaData = null
 
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      if (preview?.files && preview.files.length > 0) {
+        const file = preview.files[0]
+
+        if (file.base64Data) {
+          // Upload file to get public URL
+          const uploadResponse = await fetch('/api/uploads', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              base64Data: file.base64Data,
+              filename: file.name,
+              mimeType: file.type,
+            }),
+          })
+
+          const uploadResult = await uploadResponse.json()
+
+          if (!uploadResponse.ok || !uploadResult.success) {
+            throw new Error(`Failed to upload media: ${uploadResult.error || 'Unknown error'}`)
+          }
+
+          mediaData = {
+            mediaUrl: uploadResult.file.publicUrl,
+            mediaType: uploadResult.file.mediaType as 'image' | 'video',
+            mimeType: uploadResult.file.mimeType,
+            fileSize: uploadResult.file.fileSize,
+          }
+        }
+      }
+
+      // Build publish request with correct format
+      const publishData = {
+        userId: user?.id,
+        platforms: selectedPlatforms.map(p => PLATFORM_ID_MAP[p] || p),
+        content: {
+          caption,
+          hashtags,
         },
-        body: JSON.stringify(contentData),
+        media: mediaData,
+      }
+
+      const response = await fetch('/api/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(publishData),
       })
 
       const result = await response.json()
@@ -173,25 +242,33 @@ export default function SchedulePage() {
         throw new Error(`API error ${response.status}: ${result.error || JSON.stringify(result)}`)
       }
 
-      if (result.success) {
+      if (result.success || result.partialSuccess) {
         // Show success message
         setShowSuccess(true)
         setPostMode('now')
 
-        // Redirect to test results if in test mode
-        if (testMode) {
-          setTimeout(() => {
-            window.location.href = '/test-results'
-          }, 2000)
-        } else {
-          // Hide success message after 3 seconds
-          setTimeout(() => {
-            setShowSuccess(false)
-            setSelectedPlatforms([])
-          }, 3000)
+        // Show summary of results
+        if (result.summary) {
+          console.log(`Published to ${result.summary.succeeded}/${result.summary.total} platforms`)
         }
+
+        // Hide success message after 3 seconds
+        setTimeout(() => {
+          setShowSuccess(false)
+          setSelectedPlatforms([])
+        }, 3000)
       } else {
-        throw new Error(result.error || 'Publish returned success: false')
+        // Build error message from results
+        let errorMsg = 'Publish failed'
+        if (result.results) {
+          const failures = Object.entries(result.results)
+            .filter(([_, r]: [string, any]) => !r.success)
+            .map(([platform, r]: [string, any]) => `${platform}: ${r.error}`)
+          if (failures.length > 0) {
+            errorMsg = failures.join(', ')
+          }
+        }
+        throw new Error(result.error || errorMsg)
       }
     } catch (error: any) {
       console.error('Error publishing now:', error)
