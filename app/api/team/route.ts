@@ -122,6 +122,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user is a member of a team
+    console.log('[Team API] Looking for membership with userId:', user!.profileId, 'email:', user!.email);
+
     const membership = await prisma.teamMember.findUnique({
       where: { userId: user!.profileId },
       include: {
@@ -158,6 +160,8 @@ export async function GET(request: NextRequest) {
         },
       },
     });
+
+    console.log('[Team API] Membership found:', membership ? 'YES' : 'NO');
 
     if (membership) {
       const team = membership.team;
