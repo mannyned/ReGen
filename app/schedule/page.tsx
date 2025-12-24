@@ -155,8 +155,8 @@ export default function SchedulePage() {
         scheduleTime: 'immediate'
       }
 
-      // Use mock API in test mode
-      const apiEndpoint = testMode ? '/api/publish/mock' : '/api/publish/now'
+      // Use mock API in test mode, real publish API otherwise
+      const apiEndpoint = testMode ? '/api/publish/mock' : '/api/publish'
 
       const response = await fetch(apiEndpoint, {
         method: 'POST',
