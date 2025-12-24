@@ -40,3 +40,4 @@ yarn-error.log*
 next-env.d.ts
 nul
 server/node_modules/
+App owner resource.txt
