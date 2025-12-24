@@ -50,7 +50,7 @@ type NotificationSetting = {
 }
 
 export default function SettingsPage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile')
   const [mounted, setMounted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -159,7 +159,7 @@ export default function SettingsPage() {
 
     fetchUserProfile()
 
-    // Initialize platforms
+    // Initialize platforms - only when user is available
     const initializePlatforms = async () => {
       const defaultPlatforms = [
         { id: 'instagram', name: 'Instagram', icon: '📷', color: 'from-purple-500 to-pink-500', connected: false },
@@ -171,8 +171,14 @@ export default function SettingsPage() {
         { id: 'snapchat', name: 'Snapchat', icon: '👻', color: 'from-yellow-400 to-yellow-500', connected: false },
       ]
 
+      // Wait for auth to complete before fetching
+      if (authLoading || !user?.id) {
+        setPlatforms(defaultPlatforms)
+        return
+      }
+
       try {
-        const response = await fetch(`/api/oauth/status?userId=${user?.id || 'default-user'}`)
+        const response = await fetch(`/api/oauth/status?userId=${user.id}`)
         const data = await response.json()
 
         if (data.success && data.connectedPlatforms) {
@@ -233,7 +239,7 @@ export default function SettingsPage() {
     }
 
     fetchTeamData()
-  }, [])
+  }, [user, authLoading])
 
   // Handle platform connect
   const handleConnect = async (platform: Platform) => {
