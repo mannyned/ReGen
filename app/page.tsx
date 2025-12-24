@@ -132,7 +132,7 @@ export default function Home() {
   const [scrolled, setScrolled] = useState(false)
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' })
+  const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error' | 'info' | null; message: string }>({ type: null, message: '' })
 
   const handleWaitlistSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -149,8 +149,14 @@ export default function Home() {
       const data = await response.json()
 
       if (response.ok) {
-        setSubmitStatus({ type: 'success', message: data.message })
-        setEmail('')
+        if (data.alreadyExists) {
+          // User already on waitlist - show info message
+          setSubmitStatus({ type: 'info', message: data.message })
+        } else {
+          // New signup - show success message
+          setSubmitStatus({ type: 'success', message: data.message })
+          setEmail('')
+        }
       } else {
         setSubmitStatus({ type: 'error', message: data.error || 'Something went wrong' })
       }
@@ -491,8 +497,11 @@ export default function Home() {
               <div className={`mt-4 px-4 py-3 rounded-xl text-sm font-medium ${
                 submitStatus.type === 'success'
                   ? 'bg-green-500/20 text-white border border-green-400/30'
+                  : submitStatus.type === 'info'
+                  ? 'bg-amber-500/20 text-white border border-amber-400/30'
                   : 'bg-red-500/20 text-white border border-red-400/30'
               }`}>
+                {submitStatus.type === 'info' && <span className="mr-2">👋</span>}
                 {submitStatus.message}
               </div>
             )}
