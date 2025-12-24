@@ -1,6 +1,11 @@
+Waitlist page for Beta User
+url: https://regenr.app/admin/waitlist
+ADMIN API key: 53a6335176d33ac4c61b73666f3e8eaaf7ca9a42f504258192747560ce825a4a
+
 Beta User page
 url: https://regenr.app/admin/beta
 ADMIN API key: 53a6335176d33ac4c61b73666f3e8eaaf7ca9a42f504258192747560ce825a4a
+
 
 App Domain info:
 Namecheap
@@ -11,9 +16,6 @@ NonReply Email Infor
 Go to www.resend.com
 Account login: support@regenr.app
 Pswd: KenzoEyram234@#$
+Resend API Key : re_N7DgrdDQ_H9UGnu8wBLj3bJWvKuLZ4pVh
 
 
-To Revert After Beta
-  When beta ends and you're ready to show pricing again, you can either:
-  1. Revert this commit: git revert b396bc6
-  2. Or manually update the files to restore pricing
