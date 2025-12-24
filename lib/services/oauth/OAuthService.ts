@@ -24,11 +24,25 @@ function generateNonce(): string {
 }
 
 // ============================================
-// STATE MANAGEMENT
+// STATE MANAGEMENT (Stateless with HMAC signature)
 // ============================================
 
-// In-memory state store (use Redis in production)
-const stateStore = new Map<string, { state: OAuthState; expiresAt: Date }>()
+// Secret for signing state - use TOKEN_ENCRYPTION_KEY or generate one
+const STATE_SECRET = process.env.TOKEN_ENCRYPTION_KEY || process.env.OAUTH_STATE_SECRET || 'default-oauth-state-secret-change-me'
+
+function signState(data: string): string {
+  const hmac = crypto.createHmac('sha256', STATE_SECRET)
+  hmac.update(data)
+  return hmac.digest('base64url')
+}
+
+function verifySignature(data: string, signature: string): boolean {
+  const expectedSignature = signState(data)
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  )
+}
 
 export function generateOAuthState(
   userId: string,
@@ -43,33 +57,50 @@ export function generateOAuthState(
     codeVerifier,
   }
 
-  const stateString = Buffer.from(JSON.stringify(state)).toString('base64url')
+  // Encode state as base64url
+  const stateData = Buffer.from(JSON.stringify(state)).toString('base64url')
 
-  // Store state with 10-minute expiry
-  stateStore.set(stateString, {
-    state,
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-  })
+  // Sign the state
+  const signature = signState(stateData)
 
-  return stateString
+  // Return state.signature format
+  return `${stateData}.${signature}`
 }
 
 export function validateOAuthState(stateString: string): OAuthState | null {
-  const stored = stateStore.get(stateString)
+  try {
+    // Split state and signature
+    const parts = stateString.split('.')
+    if (parts.length !== 2) {
+      console.error('[OAuth] Invalid state format - missing signature')
+      return null
+    }
 
-  if (!stored) {
+    const [stateData, signature] = parts
+
+    // Verify signature
+    if (!verifySignature(stateData, signature)) {
+      console.error('[OAuth] Invalid state signature')
+      return null
+    }
+
+    // Decode state
+    const state: OAuthState = JSON.parse(
+      Buffer.from(stateData, 'base64url').toString('utf8')
+    )
+
+    // Check expiry (10 minutes)
+    const expiryMs = 10 * 60 * 1000
+    if (Date.now() - state.timestamp > expiryMs) {
+      console.error('[OAuth] State expired')
+      return null
+    }
+
+    return state
+  } catch (error) {
+    console.error('[OAuth] Failed to validate state:', error)
     return null
   }
-
-  if (stored.expiresAt < new Date()) {
-    stateStore.delete(stateString)
-    return null
-  }
-
-  // Delete state after validation (single use)
-  stateStore.delete(stateString)
-
-  return stored.state
 }
 
 // ============================================
