@@ -69,6 +69,8 @@ export const PUBLIC_ROUTES: RouteConfig[] = [
   { path: '/api/team/invites/accept' }, // Invite acceptance (auth handled in route)
   { path: '/api/oauth/connect', prefix: true }, // OAuth initiation (returns auth URL)
   { path: '/api/oauth/callback', prefix: true }, // OAuth callback (handles code exchange)
+  { path: '/api/oauth/disconnect', prefix: true }, // OAuth disconnect
+  { path: '/api/oauth/status', prefix: true }, // OAuth status check
 
   // Public share pages
   { path: '/share', prefix: true },

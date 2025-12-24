@@ -1,6 +1,8 @@
 import crypto from 'crypto'
 import type { SocialPlatform, OAuthTokens } from '../../types/social'
 import { oauthService } from './OAuthService'
+import { prisma } from '@/lib/db'
+import { SocialPlatform as PrismaSocialPlatform } from '@prisma/client'
 
 // ============================================
 // ENCRYPTION UTILITIES
@@ -9,7 +11,6 @@ import { oauthService } from './OAuthService'
 const ENCRYPTION_KEY = process.env.TOKEN_ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex')
 const ALGORITHM = 'aes-256-gcm'
 const IV_LENGTH = 12
-const AUTH_TAG_LENGTH = 16
 
 export function encryptToken(token: string): string {
   const iv = crypto.randomBytes(IV_LENGTH)
@@ -46,10 +47,33 @@ export function decryptToken(encryptedToken: string): string {
 }
 
 // ============================================
-// TOKEN STORAGE (In-memory for dev, use DB in production)
+// PLATFORM MAPPING
 // ============================================
 
-interface StoredConnection {
+// Map lowercase platform strings to Prisma enum
+function toPrismaPlatform(platform: SocialPlatform): PrismaSocialPlatform {
+  const mapping: Record<SocialPlatform, PrismaSocialPlatform> = {
+    instagram: 'INSTAGRAM',
+    tiktok: 'TIKTOK',
+    youtube: 'YOUTUBE',
+    twitter: 'TWITTER',
+    linkedin: 'LINKEDIN',
+    facebook: 'FACEBOOK',
+    snapchat: 'SNAPCHAT',
+  }
+  return mapping[platform]
+}
+
+// Map Prisma enum to lowercase platform strings
+function fromPrismaPlatform(platform: PrismaSocialPlatform): SocialPlatform {
+  return platform.toLowerCase() as SocialPlatform
+}
+
+// ============================================
+// STORED CONNECTION TYPE
+// ============================================
+
+export interface StoredConnection {
   userId: string
   platform: SocialPlatform
   platformUserId: string
@@ -63,13 +87,6 @@ interface StoredConnection {
   isActive: boolean
   createdAt: Date
   updatedAt: Date
-}
-
-// In-memory storage (replace with Prisma in production)
-const connectionStore = new Map<string, StoredConnection>()
-
-function getConnectionKey(userId: string, platform: SocialPlatform): string {
-  return `${userId}:${platform}`
 }
 
 // ============================================
@@ -93,29 +110,62 @@ export class TokenManager {
     },
     scopes: string[]
   ): Promise<StoredConnection> {
-    const key = getConnectionKey(userId, platform)
+    const prismaPlatform = toPrismaPlatform(platform)
 
-    const connection: StoredConnection = {
-      userId,
-      platform,
-      platformUserId: profile.platformUserId,
-      username: profile.username,
-      displayName: profile.displayName,
-      profileImageUrl: profile.profileImageUrl,
-      accessToken: encryptToken(tokens.accessToken),
-      refreshToken: tokens.refreshToken ? encryptToken(tokens.refreshToken) : undefined,
-      expiresAt: tokens.expiresAt,
-      scopes,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-
-    connectionStore.set(key, connection)
+    // Upsert the connection (update if exists, create if not)
+    const connection = await prisma.socialConnection.upsert({
+      where: {
+        profileId_platform: {
+          profileId: userId,
+          platform: prismaPlatform,
+        },
+      },
+      update: {
+        platformUserId: profile.platformUserId,
+        username: profile.username,
+        displayName: profile.displayName,
+        profileImageUrl: profile.profileImageUrl,
+        accessToken: encryptToken(tokens.accessToken),
+        refreshToken: tokens.refreshToken ? encryptToken(tokens.refreshToken) : null,
+        tokenExpiresAt: tokens.expiresAt,
+        scopes: scopes,
+        isActive: true,
+        lastSyncAt: new Date(),
+        lastError: null,
+        lastErrorAt: null,
+      },
+      create: {
+        profileId: userId,
+        platform: prismaPlatform,
+        platformUserId: profile.platformUserId,
+        username: profile.username,
+        displayName: profile.displayName,
+        profileImageUrl: profile.profileImageUrl,
+        accessToken: encryptToken(tokens.accessToken),
+        refreshToken: tokens.refreshToken ? encryptToken(tokens.refreshToken) : null,
+        tokenExpiresAt: tokens.expiresAt,
+        scopes: scopes,
+        isActive: true,
+      },
+    })
 
     console.log(`[TokenManager] Stored connection for ${userId} on ${platform}`)
 
-    return connection
+    return {
+      userId: connection.profileId,
+      platform: fromPrismaPlatform(connection.platform),
+      platformUserId: connection.platformUserId,
+      username: connection.username || undefined,
+      displayName: connection.displayName || undefined,
+      profileImageUrl: connection.profileImageUrl || undefined,
+      accessToken: connection.accessToken,
+      refreshToken: connection.refreshToken || undefined,
+      expiresAt: connection.tokenExpiresAt || undefined,
+      scopes: connection.scopes,
+      isActive: connection.isActive,
+      createdAt: connection.createdAt,
+      updatedAt: connection.updatedAt,
+    }
   }
 
   // ============================================
@@ -126,8 +176,34 @@ export class TokenManager {
     userId: string,
     platform: SocialPlatform
   ): Promise<StoredConnection | null> {
-    const key = getConnectionKey(userId, platform)
-    return connectionStore.get(key) || null
+    const prismaPlatform = toPrismaPlatform(platform)
+
+    const connection = await prisma.socialConnection.findUnique({
+      where: {
+        profileId_platform: {
+          profileId: userId,
+          platform: prismaPlatform,
+        },
+      },
+    })
+
+    if (!connection) return null
+
+    return {
+      userId: connection.profileId,
+      platform: fromPrismaPlatform(connection.platform),
+      platformUserId: connection.platformUserId,
+      username: connection.username || undefined,
+      displayName: connection.displayName || undefined,
+      profileImageUrl: connection.profileImageUrl || undefined,
+      accessToken: connection.accessToken,
+      refreshToken: connection.refreshToken || undefined,
+      expiresAt: connection.tokenExpiresAt || undefined,
+      scopes: connection.scopes,
+      isActive: connection.isActive,
+      createdAt: connection.createdAt,
+      updatedAt: connection.updatedAt,
+    }
   }
 
   // ============================================
@@ -135,15 +211,28 @@ export class TokenManager {
   // ============================================
 
   async getUserConnections(userId: string): Promise<StoredConnection[]> {
-    const connections: StoredConnection[] = []
+    const connections = await prisma.socialConnection.findMany({
+      where: {
+        profileId: userId,
+        isActive: true,
+      },
+    })
 
-    for (const connection of connectionStore.values()) {
-      if (connection.userId === userId && connection.isActive) {
-        connections.push(connection)
-      }
-    }
-
-    return connections
+    return connections.map((connection) => ({
+      userId: connection.profileId,
+      platform: fromPrismaPlatform(connection.platform),
+      platformUserId: connection.platformUserId,
+      username: connection.username || undefined,
+      displayName: connection.displayName || undefined,
+      profileImageUrl: connection.profileImageUrl || undefined,
+      accessToken: connection.accessToken,
+      refreshToken: connection.refreshToken || undefined,
+      expiresAt: connection.tokenExpiresAt || undefined,
+      scopes: connection.scopes,
+      isActive: connection.isActive,
+      createdAt: connection.createdAt,
+      updatedAt: connection.updatedAt,
+    }))
   }
 
   // ============================================
@@ -197,23 +286,43 @@ export class TokenManager {
     const decryptedRefreshToken = decryptToken(connection.refreshToken)
     const newTokens = await oauthService.refreshAccessToken(platform, decryptedRefreshToken)
 
-    // Update stored connection
-    const key = getConnectionKey(userId, platform)
-    const updatedConnection: StoredConnection = {
-      ...connection,
-      accessToken: encryptToken(newTokens.accessToken),
-      refreshToken: newTokens.refreshToken
-        ? encryptToken(newTokens.refreshToken)
-        : connection.refreshToken,
-      expiresAt: newTokens.expiresAt,
-      updatedAt: new Date(),
-    }
+    const prismaPlatform = toPrismaPlatform(platform)
 
-    connectionStore.set(key, updatedConnection)
+    // Update stored connection
+    const updatedConnection = await prisma.socialConnection.update({
+      where: {
+        profileId_platform: {
+          profileId: userId,
+          platform: prismaPlatform,
+        },
+      },
+      data: {
+        accessToken: encryptToken(newTokens.accessToken),
+        refreshToken: newTokens.refreshToken
+          ? encryptToken(newTokens.refreshToken)
+          : undefined,
+        tokenExpiresAt: newTokens.expiresAt,
+        lastSyncAt: new Date(),
+      },
+    })
 
     console.log(`[TokenManager] Refreshed tokens for ${userId} on ${platform}`)
 
-    return updatedConnection
+    return {
+      userId: updatedConnection.profileId,
+      platform: fromPrismaPlatform(updatedConnection.platform),
+      platformUserId: updatedConnection.platformUserId,
+      username: updatedConnection.username || undefined,
+      displayName: updatedConnection.displayName || undefined,
+      profileImageUrl: updatedConnection.profileImageUrl || undefined,
+      accessToken: updatedConnection.accessToken,
+      refreshToken: updatedConnection.refreshToken || undefined,
+      expiresAt: updatedConnection.tokenExpiresAt || undefined,
+      scopes: updatedConnection.scopes,
+      isActive: updatedConnection.isActive,
+      createdAt: updatedConnection.createdAt,
+      updatedAt: updatedConnection.updatedAt,
+    }
   }
 
   // ============================================
@@ -238,9 +347,17 @@ export class TokenManager {
       console.warn(`[TokenManager] Token revocation failed for ${platform}:`, error)
     }
 
-    // Remove from store
-    const key = getConnectionKey(userId, platform)
-    connectionStore.delete(key)
+    const prismaPlatform = toPrismaPlatform(platform)
+
+    // Delete from database
+    await prisma.socialConnection.delete({
+      where: {
+        profileId_platform: {
+          profileId: userId,
+          platform: prismaPlatform,
+        },
+      },
+    })
 
     console.log(`[TokenManager] Disconnected ${userId} from ${platform}`)
 
@@ -255,14 +372,21 @@ export class TokenManager {
     userId: string,
     platform: SocialPlatform
   ): Promise<void> {
-    const key = getConnectionKey(userId, platform)
-    const connection = connectionStore.get(key)
+    const prismaPlatform = toPrismaPlatform(platform)
 
-    if (connection) {
-      connection.isActive = false
-      connection.updatedAt = new Date()
-      connectionStore.set(key, connection)
-    }
+    await prisma.socialConnection.update({
+      where: {
+        profileId_platform: {
+          profileId: userId,
+          platform: prismaPlatform,
+        },
+      },
+      data: {
+        isActive: false,
+        lastErrorAt: new Date(),
+        lastError: 'Token expired and refresh failed',
+      },
+    })
   }
 
   // ============================================
@@ -307,27 +431,30 @@ export class TokenManager {
       errors: [] as Array<{ userId: string; platform: SocialPlatform; error: string }>,
     }
 
-    const bufferMs = bufferHours * 60 * 60 * 1000
-    const threshold = new Date(Date.now() + bufferMs)
+    const threshold = new Date(Date.now() + bufferHours * 60 * 60 * 1000)
 
-    for (const connection of connectionStore.values()) {
-      if (
-        connection.isActive &&
-        connection.refreshToken &&
-        connection.expiresAt &&
-        connection.expiresAt < threshold
-      ) {
-        try {
-          await this.refreshTokens(connection.userId, connection.platform)
-          results.refreshed++
-        } catch (error) {
-          results.failed++
-          results.errors.push({
-            userId: connection.userId,
-            platform: connection.platform,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          })
-        }
+    const expiringConnections = await prisma.socialConnection.findMany({
+      where: {
+        isActive: true,
+        refreshToken: { not: null },
+        tokenExpiresAt: { lt: threshold },
+      },
+    })
+
+    for (const connection of expiringConnections) {
+      try {
+        await this.refreshTokens(
+          connection.profileId,
+          fromPrismaPlatform(connection.platform)
+        )
+        results.refreshed++
+      } catch (error) {
+        results.failed++
+        results.errors.push({
+          userId: connection.profileId,
+          platform: fromPrismaPlatform(connection.platform),
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
       }
     }
 
