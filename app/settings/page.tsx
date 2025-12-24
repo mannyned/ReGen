@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { AppHeader, Card, GradientBanner, Badge, PlatformLogo } from '../components/ui'
 import { BetaProBadge, BetaSubscriptionCard, OverLimitWarning } from '../components/BetaProBadge'
 import type { SocialPlatform } from '@/lib/types/social'
+import { useAuth } from '@/lib/supabase/hooks/useAuth'
 
 type SettingsSection = 'profile' | 'security' | 'notifications' | 'subscription' | 'team' | 'connections' | 'danger'
 
@@ -49,6 +50,7 @@ type NotificationSetting = {
 }
 
 export default function SettingsPage() {
+  const { user } = useAuth()
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile')
   const [mounted, setMounted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -170,7 +172,7 @@ export default function SettingsPage() {
       ]
 
       try {
-        const response = await fetch('/api/oauth/status?userId=default-user')
+        const response = await fetch(`/api/oauth/status?userId=${user?.id || 'default-user'}`)
         const data = await response.json()
 
         if (data.success && data.connectedPlatforms) {
@@ -236,7 +238,7 @@ export default function SettingsPage() {
   // Handle platform connect
   const handleConnect = async (platform: Platform) => {
     try {
-      const response = await fetch(`/api/oauth/connect/${platform.id}?userId=default-user`)
+      const response = await fetch(`/api/oauth/connect/${platform.id}?userId=${user?.id || 'default-user'}`)
       const data = await response.json()
 
       if (data.setupRequired) {
@@ -255,7 +257,7 @@ export default function SettingsPage() {
   // Handle platform disconnect
   const handleDisconnect = async (platformId: string) => {
     try {
-      const response = await fetch(`/api/oauth/disconnect/${platformId}?userId=default-user`, { method: 'DELETE' })
+      const response = await fetch(`/api/oauth/disconnect/${platformId}?userId=${user?.id || 'default-user'}`, { method: 'DELETE' })
       const data = await response.json()
 
       if (data.success) {
