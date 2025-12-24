@@ -528,10 +528,23 @@ export default function LocationAnalyticsPage() {
   const loadData = async () => {
     setIsLoading(true);
 
-    // Simulate API calls
+    // In production, load empty data (real API integration would go here)
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isProduction) {
+      // Production: Show empty state until real data is available
+      setMetrics(null);
+      setTopLocations([]);
+      setMapData(null);
+      setInsights([]);
+      setIsLoading(false);
+      return;
+    }
+
+    // Development: Simulate API calls with mock data
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Mock data
+    // Mock data for development only
     setMetrics({
       topCountry: { name: 'United States', code: 'US', engagement: 45200, change: 12 },
       topCity: { name: 'Los Angeles', country: 'US', engagement: 9800, change: 24 },

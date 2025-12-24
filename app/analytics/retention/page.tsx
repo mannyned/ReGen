@@ -683,10 +683,25 @@ export default function RetentionAnalyticsPage() {
   const loadData = async () => {
     setIsLoading(true);
 
-    // Simulate API calls
+    // In production, load empty data (real API integration would go here)
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isProduction) {
+      // Production: Show empty state until real data is available
+      setSummary(null);
+      setHookScore(null);
+      setRetentionData([]);
+      setDropOffs([]);
+      setByFormat([]);
+      setInsights([]);
+      setIsLoading(false);
+      return;
+    }
+
+    // Development: Simulate API calls with mock data
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Mock data
+    // Mock data for development only
     setSummary({
       avgHookRetention: 72.5,
       avgCompletionRate: 34.2,
