@@ -196,7 +196,7 @@ export default function Home() {
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="nav-link">Features</a>
-              <a href="#pricing" className="nav-link">Pricing</a>
+              <a href="#beta" className="nav-link">Beta Access</a>
               <a href="/login" className="nav-link">Login</a>
               <a
                 href="#waitlist"
@@ -224,7 +224,7 @@ export default function Home() {
         }`}>
           <div className="px-4 py-4 space-y-3 bg-white">
             <a href="#features" className="block py-2 text-text-secondary hover:text-primary transition-colors">Features</a>
-            <a href="#pricing" className="block py-2 text-text-secondary hover:text-primary transition-colors">Pricing</a>
+            <a href="#beta" className="block py-2 text-text-secondary hover:text-primary transition-colors">Beta Access</a>
             <a href="/login" className="block py-2 text-text-secondary hover:text-primary transition-colors">Login</a>
             <a href="#waitlist" className="block btn-primary text-center mt-4">
               Get Early Access
@@ -388,71 +388,63 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-20 lg:py-28 bg-white">
+      {/* Beta Access Section */}
+      <section id="beta" className="py-20 lg:py-28 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <span className="badge-primary mb-4 inline-block">Pricing</span>
+          <div className="text-center mb-12">
+            <span className="badge-primary mb-4 inline-block">Beta Program</span>
             <h2 className="section-title">
-              Simple, transparent pricing
+              Free Beta Access
             </h2>
             <p className="section-subtitle">
-              Choose the plan that fits your content creation needs
+              We&apos;re currently in beta testing. Join now and get free access to all features!
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-start">
-            {pricingPlans.map((plan, index) => (
-              <div
-                key={index}
-                className={`relative rounded-2xl p-8 transition-all duration-300 ${
-                  plan.highlight
-                    ? 'bg-white border-2 border-primary shadow-xl shadow-primary/10 md:-mt-4 md:mb-4'
-                    : 'bg-background border-2 border-gray-100 hover:border-primary/50'
-                }`}
-              >
-                {/* Popular Badge */}
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="badge-gradient">Most Popular</span>
-                  </div>
-                )}
-
-                {/* Plan Header */}
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold text-text-primary mb-2">{plan.name}</h3>
-                  <div className="mb-2">
-                    <span className="text-5xl font-bold text-text-primary">{plan.price}</span>
-                    <span className="text-text-secondary">/month</span>
-                  </div>
-                  <p className="text-text-secondary">{plan.description}</p>
-                </div>
-
-                {/* Features */}
-                <ul className="space-y-4 mb-8">
-                  {plan.features.map((feature, fIndex) => (
-                    <li key={fIndex} className="flex items-start gap-3">
-                      {feature.included ? <CheckIcon /> : <XIcon />}
-                      <span className={feature.included ? 'text-text-primary' : 'text-text-secondary'}>
-                        {feature.text}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                {/* CTA */}
-                <a
-                  href="#waitlist"
-                  className={`block text-center w-full py-3 px-6 rounded-xl font-semibold transition-all duration-300 ${
-                    plan.highlight
-                      ? 'btn-primary'
-                      : 'btn-secondary'
-                  }`}
-                >
-                  {plan.cta}
-                </a>
+          <div className="max-w-2xl mx-auto">
+            <div className="relative rounded-2xl p-8 bg-gradient-to-br from-primary/5 to-secondary/5 border-2 border-primary/20">
+              {/* Beta Badge */}
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                <span className="badge-gradient">Limited Time</span>
               </div>
-            ))}
+
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold text-text-primary mb-2">Beta Tester</h3>
+                <div className="mb-2">
+                  <span className="text-5xl font-bold text-primary">Free</span>
+                </div>
+                <p className="text-text-secondary">Full access during beta period</p>
+              </div>
+
+              {/* Beta Benefits */}
+              <ul className="space-y-4 mb-8">
+                {[
+                  'Access to all platform integrations',
+                  'Unlimited content repurposing',
+                  'AI-powered caption generation',
+                  'Analytics dashboard',
+                  'Priority support',
+                  'Shape the future of ReGenr with your feedback',
+                ].map((benefit, index) => (
+                  <li key={index} className="flex items-start gap-3">
+                    <CheckIcon />
+                    <span className="text-text-primary">{benefit}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* CTA */}
+              <a
+                href="#waitlist"
+                className="block text-center w-full py-3 px-6 rounded-xl font-semibold btn-primary transition-all duration-300"
+              >
+                Join Beta Program
+              </a>
+
+              <p className="text-center text-sm text-text-secondary mt-4">
+                Pricing will be announced after beta testing ends
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -544,7 +536,7 @@ export default function Home() {
               <h4 className="font-semibold mb-4 text-white">Product</h4>
               <ul className="space-y-3 text-gray-400 text-sm">
                 <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
-                <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
+                <li><a href="#beta" className="hover:text-white transition-colors">Beta Access</a></li>
                 <li><a href="/upload" className="hover:text-white transition-colors">Upload</a></li>
                 <li><a href="/analytics" className="hover:text-white transition-colors">Analytics</a></li>
               </ul>
