@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { fileStorage } from '../utils/fileStorage'
 import { PlatformLogo } from '../components/ui'
 import type { SocialPlatform } from '@/lib/types/social'
+import { useAuth } from '@/lib/supabase/hooks/useAuth'
 
 type Platform = 'instagram' | 'twitter' | 'linkedin' | 'facebook' | 'tiktok' | 'youtube' | 'x' | 'snapchat'
 
@@ -36,6 +37,7 @@ interface PreviewData {
 }
 
 export default function SchedulePage() {
+  const { user, loading: authLoading } = useAuth()
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([])
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
@@ -45,6 +47,7 @@ export default function SchedulePage() {
   const [postMode, setPostMode] = useState<'schedule' | 'now'>('schedule')
   const [selectedPreviews, setSelectedPreviews] = useState<PreviewData[]>([])
   const [testMode, setTestMode] = useState(true) // Default to test mode for safety
+  const [accountsLoading, setAccountsLoading] = useState(true)
 
   const platforms: { name: Platform; label: string; icon: string }[] = [
     { name: 'tiktok', label: 'TikTok', icon: '🎵' },
@@ -56,17 +59,33 @@ export default function SchedulePage() {
     { name: 'snapchat', label: 'Snapchat', icon: '👻' }
   ]
 
-  // Load connected accounts and selected previews
+  // Load connected accounts from API
   useEffect(() => {
-    // Load connected accounts
-    const savedPlatforms = localStorage.getItem('connectedPlatforms')
-    if (savedPlatforms) {
-      const platforms = JSON.parse(savedPlatforms)
-      const connected = platforms
-        .filter((p: any) => p.connected)
-        .map((p: any) => p.id)
-      setConnectedAccounts(connected)
+    const fetchConnectedAccounts = async () => {
+      // Wait for auth to complete
+      if (authLoading || !user?.id) {
+        setAccountsLoading(true)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/oauth/status?userId=${user.id}`)
+        const data = await response.json()
+
+        if (data.success && data.connectedPlatforms) {
+          const connected = data.connectedPlatforms
+            .filter((p: any) => p.isActive)
+            .map((p: any) => p.platform)
+          setConnectedAccounts(connected)
+        }
+      } catch (error) {
+        console.error('Failed to fetch connected accounts:', error)
+      } finally {
+        setAccountsLoading(false)
+      }
     }
+
+    fetchConnectedAccounts()
 
     // Load selected previews
     const loadPreviews = async () => {
@@ -102,7 +121,7 @@ export default function SchedulePage() {
     }
 
     loadPreviews()
-  }, [])
+  }, [user, authLoading])
 
   const togglePlatform = (platform: Platform) => {
     setSelectedPlatforms(prev =>
