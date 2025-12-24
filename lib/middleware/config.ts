@@ -172,8 +172,10 @@ export const PROTECTED_API_ROUTES: ProtectedRouteConfig[] = [
   { path: '/api/generate', prefix: true, requiredTier: 'CREATOR' },
   { path: '/api/ai', prefix: true, requiredTier: 'CREATOR' },
 
-  // Team - Pro only
-  { path: '/api/team', prefix: true, requiredTier: 'PRO' },
+  // Team - Any authenticated user (endpoint handles team membership logic)
+  // Note: Team MEMBERS inherit PRO from owner, but middleware can't check that
+  // So we allow all authenticated users and let the endpoint return appropriate data
+  { path: '/api/team', prefix: true },
 ];
 
 // ============================================
