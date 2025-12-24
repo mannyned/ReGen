@@ -30,6 +30,7 @@ import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 import type { UserTier } from '@prisma/client';
 import type { User } from '@supabase/supabase-js';
+import { getEffectiveTier, type ProfileWithBeta } from '@/lib/tiers/effective-tier';
 
 // ============================================
 // TYPES
@@ -160,32 +161,82 @@ export async function withAuth(
       };
     }
 
-    // Get profile for tier info
-    let tier: UserTier = 'FREE';
+    // Get profile for tier info (including beta and team membership)
+    let effectiveTier: UserTier = 'FREE';
+    let actualTier: UserTier = 'FREE';
     try {
       const profile = await prisma.profile.findUnique({
         where: { id: user.id },
-        select: { tier: true },
+        select: {
+          id: true,
+          email: true,
+          tier: true,
+          betaUser: true,
+          betaExpiresAt: true,
+          // Check team membership for inherited PRO access
+          teamMembership: {
+            select: {
+              team: {
+                select: {
+                  owner: {
+                    select: {
+                      tier: true,
+                      betaUser: true,
+                      betaExpiresAt: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       });
-      tier = profile?.tier || 'FREE';
+
+      if (profile) {
+        actualTier = profile.tier;
+
+        // Build profile for effective tier calculation
+        const profileWithBeta: ProfileWithBeta = {
+          id: profile.id,
+          email: profile.email,
+          tier: profile.tier,
+          betaUser: profile.betaUser,
+          betaExpiresAt: profile.betaExpiresAt,
+        };
+
+        // Get effective tier (considers beta access)
+        const tierResult = getEffectiveTier(profileWithBeta);
+        effectiveTier = tierResult.effectiveTier;
+
+        // Check if team member inherits PRO from owner
+        if (profile.teamMembership?.team?.owner) {
+          const owner = profile.teamMembership.team.owner;
+          const ownerIsPro =
+            owner.tier === 'PRO' ||
+            !!(owner.betaUser && owner.betaExpiresAt && new Date(owner.betaExpiresAt) > new Date());
+          if (ownerIsPro && effectiveTier !== 'PRO') {
+            effectiveTier = 'PRO';
+          }
+        }
+      }
     } catch {
       // Profile not found, use default tier
     }
 
-    // Check tier requirement
-    if (requiredTier && !hasTierAccess(tier, requiredTier)) {
+    // Check tier requirement using EFFECTIVE tier (includes beta & team)
+    if (requiredTier && !hasTierAccess(effectiveTier, requiredTier)) {
       return {
         user: null,
         response: tierRequiredResponse(requiredTier),
       };
     }
 
-    // Success - return authenticated user
+    // Success - return authenticated user with effective tier
     return {
       user: {
         user,
         profileId: user.id,
-        tier,
+        tier: effectiveTier, // Use effective tier (includes beta & team membership)
         email: user.email || '',
       },
       response: null,

@@ -11,3 +11,9 @@ NonReply Email Infor
 Go to www.resend.com
 Account login: support@regenr.app
 Pswd: KenzoEyram234@#$
+
+
+To Revert After Beta
+  When beta ends and you're ready to show pricing again, you can either:
+  1. Revert this commit: git revert b396bc6
+  2. Or manually update the files to restore pricing
