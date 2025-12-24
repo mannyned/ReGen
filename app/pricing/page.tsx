@@ -18,9 +18,10 @@ export default function PricingPage() {
         const response = await fetch('/api/auth/me');
         if (response.ok) {
           const data = await response.json();
-          if (data.user) {
+          // API returns user data at top level (id, email, displayName, etc.)
+          if (data.id) {
             setIsLoggedIn(true);
-            setUserName(data.user.displayName || data.user.email?.split('@')[0] || 'there');
+            setUserName(data.displayName || data.email?.split('@')[0] || 'there');
           }
         }
       } catch {
