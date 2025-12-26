@@ -38,6 +38,8 @@ export class AnalyticsService {
       linkedin: () => this.getLinkedInAccountAnalytics(accessToken, dateRange),
       facebook: () => this.getFacebookAccountAnalytics(accessToken, dateRange),
       snapchat: () => this.getSnapchatAccountAnalytics(accessToken, dateRange),
+      pinterest: () => this.getPinterestAccountAnalytics(accessToken, dateRange),
+      discord: () => this.getDiscordAccountAnalytics(accessToken, dateRange),
     }
 
     return fetchers[platform]()
@@ -66,6 +68,8 @@ export class AnalyticsService {
       linkedin: null,
       facebook: null,
       snapchat: null,
+      pinterest: null,
+      discord: null,
     }
 
     let totalFollowers = 0
@@ -407,6 +411,40 @@ export class AnalyticsService {
     dateRange: { start: Date; end: Date }
   ): Promise<AccountAnalytics> {
     // Snapchat analytics are primarily for ads
+    return {
+      followers: 0,
+      following: 0,
+      totalPosts: 0,
+      avgEngagementRate: 0,
+      avgReach: 0,
+      avgImpressions: 0,
+      followerGrowth: 0,
+      topPosts: [],
+    }
+  }
+
+  private async getPinterestAccountAnalytics(
+    accessToken: string,
+    dateRange: { start: Date; end: Date }
+  ): Promise<AccountAnalytics> {
+    // Pinterest analytics - coming soon
+    return {
+      followers: 0,
+      following: 0,
+      totalPosts: 0,
+      avgEngagementRate: 0,
+      avgReach: 0,
+      avgImpressions: 0,
+      followerGrowth: 0,
+      topPosts: [],
+    }
+  }
+
+  private async getDiscordAccountAnalytics(
+    accessToken: string,
+    dateRange: { start: Date; end: Date }
+  ): Promise<AccountAnalytics> {
+    // Discord analytics - coming soon
     return {
       followers: 0,
       following: 0,

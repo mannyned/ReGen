@@ -136,6 +136,8 @@ export function useConnectionStatuses() {
     twitter: { connected: false },
     linkedin: { connected: false },
     snapchat: { connected: false },
+    pinterest: { connected: false },
+    discord: { connected: false },
   });
   const [isLoading, setIsLoading] = useState(true);
 

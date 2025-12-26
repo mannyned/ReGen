@@ -56,6 +56,16 @@ export const BRAND_RESOURCE_URLS: Record<SocialPlatform, {
     pressKit: 'https://newsroom.snap.com/',
     trademark: 'https://snap.com/en-US/terms/trademark-guidelines',
   },
+  pinterest: {
+    brandGuidelines: 'https://business.pinterest.com/brand-guidelines/',
+    pressKit: 'https://newsroom.pinterest.com/en/media-assets',
+    trademark: 'https://policy.pinterest.com/en/trademark',
+  },
+  discord: {
+    brandGuidelines: 'https://discord.com/branding',
+    pressKit: 'https://discord.com/branding',
+    trademark: 'https://discord.com/terms',
+  },
 }
 
 /**
@@ -112,6 +122,18 @@ export const BRAND_COLORS: Record<SocialPlatform, {
     background: '#FFFC00',
     text: '#000000',
     safeZone: '10%',
+  },
+  pinterest: {
+    primary: '#E60023',
+    background: '#E60023',
+    text: '#FFFFFF',
+    safeZone: '25%',
+  },
+  discord: {
+    primary: '#5865F2',
+    background: '#5865F2',
+    text: '#FFFFFF',
+    safeZone: '20%',
   },
 }
 
@@ -200,6 +222,28 @@ export const LOGO_USAGE_RULES: Record<SocialPlatform, {
     ],
     allowedBackgrounds: ['Snapchat Yellow (#FFFC00)', 'White', 'Black'],
   },
+  pinterest: {
+    minSize: 24,
+    allowedVariants: ['color', 'white', 'dark'],
+    restrictions: [
+      'Do not modify the Pinterest logo',
+      'Always use Pinterest Red (#E60023)',
+      'Do not rotate or skew the logo',
+      'Maintain clear space around logo',
+    ],
+    allowedBackgrounds: ['White', 'Pinterest Red', 'Black'],
+  },
+  discord: {
+    minSize: 24,
+    allowedVariants: ['color', 'white', 'dark'],
+    restrictions: [
+      'Do not modify the Clyde logo',
+      'Use official Blurple (#5865F2) color',
+      'Do not add effects or filters',
+      'Maintain clear space around logo',
+    ],
+    allowedBackgrounds: ['White', 'Blurple', 'Dark backgrounds'],
+  },
 }
 
 /**
@@ -244,6 +288,16 @@ export const TRADEMARK_INFO: Record<SocialPlatform, {
     owner: 'Snap Inc.',
     registeredName: 'Snapchat',
     copyrightYear: 2011,
+  },
+  pinterest: {
+    owner: 'Pinterest, Inc.',
+    registeredName: 'Pinterest',
+    copyrightYear: 2010,
+  },
+  discord: {
+    owner: 'Discord Inc.',
+    registeredName: 'Discord',
+    copyrightYear: 2015,
   },
 }
 

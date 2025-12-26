@@ -159,6 +159,45 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
     grantType: 'authorization_code',
     pkceRequired: true,
   },
+
+  // ============================================
+  // PINTEREST (Coming Soon)
+  // ============================================
+  pinterest: {
+    clientId: process.env.PINTEREST_CLIENT_ID || '',
+    clientSecret: process.env.PINTEREST_CLIENT_SECRET || '',
+    authUrl: 'https://www.pinterest.com/oauth/',
+    tokenUrl: 'https://api.pinterest.com/v5/oauth/token',
+    refreshUrl: 'https://api.pinterest.com/v5/oauth/token',
+    revokeUrl: 'https://api.pinterest.com/v5/oauth/token/revoke',
+    scopes: [
+      'boards:read',
+      'pins:read',
+      'pins:write',
+      'user_accounts:read',
+    ],
+    responseType: 'code',
+    grantType: 'authorization_code',
+  },
+
+  // ============================================
+  // DISCORD (Coming Soon)
+  // ============================================
+  discord: {
+    clientId: process.env.DISCORD_CLIENT_ID || '',
+    clientSecret: process.env.DISCORD_CLIENT_SECRET || '',
+    authUrl: 'https://discord.com/api/oauth2/authorize',
+    tokenUrl: 'https://discord.com/api/oauth2/token',
+    refreshUrl: 'https://discord.com/api/oauth2/token',
+    revokeUrl: 'https://discord.com/api/oauth2/token/revoke',
+    scopes: [
+      'identify',
+      'guilds',
+      'webhook.incoming',
+    ],
+    responseType: 'code',
+    grantType: 'authorization_code',
+  },
 }
 
 // ============================================
@@ -173,6 +212,8 @@ export const API_BASE_URLS: Record<SocialPlatform, string> = {
   linkedin: 'https://api.linkedin.com/v2',
   facebook: 'https://graph.facebook.com/v19.0',
   snapchat: 'https://adsapi.snapchat.com/v1',
+  pinterest: 'https://api.pinterest.com/v5',
+  discord: 'https://discord.com/api/v10',
 }
 
 // ============================================
@@ -187,6 +228,8 @@ export const RATE_LIMITS: Record<SocialPlatform, { maxRequests: number; windowMs
   linkedin: { maxRequests: 100, windowMs: 24 * 60 * 60 * 1000 }, // 100/day
   facebook: { maxRequests: 200, windowMs: 60 * 60 * 1000 }, // 200/hour
   snapchat: { maxRequests: 100, windowMs: 60 * 1000 }, // 100/minute
+  pinterest: { maxRequests: 1000, windowMs: 60 * 60 * 1000 }, // 1000/hour
+  discord: { maxRequests: 50, windowMs: 1000 }, // 50/second
 }
 
 // ============================================
@@ -248,6 +291,20 @@ export const CONTENT_LIMITS: Record<SocialPlatform, {
     maxVideoLengthSeconds: 180,
     maxFileSizeMb: 1000,
     supportedFormats: ['mp4', 'mov', 'jpg', 'jpeg', 'png'],
+  },
+  pinterest: {
+    maxCaptionLength: 500,
+    maxHashtags: 20,
+    maxVideoLengthSeconds: 900, // 15 minutes
+    maxFileSizeMb: 2000,
+    supportedFormats: ['mp4', 'mov', 'jpg', 'jpeg', 'png', 'gif'],
+  },
+  discord: {
+    maxCaptionLength: 2000,
+    maxHashtags: 0, // Discord doesn't use hashtags
+    maxVideoLengthSeconds: 600,
+    maxFileSizeMb: 100, // 100MB for nitro users, 25MB for free
+    supportedFormats: ['mp4', 'mov', 'webm', 'jpg', 'jpeg', 'png', 'gif'],
   },
 }
 
