@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { usePlan } from '../context/PlanContext'
-import { formatPlanBadge, getRemainingUploads } from '../config/plans'
+import { getRemainingUploads } from '../config/plans'
 import { AppHeader, Card, StatCard, GradientBanner, Badge, PlatformLogo } from '../components/ui'
 import type { SocialPlatform } from '@/lib/types/social'
 
@@ -69,7 +69,6 @@ export default function DashboardPage() {
       ]
 
   const remainingUploads = getRemainingUploads(currentPlan, usedUploads)
-  const badge = formatPlanBadge(currentPlan)
 
   if (!mounted) return null
 
@@ -79,8 +78,7 @@ export default function DashboardPage() {
       <AppHeader
         currentPage="dashboard"
         showSchedule={planFeatures.scheduling}
-        planBadge={badge}
-        userIcon={currentPlan === 'pro' ? '⭐' : currentPlan === 'creator' ? '🌟' : '🎯'}
+        isPro={currentPlan === 'pro'}
       />
 
       {/* Main Content */}
