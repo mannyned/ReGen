@@ -129,14 +129,45 @@ interface AppHeaderProps {
   isPro?: boolean
   userInitials?: string
   userName?: string
-  userRole?: 'owner' | 'admin' | 'member'  // Team role - billing only shows for owner
+  userRole?: 'owner' | 'admin' | 'member'  // Team role - billing only shows for owner (auto-fetched if not provided)
 }
 
-export function AppHeader({ currentPage, showSchedule = true, isPro = false, userInitials = 'U', userName = 'User', userRole = 'owner' }: AppHeaderProps) {
+export function AppHeader({ currentPage, showSchedule = true, isPro = false, userInitials = 'U', userName = 'User', userRole: userRoleProp }: AppHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [fetchedUserRole, setFetchedUserRole] = useState<'owner' | 'admin' | 'member'>('owner')
+  const [userDataLoaded, setUserDataLoaded] = useState(false)
+
+  // Auto-fetch user's team role if not provided via props
+  useEffect(() => {
+    if (userRoleProp) {
+      setFetchedUserRole(userRoleProp)
+      setUserDataLoaded(true)
+      return
+    }
+
+    const fetchUserRole = async () => {
+      try {
+        const response = await fetch('/api/auth/me')
+        if (response.ok) {
+          const data = await response.json()
+          // teamRole is 'owner' for non-team users, or actual role for team members
+          setFetchedUserRole(data.teamRole || 'owner')
+        }
+      } catch (error) {
+        console.error('Failed to fetch user role:', error)
+      } finally {
+        setUserDataLoaded(true)
+      }
+    }
+
+    fetchUserRole()
+  }, [userRoleProp])
+
+  // Use provided role or fetched role
+  const userRole = userRoleProp || fetchedUserRole
 
   useEffect(() => {
     const handleScroll = () => {

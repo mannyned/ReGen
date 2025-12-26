@@ -128,6 +128,9 @@ export async function GET() {
       };
     }
 
+    // Determine team role - owner if no team membership, otherwise the actual role
+    const teamRole = profile.teamMembership?.role || 'owner';
+
     return NextResponse.json({
       id: profile.id,
       email: profile.email,
@@ -143,6 +146,14 @@ export async function GET() {
       betaExpiresAt: profile.betaExpiresAt,
       // Effective tier info (includes beta)
       tierInfo,
+      // Team role for billing visibility (owner, admin, member)
+      teamRole,
+      // Team info if member of a team
+      team: profile.teamMembership ? {
+        id: profile.teamMembership.team.id,
+        name: profile.teamMembership.team.name,
+        role: profile.teamMembership.role,
+      } : null,
     });
   } catch (error) {
     console.error('Error fetching user:', error);
