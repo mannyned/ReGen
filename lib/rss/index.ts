@@ -22,3 +22,18 @@ export {
   type IngestionResult,
   type IngestionJobResult,
 } from './ingestion';
+
+// Curated feeds library
+export {
+  NICHES,
+  CURATED_FEEDS,
+  getEnabledFeeds,
+  getFeedsByNiche,
+  getFeedById,
+  getFeedsBySourceType,
+  searchFeeds,
+  getNicheByKey,
+  type SourceType,
+  type CuratedFeed,
+  type Niche,
+} from './curated-feeds';
