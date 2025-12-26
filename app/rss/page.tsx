@@ -274,7 +274,7 @@ export default function RssFeedsPage() {
       case 'PAUSED':
         return <Badge variant="gray">Paused</Badge>;
       case 'ERROR':
-        return <Badge variant="danger">Error</Badge>;
+        return <Badge variant="error">Error</Badge>;
       case 'NEW':
         return <Badge variant="primary">New</Badge>;
       case 'REVIEWED':
