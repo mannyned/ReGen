@@ -16,6 +16,8 @@ import type { SocialPlatform } from '@/lib/types/social'
 // - YouTube: Google LLC
 // - LinkedIn: Microsoft Corporation
 // - Snapchat: Snap Inc.
+// - Pinterest: Pinterest, Inc.
+// - Discord: Discord, Inc.
 //
 // These logos are used in accordance with each platform's brand guidelines.
 // Do not modify, recolor, or distort these logos beyond approved variants.
@@ -75,6 +77,14 @@ const BRAND_COLORS: Record<SocialPlatform, { primary: string; secondary?: string
     primary: '#FFFC00',
     background: '#FFFC00',
   },
+  pinterest: {
+    primary: '#E60023',
+    background: '#E60023',
+  },
+  discord: {
+    primary: '#5865F2',
+    background: '#5865F2',
+  },
 }
 
 // Platform display names for accessibility
@@ -86,6 +96,8 @@ const PLATFORM_NAMES: Record<SocialPlatform, string> = {
   youtube: 'YouTube',
   linkedin: 'LinkedIn',
   snapchat: 'Snapchat',
+  pinterest: 'Pinterest',
+  discord: 'Discord',
 }
 
 // ============================================
@@ -328,6 +340,66 @@ const SnapchatLogo = memo(({ width, height, variant, className }: LogoSvgProps) 
 })
 SnapchatLogo.displayName = 'SnapchatLogo'
 
+// Pinterest Logo - Based on official brand guidelines
+const PinterestLogo = memo(({ width, height, variant, className }: LogoSvgProps) => {
+  const getColor = () => {
+    switch (variant) {
+      case 'white': return '#FFFFFF'
+      case 'dark': return '#000000'
+      case 'monochrome': return 'currentColor'
+      default: return '#E60023'
+    }
+  }
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 01.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.632-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z"
+        fill={getColor()}
+      />
+    </svg>
+  )
+})
+PinterestLogo.displayName = 'PinterestLogo'
+
+// Discord Logo - Based on official brand guidelines
+const DiscordLogo = memo(({ width, height, variant, className }: LogoSvgProps) => {
+  const getColor = () => {
+    switch (variant) {
+      case 'white': return '#FFFFFF'
+      case 'dark': return '#000000'
+      case 'monochrome': return 'currentColor'
+      default: return '#5865F2'
+    }
+  }
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028 14.09 14.09 0 001.226-1.994.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"
+        fill={getColor()}
+      />
+    </svg>
+  )
+})
+DiscordLogo.displayName = 'DiscordLogo'
+
 // Fallback Icon
 const FallbackIcon = memo(({ width, height, className }: Omit<LogoSvgProps, 'variant'>) => (
   <svg
@@ -354,6 +426,8 @@ const LOGO_COMPONENTS: Record<SocialPlatform, React.FC<LogoSvgProps>> = {
   youtube: YouTubeLogo,
   linkedin: LinkedInLogo,
   snapchat: SnapchatLogo,
+  pinterest: PinterestLogo,
+  discord: DiscordLogo,
 }
 
 // ============================================
@@ -461,6 +535,8 @@ export const SUPPORTED_PLATFORMS: SocialPlatform[] = [
   'youtube',
   'linkedin',
   'snapchat',
+  'pinterest',
+  'discord',
 ]
 
 export default PlatformLogo

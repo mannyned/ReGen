@@ -6,7 +6,9 @@ export type PlatformId =
   | 'youtube'
   | 'twitter'
   | 'linkedin'
-  | 'snapchat';
+  | 'snapchat'
+  | 'pinterest'
+  | 'discord';
 
 export interface PlatformConfig {
   id: PlatformId;
@@ -107,6 +109,30 @@ export const PLATFORMS: PlatformConfig[] = [
     description: 'Spotlight & Stories',
     requiredTier: 'PRO',
     features: ['Story views', 'Spotlight metrics', 'Audience insights'],
+    comingSoon: true,
+  },
+  {
+    id: 'pinterest',
+    name: 'pinterest',
+    displayName: 'Pinterest',
+    icon: '📌',
+    color: '#E60023',
+    bgColor: 'bg-red-600',
+    description: 'Repurpose content into Pins that drive long-term traffic.',
+    requiredTier: 'CREATOR',
+    features: ['Pin creation', 'Board management', 'Traffic analytics'],
+    comingSoon: true,
+  },
+  {
+    id: 'discord',
+    name: 'discord',
+    displayName: 'Discord',
+    icon: '💬',
+    color: '#5865F2',
+    bgColor: 'bg-indigo-500',
+    description: 'Share regenerated content directly with your community.',
+    requiredTier: 'PRO',
+    features: ['Server posting', 'Channel selection', 'Community engagement'],
     comingSoon: true,
   },
 ];

@@ -10,6 +10,8 @@ export type SocialPlatform =
   | 'linkedin'
   | 'facebook'
   | 'snapchat'
+  | 'pinterest'
+  | 'discord'
 
 export type PlanTier = 'free' | 'creator' | 'pro'
 
