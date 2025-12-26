@@ -36,7 +36,7 @@ Whether you're a solo creator or part of a team, ReGenr saves you hours of work 
         question: 'How does "regeneration" work?',
         answer: `Regeneration is our core feature that transforms your content into platform-ready posts:
 
-1. **Upload** your original content (text, images, or import from RSS feeds)
+1. **Upload** your original content (text, images, or import from content feeds)
 2. **Generate** AI-powered variations optimized for each platform
 3. **Review & Edit** the generated content to match your style
 4. **Schedule or Publish** directly to your connected accounts
@@ -206,15 +206,18 @@ Your scheduled posts appear in the Schedule tab where you can edit, reschedule, 
   },
   {
     id: 'rss',
-    title: 'RSS Feeds',
+    title: 'Content Feeds',
     icon: '📡',
     items: [
       {
         id: 'what-is-rss',
-        question: 'What is RSS?',
-        answer: `RSS (Really Simple Syndication) is a web feed format that lets you subscribe to content updates from websites, blogs, and news sources.
+        question: 'What are Content Feeds?',
+        answer: `Content Feeds let you automatically pull new content from blogs, newsletters, and websites to regenerate and schedule posts.
 
-**Why it's useful for ReGenr:**
+**How it works:**
+ReGenr uses RSS (Really Simple Syndication) technology to subscribe to content updates from your favorite sources.
+
+**Why it's useful:**
 - Import content from your favorite sources automatically
 - Stay updated on industry news to repurpose
 - Never miss content from sources you follow
@@ -223,19 +226,19 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
       },
       {
         id: 'add-rss-feed',
-        question: 'How do I add an RSS feed?',
+        question: 'How do I add a content feed?',
         answer: `**Option 1: Discover Tab**
-1. Go to RSS Feeds → Discover tab
+1. Go to Content Feeds → Discover tab
 2. Browse curated feeds by category
 3. Click "Add" on any feed you like
 
 **Option 2: Custom URL**
-1. Go to RSS Feeds → My Feeds tab
-2. Click "Add Feed"
-3. Paste the RSS feed URL
-4. We'll validate and add it
+1. Go to Content Feeds → My Feeds tab
+2. Click "Add Content Feed"
+3. Paste a blog or newsletter feed URL
+4. ReGenr will check for new posts automatically
 
-**Finding RSS URLs:**
+**Finding Feed URLs:**
 - Look for RSS/Feed icons on websites
 - Try adding \`/feed\`, \`/rss\`, or \`/feed.xml\` to the site URL
 - Check the website's footer or "Subscribe" page`,
@@ -292,7 +295,7 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
 - Categories/tags
 
 **What you can do with it:**
-- Review items in the RSS tab
+- Review items in the Content Feeds tab
 - Mark items as "Reviewed" to track what you've seen
 - Use content as inspiration for regeneration
 - Convert directly to scheduled posts (coming soon)
@@ -316,19 +319,19 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
 - 2 platform connections
 - 5 scheduled posts/month
 - Basic analytics
-- 5 RSS feeds
+- 5 content feeds included
 
 **Creator Plan**
 - 5 platform connections
 - Unlimited scheduled posts
 - Full analytics
-- 10 RSS feeds
+- 10 content feeds included
 - Priority support
 
 **Pro Plan**
 - Unlimited platform connections
 - Everything in Creator
-- 20 RSS feeds
+- 20 content feeds included
 - Team workspace (3 seats)
 - Advanced analytics permissions
 - API access (coming soon)
@@ -376,11 +379,11 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
       },
       {
         id: 'rss-limits',
-        question: 'What are RSS feed limits?',
-        answer: `RSS feed limits by plan:
+        question: 'How many content feeds can I add?',
+        answer: `Content feeds included by plan:
 
-| Plan | RSS Feeds |
-|------|-----------|
+| Plan | Content Feeds |
+|------|---------------|
 | Free | 5 |
 | Creator | 10 |
 | Pro | 20 |
@@ -389,7 +392,7 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
 
 **Reaching your limit:**
 - You'll see a "Limit reached" message
-- Remove unused feeds or upgrade to add more`,
+- Upgrade to add more content feeds, or remove unused feeds`,
       },
     ],
   },
@@ -406,7 +409,7 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
 **Shared Resources:**
 - All connected platforms
 - Scheduled and published posts
-- RSS feeds and imported content
+- Content feeds and imported items
 - Analytics data (with permissions)
 
 **Not Shared:**
@@ -577,7 +580,7 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
 **Content Data:**
 - Posts you create in ReGenr
 - Scheduled content
-- Imported RSS items
+- Imported content feed items
 - Generated captions
 
 **Platform Tokens:**

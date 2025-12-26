@@ -415,20 +415,33 @@ export default function RssFeedsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-text-primary">RSS Feeds</h1>
+            <h1 className="text-3xl font-bold text-text-primary">Content Feeds</h1>
             <p className="text-text-secondary mt-1">
-              Import content from your favorite sources
+              Blogs, newsletters, and publications (RSS)
             </p>
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="btn-primary flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Feed
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Info tooltip */}
+            <div className="relative group">
+              <button className="p-2 text-text-secondary hover:text-primary transition-colors rounded-lg hover:bg-gray-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+              <div className="absolute right-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                Automatically pull new content from blogs, newsletters, and websites to regenerate and schedule posts.
+              </div>
+            </div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="btn-primary flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Content Feed
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -472,10 +485,13 @@ export default function RssFeedsPage() {
                 {feeds.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-4xl mb-2">📡</div>
-                    <p className="text-text-secondary text-sm">No feeds yet</p>
+                    <p className="text-text-primary font-medium text-sm">No content feeds connected yet</p>
+                    <p className="text-text-secondary text-xs mt-1">
+                      Connect a content feed to turn new blog or newsletter posts into social content automatically.
+                    </p>
                     <button
                       onClick={() => setActiveTab('discover')}
-                      className="text-primary text-sm font-medium mt-2 hover:underline"
+                      className="text-primary text-sm font-medium mt-3 hover:underline"
                     >
                       Discover feeds to add
                     </button>
@@ -483,7 +499,7 @@ export default function RssFeedsPage() {
                       href="/help#rss"
                       className="block text-text-secondary text-xs mt-2 hover:text-primary"
                     >
-                      Learn about RSS feeds
+                      Learn about content feeds
                     </a>
                   </div>
                 ) : (
@@ -723,9 +739,14 @@ export default function RssFeedsPage() {
           <div>
             {/* Feed limit indicator */}
             <div className="mb-6 flex items-center gap-2 text-sm text-text-secondary">
-              <span>Your feeds: {userFeedCount} / {userFeedLimit}</span>
+              <span>Content feeds: {userFeedCount} / {userFeedLimit}</span>
               {userFeedCount >= userFeedLimit && (
-                <Badge variant="warning">Limit reached</Badge>
+                <span className="flex items-center gap-2">
+                  <Badge variant="warning">Limit reached</Badge>
+                  <a href="/pricing" className="text-primary hover:underline text-xs">
+                    Upgrade to add more content feeds
+                  </a>
+                </span>
               )}
             </div>
 
@@ -831,7 +852,7 @@ export default function RssFeedsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-text-primary">Add RSS Feed</h2>
+              <h2 className="text-xl font-bold text-text-primary">Add Content Feed</h2>
               <button
                 onClick={() => {
                   setShowAddModal(false);
@@ -854,6 +875,9 @@ export default function RssFeedsPage() {
                   <label className="block text-sm font-medium text-text-primary mb-1">
                     Feed URL
                   </label>
+                  <p className="text-xs text-text-secondary mb-2">
+                    Paste a blog or newsletter feed URL. ReGenr will check for new posts automatically.
+                  </p>
                   <div className="relative">
                     <input
                       type="url"

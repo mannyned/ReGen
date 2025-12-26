@@ -166,9 +166,9 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
     { href: '/analytics', label: 'Analytics', active: currentPage === 'analytics' },
   ]
 
-  // Secondary nav items (in "More" dropdown)
+  // Secondary nav items (in "More" dropdown) - Content Sources section
   const moreNavItems: NavItem[] = [
-    { href: '/rss', label: 'RSS Feeds', active: currentPage === 'rss' },
+    { href: '/rss', label: 'Content Feeds', active: currentPage === 'rss' },
     { href: '/help', label: 'Help Center', active: currentPage === 'help' },
   ]
 
@@ -387,9 +387,9 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
             ))}
           </div>
 
-          {/* Secondary Nav - Mobile */}
+          {/* Secondary Nav - Mobile (Content Sources) */}
           <div className="py-3 border-t border-gray-100 space-y-1">
-            <p className="px-3 text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">More</p>
+            <p className="px-3 text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Content Sources</p>
             {moreNavItems.map((item) => (
               <Link
                 key={item.href}
