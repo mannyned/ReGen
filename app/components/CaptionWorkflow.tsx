@@ -535,6 +535,8 @@ export function CaptionWorkflow({
       linkedin: 'Excited to share this insight with my network.',
       facebook: 'Had to share this with you all!',
       snapchat: 'You have to see this!',
+      pinterest: 'Pin this for later inspiration!',
+      discord: 'Check out what I just found!',
     }
     return defaults[platform]
   }
