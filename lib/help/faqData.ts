@@ -313,13 +313,13 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
         id: 'plan-comparison',
         question: 'What\'s the difference between plans?',
         answer: `**Free Plan**
-- 1 platform connection
+- 2 platform connections
 - 5 scheduled posts/month
 - Basic analytics
 - 5 RSS feeds
 
 **Creator Plan**
-- 3 platform connections
+- 5 platform connections
 - Unlimited scheduled posts
 - Full analytics
 - 10 RSS feeds
@@ -361,8 +361,8 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
 
 | Plan | Connections |
 |------|-------------|
-| Free | 1 |
-| Creator | 3 |
+| Free | 2 |
+| Creator | 5 |
 | Pro | Unlimited |
 
 **What counts as a connection:**
