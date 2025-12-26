@@ -135,6 +135,9 @@ export const PROTECTED_ROUTES: ProtectedRouteConfig[] = [
 
   // API routes - Pro tier required
   { path: '/api-keys', prefix: true, requiredTier: 'PRO' },
+
+  // RSS Feed Ingestion - any authenticated user
+  { path: '/rss', prefix: true },
 ];
 
 /**
@@ -176,6 +179,9 @@ export const PROTECTED_API_ROUTES: ProtectedRouteConfig[] = [
   // Note: Team MEMBERS inherit PRO from owner, but middleware can't check that
   // So we allow all authenticated users and let the endpoint return appropriate data
   { path: '/api/team', prefix: true },
+
+  // RSS Feed Ingestion - Any authenticated user
+  { path: '/api/rss', prefix: true },
 ];
 
 // ============================================

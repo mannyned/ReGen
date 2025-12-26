@@ -54,6 +54,10 @@ model Profile {
   teamMembership  TeamMember?
   sentTeamInvites TeamInvite[]
 
+  // RSS Feed relations
+  rssFeeds     RssFeed[]
+  rssFeedItems RssFeedItem[]
+
   @@index([stripeCustomerId])
   @@index([betaUser])
   @@map("profiles")
@@ -256,6 +260,7 @@ model ContentUpload {
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   scheduledPosts ScheduledPost[]
   publishedPosts PublishedPost[]
+  rssFeedItems   RssFeedItem[]
 
   @@index([profileId])
   @@index([status])
@@ -683,4 +688,110 @@ model TeamInvite {
   @@index([token])
   @@index([expiresAt])
   @@map("team_invites")
+}
+
+// ============================================
+// RSS FEED INGESTION
+// ============================================
+
+/// RSS Feed status for polling management
+enum RssFeedStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+
+  @@map("rss_feed_status")
+}
+
+/// RSS Item status for workflow tracking
+enum RssItemStatus {
+  NEW
+  REVIEWED
+  CONVERTED
+  DISMISSED
+
+  @@map("rss_item_status")
+}
+
+/// RssFeed - User's subscribed RSS feed URLs
+/// Stores feed configuration and metadata for content ingestion
+model RssFeed {
+  id        String        @id @default(cuid())
+  profileId String        @map("profile_id") @db.Uuid
+
+  // Feed configuration
+  name      String
+  url       String
+
+  // Feed metadata (populated after first fetch)
+  feedTitle       String?   @map("feed_title")
+  feedDescription String?   @map("feed_description")
+  feedImageUrl    String?   @map("feed_image_url")
+  feedLink        String?   @map("feed_link")
+
+  // Status and polling
+  status        RssFeedStatus @default(ACTIVE)
+  lastFetchedAt DateTime?     @map("last_fetched_at")
+  lastError     String?       @map("last_error")
+  errorCount    Int           @default(0) @map("error_count")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  profile Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  items   RssFeedItem[]
+
+  // Constraints
+  @@unique([profileId, url])
+  @@index([profileId])
+  @@index([status])
+  @@index([lastFetchedAt])
+  @@map("rss_feeds")
+}
+
+/// RssFeedItem - Individual items ingested from RSS feeds
+/// Represents content that can be converted to scheduled posts
+model RssFeedItem {
+  id        String @id @default(cuid())
+  feedId    String @map("feed_id")
+  profileId String @map("profile_id") @db.Uuid
+
+  // Item content
+  guid        String   // Unique identifier from feed (RSS guid or link)
+  title       String
+  link        String?
+  description String?
+  content     String?  // Full content if available
+  author      String?
+  imageUrl    String?  @map("image_url")
+  publishedAt DateTime? @map("published_at")
+
+  // Categories/tags from feed
+  categories String[]
+
+  // Processing status
+  status RssItemStatus @default(NEW)
+
+  // Reference to created content (if converted)
+  contentUploadId String? @map("content_upload_id")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  feed          RssFeed        @relation(fields: [feedId], references: [id], onDelete: Cascade)
+  profile       Profile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  contentUpload ContentUpload? @relation(fields: [contentUploadId], references: [id])
+
+  // Constraints - prevent duplicate items per feed
+  @@unique([feedId, guid])
+  @@index([feedId])
+  @@index([profileId])
+  @@index([status])
+  @@index([publishedAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("rss_feed_items")
 }
