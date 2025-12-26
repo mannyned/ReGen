@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { fileStorage } from '../utils/fileStorage'
-import { PlatformLogo } from '../components/ui'
+import { AppHeader, PlatformLogo } from '../components/ui'
 import type { SocialPlatform } from '@/lib/types/social'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
 
@@ -307,30 +306,10 @@ export default function SchedulePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link href="/dashboard" className="flex items-center gap-3">
-                <Image src="/logo.png" alt="ReGenr Logo" width={168} height={168} className="object-contain" />
-                <span className="text-2xl font-bold text-primary">ReGenr</span>
-              </Link>
-              <span className="text-text-secondary text-sm">/ Schedule</span>
-            </div>
-            <nav className="hidden md:flex items-center gap-6">
-              <Link href="/dashboard" className="text-text-secondary hover:text-primary transition-colors">Dashboard</Link>
-              <Link href="/upload" className="text-text-secondary hover:text-primary transition-colors">Upload</Link>
-              <Link href="/schedule" className="text-primary font-semibold">Schedule</Link>
-              <Link href="/analytics" className="text-text-secondary hover:text-primary transition-colors">Analytics</Link>
-              <Link href="/settings" className="text-text-secondary hover:text-primary transition-colors">Settings</Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <AppHeader currentPage="schedule" />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28">
         {/* Test Mode Banner */}
         <div className={`mb-6 p-4 rounded-xl border-2 ${
           testMode
