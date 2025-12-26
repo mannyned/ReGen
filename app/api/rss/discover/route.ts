@@ -176,9 +176,13 @@ export async function POST(request: NextRequest) {
     });
 
     // Auto-refresh to fetch initial items (don't await to keep response fast)
-    refreshFeed(feed.id, user!.profileId).catch((err) => {
-      console.error('[RSS Discover] Auto-refresh failed:', err);
-    });
+    try {
+      refreshFeed(feed.id, user!.profileId).catch((err) => {
+        console.error('[RSS Discover] Auto-refresh failed:', err);
+      });
+    } catch (refreshError) {
+      console.error('[RSS Discover] Auto-refresh sync error:', refreshError);
+    }
 
     return NextResponse.json({
       success: true,
@@ -196,8 +200,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('[RSS Discover POST Error]', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to add feed' },
+      { error: `Failed to add feed: ${errorMessage}` },
       { status: 500 }
     );
   }
