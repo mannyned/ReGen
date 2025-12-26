@@ -7,7 +7,7 @@
     },
     {
       "path": "/api/cron/rss-ingestion",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 */6 * * *"
     }
   ]
 }
