@@ -36,10 +36,12 @@ const platformToProvider: Record<PlatformId, string> = {
   twitter: 'x',
   linkedin: 'linkedin',
   snapchat: 'snapchat', // Not implemented yet
+  pinterest: 'pinterest', // Coming soon
+  discord: 'discord', // Coming soon
 };
 
 // All platform IDs
-const ALL_PLATFORMS: PlatformId[] = ['meta', 'tiktok', 'youtube', 'twitter', 'linkedin', 'snapchat'];
+const ALL_PLATFORMS: PlatformId[] = ['meta', 'tiktok', 'youtube', 'twitter', 'linkedin', 'snapchat', 'pinterest', 'discord'];
 
 export async function GET(request: NextRequest) {
   try {

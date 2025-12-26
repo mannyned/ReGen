@@ -24,6 +24,8 @@ const platformToProvider: Record<PlatformId, string> = {
   twitter: 'x',
   linkedin: 'linkedin',
   snapchat: 'snapchat',
+  pinterest: 'pinterest', // Coming soon
+  discord: 'discord', // Coming soon
 };
 
 export function useIntegration(options: UseIntegrationOptions = {}): UseIntegrationReturn {
