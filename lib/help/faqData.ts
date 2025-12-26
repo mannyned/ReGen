@@ -318,20 +318,22 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
 - Basic analytics
 - 5 RSS feeds
 
-**Creator Plan - $12/month**
+**Creator Plan**
 - 3 platform connections
 - Unlimited scheduled posts
 - Full analytics
 - 10 RSS feeds
 - Priority support
 
-**Pro Plan - $29/month**
+**Pro Plan**
 - Unlimited platform connections
 - Everything in Creator
 - 20 RSS feeds
 - Team workspace (3 seats)
 - Advanced analytics permissions
-- API access (coming soon)`,
+- API access (coming soon)
+
+*Pricing will be announced when we exit beta. Beta users will receive special early-adopter rates.*`,
       },
       {
         id: 'beta-pro',
