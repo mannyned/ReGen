@@ -227,7 +227,7 @@ export async function fetchAndParseFeed(url: string): Promise<FetchFeedResult> {
         link: feed.link,
         imageUrl: feedImageUrl,
         language: (feed as any).language,
-        lastBuildDate: feed.lastBuildDate ? new Date(feed.lastBuildDate) : undefined,
+        lastBuildDate: (feed as any).lastBuildDate ? new Date((feed as any).lastBuildDate) : undefined,
         items,
       },
     };
