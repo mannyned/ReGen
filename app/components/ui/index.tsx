@@ -119,21 +119,22 @@ export const HomeIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
 interface NavItem {
   href: string
   label: string
+  icon?: React.ReactNode
   active?: boolean
 }
 
 interface AppHeaderProps {
   currentPage: string
   showSchedule?: boolean
-  planBadge?: {
-    text: string
-    className: string
-  }
-  userIcon?: string
+  isPro?: boolean
+  userInitials?: string
+  userName?: string
 }
 
-export function AppHeader({ currentPage, showSchedule = true, planBadge, userIcon }: AppHeaderProps) {
+export function AppHeader({ currentPage, showSchedule = true, isPro = false, userInitials = 'U', userName = 'User' }: AppHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
@@ -144,105 +145,291 @@ export function AppHeader({ currentPage, showSchedule = true, planBadge, userIco
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  const navItems: NavItem[] = [
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-dropdown]')) {
+        setMoreMenuOpen(false)
+        setAvatarMenuOpen(false)
+      }
+    }
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [])
+
+  // Primary nav items (always visible on desktop)
+  const primaryNavItems: NavItem[] = [
     { href: '/dashboard', label: 'Dashboard', active: currentPage === 'dashboard' },
     { href: '/upload', label: 'Upload', active: currentPage === 'upload' },
     ...(showSchedule ? [{ href: '/schedule', label: 'Schedule', active: currentPage === 'schedule' }] : []),
     { href: '/analytics', label: 'Analytics', active: currentPage === 'analytics' },
-    { href: '/rss', label: 'RSS Feeds', active: currentPage === 'rss' },
-    { href: '/pricing', label: 'Pricing', active: currentPage === 'pricing' },
-    { href: '/settings', label: 'Settings', active: currentPage === 'settings' },
-    { href: '/help', label: 'Help', active: currentPage === 'help' },
   ]
+
+  // Secondary nav items (in "More" dropdown)
+  const moreNavItems: NavItem[] = [
+    { href: '/rss', label: 'RSS Feeds', active: currentPage === 'rss' },
+    { href: '/help', label: 'Help Center', active: currentPage === 'help' },
+  ]
+
+  // Check if any "more" item is active
+  const isMoreActive = moreNavItems.some(item => item.active)
 
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
       scrolled
-        ? 'bg-white/95 backdrop-blur-lg shadow-lg'
+        ? 'bg-white/98 backdrop-blur-xl shadow-sm'
         : 'bg-white border-b border-gray-100'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 lg:h-20">
+        <div className="flex items-center justify-between h-14 lg:h-16">
           {/* Logo */}
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="flex items-center gap-2 group">
-              <div className="relative h-8 lg:h-10 transition-transform group-hover:scale-105">
+          <div className="flex items-center gap-6">
+            <Link href="/dashboard" className="flex items-center group">
+              <div className="relative h-7 lg:h-8 transition-transform group-hover:scale-[1.02]">
                 <Image
                   src="/logo-regenr-header.svg"
-                  alt="ReGenr Logo"
-                  width={140}
-                  height={40}
+                  alt="ReGenr"
+                  width={120}
+                  height={32}
                   className="h-full w-auto"
                   priority
                 />
               </div>
             </Link>
-            <span className="text-text-secondary text-sm hidden sm:inline">/ {currentPage.charAt(0).toUpperCase() + currentPage.slice(1)}</span>
-            {planBadge && (
-              <span className={`px-3 py-1 rounded-full text-xs font-bold ml-2 hidden sm:inline ${planBadge.className}`}>
-                {planBadge.text}
-              </span>
-            )}
+
+            {/* Desktop Primary Navigation */}
+            <nav className="hidden lg:flex items-center gap-1">
+              {primaryNavItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+                    item.active
+                      ? 'text-primary bg-primary/8'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+
+              {/* More Dropdown */}
+              <div className="relative" data-dropdown>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setMoreMenuOpen(!moreMenuOpen)
+                    setAvatarMenuOpen(false)
+                  }}
+                  className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+                    isMoreActive
+                      ? 'text-primary bg-primary/8'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  More
+                  <svg className={`w-4 h-4 transition-transform ${moreMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* More Dropdown Menu */}
+                {moreMenuOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                    {moreNavItems.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`block px-4 py-2.5 text-sm transition-colors ${
+                          item.active
+                            ? 'text-primary bg-primary/5'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setMoreMenuOpen(false)}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </nav>
           </div>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  item.active
-                    ? 'text-primary bg-primary/5'
-                    : 'text-text-secondary hover:text-primary hover:bg-gray-50'
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
-            {userIcon && (
-              <div className="w-10 h-10 rounded-full bg-gradient-brand flex items-center justify-center text-white font-semibold cursor-pointer ml-2 hover:scale-105 transition-transform">
-                {userIcon}
-              </div>
-            )}
-            <SignOutButton variant="ghost" size="sm" className="ml-2" />
-          </nav>
+          {/* Right Side: CTA + Avatar */}
+          <div className="flex items-center gap-3">
+            {/* Create New CTA - Desktop */}
+            <Link
+              href="/upload"
+              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover transition-colors shadow-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Create
+            </Link>
 
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
-          </button>
+            {/* Avatar with Dropdown - Desktop */}
+            <div className="hidden lg:block relative" data-dropdown>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setAvatarMenuOpen(!avatarMenuOpen)
+                  setMoreMenuOpen(false)
+                }}
+                className="flex items-center gap-2 p-1.5 rounded-full hover:bg-gray-50 transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
+                  {userInitials}
+                </div>
+                {isPro && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded">
+                    Pro
+                  </span>
+                )}
+              </button>
+
+              {/* Avatar Dropdown Menu */}
+              {avatarMenuOpen && (
+                <div className="absolute top-full right-0 mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {/* User Info */}
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">{userName}</p>
+                    <p className="text-xs text-gray-500">{isPro ? 'Pro Plan' : 'Free Plan'}</p>
+                  </div>
+
+                  {/* Menu Items */}
+                  <div className="py-1">
+                    <Link
+                      href="/settings"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      onClick={() => setAvatarMenuOpen(false)}
+                    >
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Settings
+                    </Link>
+                    <Link
+                      href="/pricing"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      onClick={() => setAvatarMenuOpen(false)}
+                    >
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                      Billing
+                    </Link>
+                  </div>
+
+                  {/* Sign Out */}
+                  <div className="border-t border-gray-100 py-1">
+                    <SignOutButton
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-red-600 rounded-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <CloseIcon className="w-5 h-5" /> : <MenuIcon className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Mobile Menu */}
-      <div className={`md:hidden overflow-hidden transition-all duration-300 ${
-        mobileMenuOpen ? 'max-h-96 border-t border-gray-100' : 'max-h-0'
+      <div className={`lg:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+        mobileMenuOpen ? 'max-h-[32rem] border-t border-gray-100' : 'max-h-0'
       }`}>
-        <div className="px-4 py-4 space-y-1 bg-white">
-          {navItems.map((item) => (
+        <div className="px-4 py-3 bg-white">
+          {/* User Info - Mobile */}
+          <div className="flex items-center gap-3 pb-3 mb-3 border-b border-gray-100">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-semibold">
+              {userInitials}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900">{userName}</p>
+              <p className="text-xs text-gray-500">{isPro ? 'Pro Plan' : 'Free Plan'}</p>
+            </div>
+            {isPro && (
+              <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded">
+                Pro
+              </span>
+            )}
+          </div>
+
+          {/* Primary Nav - Mobile */}
+          <div className="space-y-1 mb-3">
+            {primaryNavItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`block py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
+                  item.active
+                    ? 'text-primary bg-primary/8'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Secondary Nav - Mobile */}
+          <div className="py-3 border-t border-gray-100 space-y-1">
+            <p className="px-3 text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">More</p>
+            {moreNavItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`block py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
+                  item.active
+                    ? 'text-primary bg-primary/8'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Settings & Billing - Mobile */}
+          <div className="py-3 border-t border-gray-100 space-y-1">
             <Link
-              key={item.href}
-              href={item.href}
-              className={`block py-3 px-4 rounded-lg font-medium transition-colors ${
-                item.active
-                  ? 'text-primary bg-primary/5'
-                  : 'text-text-secondary hover:text-primary hover:bg-gray-50'
-              }`}
+              href="/settings"
+              className="block py-2.5 px-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
-              {item.label}
+              Settings
             </Link>
-          ))}
-          <div className="pt-3 mt-3 border-t border-gray-100">
+            <Link
+              href="/pricing"
+              className="block py-2.5 px-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Billing
+            </Link>
+          </div>
+
+          {/* Sign Out - Mobile */}
+          <div className="pt-3 border-t border-gray-100">
             <SignOutButton
-              variant="danger"
+              variant="ghost"
               size="md"
-              className="w-full justify-center"
+              className="w-full justify-center text-red-600 hover:bg-red-50"
             />
           </div>
         </div>
