@@ -149,6 +149,7 @@ export function AppHeader({ currentPage, showSchedule = true, planBadge, userIco
     { href: '/upload', label: 'Upload', active: currentPage === 'upload' },
     ...(showSchedule ? [{ href: '/schedule', label: 'Schedule', active: currentPage === 'schedule' }] : []),
     { href: '/analytics', label: 'Analytics', active: currentPage === 'analytics' },
+    { href: '/rss', label: 'RSS Feeds', active: currentPage === 'rss' },
     { href: '/pricing', label: 'Pricing', active: currentPage === 'pricing' },
     { href: '/settings', label: 'Settings', active: currentPage === 'settings' },
   ]
