@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import type { PlatformConfig, ConnectionStatus, UserTier } from '@/lib/types/integrations';
+import type { SocialPlatform } from '@/lib/types/social';
 import { TierBadge } from './TierBadge';
 import { LockedFeatureCard } from './LockedFeatureCard';
+import { PlatformLogo } from '@/app/components/ui/PlatformLogo';
 
 interface PlatformCardProps {
   platform: PlatformConfig;
@@ -35,8 +37,8 @@ export function PlatformCard({
     return (
       <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 opacity-60">
         <div className="flex items-start gap-4">
-          <div className={`w-12 h-12 rounded-xl ${platform.bgColor} flex items-center justify-center text-2xl`}>
-            {platform.icon}
+          <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+            <PlatformLogo platform={platform.name as SocialPlatform} size="md" variant="color" />
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
@@ -59,7 +61,7 @@ export function PlatformCard({
         currentTier={currentTier}
         title={platform.displayName}
         description={platform.description}
-        icon={platform.icon}
+        platformName={platform.name as SocialPlatform}
         onUpgrade={onUpgrade}
       />
     );
@@ -68,8 +70,8 @@ export function PlatformCard({
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 transition-all hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-700">
       <div className="flex items-start gap-4">
-        <div className={`w-12 h-12 rounded-xl ${platform.bgColor} flex items-center justify-center text-2xl shadow-lg`}>
-          {platform.icon}
+        <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shadow-lg">
+          <PlatformLogo platform={platform.name as SocialPlatform} size="md" variant="color" />
         </div>
 
         <div className="flex-1 min-w-0">

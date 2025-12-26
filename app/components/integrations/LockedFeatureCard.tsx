@@ -1,7 +1,9 @@
 'use client';
 
 import type { UserTier } from '@/lib/types/integrations';
+import type { SocialPlatform } from '@/lib/types/social';
 import { TierBadge } from './TierBadge';
+import { PlatformLogo } from '@/app/components/ui/PlatformLogo';
 
 interface LockedFeatureCardProps {
   requiredTier: UserTier;
@@ -9,6 +11,7 @@ interface LockedFeatureCardProps {
   title: string;
   description?: string;
   icon?: React.ReactNode;
+  platformName?: SocialPlatform;
   onUpgrade?: () => void;
   className?: string;
 }
@@ -34,6 +37,7 @@ export function LockedFeatureCard({
   title,
   description,
   icon,
+  platformName,
   onUpgrade,
   className = '',
 }: LockedFeatureCardProps) {
@@ -60,8 +64,12 @@ export function LockedFeatureCard({
       {/* Content */}
       <div className="relative z-10">
         {/* Icon */}
-        <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-2xl opacity-50">
-          {icon || '🔒'}
+        <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-2xl opacity-50 overflow-hidden">
+          {platformName ? (
+            <PlatformLogo platform={platformName} size="md" variant="monochrome" />
+          ) : (
+            icon || '🔒'
+          )}
         </div>
 
         {/* Title with badge */}
