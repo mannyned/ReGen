@@ -213,7 +213,7 @@ export async function fetchAndParseFeed(url: string): Promise<FetchFeedResult> {
       link: item.link,
       description: item.contentSnippet || item.summary,
       content: (item as any).contentEncoded || item.content,
-      author: item.creator || item.author,
+      author: item.creator || (item as any).author,
       imageUrl: extractImageUrl(item as any),
       publishedAt: item.pubDate ? new Date(item.pubDate) : undefined,
       categories: item.categories || [],
