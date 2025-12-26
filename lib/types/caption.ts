@@ -62,6 +62,16 @@ export const PLATFORM_CHARACTER_LIMITS: Record<SocialPlatform, {
     hashtags: 0, // No hashtags on Snapchat
     warningThreshold: 80,
   },
+  pinterest: {
+    caption: 500,
+    hashtags: 20,
+    warningThreshold: 90,
+  },
+  discord: {
+    caption: 2000,
+    hashtags: 0, // Discord doesn't use hashtags
+    warningThreshold: 90,
+  },
 }
 
 // ============================================
@@ -291,6 +301,14 @@ export const PLATFORM_ADAPTATION_PRESETS: Record<SocialPlatform, AdaptationOptio
   facebook: [],
   snapchat: [
     { adaptation: 'shorten', enabled: true, customValue: 250 },
+    { adaptation: 'remove_hashtags', enabled: true },
+  ],
+  pinterest: [
+    { adaptation: 'shorten', enabled: true, customValue: 500 },
+    { adaptation: 'add_cta', enabled: true },
+  ],
+  discord: [
+    { adaptation: 'casual_tone', enabled: true },
     { adaptation: 'remove_hashtags', enabled: true },
   ],
 }

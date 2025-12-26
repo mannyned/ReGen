@@ -256,6 +256,8 @@ export class CSVExportService {
       linkedin: 'LinkedIn',
       facebook: 'Facebook',
       snapchat: 'Snapchat',
+      pinterest: 'Pinterest',
+      discord: 'Discord',
     }
     return names[platform] || platform
   }

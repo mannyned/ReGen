@@ -18,7 +18,9 @@ import { snapchatPublisher } from './SnapchatPublisher'
 // PLATFORM PUBLISHER REGISTRY
 // ============================================
 
-const publishers: Record<SocialPlatform, BasePlatformPublisher> = {
+// Publishers for implemented platforms
+// Pinterest and Discord are coming soon and not included
+const publishers: Partial<Record<SocialPlatform, BasePlatformPublisher>> = {
   instagram: instagramPublisher,
   tiktok: tiktokPublisher,
   youtube: youtubePublisher,
@@ -27,6 +29,9 @@ const publishers: Record<SocialPlatform, BasePlatformPublisher> = {
   facebook: facebookPublisher,
   snapchat: snapchatPublisher,
 }
+
+// Coming soon platforms
+const comingSoonPlatforms: SocialPlatform[] = ['pinterest', 'discord']
 
 // ============================================
 // UNIFIED PUBLISHING SERVICE
@@ -44,10 +49,11 @@ export class PublishingService {
     const publisher = publishers[platform]
 
     if (!publisher) {
+      const isComingSoon = comingSoonPlatforms.includes(platform)
       return {
         success: false,
         platform,
-        error: `Unsupported platform: ${platform}`,
+        error: isComingSoon ? `${platform} integration coming soon` : `Unsupported platform: ${platform}`,
       }
     }
 

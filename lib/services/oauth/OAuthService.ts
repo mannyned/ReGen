@@ -334,6 +334,8 @@ export class OAuthService {
       linkedin: () => this.fetchLinkedInProfile(accessToken),
       facebook: () => this.fetchFacebookProfile(accessToken),
       snapchat: () => this.fetchSnapchatProfile(accessToken),
+      pinterest: () => this.fetchPinterestProfile(accessToken),
+      discord: () => this.fetchDiscordProfile(accessToken),
     }
 
     return fetchers[platform]()
@@ -518,6 +520,16 @@ export class OAuthService {
       displayName: me.display_name,
       email: me.email,
     }
+  }
+
+  private async fetchPinterestProfile(accessToken: string): Promise<SocialProfile> {
+    // Pinterest API - coming soon
+    throw new Error('Pinterest integration coming soon')
+  }
+
+  private async fetchDiscordProfile(accessToken: string): Promise<SocialProfile> {
+    // Discord API - coming soon
+    throw new Error('Discord integration coming soon')
   }
 
   // ============================================
