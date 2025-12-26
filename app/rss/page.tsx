@@ -479,6 +479,12 @@ export default function RssFeedsPage() {
                     >
                       Discover feeds to add
                     </button>
+                    <a
+                      href="/help#rss"
+                      className="block text-text-secondary text-xs mt-2 hover:text-primary"
+                    >
+                      Learn about RSS feeds
+                    </a>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -725,16 +731,21 @@ export default function RssFeedsPage() {
 
             {/* Error message */}
             {curatedFeedError && (
-              <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
-                <span>{curatedFeedError}</span>
-                <button
-                  onClick={() => setCuratedFeedError(null)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+              <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span>{curatedFeedError}</span>
+                  <button
+                    onClick={() => setCuratedFeedError(null)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <a href="/help#feed-not-loading" className="text-xs text-red-600 hover:underline mt-1 inline-block">
+                  Why do feeds fail to load?
+                </a>
               </div>
             )}
 
@@ -890,7 +901,10 @@ export default function RssFeedsPage() {
 
                 {addFeedError && (
                   <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
-                    {addFeedError}
+                    <p>{addFeedError}</p>
+                    <a href="/help#feed-not-loading" className="text-xs text-red-600 hover:underline mt-1 inline-block">
+                      Troubleshooting tips
+                    </a>
                   </div>
                 )}
               </div>

@@ -152,6 +152,7 @@ export function AppHeader({ currentPage, showSchedule = true, planBadge, userIco
     { href: '/rss', label: 'RSS Feeds', active: currentPage === 'rss' },
     { href: '/pricing', label: 'Pricing', active: currentPage === 'pricing' },
     { href: '/settings', label: 'Settings', active: currentPage === 'settings' },
+    { href: '/help', label: 'Help', active: currentPage === 'help' },
   ]
 
   return (

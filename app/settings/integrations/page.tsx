@@ -149,17 +149,23 @@ export default function IntegrationsPage() {
         <div className="mt-12 p-6 rounded-2xl bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-900/20 dark:to-blue-900/20 border border-violet-100 dark:border-violet-800/50">
           <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Need help connecting?</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Check out our guides for setting up each platform integration, or reach out to support.
+            Check out our FAQ for setting up each platform integration, or reach out to support.
           </p>
           <div className="flex flex-wrap gap-3">
             <a
-              href="/docs/integrations"
+              href="/help#meta-connection"
               className="text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300"
             >
-              View Documentation →
+              Connection Help →
             </a>
             <a
-              href="/support"
+              href="/help#plans-access"
+              className="text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300"
+            >
+              Plan Limits →
+            </a>
+            <a
+              href="mailto:support@regenr.app"
               className="text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300"
             >
               Contact Support →
