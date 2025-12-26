@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Auto-refresh to fetch initial items (don't await to keep response fast)
-    refreshFeed(feed.id).catch((err) => {
+    refreshFeed(feed.id, user!.profileId).catch((err) => {
       console.error('[RSS Feeds] Auto-refresh failed:', err);
     });
 
