@@ -98,6 +98,7 @@ export default function RssFeedsPage() {
   const [selectedNiche, setSelectedNiche] = useState<string | null>(null);
   const [discoverLoading, setDiscoverLoading] = useState(false);
   const [addingCuratedFeed, setAddingCuratedFeed] = useState<string | null>(null);
+  const [curatedFeedError, setCuratedFeedError] = useState<string | null>(null);
   const [userFeedCount, setUserFeedCount] = useState(0);
   const [userFeedLimit, setUserFeedLimit] = useState(20);
 
@@ -253,8 +254,9 @@ export default function RssFeedsPage() {
   };
 
   // Add curated feed
-  const handleAddCuratedFeed = async (feedId: string) => {
+  const handleAddCuratedFeed = async (feedId: string, feedName: string) => {
     setAddingCuratedFeed(feedId);
+    setCuratedFeedError(null);
     try {
       const response = await fetch('/api/rss/discover', {
         method: 'POST',
@@ -272,7 +274,10 @@ export default function RssFeedsPage() {
       await fetchFeeds();
       await fetchCuratedFeeds();
     } catch (err) {
-      console.error('Failed to add curated feed:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Failed to add feed';
+      setCuratedFeedError(`Failed to add "${feedName}": ${errorMsg}`);
+      // Auto-clear error after 5 seconds
+      setTimeout(() => setCuratedFeedError(null), 5000);
     } finally {
       setAddingCuratedFeed(null);
     }
@@ -718,6 +723,21 @@ export default function RssFeedsPage() {
               )}
             </div>
 
+            {/* Error message */}
+            {curatedFeedError && (
+              <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
+                <span>{curatedFeedError}</span>
+                <button
+                  onClick={() => setCuratedFeedError(null)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+
             {/* Niche filter */}
             <div className="flex flex-wrap gap-2 mb-6">
               <button
@@ -772,7 +792,7 @@ export default function RssFeedsPage() {
                         </span>
                       ) : (
                         <button
-                          onClick={() => handleAddCuratedFeed(feed.id)}
+                          onClick={() => handleAddCuratedFeed(feed.id, feed.feed_name)}
                           disabled={addingCuratedFeed === feed.id || userFeedCount >= userFeedLimit}
                           className="text-xs px-3 py-1 bg-primary text-white rounded-full hover:bg-primary-hover transition-colors disabled:opacity-50"
                         >

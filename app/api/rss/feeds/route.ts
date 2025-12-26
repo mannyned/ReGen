@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
-import { validateFeed } from '@/lib/rss';
+import { validateFeed, refreshFeed } from '@/lib/rss';
 
 export const runtime = 'nodejs';
 
@@ -151,6 +151,11 @@ export async function POST(request: NextRequest) {
         feedImageUrl: validation.feed?.imageUrl,
         status: 'ACTIVE',
       },
+    });
+
+    // Auto-refresh to fetch initial items (don't await to keep response fast)
+    refreshFeed(feed.id).catch((err) => {
+      console.error('[RSS Feeds] Auto-refresh failed:', err);
     });
 
     return NextResponse.json({
