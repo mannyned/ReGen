@@ -52,12 +52,7 @@ export function decryptToken(encryptedToken: string): string {
 
 // Map lowercase platform strings to Prisma enum
 function toPrismaPlatform(platform: SocialPlatform): PrismaSocialPlatform {
-  // Pinterest and Discord are coming soon - not in Prisma schema yet
-  if (platform === 'pinterest' || platform === 'discord') {
-    throw new Error(`${platform} integration coming soon`)
-  }
-
-  const mapping: Record<Exclude<SocialPlatform, 'pinterest' | 'discord'>, PrismaSocialPlatform> = {
+  const mapping: Record<SocialPlatform, PrismaSocialPlatform> = {
     instagram: 'INSTAGRAM',
     tiktok: 'TIKTOK',
     youtube: 'YOUTUBE',
@@ -65,6 +60,8 @@ function toPrismaPlatform(platform: SocialPlatform): PrismaSocialPlatform {
     linkedin: 'LINKEDIN',
     facebook: 'FACEBOOK',
     snapchat: 'SNAPCHAT',
+    pinterest: 'PINTEREST',
+    discord: 'DISCORD',
   }
   return mapping[platform]
 }

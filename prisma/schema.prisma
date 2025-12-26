@@ -188,6 +188,8 @@ enum SocialPlatform {
   LINKEDIN
   FACEBOOK
   SNAPCHAT
+  PINTEREST
+  DISCORD
 }
 
 // ============================================
