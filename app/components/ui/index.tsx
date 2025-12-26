@@ -129,9 +129,10 @@ interface AppHeaderProps {
   isPro?: boolean
   userInitials?: string
   userName?: string
+  userRole?: 'owner' | 'admin' | 'member'  // Team role - billing only shows for owner
 }
 
-export function AppHeader({ currentPage, showSchedule = true, isPro = false, userInitials = 'U', userName = 'User' }: AppHeaderProps) {
+export function AppHeader({ currentPage, showSchedule = true, isPro = false, userInitials = 'U', userName = 'User', userRole = 'owner' }: AppHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
@@ -312,16 +313,19 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
                       </svg>
                       Settings
                     </Link>
-                    <Link
-                      href="/pricing"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                      onClick={() => setAvatarMenuOpen(false)}
-                    >
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                      </svg>
-                      Billing
-                    </Link>
+                    {/* Billing - only visible to team owner */}
+                    {userRole === 'owner' && (
+                      <Link
+                        href="/pricing"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        onClick={() => setAvatarMenuOpen(false)}
+                      >
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                        Billing
+                      </Link>
+                    )}
                   </div>
 
                   {/* Sign Out */}
@@ -415,13 +419,16 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
             >
               Settings
             </Link>
-            <Link
-              href="/pricing"
-              className="block py-2.5 px-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Billing
-            </Link>
+            {/* Billing - only visible to team owner */}
+            {userRole === 'owner' && (
+              <Link
+                href="/pricing"
+                className="block py-2.5 px-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Billing
+              </Link>
+            )}
           </div>
 
           {/* Sign Out - Mobile */}
