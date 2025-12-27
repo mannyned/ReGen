@@ -41,6 +41,10 @@ Welcome to ReGenr - your AI-powered content repurposing platform. This guide wil
 - LinkedIn (Images, Videos, Articles)
 - Facebook (Posts, Reels, Stories)
 - Snapchat (Videos, Spotlight)
+- Pinterest (Images, Pins)
+- Discord (Images, Videos, Text)
+
+> **Connection Status:** On the Upload page, connected platforms show a green indicator dot, while disconnected platforms show an orange indicator.
 
 ---
 
@@ -350,7 +354,7 @@ Manage your social media connections:
 
 ### Creator Plan ($9/mo)
 - Unlimited uploads
-- 7 platform connections
+- 5 platform connections
 - Advanced AI captions
 - Caption Workflow
 - Save Rate Analytics
@@ -358,6 +362,7 @@ Manage your social media connections:
 
 ### Pro Plan ($29/mo)
 Everything in Creator, plus:
+- Unlimited platform connections
 - Location Analytics
 - Retention Analytics
 - Caption Usage Analytics
@@ -442,6 +447,8 @@ Everything in Creator, plus:
 | YouTube | Medium | 5-10 | Informative |
 | Facebook | Medium | 3-5 | Friendly |
 | Snapchat | Very short | 0 | Fun |
+| Pinterest | Medium | 5-10 | Descriptive |
+| Discord | Short-medium | 0 | Casual |
 
 ---
 

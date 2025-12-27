@@ -7,7 +7,7 @@ ReGenr is a modern SaaS application that helps content creators repurpose their 
 ### Core Features
 - **AI Content Generation** - Automatically generate captions, hashtags, and optimized content for each platform
 - **Caption Workflow** - Generate one primary caption and adapt it across platforms with 11 rule-based adaptations
-- **Multi-Platform Publishing** - Connect and publish to 7 platforms: Instagram, TikTok, YouTube, Twitter/X, LinkedIn, Facebook, and Snapchat
+- **Multi-Platform Publishing** - Connect and publish to 9 platforms: Instagram, TikTok, YouTube, Twitter/X, LinkedIn, Facebook, Snapchat, Pinterest, and Discord
 - **Content Upload** - Drag-and-drop file upload with preview and validation
 - **Smart Scheduling** - Schedule posts for optimal engagement times
 - **Analytics Dashboard** - Track performance across all platforms with caption usage analytics
@@ -24,13 +24,15 @@ ReGenr is a modern SaaS application that helps content creators repurpose their 
 | LinkedIn | ✓ | ✓ | ✓ | Images, Videos, Articles |
 | Facebook | ✓ | ✓ | ✓ | Images, Videos, Reels |
 | Snapchat | ✓ | ✓ | ✓ | Videos, Spotlight |
+| Pinterest | ✓ | ✓ | ✓ | Images, Pins |
+| Discord | ✓ | ✓ | - | Images, Videos, Text |
 
 ### Plan Tiers
 
 | Feature | Free | Creator ($9/mo) | Pro ($29/mo) |
 |---------|------|-----------------|--------------|
 | Uploads per month | 3 | Unlimited | Unlimited |
-| Platform connections | 2 | 7 | 7 |
+| Platform connections | 2 | 5 | Unlimited |
 | AI captions | Basic | Advanced | Advanced |
 | Caption Workflow | ✓ | ✓ | ✓ |
 | Save Rate Analytics | - | ✓ | ✓ |
@@ -124,7 +126,7 @@ The Caption Workflow feature allows you to generate one primary caption and inte
 ```
 lib/
 ├── config/
-│   └── oauth.ts              # OAuth configs for all 7 platforms
+│   └── oauth.ts              # OAuth configs for all 9 platforms
 ├── middleware/
 │   ├── rateLimit.ts          # Rate limiting middleware
 │   └── validation.ts         # Input validation utilities
@@ -282,7 +284,7 @@ DATABASE_URL="postgresql://user:password@localhost:5432/regen"
 # Security (generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
 TOKEN_ENCRYPTION_KEY=your-64-character-hex-string
 
-# OAuth Credentials (all 7 platforms)
+# OAuth Credentials (all 9 platforms)
 INSTAGRAM_CLIENT_ID=
 INSTAGRAM_CLIENT_SECRET=
 TIKTOK_CLIENT_KEY=
@@ -297,6 +299,10 @@ FACEBOOK_CLIENT_ID=
 FACEBOOK_CLIENT_SECRET=
 SNAPCHAT_CLIENT_ID=
 SNAPCHAT_CLIENT_SECRET=
+PINTEREST_CLIENT_ID=
+PINTEREST_CLIENT_SECRET=
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
 
 # AI
 OPENAI_API_KEY=
@@ -313,6 +319,8 @@ OPENAI_API_KEY=
 | LinkedIn | 3,000 chars | 30 | 10 min | 200 MB |
 | Facebook | 63,206 chars | 30 | 4 hours | 10 GB |
 | Snapchat | 250 chars | 10 | 3 min | 1 GB |
+| Pinterest | 500 chars | 20 | 15 min | 2 GB |
+| Discord | 2,000 chars | - | 8 MB | 8 MB |
 
 ## UI/UX Design System
 
