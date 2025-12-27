@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { fileStorage, fileToBase64, generateFileId } from '../utils/fileStorage'
 import { AppHeader, Card, Badge, PlatformLogo } from '../components/ui'
+import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import type { SocialPlatform } from '@/lib/types/social'
 
 type UploadType = 'video' | 'image' | 'text'
@@ -56,6 +57,7 @@ const platforms = [
 
 export default function UploadPage() {
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const [uploadType, setUploadType] = useState<UploadType>('video')
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(['instagram', 'tiktok'])
   const [contentType, setContentType] = useState<ContentType>('post')
@@ -90,15 +92,45 @@ export default function UploadPage() {
 
   useEffect(() => {
     setMounted(true)
-    const savedPlatforms = localStorage.getItem('connectedPlatforms')
-    if (savedPlatforms) {
-      const platformsList = JSON.parse(savedPlatforms)
-      const connected = platformsList
-        .filter((p: any) => p.connected)
-        .map((p: any) => p.id === 'twitter' ? 'x' : p.id)
-      setConnectedAccounts(connected)
+
+    const fetchConnectedAccounts = async () => {
+      // First try localStorage for cached data
+      const savedPlatforms = localStorage.getItem('connectedPlatforms')
+      if (savedPlatforms) {
+        const platformsList = JSON.parse(savedPlatforms)
+        const connected = platformsList
+          .filter((p: any) => p.connected)
+          .map((p: any) => p.id === 'twitter' ? 'x' : p.id)
+        setConnectedAccounts(connected)
+      }
+
+      // Then fetch from OAuth API if user is authenticated
+      if (!authLoading && user?.id) {
+        try {
+          const response = await fetch(`/api/oauth/status?userId=${user.id}`)
+          const data = await response.json()
+
+          if (data.success && data.connectedPlatforms) {
+            const connected = data.connectedPlatforms.map((cp: any) =>
+              cp.platform === 'twitter' ? 'x' : cp.platform
+            )
+            setConnectedAccounts(connected)
+
+            // Update localStorage for consistency
+            const platformsList = platforms.map(p => ({
+              id: p.id === 'x' ? 'twitter' : p.id,
+              connected: connected.includes(p.id)
+            }))
+            localStorage.setItem('connectedPlatforms', JSON.stringify(platformsList))
+          }
+        } catch (error) {
+          console.error('Error fetching connected accounts:', error)
+        }
+      }
     }
-  }, [])
+
+    fetchConnectedAccounts()
+  }, [authLoading, user?.id])
 
   useEffect(() => {
     return () => {
@@ -577,8 +609,10 @@ export default function UploadPage() {
                         </svg>
                       </div>
                     )}
-                    {!isConnected && (
-                      <div className="absolute top-2 left-2 w-3 h-3 bg-orange-500 rounded-full" title="Not connected" />
+                    {isConnected ? (
+                      <div className="absolute top-2 left-2 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm" title="Connected" />
+                    ) : (
+                      <div className="absolute top-2 left-2 w-3 h-3 bg-orange-500 rounded-full border-2 border-white shadow-sm" title="Not connected" />
                     )}
                   </button>
                 )
