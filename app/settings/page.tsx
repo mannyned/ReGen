@@ -20,6 +20,8 @@ const PLATFORM_ID_MAP: Record<string, SocialPlatform> = {
   'x': 'twitter',
   'linkedin': 'linkedin',
   'snapchat': 'snapchat',
+  'pinterest': 'pinterest',
+  'discord': 'discord',
 }
 
 type Platform = {
@@ -170,6 +172,8 @@ export default function SettingsPage() {
         { id: 'linkedin', name: 'LinkedIn', icon: '💼', color: 'from-blue-700 to-blue-600', connected: false },
         { id: 'facebook', name: 'Facebook', icon: '👥', color: 'from-blue-600 to-blue-500', connected: false },
         { id: 'snapchat', name: 'Snapchat', icon: '👻', color: 'from-yellow-400 to-yellow-500', connected: false },
+        { id: 'pinterest', name: 'Pinterest', icon: '📌', color: 'from-red-600 to-red-500', connected: false },
+        { id: 'discord', name: 'Discord', icon: '💬', color: 'from-indigo-600 to-indigo-500', connected: false },
       ]
 
       // Wait for auth to complete before fetching
