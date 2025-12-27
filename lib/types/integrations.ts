@@ -121,7 +121,6 @@ export const PLATFORMS: PlatformConfig[] = [
     description: 'Repurpose content into Pins that drive long-term traffic.',
     requiredTier: 'CREATOR',
     features: ['Pin creation', 'Board management', 'Traffic analytics'],
-    comingSoon: true,
   },
   {
     id: 'discord',
@@ -133,7 +132,6 @@ export const PLATFORMS: PlatformConfig[] = [
     description: 'Share regenerated content directly with your community.',
     requiredTier: 'PRO',
     features: ['Server posting', 'Channel selection', 'Community engagement'],
-    comingSoon: true,
   },
 ];
 
