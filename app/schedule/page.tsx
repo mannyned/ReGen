@@ -7,7 +7,7 @@ import { AppHeader, PlatformLogo } from '../components/ui'
 import type { SocialPlatform } from '@/lib/types/social'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
 
-type Platform = 'instagram' | 'twitter' | 'linkedin' | 'facebook' | 'tiktok' | 'youtube' | 'x' | 'snapchat'
+type Platform = 'instagram' | 'twitter' | 'linkedin' | 'facebook' | 'tiktok' | 'youtube' | 'x' | 'snapchat' | 'pinterest' | 'discord'
 
 // Map Platform type to SocialPlatform for logo component
 const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
@@ -19,6 +19,8 @@ const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
   'tiktok': 'tiktok',
   'youtube': 'youtube',
   'snapchat': 'snapchat',
+  'pinterest': 'pinterest',
+  'discord': 'discord',
 }
 
 interface PreviewData {
@@ -55,7 +57,9 @@ export default function SchedulePage() {
     { name: 'facebook', label: 'Facebook', icon: '👥' },
     { name: 'x', label: 'X (Twitter)', icon: '𝕏' },
     { name: 'linkedin', label: 'LinkedIn', icon: '💼' },
-    { name: 'snapchat', label: 'Snapchat', icon: '👻' }
+    { name: 'snapchat', label: 'Snapchat', icon: '👻' },
+    { name: 'pinterest', label: 'Pinterest', icon: '📌' },
+    { name: 'discord', label: 'Discord', icon: '💬' },
   ]
 
   // Load connected accounts from API

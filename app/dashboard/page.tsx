@@ -18,6 +18,8 @@ const PLATFORM_ID_MAP: Record<string, SocialPlatform> = {
   'TikTok': 'tiktok',
   'YouTube': 'youtube',
   'Snapchat': 'snapchat',
+  'Pinterest': 'pinterest',
+  'Discord': 'discord',
 }
 
 export default function DashboardPage() {

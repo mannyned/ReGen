@@ -14,7 +14,7 @@ import type { PrimaryCaption, PlatformCaptionInstance, CaptionAnalyticsMetadata 
 import { PlatformLogo } from '../components/ui'
 
 type CaptionTone = 'professional' | 'engaging' | 'casual'
-type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'snapchat'
+type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'snapchat' | 'pinterest' | 'discord'
 type ContentType = 'post' | 'story'
 
 // Map local Platform type to SocialPlatform
@@ -26,6 +26,8 @@ const PLATFORM_MAP: Record<Platform, SocialPlatform> = {
   'x': 'twitter',
   'linkedin': 'linkedin',
   'snapchat': 'snapchat',
+  'pinterest': 'pinterest',
+  'discord': 'discord',
 }
 
 interface UploadedFile {
@@ -70,6 +72,8 @@ const PLATFORM_CONFIG = {
   x: { icon: '🐦', formats: { post: 'Tweet thread', story: 'Fleet' } },
   linkedin: { icon: '💼', formats: { post: 'Professional post', story: 'Story' } },
   snapchat: { icon: '👻', formats: { post: 'Snap', story: 'Story' } },
+  pinterest: { icon: '📌', formats: { post: 'Pin', story: 'Idea Pin' } },
+  discord: { icon: '💬', formats: { post: 'Message', story: 'Message' } },
 }
 
 export default function GeneratePage() {
@@ -161,7 +165,9 @@ export default function GeneratePage() {
       snapchat: { post: 1, story: 1 },
       youtube: { post: 1, story: 1 },
       x: { post: 4, story: 1 },
-      linkedin: { post: 1, story: 1 }
+      linkedin: { post: 1, story: 1 },
+      pinterest: { post: 1, story: 1 },
+      discord: { post: 1, story: 1 },
     }
     return limits[platform]?.[contentType] || 1
   }
@@ -182,7 +188,9 @@ export default function GeneratePage() {
       facebook: 'Check out how AI is revolutionizing content creation! 🎯\n\nWith ReGenr, one upload = content for all platforms.',
       x: 'Creators: Stop wasting hours on manual repurposing.\n\nReGenr AI:\n• Upload once\n• Generate for all platforms\n• Edit & schedule\n• Track performance\n\nGame changer 🔥',
       linkedin: 'Content repurposing doesn\'t have to be painful.\n\nI\'ve been using AI to transform one video into platform-specific posts for TikTok, Instagram, YouTube, and more.\n\nThe result? 10+ hours saved per week and 3x more engagement.\n\nHere\'s my workflow:',
-      snapchat: 'New content drop! 💫 Created with AI magic ✨'
+      snapchat: 'New content drop! 💫 Created with AI magic ✨',
+      pinterest: 'Save this for later! 📌 Creative inspiration powered by AI ✨',
+      discord: 'Check out what I just created! 🎮 Made with ReGenr AI 🚀',
     }
     return captions[platform] || ''
   }
@@ -195,7 +203,9 @@ export default function GeneratePage() {
       facebook: ['#FacebookCreator', '#ContentStrategy', '#SocialMediaMarketing'],
       x: ['#CreatorTools', '#AIforCreators'],
       linkedin: ['#ContentStrategy', '#MarketingAutomation', '#CreatorEconomy'],
-      snapchat: ['#SnapCreator', '#ContentCreation']
+      snapchat: ['#SnapCreator', '#ContentCreation'],
+      pinterest: ['#PinterestInspiration', '#SaveForLater', '#CreativeIdeas'],
+      discord: [],
     }
 
     const platformTags = baseHashtags[platform] || []

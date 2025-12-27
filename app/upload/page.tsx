@@ -8,7 +8,7 @@ import { AppHeader, Card, Badge, PlatformLogo } from '../components/ui'
 import type { SocialPlatform } from '@/lib/types/social'
 
 type UploadType = 'video' | 'image' | 'text'
-type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'snapchat'
+type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'snapchat' | 'pinterest' | 'discord'
 
 // Map Platform type to SocialPlatform for logo component
 const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
@@ -19,6 +19,8 @@ const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
   'x': 'twitter',
   'linkedin': 'linkedin',
   'snapchat': 'snapchat',
+  'pinterest': 'pinterest',
+  'discord': 'discord',
 }
 type ContentType = 'post' | 'story'
 
@@ -35,7 +37,9 @@ const PLATFORM_LIMITS = {
   snapchat: { post: 1, story: 1 },
   youtube: { post: 1, story: 1 },
   x: { post: 4, story: 1 },
-  linkedin: { post: 1, story: 1 }
+  linkedin: { post: 1, story: 1 },
+  pinterest: { post: 1, story: 1 },
+  discord: { post: 1, story: 1 },
 }
 
 const platforms = [
@@ -46,6 +50,8 @@ const platforms = [
   { id: 'x' as Platform, name: 'X (Twitter)', icon: '𝕏', color: 'bg-gradient-to-br from-gray-900 to-gray-700' },
   { id: 'linkedin' as Platform, name: 'LinkedIn', icon: '💼', color: 'bg-gradient-to-br from-blue-700 to-blue-600' },
   { id: 'snapchat' as Platform, name: 'Snapchat', icon: '👻', color: 'bg-gradient-to-br from-yellow-400 to-yellow-500' },
+  { id: 'pinterest' as Platform, name: 'Pinterest', icon: '📌', color: 'bg-gradient-to-br from-red-600 to-red-500' },
+  { id: 'discord' as Platform, name: 'Discord', icon: '💬', color: 'bg-gradient-to-br from-indigo-600 to-indigo-500' },
 ]
 
 export default function UploadPage() {
