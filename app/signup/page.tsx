@@ -202,10 +202,10 @@ function SignupContent() {
       <div className="relative bg-white rounded-3xl shadow-2xl p-8 md:p-10 w-full max-w-md animate-scale-in">
         {/* Logo */}
         <div className="flex justify-center mb-6">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="relative w-12 h-12 transition-transform group-hover:scale-110">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="relative w-10 h-10 transition-transform group-hover:scale-110">
               <Image
-                src="/logo.png"
+                src="/brand/regenr-icon-clean-1024.png"
                 alt="ReGenr Logo"
                 fill
                 className="object-contain"
