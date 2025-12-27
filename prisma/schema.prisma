@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================
@@ -57,6 +58,10 @@ model Profile {
   // RSS Feed relations
   rssFeeds     RssFeed[]
   rssFeedItems RssFeedItem[]
+
+  // TikTok relations
+  tiktokPosts        TikTokPost[]
+  tiktokVideoMetrics TikTokVideoMetrics[]
 
   @@index([stripeCustomerId])
   @@index([betaUser])
@@ -263,6 +268,7 @@ model ContentUpload {
   scheduledPosts ScheduledPost[]
   publishedPosts PublishedPost[]
   rssFeedItems   RssFeedItem[]
+  tiktokPosts    TikTokPost[]
 
   @@index([profileId])
   @@index([status])
@@ -796,4 +802,87 @@ model RssFeedItem {
   @@index([publishedAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
   @@map("rss_feed_items")
+}
+
+// ============================================
+// TIKTOK INTEGRATION
+// ============================================
+
+/// TikTok post status tracking
+enum TikTokPostStatus {
+  PENDING
+  UPLOADING
+  PROCESSING
+  POSTED
+  FAILED
+  SCHEDULED
+
+  @@map("tiktok_post_status")
+}
+
+/// TikTokPost - Track posts initiated via ReGenr to TikTok
+/// Supports both immediate and scheduled posting
+model TikTokPost {
+  id               String    @id @default(cuid())
+  profileId        String    @map("profile_id") @db.Uuid
+  workspaceId      String?   @map("workspace_id")
+  contentUploadId  String?   @map("content_upload_id")
+
+  // TikTok identifiers
+  tiktokVideoId    String?   @map("tiktok_video_id")
+  publishId        String?   @map("publish_id")
+
+  // Post status
+  status           TikTokPostStatus @default(PENDING)
+  scheduledAt      DateTime? @map("scheduled_at")
+  postedAt         DateTime? @map("posted_at")
+  lastError        String?   @map("last_error")
+
+  // Post content
+  caption          String?
+  privacyLevel     String?   @map("privacy_level") @default("PUBLIC_TO_EVERYONE")
+
+  // TikTok post settings
+  disableComment   Boolean   @default(false) @map("disable_comment")
+  disableDuet      Boolean   @default(false) @map("disable_duet")
+  disableStitch    Boolean   @default(false) @map("disable_stitch")
+
+  // Timestamps
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  profile          Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  contentUpload    ContentUpload? @relation(fields: [contentUploadId], references: [id])
+
+  @@index([profileId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([tiktokVideoId])
+  @@map("tiktok_posts")
+}
+
+/// TikTokVideoMetrics - Cache metrics fetched from TikTok Display API
+/// Stores historical metrics to avoid excessive API calls
+model TikTokVideoMetrics {
+  id             String   @id @default(cuid())
+  profileId      String   @map("profile_id") @db.Uuid
+  tiktokVideoId  String   @map("tiktok_video_id")
+
+  // Timestamp when metrics were fetched
+  fetchedAt      DateTime @default(now()) @map("fetched_at")
+
+  // Metrics data as JSON for flexibility
+  // { views: number, likes: number, comments: number, shares: number }
+  metrics        Json
+
+  // Relations
+  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  // Unique per video per day to avoid duplicate entries
+  @@unique([profileId, tiktokVideoId, fetchedAt])
+  @@index([profileId])
+  @@index([tiktokVideoId])
+  @@index([fetchedAt])
+  @@map("tiktok_video_metrics")
 }

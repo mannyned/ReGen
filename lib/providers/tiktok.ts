@@ -85,8 +85,8 @@ const config: ProviderConfig = {
   // See: https://developers.tiktok.com/doc/tiktok-api-scopes/
   scopes: [
     'user.info.basic',    // Basic profile (avatar, display name, etc.)
-    'video.list',         // Access to user's public videos
-    // 'video.upload',    // Uncomment if upload is needed
+    'video.list',         // Access to user's public videos (Display API)
+    'video.publish',      // Post videos to TikTok (Content Posting API)
   ],
 
   capabilities: {
