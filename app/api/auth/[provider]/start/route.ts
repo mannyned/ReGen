@@ -42,7 +42,7 @@ export async function GET(
           error: 'Unknown provider',
           code: 'UNKNOWN_PROVIDER',
           message: `Provider "${provider}" is not supported.`,
-          supportedProviders: ['meta', 'tiktok', 'google', 'x', 'linkedin'],
+          supportedProviders: ['meta', 'tiktok', 'google', 'x', 'linkedin', 'snapchat'],
         },
         { status: 400 }
       );

@@ -63,6 +63,12 @@ model Profile {
   tiktokPosts        TikTokPost[]
   tiktokVideoMetrics TikTokVideoMetrics[]
 
+  // Cross-platform outbound posts
+  outboundPosts      OutboundPost[]
+
+  // YouTube metrics cache
+  youtubeMetrics     YouTubeMetricsCache[]
+
   @@index([stripeCustomerId])
   @@index([betaUser])
   @@map("profiles")
@@ -269,6 +275,7 @@ model ContentUpload {
   publishedPosts PublishedPost[]
   rssFeedItems   RssFeedItem[]
   tiktokPosts    TikTokPost[]
+  outboundPosts  OutboundPost[]
 
   @@index([profileId])
   @@index([status])
@@ -885,4 +892,88 @@ model TikTokVideoMetrics {
   @@index([tiktokVideoId])
   @@index([fetchedAt])
   @@map("tiktok_video_metrics")
+}
+
+// ============================================
+// OUTBOUND POSTS (Cross-Platform Posting Tracker)
+// ============================================
+
+/// Status for outbound posts across all platforms
+enum OutboundPostStatus {
+  QUEUED
+  PROCESSING
+  POSTED
+  FAILED
+  INITIATED  // For user-initiated shares (Snapchat)
+
+  @@map("outbound_post_status")
+}
+
+/// OutboundPost - Track posts initiated via ReGenr across all platforms
+/// Unified table for LinkedIn, YouTube, Snapchat, etc.
+model OutboundPost {
+  id               String    @id @default(cuid())
+  profileId        String    @map("profile_id") @db.Uuid
+  contentUploadId  String?   @map("content_upload_id")
+
+  // Platform identifier
+  provider         String    // 'linkedin', 'youtube', 'snapchat', etc.
+
+  // External identifiers
+  externalPostId   String?   @map("external_post_id")  // Platform's post ID
+
+  // Post status
+  status           OutboundPostStatus @default(QUEUED)
+  scheduledAt      DateTime? @map("scheduled_at")
+  postedAt         DateTime? @map("posted_at")
+  lastError        String?   @map("last_error")
+
+  // Metadata (platform-specific data as JSON)
+  metadata         Json      @default("{}")
+
+  // Timestamps
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  profile          Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  contentUpload    ContentUpload? @relation(fields: [contentUploadId], references: [id])
+
+  @@index([profileId])
+  @@index([provider])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([externalPostId])
+  @@map("outbound_posts")
+}
+
+// ============================================
+// YOUTUBE METRICS CACHE
+// ============================================
+
+/// YouTubeMetricsCache - Cache metrics fetched from YouTube Analytics API
+/// Stores historical metrics to avoid excessive API calls
+model YouTubeMetricsCache {
+  id             String   @id @default(cuid())
+  profileId      String   @map("profile_id") @db.Uuid
+  channelId      String   @map("channel_id")
+  videoId        String?  @map("video_id")  // null for channel-level metrics
+
+  // Timestamp when metrics were fetched
+  fetchedAt      DateTime @default(now()) @map("fetched_at")
+
+  // Metrics data as JSON for flexibility
+  // { views, watchTime, likes, comments, shares, etc. }
+  metrics        Json
+
+  // Relations
+  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  // Unique per channel/video per day to avoid duplicate entries
+  @@unique([profileId, channelId, videoId, fetchedAt])
+  @@index([profileId])
+  @@index([channelId])
+  @@index([videoId])
+  @@index([fetchedAt])
+  @@map("youtube_metrics_cache")
 }

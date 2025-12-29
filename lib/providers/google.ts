@@ -85,12 +85,12 @@ const config: ProviderConfig = {
   // Scopes for YouTube access
   // See: https://developers.google.com/youtube/v3/guides/auth/server-side-web-apps#identify-access-scopes
   scopes: [
-    'openid',                                    // OpenID Connect
-    'email',                                     // User's email
-    'profile',                                   // Basic profile info
-    'https://www.googleapis.com/auth/youtube.readonly',        // View YouTube data
-    'https://www.googleapis.com/auth/yt-analytics.readonly',   // View YouTube analytics
-    // 'https://www.googleapis.com/auth/youtube.upload',       // Upload videos (if needed)
+    'openid',                                                   // OpenID Connect
+    'email',                                                    // User's email
+    'profile',                                                  // Basic profile info
+    'https://www.googleapis.com/auth/youtube.readonly',         // View YouTube data
+    'https://www.googleapis.com/auth/youtube.upload',           // Upload videos
+    'https://www.googleapis.com/auth/yt-analytics.readonly',    // View YouTube analytics
   ],
 
   capabilities: {

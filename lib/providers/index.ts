@@ -22,6 +22,7 @@ export { tiktokProvider } from './tiktok';
 export { googleProvider } from './google';
 export { xProvider } from './x';
 export { linkedinProvider } from './linkedin';
+export { snapchatProvider } from './snapchat';
 
 // Re-export types for convenience
 export type { OAuthProvider, OAuthProviderInterface } from '../oauth/types';
@@ -41,7 +42,7 @@ export const PROVIDER_CONFIGS = {
   google: {
     displayName: 'Google (YouTube)',
     platforms: ['YouTube'],
-    features: ['Videos', 'Shorts', 'Analytics'],
+    features: ['Videos', 'Shorts', 'Analytics', 'Upload'],
   },
   x: {
     displayName: 'X (Twitter)',
@@ -52,6 +53,11 @@ export const PROVIDER_CONFIGS = {
     displayName: 'LinkedIn',
     platforms: ['LinkedIn'],
     features: ['Posts', 'Articles'],
+  },
+  snapchat: {
+    displayName: 'Snapchat',
+    platforms: ['Snapchat'],
+    features: ['Login', 'Share (User-Initiated)'],
   },
 } as const;
 

@@ -106,10 +106,9 @@ export const PLATFORMS: PlatformConfig[] = [
     icon: '👻',
     color: '#FFFC00',
     bgColor: 'bg-yellow-400',
-    description: 'Spotlight & Stories',
+    description: 'Connect & Share',
     requiredTier: 'PRO',
-    features: ['Story views', 'Spotlight metrics', 'Audience insights'],
-    comingSoon: true,
+    features: ['Login Kit', 'Share to Snapchat (user-initiated)'],
   },
   {
     id: 'pinterest',
