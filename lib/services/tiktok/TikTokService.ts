@@ -10,6 +10,7 @@
 
 import { getAccessToken, refreshTokens } from '@/lib/oauth/engine'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 import type {
   TikTokVideo,
   TikTokVideoListResponse,
@@ -276,7 +277,7 @@ export class TikTokService {
       data: {
         profileId,
         tiktokVideoId: videoId,
-        metrics: metrics as unknown as Record<string, unknown>,
+        metrics: metrics as Prisma.InputJsonValue,
         fetchedAt: new Date(),
       },
     })
