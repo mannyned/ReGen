@@ -54,8 +54,8 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
   // YOUTUBE (Google OAuth)
   // ============================================
   youtube: {
-    clientId: process.env.YOUTUBE_CLIENT_ID || '',
-    clientSecret: process.env.YOUTUBE_CLIENT_SECRET || '',
+    clientId: process.env.GOOGLE_CLIENT_ID || process.env.YOUTUBE_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || process.env.YOUTUBE_CLIENT_SECRET || '',
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenUrl: 'https://oauth2.googleapis.com/token',
     refreshUrl: 'https://oauth2.googleapis.com/token',
