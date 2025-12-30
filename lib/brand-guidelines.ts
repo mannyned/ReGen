@@ -66,6 +66,11 @@ export const BRAND_RESOURCE_URLS: Record<SocialPlatform, {
     pressKit: 'https://discord.com/branding',
     trademark: 'https://discord.com/terms',
   },
+  meta: {
+    brandGuidelines: 'https://about.meta.com/brand/resources/',
+    pressKit: 'https://about.meta.com/brand/resources/',
+    trademark: 'https://about.meta.com/brand/resources/',
+  },
 }
 
 /**
@@ -134,6 +139,13 @@ export const BRAND_COLORS: Record<SocialPlatform, {
     background: '#5865F2',
     text: '#FFFFFF',
     safeZone: '20%',
+  },
+  meta: {
+    primary: '#0081FB',
+    secondary: '#833AB4',
+    background: 'linear-gradient(45deg, #0081FB 0%, #833AB4 50%, #E4405F 100%)',
+    text: '#FFFFFF',
+    safeZone: '25%',
   },
 }
 
@@ -244,6 +256,17 @@ export const LOGO_USAGE_RULES: Record<SocialPlatform, {
     ],
     allowedBackgrounds: ['White', 'Blurple', 'Dark backgrounds'],
   },
+  meta: {
+    minSize: 24,
+    allowedVariants: ['color', 'monochrome', 'white'],
+    restrictions: [
+      'Do not modify or recreate the Meta logo',
+      'Do not change the logo colors',
+      'Do not add effects (shadows, outlines, gradients)',
+      'Do not rotate or skew the logo',
+    ],
+    allowedBackgrounds: ['White', 'Light backgrounds', 'Dark backgrounds'],
+  },
 }
 
 /**
@@ -298,6 +321,11 @@ export const TRADEMARK_INFO: Record<SocialPlatform, {
     owner: 'Discord Inc.',
     registeredName: 'Discord',
     copyrightYear: 2015,
+  },
+  meta: {
+    owner: 'Meta Platforms, Inc.',
+    registeredName: 'Meta',
+    copyrightYear: 2021,
   },
 }
 

@@ -59,6 +59,7 @@ function toPrismaPlatform(platform: SocialPlatform): PrismaSocialPlatform {
     twitter: 'TWITTER',
     linkedin: 'LINKEDIN',
     facebook: 'FACEBOOK',
+    meta: 'META',
     snapchat: 'SNAPCHAT',
     pinterest: 'PINTEREST',
     discord: 'DISCORD',

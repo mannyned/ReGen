@@ -198,6 +198,29 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
     responseType: 'code',
     grantType: 'authorization_code',
   },
+
+  // ============================================
+  // META (Combined Instagram + Facebook)
+  // ============================================
+  meta: {
+    clientId: process.env.META_CLIENT_ID || '',
+    clientSecret: process.env.META_CLIENT_SECRET || '',
+    authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
+    tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
+    refreshUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
+    revokeUrl: 'https://graph.facebook.com/v19.0/me/permissions',
+    scopes: [
+      'instagram_basic',
+      'instagram_content_publish',
+      'instagram_manage_insights',
+      'pages_manage_posts',
+      'pages_read_engagement',
+      'pages_show_list',
+      'business_management',
+    ],
+    responseType: 'code',
+    grantType: 'authorization_code',
+  },
 }
 
 // ============================================
@@ -211,6 +234,7 @@ export const API_BASE_URLS: Record<SocialPlatform, string> = {
   twitter: 'https://api.twitter.com/2',
   linkedin: 'https://api.linkedin.com/v2',
   facebook: 'https://graph.facebook.com/v19.0',
+  meta: 'https://graph.facebook.com/v19.0',
   snapchat: 'https://adsapi.snapchat.com/v1',
   pinterest: 'https://api.pinterest.com/v5',
   discord: 'https://discord.com/api/v10',
@@ -227,6 +251,7 @@ export const RATE_LIMITS: Record<SocialPlatform, { maxRequests: number; windowMs
   twitter: { maxRequests: 300, windowMs: 15 * 60 * 1000 }, // 300/15min
   linkedin: { maxRequests: 100, windowMs: 24 * 60 * 60 * 1000 }, // 100/day
   facebook: { maxRequests: 200, windowMs: 60 * 60 * 1000 }, // 200/hour
+  meta: { maxRequests: 200, windowMs: 60 * 60 * 1000 }, // 200/hour (same as FB)
   snapchat: { maxRequests: 100, windowMs: 60 * 1000 }, // 100/minute
   pinterest: { maxRequests: 1000, windowMs: 60 * 60 * 1000 }, // 1000/hour
   discord: { maxRequests: 50, windowMs: 1000 }, // 50/second
@@ -305,6 +330,13 @@ export const CONTENT_LIMITS: Record<SocialPlatform, {
     maxVideoLengthSeconds: 600,
     maxFileSizeMb: 100, // 100MB for nitro users, 25MB for free
     supportedFormats: ['mp4', 'mov', 'webm', 'jpg', 'jpeg', 'png', 'gif'],
+  },
+  meta: {
+    maxCaptionLength: 2200, // Same as Instagram
+    maxHashtags: 30,
+    maxVideoLengthSeconds: 90,
+    maxFileSizeMb: 100,
+    supportedFormats: ['mp4', 'mov', 'jpg', 'jpeg', 'png'],
   },
 }
 

@@ -57,6 +57,11 @@ export const PLATFORM_CHARACTER_LIMITS: Record<SocialPlatform, {
     hashtags: 63206,
     warningThreshold: 95,
   },
+  meta: {
+    caption: 2200, // Same as Instagram (primary Meta platform)
+    hashtags: 30,
+    warningThreshold: 90,
+  },
   snapchat: {
     caption: 250,
     hashtags: 0, // No hashtags on Snapchat
@@ -299,6 +304,9 @@ export const PLATFORM_ADAPTATION_PRESETS: Record<SocialPlatform, AdaptationOptio
     { adaptation: 'add_cta', enabled: true },
   ],
   facebook: [],
+  meta: [
+    { adaptation: 'add_line_breaks', enabled: true },
+  ],
   snapchat: [
     { adaptation: 'shorten', enabled: true, customValue: 250 },
     { adaptation: 'remove_hashtags', enabled: true },

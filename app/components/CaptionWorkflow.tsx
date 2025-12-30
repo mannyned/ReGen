@@ -534,6 +534,7 @@ export function CaptionWorkflow({
       twitter: 'This is worth sharing. Thoughts?',
       linkedin: 'Excited to share this insight with my network.',
       facebook: 'Had to share this with you all!',
+      meta: 'Check out this amazing content! What do you think?',
       snapchat: 'You have to see this!',
       pinterest: 'Pin this for later inspiration!',
       discord: 'Check out what I just found!',

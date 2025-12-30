@@ -333,6 +333,7 @@ export class OAuthService {
       twitter: () => this.fetchTwitterProfile(accessToken),
       linkedin: () => this.fetchLinkedInProfile(accessToken),
       facebook: () => this.fetchFacebookProfile(accessToken),
+      meta: () => this.fetchInstagramProfile(accessToken), // Meta uses Instagram profile
       snapchat: () => this.fetchSnapchatProfile(accessToken),
       pinterest: () => this.fetchPinterestProfile(accessToken),
       discord: () => this.fetchDiscordProfile(accessToken),
