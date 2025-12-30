@@ -37,6 +37,7 @@ export class AnalyticsService {
       twitter: () => this.getTwitterAccountAnalytics(accessToken, dateRange),
       linkedin: () => this.getLinkedInAccountAnalytics(accessToken, dateRange),
       facebook: () => this.getFacebookAccountAnalytics(accessToken, dateRange),
+      meta: () => this.getInstagramAccountAnalytics(accessToken, dateRange), // Meta uses Instagram analytics
       snapchat: () => this.getSnapchatAccountAnalytics(accessToken, dateRange),
       pinterest: () => this.getPinterestAccountAnalytics(accessToken, dateRange),
       discord: () => this.getDiscordAccountAnalytics(accessToken, dateRange),
@@ -67,6 +68,7 @@ export class AnalyticsService {
       twitter: null,
       linkedin: null,
       facebook: null,
+      meta: null,
       snapchat: null,
       pinterest: null,
       discord: null,

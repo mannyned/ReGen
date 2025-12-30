@@ -549,6 +549,7 @@ export class ExportService {
       twitter: 'Twitter/X',
       linkedin: 'LinkedIn',
       facebook: 'Facebook',
+      meta: 'Meta',
       snapchat: 'Snapchat',
       pinterest: 'Pinterest',
       discord: 'Discord',
