@@ -24,6 +24,19 @@ const PLATFORM_ID_MAP: Record<string, SocialPlatform> = {
   'discord': 'discord',
 }
 
+// Map platform IDs to OAuth providers (some platforms use different OAuth providers)
+const PLATFORM_TO_PROVIDER: Record<string, string> = {
+  'instagram': 'meta',
+  'facebook': 'meta',
+  'tiktok': 'tiktok',
+  'youtube': 'google',
+  'twitter': 'twitter',
+  'linkedin': 'linkedin',
+  'snapchat': 'snapchat',
+  'pinterest': 'pinterest',
+  'discord': 'discord',
+}
+
 type Platform = {
   id: string
   name: string
@@ -247,20 +260,57 @@ export default function SettingsPage() {
     fetchTeamData()
   }, [user, authLoading])
 
-  // Handle platform connect
+  // Handle platform connect using the new OAuth system
   const handleConnect = async (platform: Platform) => {
     try {
-      const response = await fetch(`/api/oauth/connect/${platform.id}?userId=${user?.id || 'default-user'}`)
-      const data = await response.json()
+      // Map platform to OAuth provider (e.g., youtube -> google)
+      const provider = PLATFORM_TO_PROVIDER[platform.id] || platform.id
 
-      if (data.setupRequired) {
-        alert(data.error + '\n\nPlease check OAUTH_SETUP_GUIDE.md for instructions.')
+      // Open OAuth flow in a popup window
+      const width = 600
+      const height = 700
+      const left = window.screenX + (window.outerWidth - width) / 2
+      const top = window.screenY + (window.outerHeight - height) / 2
+
+      const popup = window.open(
+        `/api/auth/${provider}/start`,
+        `${provider}_oauth`,
+        `width=${width},height=${height},left=${left},top=${top},popup=1`
+      )
+
+      if (!popup) {
+        alert('Popup blocked! Please allow popups for this site.')
         return
       }
 
-      if (data.authUrl) {
-        window.location.href = data.authUrl
-      }
+      // Poll for popup close and refresh connection status
+      const checkClosed = setInterval(async () => {
+        if (popup.closed) {
+          clearInterval(checkClosed)
+          // Refresh platform connection status
+          try {
+            const response = await fetch(`/api/oauth/status?userId=${user?.id || 'default-user'}`)
+            const data = await response.json()
+
+            if (data.success && data.connectedPlatforms) {
+              setPlatforms(prevPlatforms => prevPlatforms.map(p => {
+                const connectedPlatform = data.connectedPlatforms.find((cp: any) => cp.platform === p.id)
+                if (connectedPlatform) {
+                  return {
+                    ...p,
+                    connected: true,
+                    username: connectedPlatform.username,
+                    connectedDate: new Date(connectedPlatform.connectedAt).toLocaleDateString(),
+                  }
+                }
+                return p
+              }))
+            }
+          } catch (err) {
+            console.error('Failed to refresh connection status:', err)
+          }
+        }
+      }, 500)
     } catch (error) {
       alert('Failed to initiate OAuth connection.')
     }
