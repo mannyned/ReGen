@@ -19,7 +19,8 @@ export type OAuthProvider =
   | 'tiktok'
   | 'google'    // YouTube
   | 'x'         // Twitter
-  | 'linkedin';
+  | 'linkedin'
+  | 'snapchat';
 
 /**
  * Provider capability flags
