@@ -12,6 +12,7 @@ export type SocialPlatform =
   | 'snapchat'
   | 'pinterest'
   | 'discord'
+  | 'meta'  // Meta represents Instagram + Facebook combined
 
 export type PlanTier = 'free' | 'creator' | 'pro'
 

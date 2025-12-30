@@ -56,6 +56,11 @@ const BRAND_COLORS: Record<SocialPlatform, { primary: string; secondary?: string
     primary: '#1877F2',
     background: '#1877F2',
   },
+  meta: {
+    primary: '#0081FB',
+    secondary: '#833AB4',
+    background: 'linear-gradient(45deg, #0081FB 0%, #833AB4 50%, #E4405F 100%)',
+  },
   tiktok: {
     primary: '#000000',
     secondary: '#EE1D52',
@@ -91,6 +96,7 @@ const BRAND_COLORS: Record<SocialPlatform, { primary: string; secondary?: string
 const PLATFORM_NAMES: Record<SocialPlatform, string> = {
   instagram: 'Instagram',
   facebook: 'Facebook',
+  meta: 'Meta (Instagram & Facebook)',
   tiktok: 'TikTok',
   twitter: 'X (formerly Twitter)',
   youtube: 'YouTube',
@@ -400,6 +406,36 @@ const DiscordLogo = memo(({ width, height, variant, className }: LogoSvgProps) =
 })
 DiscordLogo.displayName = 'DiscordLogo'
 
+// Meta Logo - Based on official brand guidelines (infinity symbol)
+const MetaLogo = memo(({ width, height, variant, className }: LogoSvgProps) => {
+  const getColor = () => {
+    switch (variant) {
+      case 'white': return '#FFFFFF'
+      case 'dark': return '#000000'
+      case 'monochrome': return 'currentColor'
+      default: return '#0081FB'
+    }
+  }
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M12 10.202c-1.124-1.628-2.39-2.513-3.742-2.513-1.408 0-2.653.742-3.538 2.039C3.835 11.025 3.5 12.5 3.5 14c0 1.5.335 2.975 1.22 4.272.885 1.297 2.13 2.039 3.538 2.039.677 0 1.303-.168 1.873-.485.57-.318 1.097-.797 1.57-1.424.473.627 1 1.106 1.57 1.424.57.317 1.196.485 1.873.485 1.408 0 2.653-.742 3.538-2.039.885-1.297 1.22-2.772 1.22-4.272 0-1.5-.335-2.975-1.22-4.272-.885-1.297-2.13-2.039-3.538-2.039-1.352 0-2.618.885-3.742 2.513zm-3.742.787c.795 0 1.59.557 2.39 1.67.32.446.616.95.884 1.512a16.72 16.72 0 01-.884 1.512c-.8 1.113-1.595 1.67-2.39 1.67-.593 0-1.13-.317-1.612-.951-.481-.634-.748-1.423-.748-2.402 0-.979.267-1.768.748-2.402.482-.634 1.019-.951 1.612-.951zm7.484 0c.593 0 1.13.317 1.612.951.481.634.748 1.423.748 2.402 0 .979-.267 1.768-.748 2.402-.482.634-1.019.951-1.612.951-.795 0-1.59-.557-2.39-1.67a16.72 16.72 0 01-.884-1.512c.268-.562.564-1.066.884-1.512.8-1.113 1.595-1.67 2.39-1.67z"
+        fill={getColor()}
+      />
+    </svg>
+  )
+})
+MetaLogo.displayName = 'MetaLogo'
+
 // Fallback Icon
 const FallbackIcon = memo(({ width, height, className }: Omit<LogoSvgProps, 'variant'>) => (
   <svg
@@ -421,6 +457,7 @@ FallbackIcon.displayName = 'FallbackIcon'
 const LOGO_COMPONENTS: Record<SocialPlatform, React.FC<LogoSvgProps>> = {
   instagram: InstagramLogo,
   facebook: FacebookLogo,
+  meta: MetaLogo,
   tiktok: TikTokLogo,
   twitter: XLogo,
   youtube: YouTubeLogo,
@@ -530,6 +567,7 @@ export function getPlatformDisplayName(platform: SocialPlatform): string {
 export const SUPPORTED_PLATFORMS: SocialPlatform[] = [
   'instagram',
   'facebook',
+  'meta',
   'tiktok',
   'twitter',
   'youtube',
