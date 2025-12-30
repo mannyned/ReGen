@@ -205,7 +205,7 @@ export class TikTokService {
 
     return {
       videoId,
-      metrics: cached.metrics as TikTokMetrics,
+      metrics: cached.metrics as unknown as TikTokMetrics,
       fetchedAt: cached.fetchedAt,
       cached: true,
     }
