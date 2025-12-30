@@ -277,7 +277,7 @@ export class TikTokService {
       data: {
         profileId,
         tiktokVideoId: videoId,
-        metrics: metrics as Prisma.InputJsonValue,
+        metrics: metrics as unknown as Prisma.InputJsonValue,
         fetchedAt: new Date(),
       },
     })
