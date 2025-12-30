@@ -119,18 +119,20 @@ export interface TikTokPostResult {
 
 /**
  * Response from TikTok initialize upload endpoint
+ * Note: TikTok API returns snake_case properties
  */
 export interface TikTokInitUploadResponse {
-  publishId: string
-  uploadUrl: string
+  publish_id: string
+  upload_url: string
 }
 
 /**
  * Response from TikTok publish/finalize endpoint
+ * Note: TikTok API returns snake_case properties
  */
 export interface TikTokPublishResponse {
-  publishId: string
-  shareUrl?: string
+  publish_id: string
+  share_url?: string
 }
 
 // ============================================
