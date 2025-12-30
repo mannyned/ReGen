@@ -276,7 +276,7 @@ export class TikTokService {
       data: {
         profileId,
         tiktokVideoId: videoId,
-        metrics,
+        metrics: metrics as unknown as Record<string, unknown>,
         fetchedAt: new Date(),
       },
     })
