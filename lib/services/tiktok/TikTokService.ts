@@ -560,7 +560,7 @@ export class TikTokService {
           'Content-Length': String(chunk.length),
           'Content-Range': `bytes ${start}-${end - 1}/${videoSize}`,
         },
-        body: chunk,
+        body: new Uint8Array(chunk),
       })
 
       if (!uploadResponse.ok) {
