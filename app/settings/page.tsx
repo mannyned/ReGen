@@ -327,22 +327,36 @@ export default function SettingsPage() {
           clearInterval(checkClosed)
           // Refresh platform connection status
           try {
-            const response = await fetch(`/api/oauth/status?userId=${user?.id || 'default-user'}`)
+            const userId = user?.id || 'default-user'
+            console.log('[OAuth] Popup closed, refreshing status for user:', userId)
+
+            const response = await fetch(`/api/oauth/status?userId=${userId}`)
             const data = await response.json()
 
+            console.log('[OAuth] Status API response:', data)
+
             if (data.success && data.connectedPlatforms) {
-              setPlatforms(prevPlatforms => prevPlatforms.map(p => {
-                const connectedPlatform = findConnectedPlatform(data.connectedPlatforms, p.id)
-                if (connectedPlatform) {
-                  return {
-                    ...p,
-                    connected: true,
-                    username: connectedPlatform.username,
-                    connectedDate: new Date(connectedPlatform.connectedAt).toLocaleDateString(),
+              console.log('[OAuth] Connected platforms from API:', data.connectedPlatforms)
+
+              setPlatforms(prevPlatforms => {
+                const updated = prevPlatforms.map(p => {
+                  const connectedPlatform = findConnectedPlatform(data.connectedPlatforms, p.id)
+                  console.log(`[OAuth] Platform ${p.id}: found connection?`, connectedPlatform)
+                  if (connectedPlatform) {
+                    return {
+                      ...p,
+                      connected: true,
+                      username: connectedPlatform.username,
+                      connectedDate: new Date(connectedPlatform.connectedAt).toLocaleDateString(),
+                    }
                   }
-                }
-                return p
-              }))
+                  return p
+                })
+                console.log('[OAuth] Updated platforms:', updated)
+                return updated
+              })
+            } else {
+              console.log('[OAuth] No connected platforms in response or request failed')
             }
           } catch (err) {
             console.error('Failed to refresh connection status:', err)
