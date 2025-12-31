@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -65,19 +65,24 @@ type NotificationSetting = {
   push: boolean
 }
 
-export default function SettingsPage() {
-  const { user, loading: authLoading } = useAuth()
+// Component to handle URL search params (must be wrapped in Suspense)
+function SettingsSearchParamsHandler({ setActiveSection }: { setActiveSection: (section: SettingsSection) => void }) {
   const searchParams = useSearchParams()
-  const [activeSection, setActiveSection] = useState<SettingsSection>('profile')
-  const [mounted, setMounted] = useState(false)
 
-  // Handle section query parameter (e.g., ?section=connections after OAuth callback)
   useEffect(() => {
     const section = searchParams.get('section')
     if (section && ['profile', 'security', 'notifications', 'subscription', 'team', 'connections', 'danger'].includes(section)) {
       setActiveSection(section as SettingsSection)
     }
-  }, [searchParams])
+  }, [searchParams, setActiveSection])
+
+  return null
+}
+
+export default function SettingsPage() {
+  const { user, loading: authLoading } = useAuth()
+  const [activeSection, setActiveSection] = useState<SettingsSection>('profile')
+  const [mounted, setMounted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [showSaveToast, setShowSaveToast] = useState(false)
 
@@ -592,6 +597,11 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Handle URL search params for section navigation */}
+      <Suspense fallback={null}>
+        <SettingsSearchParamsHandler setActiveSection={setActiveSection} />
+      </Suspense>
+
       <AppHeader currentPage="settings" />
 
       {/* Save Toast */}
