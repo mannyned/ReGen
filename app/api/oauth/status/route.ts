@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { tokenManager } from '@/lib/services/oauth/TokenManager'
+import { prisma } from '@/lib/db'
 
 // ============================================
 // GET /api/oauth/status
@@ -11,14 +11,26 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId') || 'default-user'
 
-    const connections = await tokenManager.getUserConnections(userId)
+    // Query from oAuthConnection table (where OAuth engine stores connections)
+    const connections = await prisma.oAuthConnection.findMany({
+      where: {
+        profileId: userId,
+      },
+    })
 
     const connectedPlatforms = connections.map(connection => ({
-      platform: connection.platform,
-      username: connection.username || connection.displayName,
-      profileImageUrl: connection.profileImageUrl,
+      platform: connection.provider, // 'meta', 'google', 'tiktok', etc.
+      username: (connection.metadata as any)?.primaryInstagramAccount?.username ||
+                (connection.metadata as any)?.instagramAccounts?.[0]?.username ||
+                (connection.metadata as any)?.youtubeChannel?.title ||
+                (connection.metadata as any)?.displayName ||
+                connection.providerAccountId,
+      profileImageUrl: (connection.metadata as any)?.primaryInstagramAccount?.profilePictureUrl ||
+                       (connection.metadata as any)?.instagramAccounts?.[0]?.profilePictureUrl ||
+                       (connection.metadata as any)?.youtubeChannel?.thumbnailUrl ||
+                       (connection.metadata as any)?.avatarUrl,
       connectedAt: connection.createdAt,
-      isActive: connection.isActive,
+      isActive: true,
       expiresAt: connection.expiresAt,
     }))
 
@@ -61,13 +73,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const health = await tokenManager.checkConnectionHealth(userId, platform)
+    // Check if connection exists in oAuthConnection table
+    const connection = await prisma.oAuthConnection.findFirst({
+      where: {
+        profileId: userId,
+        provider: platform,
+      },
+    })
+
+    const healthy = !!connection && (!connection.expiresAt || connection.expiresAt > new Date())
 
     return NextResponse.json({
       success: true,
       platform,
-      healthy: health.healthy,
-      message: health.message,
+      healthy,
+      message: healthy ? 'Connection is active' : 'Connection not found or expired',
     })
 
   } catch (error: unknown) {
