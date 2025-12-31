@@ -38,6 +38,29 @@ const PLATFORM_TO_PROVIDER: Record<string, string> = {
   'discord': 'discord',
 }
 
+// Reverse mapping: provider ID to platform IDs
+const PROVIDER_TO_PLATFORMS: Record<string, string[]> = {
+  'meta': ['instagram', 'facebook'],
+  'google': ['youtube'],
+  'tiktok': ['tiktok'],
+  'twitter': ['twitter'],
+  'linkedin': ['linkedin'],
+  'snapchat': ['snapchat'],
+  'pinterest': ['pinterest'],
+  'discord': ['discord'],
+}
+
+// Helper to find connected platform by provider mapping
+function findConnectedPlatform(connectedPlatforms: any[], platformId: string) {
+  return connectedPlatforms.find((cp: any) => {
+    // Direct match (e.g., 'tiktok' === 'tiktok')
+    if (cp.platform === platformId) return true
+    // Provider-to-platform match (e.g., 'meta' maps to ['instagram', 'facebook'])
+    const mappedPlatforms = PROVIDER_TO_PLATFORMS[cp.platform] || []
+    return mappedPlatforms.includes(platformId)
+  })
+}
+
 type Platform = {
   id: string
   name: string
@@ -216,7 +239,7 @@ export default function SettingsPage() {
 
         if (data.success && data.connectedPlatforms) {
           const updatedPlatforms = defaultPlatforms.map(platform => {
-            const connectedPlatform = data.connectedPlatforms.find((cp: any) => cp.platform === platform.id)
+            const connectedPlatform = findConnectedPlatform(data.connectedPlatforms, platform.id)
             if (connectedPlatform) {
               return {
                 ...platform,
@@ -309,7 +332,7 @@ export default function SettingsPage() {
 
             if (data.success && data.connectedPlatforms) {
               setPlatforms(prevPlatforms => prevPlatforms.map(p => {
-                const connectedPlatform = data.connectedPlatforms.find((cp: any) => cp.platform === p.id)
+                const connectedPlatform = findConnectedPlatform(data.connectedPlatforms, p.id)
                 if (connectedPlatform) {
                   return {
                     ...p,
