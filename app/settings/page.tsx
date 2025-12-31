@@ -312,8 +312,10 @@ export default function SettingsPage() {
       const left = window.screenX + (window.outerWidth - width) / 2
       const top = window.screenY + (window.outerHeight - height) / 2
 
+      // Pass the target platform so we only connect that specific platform
+      // (e.g., for Meta OAuth, pass 'instagram' or 'facebook' to only connect that one)
       const popup = window.open(
-        `/api/auth/${provider}/start`,
+        `/api/auth/${provider}/start?targetPlatform=${platform.id}`,
         `${provider}_oauth`,
         `width=${width},height=${height},left=${left},top=${top},popup=1`
       )

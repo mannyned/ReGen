@@ -62,8 +62,11 @@ export async function GET(
       );
     }
 
+    // Get target platform from query params (for independent Instagram/Facebook connections)
+    const targetPlatform = request.nextUrl.searchParams.get('targetPlatform') || undefined;
+
     // Step 3 & 4: Start OAuth flow (generates state, stores in cookie)
-    const { authUrl } = await OAuthEngine.startOAuth(provider, profileId);
+    const { authUrl } = await OAuthEngine.startOAuth(provider, profileId, targetPlatform);
 
     // Step 5: Redirect to provider
     // Using NextResponse.redirect for proper status code

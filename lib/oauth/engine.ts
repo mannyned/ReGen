@@ -162,17 +162,20 @@ async function consumeOAuthCookies(): Promise<{
  */
 export async function startOAuth(
   providerId: string,
-  profileId: string
+  profileId: string,
+  targetPlatform?: string
 ): Promise<{ authUrl: string; state: string }> {
   const provider = getProvider(providerId);
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL;
 
   // Generate secure state parameter for CSRF protection
   // Encode profile ID in state so we can associate tokens after callback
+  // Also include targetPlatform for independent Instagram/Facebook connections
   const stateData = {
     random: generateSecureRandom(16),
     profileId,
     timestamp: Date.now(),
+    targetPlatform, // 'instagram' or 'facebook' for Meta OAuth
   };
   const state = Buffer.from(JSON.stringify(stateData)).toString('base64url');
 
@@ -249,11 +252,13 @@ export async function handleCallback(
       throw new InvalidStateError(provider.config.id);
     }
 
-    // Decode state to get profile ID
+    // Decode state to get profile ID and target platform
     let profileId: string;
+    let targetPlatform: string | undefined;
     try {
       const stateData = JSON.parse(Buffer.from(storedState, 'base64url').toString());
       profileId = stateData.profileId;
+      targetPlatform = stateData.targetPlatform; // 'instagram' or 'facebook' for Meta OAuth
 
       // Check if state is too old (10 minute max)
       const stateAge = Date.now() - stateData.timestamp;
@@ -295,48 +300,52 @@ export async function handleCallback(
     // Fetch provider identity
     const identity = await provider.getIdentity({ accessToken: tokens.accessToken });
 
-    // For Meta provider, store separate connections for Instagram and Facebook
+    // For Meta provider, store only the targeted platform (Instagram OR Facebook, not both)
     if (provider.config.id === 'meta') {
       const metadata = identity.metadata as any;
 
-      // Store Instagram connection if Instagram account is linked
-      if (metadata?.instagramAccounts?.length > 0 || metadata?.primaryInstagramAccount) {
+      // Only store Instagram if that's the target (or no target specified and Instagram is available)
+      if (targetPlatform === 'instagram' || (!targetPlatform && (metadata?.instagramAccounts?.length > 0 || metadata?.primaryInstagramAccount))) {
         const igAccount = metadata.primaryInstagramAccount || metadata.instagramAccounts?.[0];
-        await storeConnection({
-          profileId,
-          provider: 'instagram',
-          providerAccountId: igAccount?.id || identity.providerAccountId,
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          scopes: tokens.scope?.split(/[,\s]+/) || provider.config.scopes,
-          expiresAt: tokens.expiresAt,
-          metadata: {
-            ...identity.metadata,
-            username: igAccount?.username,
-            displayName: igAccount?.name || igAccount?.username,
-            profilePictureUrl: igAccount?.profilePictureUrl,
-          },
-        });
+        if (igAccount || targetPlatform === 'instagram') {
+          await storeConnection({
+            profileId,
+            provider: 'instagram',
+            providerAccountId: igAccount?.id || identity.providerAccountId,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            scopes: tokens.scope?.split(/[,\s]+/) || provider.config.scopes,
+            expiresAt: tokens.expiresAt,
+            metadata: {
+              ...identity.metadata,
+              username: igAccount?.username,
+              displayName: igAccount?.name || igAccount?.username,
+              profilePictureUrl: igAccount?.profilePictureUrl,
+            },
+          });
+        }
       }
 
-      // Store Facebook connection if Pages are available
-      if (metadata?.pages?.length > 0) {
-        const page = metadata.pages[0];
-        await storeConnection({
-          profileId,
-          provider: 'facebook',
-          providerAccountId: page?.id || identity.providerAccountId,
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          scopes: tokens.scope?.split(/[,\s]+/) || provider.config.scopes,
-          expiresAt: tokens.expiresAt,
-          metadata: {
-            ...identity.metadata,
-            username: page?.name,
-            displayName: page?.name,
-            pageId: page?.id,
-          },
-        });
+      // Only store Facebook if that's the target (or no target specified and Pages are available)
+      if (targetPlatform === 'facebook' || (!targetPlatform && metadata?.pages?.length > 0)) {
+        const page = metadata.pages?.[0];
+        if (page || targetPlatform === 'facebook') {
+          await storeConnection({
+            profileId,
+            provider: 'facebook',
+            providerAccountId: page?.id || identity.providerAccountId,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            scopes: tokens.scope?.split(/[,\s]+/) || provider.config.scopes,
+            expiresAt: tokens.expiresAt,
+            metadata: {
+              ...identity.metadata,
+              username: page?.name,
+              displayName: page?.name,
+              pageId: page?.id,
+            },
+          });
+        }
       }
     } else {
       // For non-Meta providers, store single connection
