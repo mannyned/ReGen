@@ -295,17 +295,62 @@ export async function handleCallback(
     // Fetch provider identity
     const identity = await provider.getIdentity({ accessToken: tokens.accessToken });
 
-    // Store connection in database
-    await storeConnection({
-      profileId,
-      provider: provider.config.id,
-      providerAccountId: identity.providerAccountId,
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-      scopes: tokens.scope?.split(/[,\s]+/) || provider.config.scopes,
-      expiresAt: tokens.expiresAt,
-      metadata: identity.metadata,
-    });
+    // For Meta provider, store separate connections for Instagram and Facebook
+    if (provider.config.id === 'meta') {
+      const metadata = identity.metadata as any;
+
+      // Store Instagram connection if Instagram account is linked
+      if (metadata?.instagramAccounts?.length > 0 || metadata?.primaryInstagramAccount) {
+        const igAccount = metadata.primaryInstagramAccount || metadata.instagramAccounts?.[0];
+        await storeConnection({
+          profileId,
+          provider: 'instagram',
+          providerAccountId: igAccount?.id || identity.providerAccountId,
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          scopes: tokens.scope?.split(/[,\s]+/) || provider.config.scopes,
+          expiresAt: tokens.expiresAt,
+          metadata: {
+            ...identity.metadata,
+            username: igAccount?.username,
+            displayName: igAccount?.name || igAccount?.username,
+            profilePictureUrl: igAccount?.profilePictureUrl,
+          },
+        });
+      }
+
+      // Store Facebook connection if Pages are available
+      if (metadata?.pages?.length > 0) {
+        const page = metadata.pages[0];
+        await storeConnection({
+          profileId,
+          provider: 'facebook',
+          providerAccountId: page?.id || identity.providerAccountId,
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          scopes: tokens.scope?.split(/[,\s]+/) || provider.config.scopes,
+          expiresAt: tokens.expiresAt,
+          metadata: {
+            ...identity.metadata,
+            username: page?.name,
+            displayName: page?.name,
+            pageId: page?.id,
+          },
+        });
+      }
+    } else {
+      // For non-Meta providers, store single connection
+      await storeConnection({
+        profileId,
+        provider: provider.config.id,
+        providerAccountId: identity.providerAccountId,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        scopes: tokens.scope?.split(/[,\s]+/) || provider.config.scopes,
+        expiresAt: tokens.expiresAt,
+        metadata: identity.metadata,
+      });
+    }
 
     // Success - redirect to callback success page (will auto-close popup)
     return {

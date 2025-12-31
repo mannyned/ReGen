@@ -18,21 +18,28 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    const connectedPlatforms = connections.map(connection => ({
-      platform: connection.provider, // 'meta', 'google', 'tiktok', etc.
-      username: (connection.metadata as any)?.primaryInstagramAccount?.username ||
-                (connection.metadata as any)?.instagramAccounts?.[0]?.username ||
-                (connection.metadata as any)?.youtubeChannel?.title ||
-                (connection.metadata as any)?.displayName ||
-                connection.providerAccountId,
-      profileImageUrl: (connection.metadata as any)?.primaryInstagramAccount?.profilePictureUrl ||
-                       (connection.metadata as any)?.instagramAccounts?.[0]?.profilePictureUrl ||
-                       (connection.metadata as any)?.youtubeChannel?.thumbnailUrl ||
-                       (connection.metadata as any)?.avatarUrl,
-      connectedAt: connection.createdAt,
-      isActive: true,
-      expiresAt: connection.expiresAt,
-    }))
+    const connectedPlatforms = connections.map(connection => {
+      const metadata = connection.metadata as any;
+
+      // Extract username and profile image based on provider type
+      let username = metadata?.username || metadata?.displayName || connection.providerAccountId;
+      let profileImageUrl = metadata?.profilePictureUrl || metadata?.avatarUrl;
+
+      // For Google/YouTube connections
+      if (connection.provider === 'google') {
+        username = metadata?.youtubeChannel?.title || metadata?.googleName || username;
+        profileImageUrl = metadata?.youtubeChannel?.thumbnailUrl || metadata?.googlePicture || profileImageUrl;
+      }
+
+      return {
+        platform: connection.provider, // 'instagram', 'facebook', 'google', 'tiktok', etc.
+        username,
+        profileImageUrl,
+        connectedAt: connection.createdAt,
+        isActive: true,
+        expiresAt: connection.expiresAt,
+      };
+    })
 
     return NextResponse.json({
       success: true,

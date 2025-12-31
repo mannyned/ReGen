@@ -39,8 +39,10 @@ const PLATFORM_TO_PROVIDER: Record<string, string> = {
 }
 
 // Reverse mapping: provider ID to platform IDs
+// Instagram and Facebook are now stored separately (not as 'meta')
 const PROVIDER_TO_PLATFORMS: Record<string, string[]> = {
-  'meta': ['instagram', 'facebook'],
+  'instagram': ['instagram'],
+  'facebook': ['facebook'],
   'google': ['youtube'],
   'tiktok': ['tiktok'],
   'twitter': ['twitter'],
@@ -375,15 +377,9 @@ export default function SettingsPage() {
       const data = await response.json()
 
       if (data.success) {
-        // Get all platforms that share the same provider
-        const provider = PLATFORM_TO_PROVIDER[platformId] || platformId
-        const platformsToDisconnect = Object.entries(PLATFORM_TO_PROVIDER)
-          .filter(([_, prov]) => prov === provider)
-          .map(([plat, _]) => plat)
-
-        // Disconnect all platforms that share the same provider
+        // Only disconnect the specific platform (Instagram and Facebook are independent)
         setPlatforms(platforms.map(p =>
-          platformsToDisconnect.includes(p.id)
+          p.id === platformId
             ? { ...p, connected: false, username: undefined, connectedDate: undefined }
             : p
         ))

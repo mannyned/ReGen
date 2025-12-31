@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
-// Map platform IDs to OAuth provider IDs
+// Map platform IDs to OAuth provider IDs (only for non-Meta platforms)
+// Instagram and Facebook are now stored separately, not as 'meta'
 const PLATFORM_TO_PROVIDER: Record<string, string> = {
-  'instagram': 'meta',
-  'facebook': 'meta',
   'youtube': 'google',
   'tiktok': 'tiktok',
   'twitter': 'x',
@@ -12,6 +11,7 @@ const PLATFORM_TO_PROVIDER: Record<string, string> = {
   'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
+  // instagram and facebook are stored directly by their platform name
 }
 
 // ============================================
@@ -28,7 +28,7 @@ export async function DELETE(
     const userId = searchParams.get('userId') || 'default-user'
     const { platform } = await params
 
-    // Map platform to provider (instagram -> meta, youtube -> google)
+    // Map platform to provider (youtube -> google), but keep instagram/facebook as-is
     const provider = PLATFORM_TO_PROVIDER[platform] || platform
 
     console.log(`[Disconnect] User: ${userId}, Platform: ${platform}, Provider: ${provider}`)
