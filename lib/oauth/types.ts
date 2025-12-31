@@ -15,7 +15,9 @@
  * Add new providers here as the system expands
  */
 export type OAuthProvider =
-  | 'meta'      // Facebook + Instagram
+  | 'meta'      // Facebook + Instagram (combined OAuth)
+  | 'instagram' // Instagram (stored separately)
+  | 'facebook'  // Facebook (stored separately)
   | 'tiktok'
   | 'google'    // YouTube
   | 'x'         // Twitter
