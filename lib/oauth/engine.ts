@@ -307,18 +307,18 @@ export async function handleCallback(
       metadata: identity.metadata,
     });
 
-    // Success - redirect to settings page (connections section)
+    // Success - redirect to callback success page (will auto-close popup)
     return {
       success: true,
-      redirectUrl: `${baseUrl}/settings?section=connections&connected=${providerId}`,
+      redirectUrl: `${baseUrl}/auth/callback-success?provider=${providerId}`,
     };
   } catch (error) {
     const oauthError = wrapError(error, provider.config.id);
 
-    // Redirect to settings page with error
+    // Redirect to callback success page with error (will auto-close popup)
     return {
       success: false,
-      redirectUrl: `${baseUrl}/settings?section=connections&error=${oauthError.code}&provider=${providerId}`,
+      redirectUrl: `${baseUrl}/auth/callback-success?provider=${providerId}&error=${oauthError.code}`,
       error: oauthError,
     };
   }

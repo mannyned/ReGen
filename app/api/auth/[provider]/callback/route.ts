@@ -41,7 +41,7 @@ export async function GET(
     // Validate provider
     if (!isProviderRegistered(provider)) {
       return NextResponse.redirect(
-        `${baseUrl}/settings?section=connections&error=UNKNOWN_PROVIDER&provider=${provider}`
+        `${baseUrl}/auth/callback-success?provider=${provider}&error=UNKNOWN_PROVIDER`
       );
     }
 
@@ -59,12 +59,9 @@ export async function GET(
 
     const oauthError = isOAuthError(error) ? error : wrapError(error, provider as 'meta' | 'tiktok' | 'google' | 'x' | 'linkedin');
 
-    // Redirect to settings page with error
-    const errorUrl = new URL(`${baseUrl}/settings`);
-    errorUrl.searchParams.set('section', 'connections');
-    errorUrl.searchParams.set('error', oauthError.code);
-    errorUrl.searchParams.set('provider', provider);
-
-    return NextResponse.redirect(errorUrl.toString());
+    // Redirect to callback success page with error (will auto-close popup)
+    return NextResponse.redirect(
+      `${baseUrl}/auth/callback-success?provider=${provider}&error=${oauthError.code}`
+    );
   }
 }
