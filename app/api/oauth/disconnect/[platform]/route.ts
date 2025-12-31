@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type { SocialPlatform } from '@/lib/types/social'
-import { validatePlatform } from '@/lib/config/oauth'
-import { tokenManager } from '@/lib/services/oauth/TokenManager'
+import { prisma } from '@/lib/db'
+
+// Map platform IDs to OAuth provider IDs
+const PLATFORM_TO_PROVIDER: Record<string, string> = {
+  'instagram': 'meta',
+  'facebook': 'meta',
+  'youtube': 'google',
+  'tiktok': 'tiktok',
+  'twitter': 'x',
+  'linkedin': 'linkedin',
+  'snapchat': 'snapchat',
+  'pinterest': 'pinterest',
+  'discord': 'discord',
+}
 
 // ============================================
 // DELETE /api/oauth/disconnect/[platform]
@@ -17,23 +28,20 @@ export async function DELETE(
     const userId = searchParams.get('userId') || 'default-user'
     const { platform } = await params
 
-    // Validate platform
-    if (!validatePlatform(platform)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Invalid platform: ${platform}`,
-        },
-        { status: 400 }
-      )
-    }
+    // Map platform to provider (instagram -> meta, youtube -> google)
+    const provider = PLATFORM_TO_PROVIDER[platform] || platform
 
-    const validPlatform = platform as SocialPlatform
+    console.log(`[Disconnect] User: ${userId}, Platform: ${platform}, Provider: ${provider}`)
 
-    // Disconnect the platform
-    const disconnected = await tokenManager.disconnect(userId, validPlatform)
+    // Delete from oAuthConnection table
+    const result = await prisma.oAuthConnection.deleteMany({
+      where: {
+        profileId: userId,
+        provider: provider,
+      },
+    })
 
-    if (!disconnected) {
+    if (result.count === 0) {
       return NextResponse.json(
         {
           success: false,
@@ -45,7 +53,8 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      platform: validPlatform,
+      platform: platform,
+      provider: provider,
       message: `Successfully disconnected from ${platform}`,
     })
 

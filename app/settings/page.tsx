@@ -375,9 +375,20 @@ export default function SettingsPage() {
       const data = await response.json()
 
       if (data.success) {
+        // Get all platforms that share the same provider
+        const provider = PLATFORM_TO_PROVIDER[platformId] || platformId
+        const platformsToDisconnect = Object.entries(PLATFORM_TO_PROVIDER)
+          .filter(([_, prov]) => prov === provider)
+          .map(([plat, _]) => plat)
+
+        // Disconnect all platforms that share the same provider
         setPlatforms(platforms.map(p =>
-          p.id === platformId ? { ...p, connected: false, username: undefined, connectedDate: undefined } : p
+          platformsToDisconnect.includes(p.id)
+            ? { ...p, connected: false, username: undefined, connectedDate: undefined }
+            : p
         ))
+      } else {
+        alert(data.error || 'Failed to disconnect platform')
       }
     } catch (error) {
       alert('Failed to disconnect platform')
