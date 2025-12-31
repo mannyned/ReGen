@@ -41,7 +41,7 @@ export async function GET(
     // Validate provider
     if (!isProviderRegistered(provider)) {
       return NextResponse.redirect(
-        `${baseUrl}/settings/integrations?error=UNKNOWN_PROVIDER&provider=${provider}`
+        `${baseUrl}/settings?section=connections&error=UNKNOWN_PROVIDER&provider=${provider}`
       );
     }
 
@@ -59,8 +59,9 @@ export async function GET(
 
     const oauthError = isOAuthError(error) ? error : wrapError(error, provider as 'meta' | 'tiktok' | 'google' | 'x' | 'linkedin');
 
-    // Redirect to integrations page with error
-    const errorUrl = new URL(`${baseUrl}/settings/integrations`);
+    // Redirect to settings page with error
+    const errorUrl = new URL(`${baseUrl}/settings`);
+    errorUrl.searchParams.set('section', 'connections');
     errorUrl.searchParams.set('error', oauthError.code);
     errorUrl.searchParams.set('provider', provider);
 

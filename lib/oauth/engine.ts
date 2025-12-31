@@ -307,18 +307,18 @@ export async function handleCallback(
       metadata: identity.metadata,
     });
 
-    // Success - redirect to integrations page
+    // Success - redirect to settings page (connections section)
     return {
       success: true,
-      redirectUrl: `${baseUrl}/settings/integrations?connected=${providerId}`,
+      redirectUrl: `${baseUrl}/settings?section=connections&connected=${providerId}`,
     };
   } catch (error) {
     const oauthError = wrapError(error, provider.config.id);
 
-    // Redirect to integrations page with error
+    // Redirect to settings page with error
     return {
       success: false,
-      redirectUrl: `${baseUrl}/settings/integrations?error=${oauthError.code}&provider=${providerId}`,
+      redirectUrl: `${baseUrl}/settings?section=connections&error=${oauthError.code}&provider=${providerId}`,
       error: oauthError,
     };
   }
