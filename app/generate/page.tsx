@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { fileStorage } from '../utils/fileStorage'
 import { usePlan } from '../context/PlanContext'
@@ -76,12 +76,17 @@ const PLATFORM_CONFIG = {
   discord: { icon: '💬', formats: { post: 'Message', story: 'Message' } },
 }
 
-export default function GeneratePage() {
+// Inner component that uses useSearchParams
+function GeneratePageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { currentPlan } = usePlan()
 
   // Mode: 'legacy' = old per-platform generation, 'workflow' = new caption workflow
   const [mode, setMode] = useState<'legacy' | 'workflow'>('legacy')
+
+  // Content ID from URL (new database-backed flow)
+  const [contentId, setContentId] = useState<string | null>(null)
 
   // Legacy mode state
   const [generating, setGenerating] = useState(false)
@@ -98,9 +103,91 @@ export default function GeneratePage() {
   // Caption workflow state
   const [showCaptionWorkflow, setShowCaptionWorkflow] = useState(false)
 
-  // Load upload data from localStorage and files from IndexedDB
+  // Load upload data from database (if contentId) or localStorage (fallback)
   useEffect(() => {
     const loadData = async () => {
+      const urlContentId = searchParams.get('contentId')
+
+      // New flow: Load from database if contentId is present
+      if (urlContentId) {
+        try {
+          const response = await fetch(`/api/content/${urlContentId}`)
+          const result = await response.json()
+
+          if (!response.ok || !result.success) {
+            console.error('Failed to load content:', result.error)
+            router.push('/upload')
+            return
+          }
+
+          const content = result.content
+          setContentId(urlContentId)
+
+          // Parse processedUrls which contains our upload data
+          const processedData = content.processedUrls as {
+            files: Array<{
+              publicUrl: string
+              fileName: string
+              fileSize: number
+              mimeType: string
+            }>
+            uploadType: 'video' | 'image' | 'text'
+            contentType: ContentType
+            selectedPlatforms: Platform[]
+            contentDescription: string
+            customHashtags: string
+            textContent?: string
+            urlContent?: string
+          }
+
+          // Convert to UploadData format with base64Data being the public URLs
+          const filesWithUrls: UploadedFile[] = processedData.files.map((file, idx) => ({
+            id: `db-${idx}`,
+            name: file.fileName,
+            type: file.mimeType,
+            size: file.fileSize,
+            base64Data: file.publicUrl, // Use public URL as the image source
+          }))
+
+          const uploadDataFromDb: UploadData = {
+            uploadType: processedData.uploadType,
+            contentType: processedData.contentType,
+            selectedPlatforms: processedData.selectedPlatforms,
+            contentDescription: processedData.contentDescription,
+            customHashtags: processedData.customHashtags,
+            files: filesWithUrls,
+            textContent: processedData.textContent,
+            urlContent: processedData.urlContent,
+          }
+
+          setUploadData(uploadDataFromDb)
+
+          // Generate initial previews based on selected platforms
+          const initialPreviews = processedData.selectedPlatforms.map((platform, index) => {
+            const filesForPlatform = getFilesForPlatform(platform, filesWithUrls, processedData.contentType)
+
+            return {
+              id: index + 1,
+              platform,
+              icon: PLATFORM_CONFIG[platform].icon,
+              format: PLATFORM_CONFIG[platform].formats[processedData.contentType],
+              caption: generateDefaultCaption(platform, processedData.contentType),
+              hashtags: generateDefaultHashtags(platform, processedData.customHashtags),
+              files: filesForPlatform,
+              currentFileIndex: 0
+            }
+          })
+
+          setPreviews(initialPreviews)
+          setSelectedPreviews(initialPreviews.map(p => p.id))
+          return
+        } catch (error) {
+          console.error('Error loading content from database:', error)
+          // Fall through to localStorage fallback
+        }
+      }
+
+      // Fallback: Load from localStorage (legacy flow)
       const data = localStorage.getItem('uploadData')
       if (data) {
         const parsed: UploadData = JSON.parse(data)
@@ -155,7 +242,7 @@ export default function GeneratePage() {
     }
 
     loadData()
-  }, [router])
+  }, [router, searchParams])
 
   const getPlatformLimit = (platform: Platform, contentType: ContentType): number => {
     const limits: Record<Platform, { post: number, story: number }> = {
@@ -345,7 +432,7 @@ export default function GeneratePage() {
     )
   }
 
-  const handleProceed = () => {
+  const handleProceed = async () => {
     if (selectedPreviews.length === 0) {
       alert('Please select at least one preview to continue')
       return
@@ -357,16 +444,53 @@ export default function GeneratePage() {
         id: file.id,
         name: file.name,
         type: file.type,
-        size: file.size
+        size: file.size,
+        base64Data: file.base64Data, // Keep the URL/base64 data
       }))
     }))
 
     try {
-      localStorage.setItem('selectedPreviews', JSON.stringify(selectedData))
-      router.push('/schedule')
+      // If we have a contentId, save captions to the database
+      if (contentId) {
+        const generatedCaptions: Record<string, {
+          caption: string
+          hashtags: string[]
+          usageMode?: string
+          appliedAdaptations?: string[]
+        }> = {}
+
+        selectedData.forEach(preview => {
+          generatedCaptions[preview.platform] = {
+            caption: preview.caption,
+            hashtags: preview.hashtags,
+            usageMode: preview.usageMode,
+            appliedAdaptations: preview.appliedAdaptations,
+          }
+        })
+
+        // Save captions to the database
+        await fetch(`/api/content/${contentId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ generatedCaptions }),
+        })
+
+        // Redirect with contentId
+        router.push(`/schedule?contentId=${contentId}`)
+      } else {
+        // Fallback to localStorage (legacy flow)
+        localStorage.setItem('selectedPreviews', JSON.stringify(selectedData))
+        router.push('/schedule')
+      }
     } catch (error) {
       console.error('Error saving selected previews:', error)
-      alert('Unable to save selection. The data might be too large. Please try with fewer items.')
+      // Fallback to localStorage even if DB save fails
+      try {
+        localStorage.setItem('selectedPreviews', JSON.stringify(selectedData))
+        router.push('/schedule')
+      } catch (fallbackError) {
+        alert('Unable to save selection. The data might be too large. Please try with fewer items.')
+      }
     }
   }
 
@@ -931,5 +1055,21 @@ export default function GeneratePage() {
         </div>
       </main>
     </div>
+  )
+}
+
+// Main export with Suspense wrapper for useSearchParams
+export default function GeneratePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-text-secondary">Loading...</p>
+        </div>
+      </div>
+    }>
+      <GeneratePageContent />
+    </Suspense>
   )
 }

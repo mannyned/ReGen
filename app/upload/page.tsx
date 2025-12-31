@@ -212,6 +212,8 @@ export default function UploadPage() {
     })
   }
 
+  const [isUploading, setIsUploading] = useState(false)
+
   const handleGenerate = async () => {
     if (selectedPlatforms.length === 0) {
       alert('Please select at least one platform')
@@ -228,47 +230,124 @@ export default function UploadPage() {
       return
     }
 
-    try {
-      const filesToStore = []
-      const fileMetadata = []
+    setIsUploading(true)
 
+    try {
+      const uploadedFileData: Array<{
+        publicUrl: string
+        fileName: string
+        fileSize: number
+        mimeType: string
+        localId: string
+      }> = []
+
+      // Upload files to Supabase Storage
       for (const fileData of uploadedFiles) {
         const base64Data = await fileToBase64(fileData.file)
-        filesToStore.push({
-          id: fileData.fileId,
-          name: fileData.file.name,
-          type: fileData.file.type,
-          size: fileData.file.size,
-          base64Data,
-          timestamp: Date.now()
+
+        // Upload to Supabase Storage
+        const uploadResponse = await fetch('/api/uploads', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            base64Data,
+            filename: fileData.file.name,
+            mimeType: fileData.file.type,
+          }),
         })
 
-        fileMetadata.push({
-          id: fileData.fileId,
-          name: fileData.file.name,
-          type: fileData.file.type,
-          size: fileData.file.size
+        const uploadResult = await uploadResponse.json()
+
+        if (!uploadResponse.ok || !uploadResult.success) {
+          throw new Error(`Failed to upload ${fileData.file.name}: ${uploadResult.error || 'Unknown error'}`)
+        }
+
+        uploadedFileData.push({
+          publicUrl: uploadResult.file.publicUrl,
+          fileName: fileData.file.name,
+          fileSize: fileData.file.size,
+          mimeType: fileData.file.type,
+          localId: fileData.fileId,
         })
       }
 
-      await fileStorage.storeFiles(filesToStore)
+      // Create ContentUpload record in database
+      const contentResponse = await fetch('/api/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          files: uploadedFileData.map(f => ({
+            publicUrl: f.publicUrl,
+            fileName: f.fileName,
+            fileSize: f.fileSize,
+            mimeType: f.mimeType,
+          })),
+          uploadType,
+          contentType,
+          selectedPlatforms,
+          contentDescription,
+          customHashtags,
+          textContent,
+          urlContent,
+        }),
+      })
 
-      const uploadData = {
-        uploadType,
-        contentType,
-        selectedPlatforms,
-        contentDescription,
-        customHashtags,
-        files: fileMetadata,
-        textContent,
-        urlContent
+      const contentResult = await contentResponse.json()
+
+      if (!contentResponse.ok || !contentResult.success) {
+        throw new Error(`Failed to save content: ${contentResult.error || 'Unknown error'}`)
       }
 
-      localStorage.setItem('uploadData', JSON.stringify(uploadData))
-      router.push('/generate')
+      // Redirect to generate page with contentId
+      router.push(`/generate?contentId=${contentResult.contentId}`)
     } catch (error) {
-      console.error('Error storing files:', error)
-      alert('Failed to process files. Please try again with smaller files or fewer items.')
+      console.error('Error uploading content:', error)
+
+      // Fallback to localStorage for offline/error cases
+      try {
+        const filesToStore = []
+        const fileMetadata = []
+
+        for (const fileData of uploadedFiles) {
+          const base64Data = await fileToBase64(fileData.file)
+          filesToStore.push({
+            id: fileData.fileId,
+            name: fileData.file.name,
+            type: fileData.file.type,
+            size: fileData.file.size,
+            base64Data,
+            timestamp: Date.now()
+          })
+
+          fileMetadata.push({
+            id: fileData.fileId,
+            name: fileData.file.name,
+            type: fileData.file.type,
+            size: fileData.file.size
+          })
+        }
+
+        await fileStorage.storeFiles(filesToStore)
+
+        const uploadData = {
+          uploadType,
+          contentType,
+          selectedPlatforms,
+          contentDescription,
+          customHashtags,
+          files: fileMetadata,
+          textContent,
+          urlContent
+        }
+
+        localStorage.setItem('uploadData', JSON.stringify(uploadData))
+        router.push('/generate')
+      } catch (fallbackError) {
+        console.error('Fallback storage also failed:', fallbackError)
+        alert('Failed to process files. Please try again.')
+      }
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -653,13 +732,25 @@ export default function UploadPage() {
             </Link>
             <button
               onClick={handleGenerate}
-              disabled={selectedPlatforms.length === 0}
-              className="group btn-primary text-lg px-8 py-4 flex items-center gap-2"
+              disabled={selectedPlatforms.length === 0 || isUploading}
+              className="group btn-primary text-lg px-8 py-4 flex items-center gap-2 disabled:opacity-50"
             >
-              Generate Previews
-              <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
+              {isUploading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  Generate Previews
+                  <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </>
+              )}
             </button>
           </div>
         </div>

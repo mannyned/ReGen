@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { fileStorage } from '../utils/fileStorage'
 import { AppHeader, PlatformLogo } from '../components/ui'
 import type { SocialPlatform } from '@/lib/types/social'
@@ -37,8 +38,10 @@ interface PreviewData {
   }>
 }
 
-export default function SchedulePage() {
+// Inner component that uses useSearchParams
+function SchedulePageContent() {
   const { user, loading: authLoading } = useAuth()
+  const searchParams = useSearchParams()
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([])
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
@@ -49,6 +52,7 @@ export default function SchedulePage() {
   const [selectedPreviews, setSelectedPreviews] = useState<PreviewData[]>([])
   const [testMode, setTestMode] = useState(true) // Default to test mode for safety
   const [accountsLoading, setAccountsLoading] = useState(true)
+  const [contentId, setContentId] = useState<string | null>(null)
 
   const platforms: { name: Platform; label: string; icon: string }[] = [
     { name: 'tiktok', label: 'TikTok', icon: '🎵' },
@@ -90,33 +94,99 @@ export default function SchedulePage() {
 
     fetchConnectedAccounts()
 
-    // Load selected previews
+    // Load selected previews from database or localStorage
     const loadPreviews = async () => {
+      const urlContentId = searchParams.get('contentId')
+
+      // New flow: Load from database if contentId is present
+      if (urlContentId) {
+        try {
+          const response = await fetch(`/api/content/${urlContentId}`)
+          const result = await response.json()
+
+          if (response.ok && result.success) {
+            const content = result.content
+            setContentId(urlContentId)
+
+            // Parse processedUrls and generatedCaptions
+            const processedData = content.processedUrls as {
+              files: Array<{
+                publicUrl: string
+                fileName: string
+                fileSize: number
+                mimeType: string
+              }>
+              uploadType: 'video' | 'image' | 'text'
+              contentType: 'post' | 'story'
+              selectedPlatforms: Platform[]
+            }
+
+            const generatedCaptions = content.generatedCaptions as Record<string, {
+              caption: string
+              hashtags: string[]
+            }> | null
+
+            // Build previews from database data
+            const previewsFromDb: PreviewData[] = processedData.selectedPlatforms
+              .filter(platform => generatedCaptions?.[platform])
+              .map((platform, index) => ({
+                id: index + 1,
+                platform,
+                caption: generatedCaptions?.[platform]?.caption || '',
+                hashtags: generatedCaptions?.[platform]?.hashtags || [],
+                files: processedData.files.map((file, idx) => ({
+                  id: `db-${idx}`,
+                  name: file.fileName,
+                  type: file.mimeType,
+                  size: file.fileSize,
+                  base64Data: file.publicUrl, // Use public URL as image source
+                })),
+              }))
+
+            if (previewsFromDb.length > 0) {
+              setSelectedPreviews(previewsFromDb)
+              setSelectedPlatforms(previewsFromDb.map(p => p.platform))
+              return
+            }
+          }
+        } catch (error) {
+          console.error('Error loading content from database:', error)
+          // Fall through to localStorage fallback
+        }
+      }
+
+      // Fallback: Load from localStorage (legacy flow)
       const previewsData = localStorage.getItem('selectedPreviews')
       if (previewsData) {
         try {
           const previews: PreviewData[] = JSON.parse(previewsData)
 
-          // Load file data from IndexedDB if needed
-          const storedFiles = await fileStorage.getFiles()
+          // Check if files already have base64Data (from database flow)
+          const hasDbUrls = previews.some(p => p.files.some(f => f.base64Data?.startsWith('http')))
 
-          // Enrich previews with file data
-          const enrichedPreviews = previews.map(preview => ({
-            ...preview,
-            files: preview.files.map(file => {
-              const storedFile = storedFiles.find(sf => sf.id === file.id)
-              return {
-                ...file,
-                base64Data: storedFile?.base64Data
-              }
-            })
-          }))
+          if (hasDbUrls) {
+            // Files already have URLs, use them directly
+            setSelectedPreviews(previews)
+            setSelectedPlatforms(previews.map(p => p.platform))
+          } else {
+            // Load file data from IndexedDB if needed
+            const storedFiles = await fileStorage.getFiles()
 
-          setSelectedPreviews(enrichedPreviews)
+            // Enrich previews with file data
+            const enrichedPreviews = previews.map(preview => ({
+              ...preview,
+              files: preview.files.map(file => {
+                const storedFile = storedFiles.find(sf => sf.id === file.id)
+                return {
+                  ...file,
+                  base64Data: storedFile?.base64Data
+                }
+              })
+            }))
 
-          // Pre-select platforms from the previews
-          const previewPlatforms = enrichedPreviews.map(p => p.platform)
-          setSelectedPlatforms(previewPlatforms)
+            setSelectedPreviews(enrichedPreviews)
+            setSelectedPlatforms(enrichedPreviews.map(p => p.platform))
+          }
         } catch (error) {
           console.error('Error loading previews:', error)
         }
@@ -124,7 +194,7 @@ export default function SchedulePage() {
     }
 
     loadPreviews()
-  }, [user, authLoading])
+  }, [user, authLoading, searchParams])
 
   const togglePlatform = (platform: Platform) => {
     setSelectedPlatforms(prev =>
@@ -630,5 +700,21 @@ export default function SchedulePage() {
         </div>
       </main>
     </div>
+  )
+}
+
+// Main export with Suspense wrapper for useSearchParams
+export default function SchedulePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-text-secondary">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SchedulePageContent />
+    </Suspense>
   )
 }
