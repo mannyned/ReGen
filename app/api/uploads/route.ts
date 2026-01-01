@@ -17,7 +17,7 @@ const ALLOWED_TYPES = [
   'video/webm',
 ]
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB (matches Supabase bucket limit)
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     // Upload to Supabase Storage
     const { data, error: uploadError } = await supabase.storage
-      .from('media')
+      .from('Media')
       .upload(filename, buffer, {
         contentType: file.type,
         upsert: false,
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('media')
+      .from('Media')
       .getPublicUrl(filename)
 
     // Determine media type
@@ -176,7 +176,7 @@ export async function PUT(request: NextRequest) {
 
     // Upload to Supabase Storage
     const { data, error: uploadError } = await supabase.storage
-      .from('media')
+      .from('Media')
       .upload(storagePath, buffer, {
         contentType: mimeType,
         upsert: false,
@@ -192,7 +192,7 @@ export async function PUT(request: NextRequest) {
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('media')
+      .from('Media')
       .getPublicUrl(storagePath)
 
     // Determine media type

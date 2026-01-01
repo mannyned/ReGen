@@ -1,10 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  // Use webpack instead of Turbopack for builds (Turbopack has symlink issues on Windows)
-  // turbopack: {
-  //   root: __dirname,
-  // },
+  // Note: Using --webpack flag in dev script to avoid Turbopack symlink issues on Windows
 
   // Skip TypeScript errors during build
   // This allows deployment while issues are being fixed

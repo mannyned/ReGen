@@ -3,6 +3,45 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, Badge, PlatformLogo } from './ui'
 import type { SocialPlatform } from '@/lib/types/social'
+
+// Extract a frame from a video for AI analysis
+async function extractVideoFrame(videoSrc: string, timeInSeconds: number = 1): Promise<string | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement('video')
+    video.crossOrigin = 'anonymous'
+    video.muted = true
+    video.playsInline = true
+
+    video.onloadeddata = () => {
+      video.currentTime = Math.min(timeInSeconds, video.duration / 2)
+    }
+
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        const maxWidth = 512
+        const scale = Math.min(1, maxWidth / video.videoWidth)
+        canvas.width = video.videoWidth * scale
+        canvas.height = video.videoHeight * scale
+
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+          resolve(canvas.toDataURL('image/jpeg', 0.8))
+        } else {
+          resolve(null)
+        }
+      } catch {
+        resolve(null)
+      }
+    }
+
+    video.onerror = () => resolve(null)
+    setTimeout(() => resolve(null), 5000)
+    video.src = videoSrc
+    video.load()
+  })
+}
 import type {
   PrimaryCaption,
   PlatformCaptionInstance,
@@ -38,6 +77,7 @@ interface CaptionWorkflowProps {
   initialHashtags?: string[]
   contentDescription?: string
   imageData?: string
+  mediaType?: 'video' | 'image' | 'text'
   tone?: 'professional' | 'engaging' | 'casual'
   onComplete: (data: {
     primaryCaption: PrimaryCaption
@@ -59,6 +99,7 @@ export function CaptionWorkflow({
   initialHashtags = [],
   contentDescription,
   imageData,
+  mediaType = 'image',
   tone = 'engaging',
   onComplete,
   onCancel,
@@ -125,6 +166,29 @@ export function CaptionWorkflow({
   const generateCaption = async () => {
     setIsGenerating(true)
     try {
+      // Determine imageData for AI analysis
+      let safeImageData: string | undefined = undefined
+
+      if (imageData) {
+        // For videos, extract a frame for AI analysis
+        if (mediaType === 'video') {
+          console.log('Extracting frame from video for AI analysis...')
+          const frameData = await extractVideoFrame(imageData)
+          if (frameData) {
+            safeImageData = frameData
+            console.log('Video frame extracted successfully')
+          }
+        } else if (imageData.startsWith('http://') || imageData.startsWith('https://')) {
+          safeImageData = imageData
+        } else if (imageData.startsWith('data:')) {
+          const estimatedSize = imageData.length * 0.75
+          const maxSize = 4 * 1024 * 1024 // 4MB limit
+          if (estimatedSize < maxSize) {
+            safeImageData = imageData
+          }
+        }
+      }
+
       const response = await fetch('/api/generate-caption', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -132,7 +196,7 @@ export function CaptionWorkflow({
           platform: sourcePlatform,
           tone,
           description: contentDescription,
-          imageData,
+          imageData: safeImageData,
         }),
       })
 

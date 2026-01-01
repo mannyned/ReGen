@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
+// For App Router - extend timeout for AI generation
+export const maxDuration = 60 // 60 seconds timeout
+
 export async function POST(request: NextRequest) {
   try {
-    const { platform, tone, description, hashtags, imageData } = await request.json()
+    let body
+    try {
+      body = await request.json()
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError)
+      return NextResponse.json(
+        { error: 'Request body too large or invalid. If uploading media, please ensure files are under 10MB.' },
+        { status: 413 }
+      )
+    }
+
+    const { platform, tone, description, hashtags, imageData } = body
 
     // Check if API key is configured
     if (!process.env.OPENAI_API_KEY) {

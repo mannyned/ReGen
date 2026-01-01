@@ -442,21 +442,75 @@ function SchedulePageContent() {
           {/* Left Column - Schedule Form */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-lg p-8">
-              {/* Media Selection */}
+              {/* Selected Content Preview */}
               <div className="mb-8">
                 <label className="block text-sm font-medium text-text-secondary mb-3">
-                  Select Content
+                  Selected Content
                 </label>
-                <div className="grid grid-cols-3 gap-4">
-                  {[1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className="aspect-square rounded-lg bg-gradient-to-br from-primary/10 to-primary/20 flex items-center justify-center text-4xl cursor-pointer hover:shadow-lg transition-shadow border-2 border-transparent hover:border-primary"
-                    >
-                      {i === 1 ? '🎬' : i === 2 ? '🖼️' : '📝'}
-                    </div>
-                  ))}
-                </div>
+                {selectedPreviews.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {selectedPreviews.map((preview, index) => (
+                      <div
+                        key={preview.id || index}
+                        className="relative rounded-lg overflow-hidden border-2 border-primary bg-gray-50"
+                      >
+                        {/* Media Preview */}
+                        {preview.files && preview.files.length > 0 ? (
+                          <div className="aspect-square relative">
+                            {preview.files[0].type?.startsWith('video/') ? (
+                              <video
+                                src={preview.files[0].base64Data}
+                                className="w-full h-full object-cover"
+                                muted
+                              />
+                            ) : (
+                              <img
+                                src={preview.files[0].base64Data}
+                                alt={`Preview for ${preview.platform}`}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                            {/* Video indicator */}
+                            {preview.files[0].type?.startsWith('video/') && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                <span className="text-white text-3xl">▶️</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="aspect-square flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/20">
+                            <span className="text-4xl">📝</span>
+                          </div>
+                        )}
+                        {/* Platform badge */}
+                        <div className="absolute top-2 left-2">
+                          <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 shadow-sm">
+                            <PlatformLogo
+                              platform={PLATFORM_ID_MAP[preview.platform]}
+                              size="xs"
+                              variant="color"
+                            />
+                            <span className="text-xs font-medium capitalize">{preview.platform}</span>
+                          </div>
+                        </div>
+                        {/* Caption preview */}
+                        {preview.caption && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                            <p className="text-white text-xs line-clamp-2">{preview.caption}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-center">
+                    <span className="text-4xl mb-3 block">📭</span>
+                    <p className="text-text-secondary font-medium">No content selected</p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Go to <Link href="/generate" className="text-primary hover:underline">Generate</Link> to create content
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Platform Selection */}

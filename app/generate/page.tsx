@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
@@ -28,6 +28,55 @@ const PLATFORM_MAP: Record<Platform, SocialPlatform> = {
   'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
+}
+
+// Extract a frame from a video for AI analysis
+async function extractVideoFrame(videoSrc: string, timeInSeconds: number = 1): Promise<string | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement('video')
+    video.crossOrigin = 'anonymous'
+    video.muted = true
+    video.playsInline = true
+
+    video.onloadeddata = () => {
+      // Seek to the specified time
+      video.currentTime = Math.min(timeInSeconds, video.duration / 2)
+    }
+
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        // Use smaller dimensions for faster processing
+        const maxWidth = 512
+        const scale = Math.min(1, maxWidth / video.videoWidth)
+        canvas.width = video.videoWidth * scale
+        canvas.height = video.videoHeight * scale
+
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+          const frameData = canvas.toDataURL('image/jpeg', 0.8)
+          resolve(frameData)
+        } else {
+          resolve(null)
+        }
+      } catch (e) {
+        console.error('Error extracting video frame:', e)
+        resolve(null)
+      }
+    }
+
+    video.onerror = () => {
+      console.error('Error loading video for frame extraction')
+      resolve(null)
+    }
+
+    // Set a timeout in case the video doesn't load
+    setTimeout(() => resolve(null), 5000)
+
+    video.src = videoSrc
+    video.load()
+  })
 }
 
 interface UploadedFile {
@@ -326,7 +375,38 @@ function GeneratePageContent() {
         return
       }
 
-      const imageData = preview.files[0]?.base64Data
+      const rawMediaData = preview.files[0]?.base64Data
+      const fileType = preview.files[0]?.type || ''
+      const isVideo = fileType.startsWith('video/')
+
+      // Determine imageData for AI analysis
+      let imageData: string | undefined = undefined
+
+      if (rawMediaData) {
+        // For videos, extract a frame for AI analysis
+        if (isVideo) {
+          console.log('Extracting frame from video for AI analysis...')
+          const frameData = await extractVideoFrame(rawMediaData)
+          if (frameData) {
+            imageData = frameData
+            console.log('Video frame extracted successfully')
+          } else {
+            console.warn('Could not extract video frame, using description only')
+          }
+        } else if (rawMediaData.startsWith('http://') || rawMediaData.startsWith('https://')) {
+          // Already a URL - use it directly
+          imageData = rawMediaData
+        } else if (rawMediaData.startsWith('data:')) {
+          // Base64 image data - check size
+          const estimatedSize = rawMediaData.length * 0.75
+          const maxSize = 4 * 1024 * 1024 // 4MB limit
+          if (estimatedSize < maxSize) {
+            imageData = rawMediaData
+          } else {
+            console.warn('Image too large for caption API, generating from description only')
+          }
+        }
+      }
 
       const apiEndpoint = currentPlan === 'pro' && useBrandVoice && activeBrandVoice
         ? '/api/brand-voice/generate'
@@ -348,7 +428,7 @@ function GeneratePageContent() {
             tone: selectedTone,
             description: uploadData.contentDescription,
             hashtags: uploadData.customHashtags,
-            imageData: imageData,
+            imageData,
           }
 
       const response = await fetch(apiEndpoint, {
@@ -582,6 +662,7 @@ function GeneratePageContent() {
             initialHashtags={uploadData.customHashtags.split(/[,\s]+/).filter(h => h.length > 0)}
             contentDescription={uploadData.contentDescription}
             imageData={uploadData.files[0]?.base64Data}
+            mediaType={uploadData.uploadType}
             tone={selectedTone}
             onComplete={handleCaptionWorkflowComplete}
             onCancel={() => setShowCaptionWorkflow(false)}
@@ -827,11 +908,22 @@ function GeneratePageContent() {
                             <p className="text-sm text-gray-600">Text Content</p>
                           </div>
                         ) : preview.files[preview.currentFileIndex]?.base64Data ? (
-                          <img
-                            src={preview.files[preview.currentFileIndex].base64Data}
-                            alt={`Preview ${preview.currentFileIndex + 1}`}
-                            className="w-full h-full object-cover"
-                          />
+                          // Check if it's a video file
+                          preview.files[preview.currentFileIndex].type?.startsWith('video/') ? (
+                            <video
+                              src={preview.files[preview.currentFileIndex].base64Data}
+                              className="w-full h-full object-cover"
+                              controls
+                              muted
+                              playsInline
+                            />
+                          ) : (
+                            <img
+                              src={preview.files[preview.currentFileIndex].base64Data}
+                              alt={`Preview ${preview.currentFileIndex + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          )
                         ) : (
                           <div className="text-6xl">
                             {uploadData.uploadType === 'video' ? '🎬' : '🖼️'}
