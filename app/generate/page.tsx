@@ -518,17 +518,6 @@ function GeneratePageContent() {
       return
     }
 
-    const selectedData = previews.filter(p => selectedPreviews.includes(p.id)).map(preview => ({
-      ...preview,
-      files: preview.files.map(file => ({
-        id: file.id,
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        base64Data: file.base64Data, // Keep the URL/base64 data
-      }))
-    }))
-
     try {
       // If we have a contentId, save captions to the database
       if (contentId) {
@@ -539,7 +528,7 @@ function GeneratePageContent() {
           appliedAdaptations?: string[]
         }> = {}
 
-        selectedData.forEach(preview => {
+        previews.filter(p => selectedPreviews.includes(p.id)).forEach(preview => {
           generatedCaptions[preview.platform] = {
             caption: preview.caption,
             hashtags: preview.hashtags,
@@ -555,21 +544,53 @@ function GeneratePageContent() {
           body: JSON.stringify({ generatedCaptions }),
         })
 
-        // Redirect with contentId
+        // Redirect with contentId - schedule page will load from DB
         router.push(`/schedule?contentId=${contentId}`)
       } else {
         // Fallback to localStorage (legacy flow)
-        localStorage.setItem('selectedPreviews', JSON.stringify(selectedData))
+        // Don't store base64 data in localStorage - it's too large
+        // Instead, store only metadata and file IDs for IndexedDB lookup
+        const selectedDataForStorage = previews.filter(p => selectedPreviews.includes(p.id)).map(preview => ({
+          id: preview.id,
+          platform: preview.platform,
+          caption: preview.caption,
+          hashtags: preview.hashtags,
+          usageMode: preview.usageMode,
+          appliedAdaptations: preview.appliedAdaptations,
+          currentFileIndex: preview.currentFileIndex,
+          files: preview.files.map(file => ({
+            id: file.id,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            // Only store URL if it's a URL (not base64) - URLs are small
+            base64Data: file.base64Data?.startsWith('http') ? file.base64Data : undefined,
+          }))
+        }))
+        localStorage.setItem('selectedPreviews', JSON.stringify(selectedDataForStorage))
         router.push('/schedule')
       }
     } catch (error) {
       console.error('Error saving selected previews:', error)
       // Fallback to localStorage even if DB save fails
       try {
-        localStorage.setItem('selectedPreviews', JSON.stringify(selectedData))
+        // Minimal data without base64
+        const minimalData = previews.filter(p => selectedPreviews.includes(p.id)).map(preview => ({
+          id: preview.id,
+          platform: preview.platform,
+          caption: preview.caption,
+          hashtags: preview.hashtags,
+          files: preview.files.map(file => ({
+            id: file.id,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          }))
+        }))
+        localStorage.setItem('selectedPreviews', JSON.stringify(minimalData))
         router.push('/schedule')
       } catch (fallbackError) {
-        alert('Unable to save selection. The data might be too large. Please try with fewer items.')
+        alert('Unable to save selection. Please try again.')
       }
     }
   }
