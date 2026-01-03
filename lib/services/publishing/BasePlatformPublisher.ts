@@ -22,7 +22,7 @@ export interface ContentPayload {
 export interface PublishOptions {
   userId: string
   content: PlatformContent
-  media: ContentPayload
+  media?: ContentPayload  // Optional for text-only posts
   scheduledAt?: Date
 }
 
@@ -50,7 +50,7 @@ export abstract class BasePlatformPublisher {
     return token
   }
 
-  protected validateContent(content: PlatformContent, media: ContentPayload): void {
+  protected validateContent(content: PlatformContent, media?: ContentPayload): void {
     const limits = CONTENT_LIMITS[this.platform]
 
     // Validate caption length
@@ -67,27 +67,30 @@ export abstract class BasePlatformPublisher {
       )
     }
 
-    // Validate video duration
-    if (media.duration && media.duration > limits.maxVideoLengthSeconds) {
-      throw new Error(
-        `Video exceeds maximum duration of ${limits.maxVideoLengthSeconds} seconds for ${this.platform}`
-      )
-    }
+    // Only validate media if provided (allows text-only posts)
+    if (media) {
+      // Validate video duration
+      if (media.duration && media.duration > limits.maxVideoLengthSeconds) {
+        throw new Error(
+          `Video exceeds maximum duration of ${limits.maxVideoLengthSeconds} seconds for ${this.platform}`
+        )
+      }
 
-    // Validate file size
-    const fileSizeMb = media.fileSize / (1024 * 1024)
-    if (fileSizeMb > limits.maxFileSizeMb) {
-      throw new Error(
-        `File exceeds maximum size of ${limits.maxFileSizeMb}MB for ${this.platform}`
-      )
-    }
+      // Validate file size
+      const fileSizeMb = media.fileSize / (1024 * 1024)
+      if (fileSizeMb > limits.maxFileSizeMb) {
+        throw new Error(
+          `File exceeds maximum size of ${limits.maxFileSizeMb}MB for ${this.platform}`
+        )
+      }
 
-    // Validate format
-    const extension = media.mediaUrl.split('.').pop()?.toLowerCase()
-    if (extension && !limits.supportedFormats.includes(extension)) {
-      throw new Error(
-        `File format .${extension} is not supported by ${this.platform}. Supported: ${limits.supportedFormats.join(', ')}`
-      )
+      // Validate format
+      const extension = media.mediaUrl.split('.').pop()?.toLowerCase()
+      if (extension && !limits.supportedFormats.includes(extension)) {
+        throw new Error(
+          `File format .${extension} is not supported by ${this.platform}. Supported: ${limits.supportedFormats.join(', ')}`
+        )
+      }
     }
   }
 

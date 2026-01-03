@@ -13,6 +13,16 @@ export class YouTubePublisher extends BasePlatformPublisher {
 
   async publishContent(options: PublishOptions): Promise<PublishResult> {
     const { userId, content, media } = options
+
+    // YouTube requires video content
+    if (!media || media.mediaType !== 'video') {
+      return {
+        success: false,
+        platform: this.platform,
+        error: 'YouTube requires video content. Images and text-only posts are not supported.',
+      }
+    }
+
     this.validateContent(content, media)
 
     const accessToken = await this.getAccessToken(userId)

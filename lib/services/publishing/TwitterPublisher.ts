@@ -20,7 +20,7 @@ export class TwitterPublisher extends BasePlatformPublisher {
     try {
       // Step 1: Upload media if present
       let mediaId: string | undefined
-      if (media.mediaUrl) {
+      if (media?.mediaUrl) {
         mediaId = await this.uploadMedia(accessToken, media)
       }
 

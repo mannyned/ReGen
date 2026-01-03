@@ -13,6 +13,16 @@ export class SnapchatPublisher extends BasePlatformPublisher {
 
   async publishContent(options: PublishOptions): Promise<PublishResult> {
     const { userId, content, media } = options
+
+    // Snapchat requires media (image or video)
+    if (!media) {
+      return {
+        success: false,
+        platform: this.platform,
+        error: 'Snapchat requires media (image or video). Text-only posts are not supported.',
+      }
+    }
+
     this.validateContent(content, media)
 
     const accessToken = await this.getAccessToken(userId)
@@ -256,9 +266,9 @@ export class SnapchatPublisher extends BasePlatformPublisher {
     // Spotlight is Snapchat's TikTok-like short video feature
     // Requires specific API access and video format requirements
 
-    const { userId, media } = options
+    const { media } = options
 
-    if (media.mediaType !== 'video') {
+    if (!media || media.mediaType !== 'video') {
       throw new Error('Spotlight requires video content')
     }
 

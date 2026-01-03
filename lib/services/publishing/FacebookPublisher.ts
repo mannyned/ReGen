@@ -23,11 +23,12 @@ export class FacebookPublisher extends BasePlatformPublisher {
 
       let postId: string
 
-      if (media.mediaType === 'video') {
+      if (media?.mediaType === 'video') {
         postId = await this.publishVideo(page.accessToken, page.id, media, content)
-      } else if (media.mediaType === 'image') {
+      } else if (media?.mediaType === 'image') {
         postId = await this.publishPhoto(page.accessToken, page.id, media, content)
       } else {
+        // Text-only post
         postId = await this.publishText(page.accessToken, page.id, content)
       }
 
@@ -277,7 +278,7 @@ export class FacebookPublisher extends BasePlatformPublisher {
   async publishReel(options: PublishOptions): Promise<PublishResult> {
     const { userId, content, media } = options
 
-    if (media.mediaType !== 'video') {
+    if (!media || media.mediaType !== 'video') {
       throw new Error('Reels must be video content')
     }
 

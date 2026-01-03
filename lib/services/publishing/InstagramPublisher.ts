@@ -13,6 +13,16 @@ export class InstagramPublisher extends BasePlatformPublisher {
 
   async publishContent(options: PublishOptions): Promise<PublishResult> {
     const { userId, content, media } = options
+
+    // Instagram requires media - text-only posts not supported
+    if (!media) {
+      return {
+        success: false,
+        platform: this.platform,
+        error: 'Instagram requires media (image or video). Text-only posts are not supported.',
+      }
+    }
+
     this.validateContent(content, media)
 
     const accessToken = await this.getAccessToken(userId)

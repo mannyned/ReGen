@@ -37,7 +37,7 @@ export class LinkedInPublisher extends BasePlatformPublisher {
 
       // Step 2: Upload media if present
       let assetUrn: string | undefined
-      if (media.mediaUrl) {
+      if (media?.mediaUrl) {
         assetUrn = await this.uploadMedia(accessToken, userUrn, media)
       }
 
