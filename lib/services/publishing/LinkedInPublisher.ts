@@ -130,7 +130,16 @@ export class LinkedInPublisher extends BasePlatformPublisher {
     ownerUrn: string,
     media: ContentPayload
   ): Promise<string> {
-    // Step 1: Register upload
+    // Step 1: Fetch the media file from URL
+    console.log('[LinkedIn] Fetching media from URL:', media.mediaUrl)
+    const mediaResponse = await fetch(media.mediaUrl)
+    if (!mediaResponse.ok) {
+      throw new Error(`Failed to fetch media file: ${mediaResponse.status}`)
+    }
+    const mediaBuffer = await mediaResponse.arrayBuffer()
+    console.log('[LinkedIn] Media fetched, size:', mediaBuffer.byteLength)
+
+    // Step 2: Register upload with LinkedIn
     const registerResponse = await this.makeApiRequest<{
       value: {
         uploadMechanism: {
@@ -169,21 +178,25 @@ export class LinkedInPublisher extends BasePlatformPublisher {
         'com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'
       ].uploadUrl
     const assetUrn = registerResponse.value.asset
+    console.log('[LinkedIn] Got upload URL, asset:', assetUrn)
 
-    // Step 2: Upload the file
+    // Step 3: Upload the actual binary file data to LinkedIn
     const uploadResponse = await fetch(uploadUrl, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': media.mimeType,
       },
-      body: media.mediaUrl, // In production, actual file buffer
+      body: mediaBuffer,
     })
 
     if (!uploadResponse.ok) {
-      throw new Error('Failed to upload media to LinkedIn')
+      const errorText = await uploadResponse.text()
+      console.error('[LinkedIn] Upload failed:', uploadResponse.status, errorText)
+      throw new Error(`Failed to upload media to LinkedIn: ${uploadResponse.status}`)
     }
 
+    console.log('[LinkedIn] Media uploaded successfully')
     return assetUrn
   }
 
