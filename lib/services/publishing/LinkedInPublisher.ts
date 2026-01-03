@@ -9,7 +9,11 @@ import { getAccessToken } from '@/lib/oauth/engine'
 // ============================================
 // LINKEDIN PUBLISHER
 // Uses LinkedIn Marketing API
+// Supports: text, images, videos, carousels, and article links
 // ============================================
+
+// URL regex pattern to detect links in text
+const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi
 
 export class LinkedInPublisher extends BasePlatformPublisher {
   protected platform: SocialPlatform = 'linkedin'
@@ -35,14 +39,37 @@ export class LinkedInPublisher extends BasePlatformPublisher {
       // Step 1: Get user URN
       const userUrn = await this.getUserUrn(accessToken)
 
-      // Step 2: Upload media if present
-      let assetUrn: string | undefined
+      // Step 2: Determine post type and prepare media
+      let assetUrns: string[] = []
+      let mediaCategory: 'NONE' | 'IMAGE' | 'VIDEO' | 'ARTICLE' = 'NONE'
+
       if (media?.mediaUrl) {
-        assetUrn = await this.uploadMedia(accessToken, userUrn, media)
+        if (media.mediaType === 'video') {
+          // Upload video and wait for processing
+          const videoAsset = await this.uploadAndProcessVideo(accessToken, userUrn, media)
+          assetUrns = [videoAsset]
+          mediaCategory = 'VIDEO'
+        } else if (media.mediaType === 'carousel' && media.additionalMediaUrls?.length) {
+          // Upload all images for carousel
+          const allUrls = [media.mediaUrl, ...media.additionalMediaUrls]
+          assetUrns = await this.uploadMultipleImages(accessToken, userUrn, allUrls, media.mimeType)
+          mediaCategory = 'IMAGE'
+        } else {
+          // Single image upload
+          const imageAsset = await this.uploadMedia(accessToken, userUrn, media)
+          assetUrns = [imageAsset]
+          mediaCategory = 'IMAGE'
+        }
+      } else {
+        // Check if caption contains a URL for article sharing
+        const urls = content.caption?.match(URL_REGEX)
+        if (urls && urls.length > 0) {
+          mediaCategory = 'ARTICLE'
+        }
       }
 
       // Step 3: Create share
-      const share = await this.createShare(accessToken, userUrn, content, assetUrn)
+      const share = await this.createShare(accessToken, userUrn, content, assetUrns, mediaCategory)
 
       return {
         success: true,
@@ -52,6 +79,7 @@ export class LinkedInPublisher extends BasePlatformPublisher {
         publishedAt: new Date(),
       }
     } catch (error) {
+      console.error('[LinkedIn] Publish error:', error)
       return {
         success: false,
         platform: this.platform,
@@ -125,19 +153,22 @@ export class LinkedInPublisher extends BasePlatformPublisher {
     return `urn:li:person:${response.sub}`
   }
 
+  /**
+   * Upload a single image to LinkedIn
+   */
   private async uploadMedia(
     accessToken: string,
     ownerUrn: string,
     media: ContentPayload
   ): Promise<string> {
     // Step 1: Fetch the media file from URL
-    console.log('[LinkedIn] Fetching media from URL:', media.mediaUrl)
+    console.log('[LinkedIn] Fetching image from URL:', media.mediaUrl)
     const mediaResponse = await fetch(media.mediaUrl)
     if (!mediaResponse.ok) {
       throw new Error(`Failed to fetch media file: ${mediaResponse.status}`)
     }
     const mediaBuffer = await mediaResponse.arrayBuffer()
-    console.log('[LinkedIn] Media fetched, size:', mediaBuffer.byteLength)
+    console.log('[LinkedIn] Image fetched, size:', mediaBuffer.byteLength)
 
     // Step 2: Register upload with LinkedIn
     const registerResponse = await this.makeApiRequest<{
@@ -155,11 +186,7 @@ export class LinkedInPublisher extends BasePlatformPublisher {
         method: 'POST',
         body: JSON.stringify({
           registerUploadRequest: {
-            recipes: [
-              media.mediaType === 'video'
-                ? 'urn:li:digitalmediaRecipe:feedshare-video'
-                : 'urn:li:digitalmediaRecipe:feedshare-image',
-            ],
+            recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
             owner: ownerUrn,
             serviceRelationships: [
               {
@@ -196,47 +223,283 @@ export class LinkedInPublisher extends BasePlatformPublisher {
       throw new Error(`Failed to upload media to LinkedIn: ${uploadResponse.status}`)
     }
 
-    console.log('[LinkedIn] Media uploaded successfully')
+    console.log('[LinkedIn] Image uploaded successfully')
     return assetUrn
   }
 
+  /**
+   * Upload multiple images for carousel posts
+   */
+  private async uploadMultipleImages(
+    accessToken: string,
+    ownerUrn: string,
+    imageUrls: string[],
+    mimeType: string
+  ): Promise<string[]> {
+    console.log('[LinkedIn] Uploading carousel with', imageUrls.length, 'images')
+
+    const assetUrns: string[] = []
+
+    for (let i = 0; i < imageUrls.length; i++) {
+      const url = imageUrls[i]
+      console.log(`[LinkedIn] Uploading carousel image ${i + 1}/${imageUrls.length}:`, url)
+
+      // Fetch the image
+      const mediaResponse = await fetch(url)
+      if (!mediaResponse.ok) {
+        throw new Error(`Failed to fetch carousel image ${i + 1}: ${mediaResponse.status}`)
+      }
+      const mediaBuffer = await mediaResponse.arrayBuffer()
+
+      // Register upload
+      const registerResponse = await this.makeApiRequest<{
+        value: {
+          uploadMechanism: {
+            'com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest': {
+              uploadUrl: string
+            }
+          }
+          asset: string
+        }
+      }>(
+        '/assets?action=registerUpload',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            registerUploadRequest: {
+              recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
+              owner: ownerUrn,
+              serviceRelationships: [
+                {
+                  relationshipType: 'OWNER',
+                  identifier: 'urn:li:userGeneratedContent',
+                },
+              ],
+            },
+          }),
+        },
+        accessToken
+      )
+
+      const uploadUrl =
+        registerResponse.value.uploadMechanism[
+          'com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'
+        ].uploadUrl
+      const assetUrn = registerResponse.value.asset
+
+      // Upload the image
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': mimeType || 'image/jpeg',
+        },
+        body: mediaBuffer,
+      })
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Failed to upload carousel image ${i + 1}: ${uploadResponse.status}`)
+      }
+
+      assetUrns.push(assetUrn)
+      console.log(`[LinkedIn] Carousel image ${i + 1} uploaded:`, assetUrn)
+    }
+
+    console.log('[LinkedIn] All carousel images uploaded:', assetUrns.length)
+    return assetUrns
+  }
+
+  /**
+   * Upload video and wait for LinkedIn to process it
+   */
+  private async uploadAndProcessVideo(
+    accessToken: string,
+    ownerUrn: string,
+    media: ContentPayload
+  ): Promise<string> {
+    // Step 1: Fetch the video file
+    console.log('[LinkedIn] Fetching video from URL:', media.mediaUrl)
+    const mediaResponse = await fetch(media.mediaUrl)
+    if (!mediaResponse.ok) {
+      throw new Error(`Failed to fetch video file: ${mediaResponse.status}`)
+    }
+    const mediaBuffer = await mediaResponse.arrayBuffer()
+    console.log('[LinkedIn] Video fetched, size:', mediaBuffer.byteLength)
+
+    // Step 2: Register video upload
+    const registerResponse = await this.makeApiRequest<{
+      value: {
+        uploadMechanism: {
+          'com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest': {
+            uploadUrl: string
+          }
+        }
+        asset: string
+      }
+    }>(
+      '/assets?action=registerUpload',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          registerUploadRequest: {
+            recipes: ['urn:li:digitalmediaRecipe:feedshare-video'],
+            owner: ownerUrn,
+            serviceRelationships: [
+              {
+                relationshipType: 'OWNER',
+                identifier: 'urn:li:userGeneratedContent',
+              },
+            ],
+          },
+        }),
+      },
+      accessToken
+    )
+
+    const uploadUrl =
+      registerResponse.value.uploadMechanism[
+        'com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'
+      ].uploadUrl
+    const assetUrn = registerResponse.value.asset
+    console.log('[LinkedIn] Got video upload URL, asset:', assetUrn)
+
+    // Step 3: Upload the video binary data
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': media.mimeType,
+      },
+      body: mediaBuffer,
+    })
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text()
+      console.error('[LinkedIn] Video upload failed:', uploadResponse.status, errorText)
+      throw new Error(`Failed to upload video to LinkedIn: ${uploadResponse.status}`)
+    }
+
+    console.log('[LinkedIn] Video uploaded, waiting for processing...')
+
+    // Step 4: Wait for video processing to complete
+    await this.waitForVideoProcessing(accessToken, assetUrn)
+
+    console.log('[LinkedIn] Video processing complete')
+    return assetUrn
+  }
+
+  /**
+   * Poll LinkedIn until video is processed and ready
+   */
+  private async waitForVideoProcessing(
+    accessToken: string,
+    assetUrn: string,
+    maxAttempts: number = 60,
+    intervalMs: number = 5000
+  ): Promise<void> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const response = await this.makeApiRequest<{
+          recipes: Array<{
+            recipe: string
+            status: string
+          }>
+          serviceRelationships: Array<{
+            relationshipType: string
+            identifier: string
+          }>
+        }>(
+          `/assets/${encodeURIComponent(assetUrn)}`,
+          { method: 'GET' },
+          accessToken
+        )
+
+        // Check if any recipe is complete
+        const recipe = response.recipes?.[0]
+        const status = recipe?.status
+
+        console.log(`[LinkedIn] Video processing status (attempt ${attempt}/${maxAttempts}):`, status)
+
+        if (status === 'AVAILABLE' || status === 'PROCESSING_COMPLETE') {
+          return // Video is ready
+        }
+
+        if (status === 'FAILED' || status === 'ERROR') {
+          throw new Error('LinkedIn video processing failed')
+        }
+
+        // Wait before next check
+        await new Promise(resolve => setTimeout(resolve, intervalMs))
+      } catch (error) {
+        // If we get a 404 or other error, the asset might not be ready yet
+        console.log(`[LinkedIn] Video status check attempt ${attempt} failed, retrying...`)
+        await new Promise(resolve => setTimeout(resolve, intervalMs))
+      }
+    }
+
+    throw new Error('Video processing timed out - please try again')
+  }
+
+  /**
+   * Create a LinkedIn share/post
+   */
   private async createShare(
     accessToken: string,
     authorUrn: string,
     content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> | object },
-    assetUrn?: string
+    assetUrns: string[],
+    mediaCategory: 'NONE' | 'IMAGE' | 'VIDEO' | 'ARTICLE'
   ): Promise<{ id: string }> {
     const commentary = this.formatCaption(content)
     const settings = (content.settings || {}) as Record<string, unknown>
+
+    // Build the share content based on media type
+    const shareContent: Record<string, unknown> = {
+      shareCommentary: {
+        text: commentary,
+      },
+      shareMediaCategory: mediaCategory,
+    }
+
+    // Add media array for images/videos
+    if (mediaCategory === 'IMAGE' && assetUrns.length > 0) {
+      shareContent.media = assetUrns.map(assetUrn => ({
+        status: 'READY',
+        media: assetUrn,
+      }))
+    } else if (mediaCategory === 'VIDEO' && assetUrns.length > 0) {
+      shareContent.media = [
+        {
+          status: 'READY',
+          media: assetUrns[0],
+        },
+      ]
+    } else if (mediaCategory === 'ARTICLE') {
+      // Extract URL from caption for article preview
+      const urls = content.caption?.match(URL_REGEX)
+      if (urls && urls.length > 0) {
+        shareContent.media = [
+          {
+            status: 'READY',
+            originalUrl: urls[0],
+          },
+        ]
+      }
+    }
 
     const shareData: Record<string, unknown> = {
       author: authorUrn,
       lifecycleState: 'PUBLISHED',
       specificContent: {
-        'com.linkedin.ugc.ShareContent': {
-          shareCommentary: {
-            text: commentary,
-          },
-          shareMediaCategory: assetUrn
-            ? assetUrn.includes('video')
-              ? 'VIDEO'
-              : 'IMAGE'
-            : 'NONE',
-          media: assetUrn
-            ? [
-                {
-                  status: 'READY',
-                  media: assetUrn,
-                },
-              ]
-            : undefined,
-        },
+        'com.linkedin.ugc.ShareContent': shareContent,
       },
       visibility: {
         'com.linkedin.ugc.MemberNetworkVisibility':
           settings.visibility || 'PUBLIC',
       },
     }
+
+    console.log('[LinkedIn] Creating share with category:', mediaCategory, 'assets:', assetUrns.length)
 
     const response = await this.makeApiRequest<{
       id: string

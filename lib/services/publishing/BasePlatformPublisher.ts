@@ -17,6 +17,8 @@ export interface ContentPayload {
   mimeType: string
   fileSize: number
   duration?: number
+  // For carousel posts with multiple images
+  additionalMediaUrls?: string[]
 }
 
 export interface PublishOptions {
