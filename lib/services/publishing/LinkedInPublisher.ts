@@ -1,6 +1,7 @@
 import { BasePlatformPublisher, ContentPayload, PublishOptions } from './BasePlatformPublisher'
 import type { SocialPlatform, PublishResult, PostAnalytics } from '../../types/social'
 import { API_BASE_URLS } from '../../config/oauth'
+import { getAccessToken } from '@/lib/oauth/engine'
 
 // ============================================
 // LINKEDIN PUBLISHER
@@ -10,6 +11,16 @@ import { API_BASE_URLS } from '../../config/oauth'
 export class LinkedInPublisher extends BasePlatformPublisher {
   protected platform: SocialPlatform = 'linkedin'
   protected baseUrl = API_BASE_URLS.linkedin
+
+  // Override to use OAuth engine instead of TokenManager
+  // LinkedIn tokens are stored in oauth_connections table
+  protected async getAccessToken(userId: string): Promise<string> {
+    try {
+      return await getAccessToken('linkedin', userId)
+    } catch (error) {
+      throw new Error(`No valid access token for ${this.platform}`)
+    }
+  }
 
   async publishContent(options: PublishOptions): Promise<PublishResult> {
     const { userId, content, media } = options
