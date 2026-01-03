@@ -56,6 +56,14 @@ export async function GET(request: NextRequest) {
     const recentPosts = posts.map((post) => {
       const metadata = post.metadata as Record<string, unknown> | null
 
+      // Use mediaUrl from metadata as thumbnail, fallback to contentUpload
+      const thumbnail = (metadata?.mediaUrl as string | undefined) ||
+                        post.contentUpload?.thumbnailUrl
+
+      // Get mimeType from metadata or contentUpload
+      const mimeType = (metadata?.mimeType as string | undefined) ||
+                       post.contentUpload?.mimeType
+
       return {
         id: post.id,
         platform: post.provider,
@@ -63,9 +71,10 @@ export async function GET(request: NextRequest) {
         platformUrl: metadata?.platformUrl as string | undefined,
         caption: metadata?.caption as string | undefined,
         postedAt: post.postedAt?.toISOString(),
-        thumbnail: post.contentUpload?.thumbnailUrl,
+        thumbnail,
         fileName: post.contentUpload?.fileName,
-        mimeType: post.contentUpload?.mimeType,
+        mimeType,
+        mediaType: metadata?.mediaType as string | undefined,
       }
     })
 

@@ -148,6 +148,8 @@ export async function POST(request: NextRequest) {
                   caption: content.caption?.substring(0, 500),
                   platformUrl: (result as PublishResult).platformUrl,
                   mediaType: media?.mediaType,
+                  mediaUrl: media?.mediaUrl,
+                  mimeType: media?.mimeType,
                 },
               },
             })

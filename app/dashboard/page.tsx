@@ -45,6 +45,7 @@ interface RecentPost {
   thumbnail?: string
   fileName?: string
   mimeType?: string
+  mediaType?: 'image' | 'video' | 'carousel'
 }
 
 export default function DashboardPage() {
@@ -377,15 +378,42 @@ export default function DashboardPage() {
                   {/* Thumbnail */}
                   <div className="h-48 bg-gradient-to-br from-primary/10 to-accent-purple/20 flex items-center justify-center text-6xl relative overflow-hidden">
                     {post.thumbnail ? (
-                      <Image
-                        src={post.thumbnail}
-                        alt={post.caption || 'Post thumbnail'}
-                        fill
-                        className="object-cover transition-transform group-hover:scale-110"
-                      />
+                      <>
+                        {post.mediaType === 'video' || post.mimeType?.startsWith('video') ? (
+                          <video
+                            src={post.thumbnail}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                            muted
+                            playsInline
+                          />
+                        ) : (
+                          <Image
+                            src={post.thumbnail}
+                            alt={post.caption || 'Post thumbnail'}
+                            fill
+                            className="object-cover transition-transform group-hover:scale-105"
+                          />
+                        )}
+                        {/* Video play indicator */}
+                        {(post.mediaType === 'video' || post.mimeType?.startsWith('video')) && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                              <span className="text-2xl ml-1">▶️</span>
+                            </div>
+                          </div>
+                        )}
+                        {/* Carousel indicator */}
+                        {post.mediaType === 'carousel' && (
+                          <div className="absolute top-2 right-2 bg-black/70 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                            <span>📷</span>
+                            <span>+</span>
+                          </div>
+                        )}
+                      </>
                     ) : (
-                      <span className="transition-transform group-hover:scale-110">
-                        {post.mimeType?.startsWith('video') ? '🎬' : '📸'}
+                      <span className="transition-transform group-hover:scale-110 text-gray-300">
+                        {post.mediaType === 'video' || post.mimeType?.startsWith('video') ? '🎬' :
+                         post.mediaType === 'carousel' ? '📷' : '📝'}
                       </span>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
