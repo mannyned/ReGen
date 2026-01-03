@@ -15,9 +15,23 @@ export async function POST(request: NextRequest) {
   const rateLimitMiddleware = createRateLimitMiddleware('publish')
 
   return rateLimitMiddleware(request, async () => {
+    // Parse request body with error handling for large payloads
+    let body
     try {
-      const body = await request.json()
+      body = await request.json()
+    } catch (parseError) {
+      console.error('[Publish] JSON parse error:', parseError)
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Request body too large or invalid. Try with smaller media files or use a URL instead of base64.',
+          code: 'PAYLOAD_TOO_LARGE',
+        },
+        { status: 413 }
+      )
+    }
 
+    try {
       const {
         userId,
         platforms,
