@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type { SocialPlatform, PlatformContent } from '@/lib/types/social'
+import type { SocialPlatform, PlatformContent, PublishResult } from '@/lib/types/social'
 import { publishingService } from '@/lib/services/publishing'
 import { validatePlatformParam, validatePublishContent, validationErrorResponse } from '@/lib/middleware/validation'
 import { createRateLimitMiddleware } from '@/lib/middleware/rateLimit'
+import { prisma } from '@/lib/db'
 
 // ============================================
 // POST /api/publish
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
         platformContent,
       })
 
-      // Convert Map to object for JSON response
+      // Convert Map to object for JSON response and record successful posts
       const resultsObject: Record<string, unknown> = {}
       let successCount = 0
       let failCount = 0
@@ -119,6 +120,27 @@ export async function POST(request: NextRequest) {
         resultsObject[platform] = result
         if (result.success) {
           successCount++
+
+          // Record successful post to database
+          try {
+            await prisma.outboundPost.create({
+              data: {
+                profileId: userId,
+                provider: platform,
+                status: 'POSTED',
+                externalPostId: (result as PublishResult).platformPostId || null,
+                postedAt: new Date(),
+                metadata: {
+                  caption: content.caption?.substring(0, 500),
+                  platformUrl: (result as PublishResult).platformUrl,
+                  mediaType: media?.mediaType,
+                },
+              },
+            })
+          } catch (recordError) {
+            console.warn(`[Publish] Failed to record ${platform} post:`, recordError)
+            // Don't fail the response if recording fails
+          }
         } else {
           failCount++
         }

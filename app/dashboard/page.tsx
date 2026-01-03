@@ -22,53 +22,88 @@ const PLATFORM_ID_MAP: Record<string, SocialPlatform> = {
   'Discord': 'discord',
 }
 
+// Platform display names
+const PLATFORM_DISPLAY_NAME: Record<string, string> = {
+  instagram: 'Instagram',
+  twitter: 'X',
+  linkedin: 'LinkedIn',
+  facebook: 'Facebook',
+  tiktok: 'TikTok',
+  youtube: 'YouTube',
+  snapchat: 'Snapchat',
+  pinterest: 'Pinterest',
+  discord: 'Discord',
+}
+
+interface RecentPost {
+  id: string
+  platform: string
+  platformPostId?: string
+  platformUrl?: string
+  caption?: string
+  postedAt?: string
+  thumbnail?: string
+  fileName?: string
+  mimeType?: string
+}
+
 export default function DashboardPage() {
   const { currentPlan, planFeatures, usedUploads } = usePlan()
   const [mounted, setMounted] = useState(false)
+  const [recentPosts, setRecentPosts] = useState<RecentPost[]>([])
+  const [loadingPosts, setLoadingPosts] = useState(true)
 
   useEffect(() => {
     setMounted(true)
+
+    // Fetch recent posts
+    async function fetchRecentPosts() {
+      try {
+        const response = await fetch('/api/posts/recent?limit=6')
+        if (response.ok) {
+          const data = await response.json()
+          setRecentPosts(data.posts || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch recent posts:', error)
+      } finally {
+        setLoadingPosts(false)
+      }
+    }
+
+    fetchRecentPosts()
   }, [])
 
-  // In production, show empty state. In development, show mock data for testing UI.
-  const isProduction = process.env.NODE_ENV === 'production'
+  // Stats based on actual posts
+  const stats = {
+    repurposesDone: recentPosts.length,
+    totalEngagement: '—',
+    averageReach: '—',
+    postsThisWeek: recentPosts.filter(p => {
+      if (!p.postedAt) return false
+      const postDate = new Date(p.postedAt)
+      const weekAgo = new Date()
+      weekAgo.setDate(weekAgo.getDate() - 7)
+      return postDate >= weekAgo
+    }).length
+  }
 
-  const stats = isProduction
-    ? {
-        repurposesDone: 0,
-        totalEngagement: '0',
-        averageReach: '0',
-        postsThisWeek: 0
-      }
-    : {
-        repurposesDone: currentPlan === 'free' ? 3 : currentPlan === 'creator' ? 47 : 238,
-        totalEngagement: currentPlan === 'free' ? '1.2K' : currentPlan === 'creator' ? '12.5K' : '148.7K',
-        averageReach: currentPlan === 'free' ? '450' : currentPlan === 'creator' ? '2.3K' : '15.8K',
-        postsThisWeek: currentPlan === 'free' ? 2 : currentPlan === 'creator' ? 8 : 32
-      }
+  // Helper to format relative time
+  const formatRelativeTime = (dateStr?: string) => {
+    if (!dateStr) return 'Recently'
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
 
-  const recentPosts: Array<{ id: number; title: string; platforms: string[]; date: string; thumbnail: string; status: string }> = isProduction
-    ? []
-    : currentPlan === 'free'
-    ? [
-        { id: 1, title: 'Welcome Post', platforms: ['Instagram'], date: '2 hours ago', thumbnail: '📸', status: 'published' },
-        { id: 2, title: 'First TikTok', platforms: ['TikTok'], date: '1 day ago', thumbnail: '🎵', status: 'published' },
-      ]
-    : currentPlan === 'creator'
-    ? [
-        { id: 1, title: 'Product Launch Video', platforms: ['TikTok', 'Instagram', 'YouTube'], date: '2 hours ago', thumbnail: '🎬', status: 'published' },
-        { id: 2, title: 'Behind the Scenes', platforms: ['Instagram', 'Facebook'], date: '5 hours ago', thumbnail: '📸', status: 'published' },
-        { id: 3, title: 'Tutorial: Getting Started', platforms: ['YouTube', 'LinkedIn'], date: '1 day ago', thumbnail: '🎓', status: 'scheduled' },
-        { id: 4, title: 'Customer Testimonial', platforms: ['TikTok', 'X', 'LinkedIn'], date: '2 days ago', thumbnail: '💬', status: 'published' },
-      ]
-    : [
-        { id: 1, title: 'Product Launch Video', platforms: ['TikTok', 'Instagram', 'YouTube', 'LinkedIn', 'X'], date: '2 hours ago', thumbnail: '🎬', status: 'published' },
-        { id: 2, title: 'Behind the Scenes', platforms: ['Instagram', 'Facebook', 'Snapchat'], date: '5 hours ago', thumbnail: '📸', status: 'published' },
-        { id: 3, title: 'Tutorial: Getting Started', platforms: ['YouTube', 'LinkedIn', 'Facebook'], date: '1 day ago', thumbnail: '🎓', status: 'scheduled' },
-        { id: 4, title: 'Customer Testimonial', platforms: ['TikTok', 'X', 'LinkedIn'], date: '2 days ago', thumbnail: '💬', status: 'published' },
-        { id: 5, title: 'Weekly Tips & Tricks', platforms: ['Instagram', 'Facebook', 'X', 'YouTube'], date: '3 days ago', thumbnail: '✨', status: 'published' },
-        { id: 6, title: 'Product Demo', platforms: ['YouTube', 'LinkedIn', 'X'], date: '4 days ago', thumbnail: '🚀', status: 'published' },
-      ]
+    if (diffMins < 60) return `${diffMins} min ago`
+    if (diffHours < 24) return `${diffHours} hours ago`
+    if (diffDays === 1) return 'Yesterday'
+    if (diffDays < 7) return `${diffDays} days ago`
+    return date.toLocaleDateString()
+  }
 
   const remainingUploads = getRemainingUploads(currentPlan, usedUploads)
 
@@ -321,64 +356,91 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recentPosts.map((post) => (
-              <Card
-                key={post.id}
-                className="overflow-hidden group cursor-pointer"
-              >
-                {/* Thumbnail */}
-                <div className="h-48 bg-gradient-to-br from-primary/10 to-accent-purple/20 flex items-center justify-center text-6xl relative overflow-hidden">
-                  <span className="transition-transform group-hover:scale-110">{post.thumbnail}</span>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-
-                {/* Content */}
-                <div className="p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold text-text-primary text-lg group-hover:text-primary transition-colors">{post.title}</h3>
-                    <Badge variant={post.status === 'published' ? 'success' : 'primary'}>
-                      {post.status}
-                    </Badge>
+            {loadingPosts ? (
+              // Loading skeleton
+              [...Array(3)].map((_, i) => (
+                <Card key={i} className="overflow-hidden animate-pulse">
+                  <div className="h-48 bg-gray-200" />
+                  <div className="p-5">
+                    <div className="h-5 bg-gray-200 rounded w-3/4 mb-3" />
+                    <div className="h-4 bg-gray-100 rounded w-1/2 mb-4" />
+                    <div className="h-8 bg-gray-100 rounded w-full" />
+                  </div>
+                </Card>
+              ))
+            ) : (
+              recentPosts.map((post) => (
+                <Card
+                  key={post.id}
+                  className="overflow-hidden group cursor-pointer"
+                >
+                  {/* Thumbnail */}
+                  <div className="h-48 bg-gradient-to-br from-primary/10 to-accent-purple/20 flex items-center justify-center text-6xl relative overflow-hidden">
+                    {post.thumbnail ? (
+                      <Image
+                        src={post.thumbnail}
+                        alt={post.caption || 'Post thumbnail'}
+                        fill
+                        className="object-cover transition-transform group-hover:scale-110"
+                      />
+                    ) : (
+                      <span className="transition-transform group-hover:scale-110">
+                        {post.mimeType?.startsWith('video') ? '🎬' : '📸'}
+                      </span>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
 
-                  {/* Platforms */}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {post.platforms.map((platform) => (
-                      <div
-                        key={platform}
-                        className="flex items-center gap-1.5 px-2 py-1 bg-primary/5 rounded-lg"
-                      >
+                  {/* Content */}
+                  <div className="p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-semibold text-text-primary text-lg group-hover:text-primary transition-colors line-clamp-1">
+                        {post.caption?.substring(0, 40) || post.fileName || 'Untitled Post'}
+                        {post.caption && post.caption.length > 40 ? '...' : ''}
+                      </h3>
+                      <Badge variant="success">published</Badge>
+                    </div>
+
+                    {/* Platform */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/5 rounded-lg">
                         <PlatformLogo
-                          platform={PLATFORM_ID_MAP[platform]}
+                          platform={post.platform as SocialPlatform}
                           size="xs"
                           variant="color"
                         />
                         <span className="text-primary text-xs font-medium">
-                          {platform}
+                          {PLATFORM_DISPLAY_NAME[post.platform] || post.platform}
                         </span>
                       </div>
-                    ))}
-                  </div>
+                    </div>
 
-                  {/* Footer */}
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                    <span className="text-sm text-text-secondary">{post.date}</span>
-                    <div className="flex gap-3">
-                      <button className="text-primary hover:text-primary-hover text-sm font-medium transition-colors">
-                        View
-                      </button>
-                      <button className="text-text-secondary hover:text-primary text-sm font-medium transition-colors">
-                        Edit
-                      </button>
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                      <span className="text-sm text-text-secondary">
+                        {formatRelativeTime(post.postedAt)}
+                      </span>
+                      <div className="flex gap-3">
+                        {post.platformUrl && (
+                          <a
+                            href={post.platformUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:text-primary-hover text-sm font-medium transition-colors"
+                          >
+                            View
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              ))
+            )}
           </div>
 
           {/* Empty State */}
-          {recentPosts.length === 0 && (
+          {!loadingPosts && recentPosts.length === 0 && (
             <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
               <div className="text-6xl mb-4">📭</div>
               <h3 className="text-xl font-bold text-text-primary mb-2">No posts yet</h3>
