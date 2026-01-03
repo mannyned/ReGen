@@ -58,6 +58,14 @@ interface AIRecommendation {
   icon: string
 }
 
+// Real analytics stats interface
+interface AnalyticsStats {
+  totalPosts: number
+  postsInRange: number
+  aiGenerated: number
+  platformStats: Record<string, number>
+}
+
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('30')
   const [userPlan, setUserPlan] = useState<PlanType>('free')
@@ -68,14 +76,31 @@ export default function AnalyticsPage() {
   const [activeTrialMetric, setActiveTrialMetric] = useState<LockedMetricId | null>(null)
   const [analyticsPermissions, setAnalyticsPermissions] = useState<AnalyticsPermissions | null>(null)
   const [isTeamMember, setIsTeamMember] = useState(false)
+  const [realStats, setRealStats] = useState<AnalyticsStats | null>(null)
 
   // Upgrade intent tracking
   const upgradeIntent = useUpgradeIntent()
 
   const isProduction = process.env.NODE_ENV === 'production'
 
+  // Fetch real analytics stats
+  const fetchAnalyticsStats = async (days: string) => {
+    try {
+      const response = await fetch(`/api/analytics/stats?days=${days}`)
+      if (response.ok) {
+        const data = await response.json()
+        setRealStats(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch analytics stats:', error)
+    }
+  }
+
   useEffect(() => {
     setMounted(true)
+
+    // Fetch real analytics stats
+    fetchAnalyticsStats(timeRange)
 
     // In production, fetch actual user tier from API
     if (isProduction) {
@@ -115,7 +140,7 @@ export default function AnalyticsPage() {
         setUserPlan('free')
       }
     }
-  }, [isProduction])
+  }, [isProduction, timeRange])
 
   // Handle opening the upgrade modal
   const handleOpenUpgradeModal = (metricId: LockedMetricId) => {
@@ -204,17 +229,12 @@ export default function AnalyticsPage() {
     hashtagPerformance: 72
   }
 
-  // Stats for production vs development
-  const stats = isProduction ? {
-    totalPosts: '0',
-    totalReach: '0',
-    avgEngagement: '0%',
-    aiGenerated: '0'
-  } : {
-    totalPosts: '147',
-    totalReach: '22.5K',
-    avgEngagement: '12.3%',
-    aiGenerated: '89'
+  // Stats using real data from API
+  const stats = {
+    totalPosts: realStats?.totalPosts?.toString() || '0',
+    totalReach: '—', // Requires platform API access
+    avgEngagement: '—', // Requires platform API access
+    aiGenerated: realStats?.aiGenerated?.toString() || '0'
   }
 
   if (!mounted) return null
