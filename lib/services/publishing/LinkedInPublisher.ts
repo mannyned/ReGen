@@ -379,12 +379,14 @@ export class LinkedInPublisher extends BasePlatformPublisher {
       throw new Error(`Failed to upload video to LinkedIn: ${uploadResponse.status}`)
     }
 
-    console.log('[LinkedIn] Video uploaded, waiting for processing...')
+    console.log('[LinkedIn] Video uploaded successfully')
 
-    // Step 4: Wait for video processing to complete
-    await this.waitForVideoProcessing(accessToken, assetUrn)
+    // Note: We skip waiting for video processing because:
+    // 1. Vercel serverless has 60 second timeout
+    // 2. LinkedIn processes videos asynchronously
+    // 3. The video will appear in the feed once LinkedIn finishes processing
+    // The post will be created with the video asset, and LinkedIn handles the rest
 
-    console.log('[LinkedIn] Video processing complete')
     return assetUrn
   }
 

@@ -53,6 +53,8 @@ function SchedulePageContent() {
   const [testMode, setTestMode] = useState(true) // Default to test mode for safety
   const [accountsLoading, setAccountsLoading] = useState(true)
   const [contentId, setContentId] = useState<string | null>(null)
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [publishingStatus, setPublishingStatus] = useState('')
 
   const platforms: { name: Platform; label: string; icon: string }[] = [
     { name: 'tiktok', label: 'TikTok', icon: '🎵' },
@@ -214,6 +216,9 @@ function SchedulePageContent() {
       }
     }
 
+    setIsPublishing(true)
+    setPublishingStatus('Preparing content...')
+
     try {
       const preview = selectedPreviews[0]
       const caption = preview?.caption || 'Test post from ReGenr'
@@ -305,12 +310,14 @@ function SchedulePageContent() {
 
         // Upload first file
         const firstFile = files[0]
+        setPublishingStatus(isVideo ? 'Uploading video...' : 'Uploading image...')
         const firstUrl = await getFileUrl(firstFile)
 
         // For carousel posts, upload additional images
         let additionalUrls: string[] = []
         if (isCarousel) {
           for (let i = 1; i < files.length; i++) {
+            setPublishingStatus(`Uploading image ${i + 1} of ${files.length}...`)
             const url = await getFileUrl(files[i])
             additionalUrls.push(url)
           }
@@ -324,6 +331,8 @@ function SchedulePageContent() {
           ...(additionalUrls.length > 0 && { additionalMediaUrls: additionalUrls }),
         }
       }
+
+      setPublishingStatus('Publishing to ' + selectedPlatforms.join(', ') + '...')
 
       // Build publish request with correct format
       const publishData = {
@@ -380,6 +389,9 @@ function SchedulePageContent() {
     } catch (error: any) {
       console.error('Error publishing now:', error)
       alert(`Failed to publish. ${error.message || 'Unknown error'}`)
+    } finally {
+      setIsPublishing(false)
+      setPublishingStatus('')
     }
   }
 
@@ -671,6 +683,20 @@ function SchedulePageContent() {
                 </div>
               </div>
 
+              {/* Publishing Loading Overlay */}
+              {isPublishing && (
+                <div className="mb-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <div>
+                      <p className="font-semibold text-blue-800">Publishing...</p>
+                      <p className="text-sm text-blue-600">{publishingStatus || 'Please wait...'}</p>
+                      <p className="text-xs text-blue-500 mt-1">Videos may take up to 5 minutes to process</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Warning Message */}
               {showWarning && (
                 <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
@@ -722,14 +748,14 @@ function SchedulePageContent() {
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={handlePublishNow}
-                  disabled={selectedPlatforms.length === 0}
+                  disabled={selectedPlatforms.length === 0 || isPublishing}
                   className="btn-primary bg-green-600 hover:bg-green-700 disabled:bg-gray-300"
                 >
-                  🚀 Post Now
+                  {isPublishing ? '⏳ Publishing...' : '🚀 Post Now'}
                 </button>
                 <button
                   onClick={handleSchedulePost}
-                  disabled={selectedPlatforms.length === 0 || !selectedDate || !selectedTime}
+                  disabled={selectedPlatforms.length === 0 || !selectedDate || !selectedTime || isPublishing}
                   className="btn-primary"
                 >
                   📅 Schedule Post
