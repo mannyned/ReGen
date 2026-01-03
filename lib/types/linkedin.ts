@@ -5,6 +5,17 @@
  */
 
 // ============================================
+// ORGANIZATION TYPES
+// ============================================
+
+export interface LinkedInOrganization {
+  id: string;
+  name: string;
+  vanityName?: string;
+  logoUrl?: string;
+}
+
+// ============================================
 // POST TYPES
 // ============================================
 
@@ -15,6 +26,7 @@ export interface LinkedInPostOptions {
   linkUrl?: string;
   imageUrl?: string;
   visibility?: LinkedInVisibility;
+  organizationId?: string; // Optional: post to organization instead of personal profile
 }
 
 export interface LinkedInPostResult {
@@ -33,6 +45,7 @@ export interface CreateLinkedInPostRequest {
   linkUrl?: string;
   imageUrl?: string;
   visibility?: LinkedInVisibility;
+  organizationId?: string; // Optional: post to organization instead of personal profile
 }
 
 export interface CreateLinkedInPostResponse {
@@ -49,6 +62,8 @@ export interface GetLinkedInStatusResponse {
   avatarUrl?: string;
   linkedInId?: string;
   expiresAt?: string;
+  organizations?: LinkedInOrganization[];
+  primaryOrganization?: LinkedInOrganization | null;
 }
 
 // ============================================

@@ -80,14 +80,15 @@ const config: ProviderConfig = {
   tokenUrl: LINKEDIN_TOKEN_URL,
   identityUrl: LINKEDIN_USERINFO_URL,
 
-  // Basic scopes for Sign In with LinkedIn
-  // Additional scopes require partner approval
+  // Scopes for Sign In with LinkedIn + Organization posting
   // See: https://learn.microsoft.com/en-us/linkedin/shared/references/v2/profile/lite-profile
   scopes: [
-    'openid',           // OpenID Connect
-    'profile',          // Basic profile
-    'email',            // Email address
-    'w_member_social',  // Post on user's behalf
+    'openid',               // OpenID Connect
+    'profile',              // Basic profile
+    'email',                // Email address
+    'w_member_social',      // Post on user's personal profile
+    'r_organization_admin', // Read organizations user administers
+    'w_organization_social', // Post on behalf of organizations
   ],
 
   capabilities: {
@@ -277,9 +278,71 @@ async function verifyToken(params: TokenVerificationParams): Promise<TokenVerifi
 }
 
 /**
+ * Fetch organizations the user administers
+ *
+ * Uses the organizationAcls endpoint to get admin organizations
+ */
+async function fetchAdminOrganizations(accessToken: string): Promise<Array<{
+  id: string;
+  name: string;
+  vanityName?: string;
+  logoUrl?: string;
+}>> {
+  try {
+    // Get organization ACLs (Access Control Lists) where user is ADMINISTRATOR
+    const aclResponse = await fetch(
+      'https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organization~(id,localizedName,vanityName,logoV2(original~:playableStreams))))',
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'LinkedIn-Version': '202401',
+        },
+      }
+    );
+
+    if (!aclResponse.ok) {
+      console.warn('[LinkedIn] Failed to fetch organizations:', aclResponse.status);
+      return [];
+    }
+
+    const aclData = await aclResponse.json();
+    const organizations: Array<{
+      id: string;
+      name: string;
+      vanityName?: string;
+      logoUrl?: string;
+    }> = [];
+
+    if (aclData.elements && Array.isArray(aclData.elements)) {
+      for (const acl of aclData.elements) {
+        const org = acl['organization~'];
+        if (org) {
+          // Extract organization ID from URN (urn:li:organization:123456 -> 123456)
+          const orgUrn = acl.organization || '';
+          const orgId = orgUrn.replace('urn:li:organization:', '');
+
+          organizations.push({
+            id: orgId,
+            name: org.localizedName || 'Unknown Organization',
+            vanityName: org.vanityName,
+            logoUrl: org.logoV2?.['original~']?.elements?.[0]?.identifiers?.[0]?.identifier,
+          });
+        }
+      }
+    }
+
+    return organizations;
+  } catch (error) {
+    console.warn('[LinkedIn] Error fetching organizations:', error);
+    return [];
+  }
+}
+
+/**
  * Fetch LinkedIn user identity
  *
- * Uses the OpenID Connect userinfo endpoint for basic profile.
+ * Uses the OpenID Connect userinfo endpoint for basic profile,
+ * then fetches organizations the user administers.
  */
 async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
   try {
@@ -299,7 +362,10 @@ async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
 
     const userData = await response.json();
 
-    // OpenID Connect userinfo response
+    // Fetch organizations the user administers
+    const organizations = await fetchAdminOrganizations(params.accessToken);
+
+    // OpenID Connect userinfo response with organizations
     return {
       providerAccountId: userData.sub,
       displayName: userData.name,
@@ -314,6 +380,10 @@ async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
         emailVerified: userData.email_verified,
         picture: userData.picture,
         locale: userData.locale,
+        // Organizations the user can post to
+        organizations,
+        // Primary organization (first one if available)
+        primaryOrganization: organizations.length > 0 ? organizations[0] : null,
       },
     };
   } catch (error) {
