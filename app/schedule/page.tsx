@@ -258,35 +258,55 @@ function SchedulePageContent() {
         return
       }
 
-      // Real publish mode - upload files first then publish
+      // Real publish mode - use uploaded file URL or show error for large files
       let mediaData = null
 
       if (preview?.files && preview.files.length > 0) {
         const file = preview.files[0]
 
         if (file.base64Data) {
-          // Upload file to get public URL
-          const uploadResponse = await fetch('/api/uploads', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              base64Data: file.base64Data,
-              filename: file.name,
+          // Check if it's already a URL (from database/Cloudinary)
+          if (file.base64Data.startsWith('http')) {
+            // Already uploaded, use the URL directly
+            mediaData = {
+              mediaUrl: file.base64Data,
+              mediaType: file.type?.startsWith('video') ? 'video' as const : 'image' as const,
               mimeType: file.type,
-            }),
-          })
+              fileSize: file.size,
+            }
+          } else {
+            // It's base64 data - check if it's too large
+            // Base64 adds ~33% overhead, so 4MB limit means ~3MB actual file
+            const base64Size = file.base64Data.length
+            if (base64Size > 4 * 1024 * 1024) {
+              throw new Error(
+                'File is too large to upload. Please go back to the Upload page and upload the file there first, then return to schedule.'
+              )
+            }
 
-          const uploadResult = await uploadResponse.json()
+            // Small enough to upload via API
+            const uploadResponse = await fetch('/api/uploads', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                base64Data: file.base64Data,
+                filename: file.name,
+                mimeType: file.type,
+              }),
+            })
 
-          if (!uploadResponse.ok || !uploadResult.success) {
-            throw new Error(`Failed to upload media: ${uploadResult.error || 'Unknown error'}`)
-          }
+            const uploadResult = await uploadResponse.json()
 
-          mediaData = {
-            mediaUrl: uploadResult.file.publicUrl,
-            mediaType: uploadResult.file.mediaType as 'image' | 'video',
-            mimeType: uploadResult.file.mimeType,
-            fileSize: uploadResult.file.fileSize,
+            if (!uploadResponse.ok || !uploadResult.success) {
+              throw new Error(`Failed to upload media: ${uploadResult.error || 'Unknown error'}`)
+            }
+
+            mediaData = {
+              mediaUrl: uploadResult.file.publicUrl,
+              mediaType: uploadResult.file.mediaType as 'image' | 'video',
+              mimeType: uploadResult.file.mimeType,
+              fileSize: uploadResult.file.fileSize,
+            }
           }
         }
       }

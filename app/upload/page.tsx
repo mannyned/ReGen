@@ -241,29 +241,24 @@ export default function UploadPage() {
         localId: string
       }> = []
 
-      // Upload files to Supabase Storage
+      // Upload files directly to Supabase Storage (bypasses API route size limits)
+      const { uploadToStorage } = await import('@/lib/storage/upload')
+
+      // Get user ID for storage path
+      const userResponse = await fetch('/api/auth/me')
+      const userData = await userResponse.json()
+      const userId = userData?.id || 'anonymous'
+
       for (const fileData of uploadedFiles) {
-        const base64Data = await fileToBase64(fileData.file)
+        // Direct upload to Supabase Storage - supports large files
+        const uploadResult = await uploadToStorage(fileData.file, userId)
 
-        // Upload to Supabase Storage
-        const uploadResponse = await fetch('/api/uploads', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            base64Data,
-            filename: fileData.file.name,
-            mimeType: fileData.file.type,
-          }),
-        })
-
-        const uploadResult = await uploadResponse.json()
-
-        if (!uploadResponse.ok || !uploadResult.success) {
+        if (!uploadResult.success) {
           throw new Error(`Failed to upload ${fileData.file.name}: ${uploadResult.error || 'Unknown error'}`)
         }
 
         uploadedFileData.push({
-          publicUrl: uploadResult.file.publicUrl,
+          publicUrl: uploadResult.publicUrl!,
           fileName: fileData.file.name,
           fileSize: fileData.file.size,
           mimeType: fileData.file.type,
