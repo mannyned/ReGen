@@ -85,12 +85,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the post (to organization if specified, otherwise personal profile)
+    // Create the post
     const result = await linkedinService.createPost(profileId, {
       text: body.text,
       linkUrl: body.linkUrl,
       visibility: body.visibility,
-      organizationId: body.organizationId,
     });
 
     const response: CreateLinkedInPostResponse = {

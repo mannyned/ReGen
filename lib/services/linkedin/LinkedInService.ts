@@ -21,7 +21,6 @@ import type {
   LinkedInPostResult,
   LinkedInVisibility,
   LinkedInUGCPost,
-  LinkedInOrganization,
 } from '@/lib/types/linkedin';
 
 // ============================================
@@ -86,8 +85,6 @@ export class LinkedInService {
     avatarUrl?: string;
     linkedInId?: string;
     expiresAt?: Date;
-    organizations?: LinkedInOrganization[];
-    primaryOrganization?: LinkedInOrganization | null;
   }> {
     const connection = await prisma.oAuthConnection.findUnique({
       where: {
@@ -108,8 +105,6 @@ export class LinkedInService {
     }
 
     const metadata = connection.metadata as Record<string, unknown> | null;
-    const organizations = (metadata?.organizations as LinkedInOrganization[]) || [];
-    const primaryOrganization = (metadata?.primaryOrganization as LinkedInOrganization) || null;
 
     return {
       connected: true,
@@ -117,8 +112,6 @@ export class LinkedInService {
       avatarUrl: metadata?.picture as string | undefined,
       linkedInId: connection.providerAccountId,
       expiresAt: connection.expiresAt || undefined,
-      organizations,
-      primaryOrganization,
     };
   }
 
@@ -127,22 +120,7 @@ export class LinkedInService {
   // ============================================
 
   /**
-   * Get the author URN based on whether posting to personal profile or organization
-   */
-  private async getAuthorUrn(profileId: string, organizationId?: string): Promise<string> {
-    if (organizationId) {
-      // Posting to organization page
-      return `urn:li:organization:${organizationId}`;
-    }
-    // Posting to personal profile
-    return this.getMemberUrn(profileId);
-  }
-
-  /**
    * Create a text post on LinkedIn
-   *
-   * @param profileId - User's profile ID
-   * @param options - Post options including text, visibility, and optional organizationId
    */
   async createPost(
     profileId: string,
@@ -150,10 +128,10 @@ export class LinkedInService {
   ): Promise<LinkedInPostResult> {
     try {
       const accessToken = await this.getValidAccessToken(profileId);
-      const authorUrn = await this.getAuthorUrn(profileId, options.organizationId);
+      const memberUrn = await this.getMemberUrn(profileId);
 
       // Build the UGC post payload
-      const postPayload = this.buildPostPayload(authorUrn, options);
+      const postPayload = this.buildPostPayload(memberUrn, options);
 
       // Create the post
       const response = await fetch(`${LINKEDIN_API_BASE}/ugcPosts`, {
@@ -185,20 +163,10 @@ export class LinkedInService {
         await this.recordPost(profileId, postId, options);
       }
 
-      // Build post URL based on whether it's org or personal
-      let postUrl: string | undefined;
-      if (postId) {
-        if (options.organizationId) {
-          postUrl = `https://www.linkedin.com/feed/update/${postId}`;
-        } else {
-          postUrl = `https://www.linkedin.com/feed/update/${postId}`;
-        }
-      }
-
       return {
         success: true,
         postId: postId || undefined,
-        postUrl,
+        postUrl: postId ? `https://www.linkedin.com/feed/update/${postId}` : undefined,
       };
     } catch (error) {
       console.error('[LinkedIn Post Error]', error);
@@ -211,18 +179,15 @@ export class LinkedInService {
 
   /**
    * Build the UGC post payload
-   *
-   * @param authorUrn - Either urn:li:person:{id} or urn:li:organization:{id}
-   * @param options - Post options
    */
   private buildPostPayload(
-    authorUrn: string,
+    memberUrn: string,
     options: LinkedInPostOptions
   ): LinkedInUGCPost {
     const visibility = options.visibility || 'PUBLIC';
 
     const payload: LinkedInUGCPost = {
-      author: authorUrn,
+      author: memberUrn,
       lifecycleState: 'PUBLISHED',
       specificContent: {
         'com.linkedin.ugc.ShareContent': {
