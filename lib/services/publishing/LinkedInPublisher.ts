@@ -1,6 +1,9 @@
 import { BasePlatformPublisher, ContentPayload, PublishOptions } from './BasePlatformPublisher'
 import type { SocialPlatform, PublishResult, PostAnalytics } from '../../types/social'
 import { API_BASE_URLS } from '../../config/oauth'
+
+// Import providers to register them with the engine
+import '@/lib/providers'
 import { getAccessToken } from '@/lib/oauth/engine'
 
 // ============================================
