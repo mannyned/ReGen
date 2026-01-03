@@ -262,52 +262,66 @@ function SchedulePageContent() {
       let mediaData = null
 
       if (preview?.files && preview.files.length > 0) {
-        const file = preview.files[0]
+        const files = preview.files.filter(f => f.base64Data) // Only files with data
+        const isVideo = files[0]?.type?.startsWith('video')
+        const isCarousel = files.length > 1 && !isVideo
 
-        if (file.base64Data) {
-          // Check if it's already a URL (from database/Cloudinary)
+        // Helper function to get URL for a file (upload if needed)
+        const getFileUrl = async (file: typeof files[0]): Promise<string> => {
+          if (!file.base64Data) throw new Error('File has no data')
+
+          // Already a URL
           if (file.base64Data.startsWith('http')) {
-            // Already uploaded, use the URL directly
-            mediaData = {
-              mediaUrl: file.base64Data,
-              mediaType: file.type?.startsWith('video') ? 'video' as const : 'image' as const,
-              mimeType: file.type,
-              fileSize: file.size,
-            }
-          } else {
-            // It's base64 data - check if it's too large
-            // Base64 adds ~33% overhead, so 4MB limit means ~3MB actual file
-            const base64Size = file.base64Data.length
-            if (base64Size > 4 * 1024 * 1024) {
-              throw new Error(
-                'File is too large to upload. Please go back to the Upload page and upload the file there first, then return to schedule.'
-              )
-            }
-
-            // Small enough to upload via API
-            const uploadResponse = await fetch('/api/uploads', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                base64Data: file.base64Data,
-                filename: file.name,
-                mimeType: file.type,
-              }),
-            })
-
-            const uploadResult = await uploadResponse.json()
-
-            if (!uploadResponse.ok || !uploadResult.success) {
-              throw new Error(`Failed to upload media: ${uploadResult.error || 'Unknown error'}`)
-            }
-
-            mediaData = {
-              mediaUrl: uploadResult.file.publicUrl,
-              mediaType: uploadResult.file.mediaType as 'image' | 'video',
-              mimeType: uploadResult.file.mimeType,
-              fileSize: uploadResult.file.fileSize,
-            }
+            return file.base64Data
           }
+
+          // Base64 data - check size and upload
+          const base64Size = file.base64Data.length
+          if (base64Size > 4 * 1024 * 1024) {
+            throw new Error(
+              'File is too large to upload. Please go back to the Upload page and upload the file there first, then return to schedule.'
+            )
+          }
+
+          // Upload via API
+          const uploadResponse = await fetch('/api/uploads', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              base64Data: file.base64Data,
+              filename: file.name,
+              mimeType: file.type,
+            }),
+          })
+
+          const uploadResult = await uploadResponse.json()
+
+          if (!uploadResponse.ok || !uploadResult.success) {
+            throw new Error(`Failed to upload media: ${uploadResult.error || 'Unknown error'}`)
+          }
+
+          return uploadResult.file.publicUrl
+        }
+
+        // Upload first file
+        const firstFile = files[0]
+        const firstUrl = await getFileUrl(firstFile)
+
+        // For carousel posts, upload additional images
+        let additionalUrls: string[] = []
+        if (isCarousel) {
+          for (let i = 1; i < files.length; i++) {
+            const url = await getFileUrl(files[i])
+            additionalUrls.push(url)
+          }
+        }
+
+        mediaData = {
+          mediaUrl: firstUrl,
+          mediaType: isVideo ? 'video' as const : (isCarousel ? 'carousel' as const : 'image' as const),
+          mimeType: firstFile.type,
+          fileSize: firstFile.size,
+          ...(additionalUrls.length > 0 && { additionalMediaUrls: additionalUrls }),
         }
       }
 
@@ -494,6 +508,13 @@ function SchedulePageContent() {
                             {preview.files[0].type?.startsWith('video/') && (
                               <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                                 <span className="text-white text-3xl">▶️</span>
+                              </div>
+                            )}
+                            {/* Multiple images indicator */}
+                            {preview.files.length > 1 && !preview.files[0].type?.startsWith('video/') && (
+                              <div className="absolute top-2 right-2 bg-black/70 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                                <span>📷</span>
+                                <span>{preview.files.length}</span>
                               </div>
                             )}
                           </div>
