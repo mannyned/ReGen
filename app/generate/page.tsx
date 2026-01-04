@@ -220,7 +220,7 @@ function GeneratePageContent() {
               platform,
               icon: PLATFORM_CONFIG[platform].icon,
               format: PLATFORM_CONFIG[platform].formats[processedData.contentType],
-              caption: generateDefaultCaption(platform, processedData.contentType),
+              caption: generateDefaultCaption(platform, processedData.contentType, processedData.textContent, processedData.urlContent),
               hashtags: generateDefaultHashtags(platform, processedData.customHashtags),
               files: filesForPlatform,
               currentFileIndex: 0
@@ -271,7 +271,7 @@ function GeneratePageContent() {
               platform,
               icon: PLATFORM_CONFIG[platform].icon,
               format: PLATFORM_CONFIG[platform].formats[parsed.contentType],
-              caption: generateDefaultCaption(platform, parsed.contentType),
+              caption: generateDefaultCaption(platform, parsed.contentType, parsed.textContent, parsed.urlContent),
               hashtags: generateDefaultHashtags(platform, parsed.customHashtags),
               files: filesForPlatform,
               currentFileIndex: 0
@@ -316,7 +316,23 @@ function GeneratePageContent() {
     return files.slice(0, limit)
   }
 
-  const generateDefaultCaption = (platform: Platform, contentType: ContentType): string => {
+  const generateDefaultCaption = (
+    platform: Platform,
+    contentType: ContentType,
+    textContent?: string,
+    urlContent?: string
+  ): string => {
+    // If user provided text content, use it (with URL appended if present)
+    if (textContent || urlContent) {
+      let caption = textContent || ''
+      // Append URL if provided and not already in the text
+      if (urlContent && !caption.includes(urlContent)) {
+        caption = caption ? `${caption}\n\n${urlContent}` : urlContent
+      }
+      return caption
+    }
+
+    // Fallback to default captions if no user content
     const captions: Record<Platform, string> = {
       tiktok: 'Transform your content strategy with AI! 🚀 See how ReGenr helps creators save 10+ hours per week.',
       instagram: 'Swipe to see how AI is changing content creation 👉\n\nReGenr transforms one video into posts for every platform. No more manual editing!',
