@@ -529,30 +529,16 @@ export default function DashboardPage() {
                             No longer available
                           </span>
                         ) : (
-                          <>
-                            {post.platformUrl && (
-                              <a
-                                href={post.platformUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:text-primary-hover text-sm font-medium transition-colors"
-                              >
-                                View
-                              </a>
-                            )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (confirm('Mark this post as deleted from the platform?')) {
-                                  markPostAsDeleted(post.id)
-                                }
-                              }}
-                              className="text-gray-400 hover:text-red-500 text-sm transition-colors"
-                              title="Mark as deleted"
+                          post.platformUrl && (
+                            <a
+                              href={post.platformUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:text-primary-hover text-sm font-medium transition-colors"
                             >
-                              🗑️
-                            </button>
-                          </>
+                              View
+                            </a>
+                          )
                         )}
                       </div>
                     </div>
