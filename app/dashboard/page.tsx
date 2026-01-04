@@ -56,7 +56,7 @@ export default function DashboardPage() {
   const [recentPosts, setRecentPosts] = useState<RecentPost[]>([])
   const [loadingPosts, setLoadingPosts] = useState(true)
   const [totalPosts, setTotalPosts] = useState(0)
-  const [activeFilter, setActiveFilter] = useState<'all' | 'published' | 'scheduled' | 'drafts'>('all')
+  const [activeFilter, setActiveFilter] = useState<'all' | 'published' | 'scheduled' | 'drafts' | 'deleted'>('all')
   const [checkingPostId, setCheckingPostId] = useState<string | null>(null)
 
   // Fetch posts with filter
@@ -82,7 +82,7 @@ export default function DashboardPage() {
   }, [])
 
   // Handle filter change
-  const handleFilterChange = (filter: 'all' | 'published' | 'scheduled' | 'drafts') => {
+  const handleFilterChange = (filter: 'all' | 'published' | 'scheduled' | 'drafts' | 'deleted') => {
     setActiveFilter(filter)
     fetchPosts(filter)
   }
@@ -434,6 +434,16 @@ export default function DashboardPage() {
                   }`}
                 >
                   Drafts
+                </button>
+                <button
+                  onClick={() => handleFilterChange('deleted')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    activeFilter === 'deleted'
+                      ? 'bg-red-500 text-white shadow-sm'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                  }`}
+                >
+                  Deleted
                 </button>
               </div>
             )}
