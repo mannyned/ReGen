@@ -57,6 +57,7 @@ export default function DashboardPage() {
   const [loadingPosts, setLoadingPosts] = useState(true)
   const [totalPosts, setTotalPosts] = useState(0)
   const [activeFilter, setActiveFilter] = useState<'all' | 'published' | 'scheduled' | 'drafts'>('all')
+  const [checkingPostId, setCheckingPostId] = useState<string | null>(null)
 
   // Fetch posts with filter
   const fetchPosts = async (filter: string) => {
@@ -108,6 +109,25 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Failed to mark post as deleted:', error)
     }
+  }
+
+  // Handle View click - open URL and show confirmation prompt
+  const handleViewClick = (postId: string, platformUrl: string) => {
+    // Open the platform URL in a new tab
+    window.open(platformUrl, '_blank', 'noopener,noreferrer')
+    // Show the confirmation prompt for this post
+    setCheckingPostId(postId)
+  }
+
+  // Handle user confirming post was deleted
+  const handleConfirmDeleted = (postId: string) => {
+    markPostAsDeleted(postId)
+    setCheckingPostId(null)
+  }
+
+  // Handle user confirming post still exists
+  const handleConfirmExists = () => {
+    setCheckingPostId(null)
   }
 
   // Stats based on actual posts
@@ -530,14 +550,15 @@ export default function DashboardPage() {
                           </span>
                         ) : (
                           post.platformUrl && (
-                            <a
-                              href={post.platformUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleViewClick(post.id, post.platformUrl!)
+                              }}
                               className="text-primary hover:text-primary-hover text-sm font-medium transition-colors"
                             >
                               View
-                            </a>
+                            </button>
                           )
                         )}
                       </div>
@@ -601,6 +622,39 @@ export default function DashboardPage() {
           </div>
         </GradientBanner>
       </main>
+
+      {/* Post Status Check Toast */}
+      {checkingPostId && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 flex items-center gap-4 max-w-md">
+            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <span className="text-xl">❓</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-text-primary">
+                Was this post still available on the platform?
+              </p>
+              <p className="text-xs text-text-secondary mt-0.5">
+                Help us keep your dashboard accurate
+              </p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <button
+                onClick={handleConfirmExists}
+                className="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-100 hover:bg-green-200 rounded-lg transition-colors"
+              >
+                Yes ✓
+              </button>
+              <button
+                onClick={() => handleConfirmDeleted(checkingPostId)}
+                className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+              >
+                No ✗
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
