@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/auth/getUser'
+import { OutboundPostStatus } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
@@ -21,26 +22,34 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get limit from query params (default 10)
+    // Get query params
     const { searchParams } = new URL(request.url)
     const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50)
+    const filter = searchParams.get('filter') || 'all' // all, published, scheduled, drafts
+
+    // Build where clause based on filter
+    // Available statuses: QUEUED, PROCESSING, POSTED, FAILED, INITIATED
+    let statusFilter: OutboundPostStatus = OutboundPostStatus.POSTED
+    if (filter === 'published') {
+      statusFilter = OutboundPostStatus.POSTED
+    } else if (filter === 'scheduled') {
+      statusFilter = OutboundPostStatus.QUEUED // Scheduled posts are queued
+    } else if (filter === 'drafts') {
+      statusFilter = OutboundPostStatus.INITIATED // Drafts are initiated but not submitted
+    }
+    // 'all' returns POSTED only for now
 
     // Fetch recent outbound posts
     const posts = await prisma.outboundPost.findMany({
       where: {
         profileId,
-        status: 'POSTED',
+        status: statusFilter,
       },
       orderBy: {
         postedAt: 'desc',
       },
       take: limit,
-      select: {
-        id: true,
-        provider: true,
-        externalPostId: true,
-        postedAt: true,
-        metadata: true,
+      include: {
         contentUpload: {
           select: {
             id: true,
@@ -78,9 +87,18 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Get total count of all posted content (not limited)
+    const totalCount = await prisma.outboundPost.count({
+      where: {
+        profileId,
+        status: OutboundPostStatus.POSTED,
+      },
+    })
+
     return NextResponse.json({
       posts: recentPosts,
       count: recentPosts.length,
+      totalCount,
     })
   } catch (error) {
     console.error('[Recent Posts Error]', error)

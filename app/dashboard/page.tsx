@@ -53,31 +53,40 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState(false)
   const [recentPosts, setRecentPosts] = useState<RecentPost[]>([])
   const [loadingPosts, setLoadingPosts] = useState(true)
+  const [totalPosts, setTotalPosts] = useState(0)
+  const [activeFilter, setActiveFilter] = useState<'all' | 'published' | 'scheduled' | 'drafts'>('all')
+
+  // Fetch posts with filter
+  const fetchPosts = async (filter: string) => {
+    setLoadingPosts(true)
+    try {
+      const response = await fetch(`/api/posts/recent?limit=6&filter=${filter}`)
+      if (response.ok) {
+        const data = await response.json()
+        setRecentPosts(data.posts || [])
+        setTotalPosts(data.totalCount || 0)
+      }
+    } catch (error) {
+      console.error('Failed to fetch recent posts:', error)
+    } finally {
+      setLoadingPosts(false)
+    }
+  }
 
   useEffect(() => {
     setMounted(true)
-
-    // Fetch recent posts
-    async function fetchRecentPosts() {
-      try {
-        const response = await fetch('/api/posts/recent?limit=6')
-        if (response.ok) {
-          const data = await response.json()
-          setRecentPosts(data.posts || [])
-        }
-      } catch (error) {
-        console.error('Failed to fetch recent posts:', error)
-      } finally {
-        setLoadingPosts(false)
-      }
-    }
-
-    fetchRecentPosts()
+    fetchPosts(activeFilter)
   }, [])
+
+  // Handle filter change
+  const handleFilterChange = (filter: 'all' | 'published' | 'scheduled' | 'drafts') => {
+    setActiveFilter(filter)
+    fetchPosts(filter)
+  }
 
   // Stats based on actual posts
   const stats = {
-    repurposesDone: recentPosts.length,
+    repurposesDone: totalPosts, // Use total count, not limited list
     totalEngagement: '—',
     averageReach: '—',
     postsThisWeek: recentPosts.filter(p => {
@@ -338,18 +347,46 @@ export default function DashboardPage() {
             <h2 className="text-2xl font-bold text-text-primary">Recent Posts</h2>
             {currentPlan !== 'free' && (
               <div className="flex gap-2">
-                <button className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium shadow-sm">
+                <button
+                  onClick={() => handleFilterChange('all')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    activeFilter === 'all'
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                  }`}
+                >
                   All
                 </button>
-                <button className="px-4 py-2 bg-white text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors border border-gray-200">
+                <button
+                  onClick={() => handleFilterChange('published')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    activeFilter === 'published'
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                  }`}
+                >
                   Published
                 </button>
                 {planFeatures.scheduling && (
-                  <button className="px-4 py-2 bg-white text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors border border-gray-200">
+                  <button
+                    onClick={() => handleFilterChange('scheduled')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      activeFilter === 'scheduled'
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                    }`}
+                  >
                     Scheduled
                   </button>
                 )}
-                <button className="px-4 py-2 bg-white text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors border border-gray-200">
+                <button
+                  onClick={() => handleFilterChange('drafts')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    activeFilter === 'drafts'
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                  }`}
+                >
                   Drafts
                 </button>
               </div>
