@@ -28,22 +28,26 @@ export async function GET(request: NextRequest) {
     const filter = searchParams.get('filter') || 'all' // all, published, scheduled, drafts
 
     // Build where clause based on filter
-    // Available statuses: QUEUED, PROCESSING, POSTED, FAILED, INITIATED
-    let statusFilter: OutboundPostStatus = OutboundPostStatus.POSTED
+    // Available statuses: QUEUED, PROCESSING, POSTED, FAILED, INITIATED, DELETED
+    let statusFilter: OutboundPostStatus | OutboundPostStatus[] = OutboundPostStatus.POSTED
     if (filter === 'published') {
       statusFilter = OutboundPostStatus.POSTED
     } else if (filter === 'scheduled') {
       statusFilter = OutboundPostStatus.QUEUED // Scheduled posts are queued
     } else if (filter === 'drafts') {
       statusFilter = OutboundPostStatus.INITIATED // Drafts are initiated but not submitted
+    } else if (filter === 'deleted') {
+      statusFilter = OutboundPostStatus.DELETED // Deleted from platform
+    } else if (filter === 'all') {
+      // Show both posted and deleted posts
+      statusFilter = [OutboundPostStatus.POSTED, OutboundPostStatus.DELETED]
     }
-    // 'all' returns POSTED only for now
 
     // Fetch recent outbound posts
     const posts = await prisma.outboundPost.findMany({
       where: {
         profileId,
-        status: statusFilter,
+        status: Array.isArray(statusFilter) ? { in: statusFilter } : statusFilter,
       },
       orderBy: {
         postedAt: 'desc',
@@ -80,6 +84,8 @@ export async function GET(request: NextRequest) {
         platformUrl: metadata?.platformUrl as string | undefined,
         caption: metadata?.caption as string | undefined,
         postedAt: post.postedAt?.toISOString(),
+        status: post.status,
+        deletedAt: metadata?.deletedAt as string | undefined,
         thumbnail,
         fileName: post.contentUpload?.fileName,
         mimeType,

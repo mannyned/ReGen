@@ -906,6 +906,7 @@ enum OutboundPostStatus {
   POSTED
   FAILED
   INITIATED  // For user-initiated shares (Snapchat)
+  DELETED    // Post was deleted from the platform
 
   @@map("outbound_post_status")
 }

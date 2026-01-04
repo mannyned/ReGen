@@ -42,6 +42,8 @@ interface RecentPost {
   platformUrl?: string
   caption?: string
   postedAt?: string
+  status?: string
+  deletedAt?: string
   thumbnail?: string
   fileName?: string
   mimeType?: string
@@ -82,6 +84,30 @@ export default function DashboardPage() {
   const handleFilterChange = (filter: 'all' | 'published' | 'scheduled' | 'drafts') => {
     setActiveFilter(filter)
     fetchPosts(filter)
+  }
+
+  // Mark a post as deleted
+  const markPostAsDeleted = async (postId: string) => {
+    try {
+      const response = await fetch(`/api/posts/${postId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'DELETED' }),
+      })
+
+      if (response.ok) {
+        // Update local state to reflect deletion
+        setRecentPosts(prev =>
+          prev.map(post =>
+            post.id === postId
+              ? { ...post, status: 'DELETED', deletedAt: new Date().toISOString() }
+              : post
+          )
+        )
+      }
+    } catch (error) {
+      console.error('Failed to mark post as deleted:', error)
+    }
   }
 
   // Stats based on actual posts
@@ -410,10 +436,18 @@ export default function DashboardPage() {
               recentPosts.map((post) => (
                 <Card
                   key={post.id}
-                  className="overflow-hidden group cursor-pointer"
+                  className={`overflow-hidden group cursor-pointer ${post.status === 'DELETED' ? 'opacity-75' : ''}`}
                 >
                   {/* Thumbnail */}
                   <div className="h-48 bg-gradient-to-br from-primary/10 to-accent-purple/20 flex items-center justify-center text-6xl relative overflow-hidden">
+                    {/* Deleted overlay */}
+                    {post.status === 'DELETED' && (
+                      <div className="absolute inset-0 bg-black/40 z-10 flex items-center justify-center">
+                        <div className="bg-red-500/90 text-white text-sm font-medium px-3 py-1.5 rounded-full">
+                          Deleted from platform
+                        </div>
+                      </div>
+                    )}
                     {post.thumbnail ? (
                       <>
                         {post.mediaType === 'video' || post.mimeType?.startsWith('video') ? (
@@ -463,7 +497,9 @@ export default function DashboardPage() {
                         {post.caption?.substring(0, 40) || post.fileName || 'Untitled Post'}
                         {post.caption && post.caption.length > 40 ? '...' : ''}
                       </h3>
-                      <Badge variant="success">published</Badge>
+                      <Badge variant={post.status === 'DELETED' ? 'error' : 'success'}>
+                        {post.status === 'DELETED' ? 'deleted' : 'published'}
+                      </Badge>
                     </div>
 
                     {/* Platform */}
@@ -483,18 +519,40 @@ export default function DashboardPage() {
                     {/* Footer */}
                     <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                       <span className="text-sm text-text-secondary">
-                        {formatRelativeTime(post.postedAt)}
+                        {post.status === 'DELETED' && post.deletedAt
+                          ? `Deleted ${formatRelativeTime(post.deletedAt)}`
+                          : formatRelativeTime(post.postedAt)}
                       </span>
                       <div className="flex gap-3">
-                        {post.platformUrl && (
-                          <a
-                            href={post.platformUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:text-primary-hover text-sm font-medium transition-colors"
-                          >
-                            View
-                          </a>
+                        {post.status === 'DELETED' ? (
+                          <span className="text-gray-400 text-sm">
+                            No longer available
+                          </span>
+                        ) : (
+                          <>
+                            {post.platformUrl && (
+                              <a
+                                href={post.platformUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:text-primary-hover text-sm font-medium transition-colors"
+                              >
+                                View
+                              </a>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (confirm('Mark this post as deleted from the platform?')) {
+                                  markPostAsDeleted(post.id)
+                                }
+                              }}
+                              className="text-gray-400 hover:text-red-500 text-sm transition-colors"
+                              title="Mark as deleted"
+                            >
+                              🗑️
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
