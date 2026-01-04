@@ -460,10 +460,16 @@ function GeneratePageContent() {
 
       const data = await response.json()
 
+      // Append URL to AI-generated caption if urlContent exists
+      let finalCaption = data.caption
+      if (uploadData?.urlContent && !finalCaption.includes(uploadData.urlContent)) {
+        finalCaption = finalCaption ? `${finalCaption}\n\n${uploadData.urlContent}` : uploadData.urlContent
+      }
+
       setPreviews(prev =>
         prev.map(p =>
           p.id === id
-            ? { ...p, caption: data.caption, usageMode: 'full_rewrite' }
+            ? { ...p, caption: finalCaption, usageMode: 'full_rewrite' }
             : p
         )
       )
