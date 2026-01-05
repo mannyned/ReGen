@@ -246,6 +246,44 @@ export class TokenManager {
     userId: string,
     platform: SocialPlatform
   ): Promise<string | null> {
+    // First, try the NEW OAuthConnection table (used by the new OAuth engine)
+    // This is where the new /api/auth/[provider]/callback stores tokens
+    try {
+      const oauthConnection = await prisma.oAuthConnection.findUnique({
+        where: {
+          profileId_provider: {
+            profileId: userId,
+            provider: platform, // 'instagram', 'facebook', etc.
+          },
+        },
+      })
+
+      if (oauthConnection) {
+        // Check if token is expired
+        const bufferMs = 5 * 60 * 1000
+        const isExpired = oauthConnection.expiresAt &&
+          new Date(oauthConnection.expiresAt.getTime() - bufferMs) < new Date()
+
+        if (isExpired && oauthConnection.refreshTokenEnc) {
+          // Try to refresh using the OAuthEngine
+          try {
+            const { OAuthEngine } = await import('@/lib/oauth/engine')
+            const newToken = await OAuthEngine.getAccessToken(platform, userId)
+            return newToken
+          } catch (error) {
+            console.error(`[TokenManager] Failed to refresh OAuthConnection token for ${platform}:`, error)
+          }
+        } else {
+          // Decrypt and return the token
+          const { decrypt } = await import('@/lib/crypto/encrypt')
+          return decrypt(oauthConnection.accessTokenEnc)
+        }
+      }
+    } catch (error) {
+      console.log(`[TokenManager] OAuthConnection lookup failed for ${platform}, trying SocialConnection:`, error)
+    }
+
+    // Fallback to legacy SocialConnection table
     const connection = await this.getConnection(userId, platform)
 
     if (!connection || !connection.isActive) {
