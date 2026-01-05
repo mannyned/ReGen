@@ -200,9 +200,9 @@ export class FacebookPublisher extends BasePlatformPublisher {
   ): Promise<string> {
     const description = this.formatCaption(content)
 
-    // Use resumable upload for videos
-    // Step 1: Start upload session
-    const startResponse = await fetch(
+    // Use URL-based video upload - Facebook fetches the video from the URL
+    // This is simpler and works with publicly accessible video URLs
+    const response = await fetch(
       `${this.baseUrl}/${pageId}/videos`,
       {
         method: 'POST',
@@ -210,65 +210,20 @@ export class FacebookPublisher extends BasePlatformPublisher {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          upload_phase: 'start',
-          file_size: media.fileSize,
-          access_token: pageAccessToken,
-        }),
-      }
-    )
-
-    if (!startResponse.ok) {
-      throw new Error('Failed to start video upload')
-    }
-
-    const startData = await startResponse.json()
-    const uploadSessionId = startData.upload_session_id
-    const videoId = startData.video_id
-
-    // Step 2: Transfer video (in production, would be chunked)
-    const transferResponse = await fetch(
-      `${this.baseUrl}/${pageId}/videos`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          upload_phase: 'transfer',
-          upload_session_id: uploadSessionId,
-          start_offset: 0,
-          video_file_chunk: media.mediaUrl, // In production, actual video chunk
-          access_token: pageAccessToken,
-        }),
-      }
-    )
-
-    if (!transferResponse.ok) {
-      throw new Error('Failed to transfer video')
-    }
-
-    // Step 3: Finish upload
-    const finishResponse = await fetch(
-      `${this.baseUrl}/${pageId}/videos`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          upload_phase: 'finish',
-          upload_session_id: uploadSessionId,
+          file_url: media.mediaUrl, // Facebook will fetch video from this URL
           description,
           access_token: pageAccessToken,
         }),
       }
     )
 
-    if (!finishResponse.ok) {
-      throw new Error('Failed to finish video upload')
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to publish video: ${errorText}`)
     }
 
-    return videoId
+    const data = await response.json()
+    return data.id
   }
 
   // ============================================

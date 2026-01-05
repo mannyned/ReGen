@@ -175,14 +175,23 @@ export class YouTubePublisher extends BasePlatformPublisher {
     uploadUrl: string,
     media: ContentPayload
   ): Promise<string> {
-    // In production, this would handle chunked upload with resume capability
+    // Fetch the video from the URL first
+    const videoResponse = await fetch(media.mediaUrl)
+    if (!videoResponse.ok) {
+      throw new Error(`Failed to fetch video from URL: ${videoResponse.statusText}`)
+    }
+
+    // Get the video as an ArrayBuffer
+    const videoBuffer = await videoResponse.arrayBuffer()
+
+    // Upload the video buffer to YouTube
     const response = await fetch(uploadUrl, {
       method: 'PUT',
       headers: {
         'Content-Type': media.mimeType,
-        'Content-Length': media.fileSize.toString(),
+        'Content-Length': videoBuffer.byteLength.toString(),
       },
-      body: media.mediaUrl, // In production, actual video buffer
+      body: videoBuffer,
     })
 
     if (!response.ok) {
