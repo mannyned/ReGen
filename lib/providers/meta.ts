@@ -92,11 +92,12 @@ const config: ProviderConfig = {
 
   // Required scopes for Instagram Business functionality
   scopes: [
-    'pages_show_list',        // List Facebook Pages
-    'instagram_basic',         // Basic IG account info
+    'pages_show_list',           // List Facebook Pages
+    'instagram_basic',           // Basic IG account info
+    'instagram_content_publish', // Publish content to Instagram (REQUIRED FOR POSTING)
     'instagram_manage_insights', // IG analytics/insights
-    'pages_read_engagement',   // Page engagement metrics
-    'business_management',     // Business account management
+    'pages_read_engagement',     // Page engagement metrics
+    'business_management',       // Business account management
   ],
 
   capabilities: {
