@@ -246,6 +246,14 @@ export class TokenManager {
     userId: string,
     platform: SocialPlatform
   ): Promise<string | null> {
+    // Map platform names to OAuth provider names
+    // Some platforms use different OAuth providers (e.g., YouTube uses Google OAuth)
+    const platformToProvider: Record<string, string> = {
+      youtube: 'google',  // YouTube uses Google OAuth
+      // Add other mappings here if needed
+    }
+    const provider = platformToProvider[platform] || platform
+
     // First, try the NEW OAuthConnection table (used by the new OAuth engine)
     // This is where the new /api/auth/[provider]/callback stores tokens
     try {
@@ -253,7 +261,7 @@ export class TokenManager {
         where: {
           profileId_provider: {
             profileId: userId,
-            provider: platform, // 'instagram', 'facebook', etc.
+            provider: provider, // 'google' for YouTube, 'instagram', 'facebook', etc.
           },
         },
       })
@@ -268,10 +276,10 @@ export class TokenManager {
           // Try to refresh using the OAuthEngine
           try {
             const { OAuthEngine } = await import('@/lib/oauth/engine')
-            const newToken = await OAuthEngine.getAccessToken(platform, userId)
+            const newToken = await OAuthEngine.getAccessToken(provider, userId)
             return newToken
           } catch (error) {
-            console.error(`[TokenManager] Failed to refresh OAuthConnection token for ${platform}:`, error)
+            console.error(`[TokenManager] Failed to refresh OAuthConnection token for ${provider}:`, error)
           }
         } else {
           // Decrypt and return the token
