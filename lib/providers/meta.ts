@@ -90,14 +90,18 @@ const config: ProviderConfig = {
   identityUrl: `${META_GRAPH_URL}/me`,
   tokenVerificationUrl: `${META_GRAPH_URL}/debug_token`,
 
-  // Required scopes for Instagram Business functionality
+  // Required scopes for Facebook + Instagram functionality
   scopes: [
+    // Facebook Page permissions
     'pages_show_list',           // List Facebook Pages
-    'instagram_basic',           // Basic IG account info
-    'instagram_content_publish', // Publish content to Instagram (REQUIRED FOR POSTING)
-    'instagram_manage_insights', // IG analytics/insights
+    'pages_manage_posts',        // Publish posts to Facebook Pages (REQUIRED FOR FB POSTING)
     'pages_read_engagement',     // Page engagement metrics
+    'publish_video',             // Upload videos to Facebook Pages
     'business_management',       // Business account management
+    // Instagram permissions
+    'instagram_basic',           // Basic IG account info
+    'instagram_content_publish', // Publish content to Instagram (REQUIRED FOR IG POSTING)
+    'instagram_manage_insights', // IG analytics/insights
   ],
 
   capabilities: {
