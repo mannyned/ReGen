@@ -39,10 +39,13 @@ export class InstagramPublisher extends BasePlatformPublisher {
         accessToken
       )
 
-      // Step 3: Wait for container to be ready (for videos)
-      if (media.mediaType === 'video') {
-        await this.waitForContainerReady(containerId, accessToken)
-      }
+      // Step 3: Wait for container to be ready
+      // Both images and videos need processing time before publishing
+      await this.waitForContainerReady(
+        containerId,
+        accessToken,
+        media.mediaType === 'video' ? 60 : 10 // Videos need more time (60 attempts = 2 min), images less (10 attempts = 20 sec)
+      )
 
       // Step 4: Publish the container
       const result = await this.publishContainer(accountId, containerId, accessToken)
@@ -167,28 +170,40 @@ export class InstagramPublisher extends BasePlatformPublisher {
     maxAttempts = 30
   ): Promise<void> {
     for (let i = 0; i < maxAttempts; i++) {
-      const response = await this.makeApiRequest<{
-        status_code: string
-        status: string
-      }>(
-        `/${containerId}?fields=status_code,status`,
-        { method: 'GET' },
-        accessToken
-      )
+      try {
+        const response = await fetch(
+          `${this.baseUrl}/${containerId}?fields=status_code,status&access_token=${accessToken}`,
+          { method: 'GET' }
+        )
 
-      if (response.status_code === 'FINISHED') {
-        return
+        if (!response.ok) {
+          // If we can't check status, wait and retry
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          continue
+        }
+
+        const data = await response.json()
+
+        if (data.status_code === 'FINISHED') {
+          return
+        }
+
+        if (data.status_code === 'ERROR') {
+          throw new Error(`Container processing failed: ${data.status || 'Unknown error'}`)
+        }
+
+        // Status is IN_PROGRESS or PUBLISHED, wait and check again
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      } catch (error) {
+        // On network error, wait and retry
+        if (i === maxAttempts - 1) {
+          throw error
+        }
+        await new Promise(resolve => setTimeout(resolve, 2000))
       }
-
-      if (response.status_code === 'ERROR') {
-        throw new Error(`Container processing failed: ${response.status}`)
-      }
-
-      // Wait 2 seconds before checking again
-      await new Promise(resolve => setTimeout(resolve, 2000))
     }
 
-    throw new Error('Container processing timed out')
+    throw new Error('Container processing timed out. The media may still be processing on Instagram.')
   }
 
   private async publishContainer(
