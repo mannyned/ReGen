@@ -27,11 +27,34 @@ export async function GET(request: NextRequest) {
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
 
-    // Count total posts
+    // Calculate week start (7 days ago)
+    const weekStart = new Date()
+    weekStart.setDate(weekStart.getDate() - 7)
+
+    // Count total posts (published, not deleted)
     const totalPosts = await prisma.outboundPost.count({
       where: {
         profileId,
         status: 'POSTED',
+      },
+    })
+
+    // Count posts this week (published in last 7 days, not deleted)
+    const postsThisWeek = await prisma.outboundPost.count({
+      where: {
+        profileId,
+        status: 'POSTED',
+        postedAt: {
+          gte: weekStart,
+        },
+      },
+    })
+
+    // Count deleted posts
+    const deletedPosts = await prisma.outboundPost.count({
+      where: {
+        profileId,
+        status: 'DELETED',
       },
     })
 
@@ -43,6 +66,22 @@ export async function GET(request: NextRequest) {
         postedAt: {
           gte: startDate,
         },
+      },
+    })
+
+    // Count queued posts (awaiting processing)
+    const queuedPosts = await prisma.outboundPost.count({
+      where: {
+        profileId,
+        status: 'QUEUED',
+      },
+    })
+
+    // Count failed posts
+    const failedPosts = await prisma.outboundPost.count({
+      where: {
+        profileId,
+        status: 'FAILED',
       },
     })
 
@@ -71,7 +110,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       totalPosts,
+      postsThisWeek,
       postsInRange,
+      deletedPosts,
+      queuedPosts,
+      failedPosts,
       aiGenerated,
       platformStats,
       timeRange: days,

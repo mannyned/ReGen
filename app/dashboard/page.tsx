@@ -50,14 +50,37 @@ interface RecentPost {
   mediaType?: 'image' | 'video' | 'carousel'
 }
 
+interface AnalyticsStats {
+  totalPosts: number
+  postsThisWeek: number
+  deletedPosts: number
+  queuedPosts: number
+  failedPosts: number
+  platformStats: Record<string, number>
+}
+
 export default function DashboardPage() {
   const { currentPlan, planFeatures, usedUploads } = usePlan()
   const [mounted, setMounted] = useState(false)
   const [recentPosts, setRecentPosts] = useState<RecentPost[]>([])
   const [loadingPosts, setLoadingPosts] = useState(true)
   const [totalPosts, setTotalPosts] = useState(0)
+  const [analyticsStats, setAnalyticsStats] = useState<AnalyticsStats | null>(null)
   const [activeFilter, setActiveFilter] = useState<'all' | 'published' | 'scheduled' | 'drafts' | 'deleted'>('all')
   const [checkingPostId, setCheckingPostId] = useState<string | null>(null)
+
+  // Fetch analytics stats from API
+  const fetchAnalyticsStats = async () => {
+    try {
+      const response = await fetch('/api/analytics/stats')
+      if (response.ok) {
+        const data = await response.json()
+        setAnalyticsStats(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch analytics stats:', error)
+    }
+  }
 
   // Fetch posts with filter
   const fetchPosts = async (filter: string) => {
@@ -76,9 +99,18 @@ export default function DashboardPage() {
     }
   }
 
+  // Refresh all data (posts and stats)
+  const refreshData = async () => {
+    await Promise.all([
+      fetchPosts(activeFilter),
+      fetchAnalyticsStats()
+    ])
+  }
+
   useEffect(() => {
     setMounted(true)
     fetchPosts(activeFilter)
+    fetchAnalyticsStats()
   }, [])
 
   // Handle filter change
@@ -105,6 +137,8 @@ export default function DashboardPage() {
               : post
           )
         )
+        // Refresh analytics stats to update counts
+        fetchAnalyticsStats()
       }
     } catch (error) {
       console.error('Failed to mark post as deleted:', error)
@@ -130,18 +164,15 @@ export default function DashboardPage() {
     setCheckingPostId(null)
   }
 
-  // Stats based on actual posts
+  // Stats from API (real-time database counts)
   const stats = {
-    repurposesDone: totalPosts, // Use total count, not limited list
+    repurposesDone: analyticsStats?.totalPosts ?? totalPosts,
     totalEngagement: '—',
     averageReach: '—',
-    postsThisWeek: recentPosts.filter(p => {
-      if (!p.postedAt) return false
-      const postDate = new Date(p.postedAt)
-      const weekAgo = new Date()
-      weekAgo.setDate(weekAgo.getDate() - 7)
-      return postDate >= weekAgo
-    }).length
+    postsThisWeek: analyticsStats?.postsThisWeek ?? 0,
+    deletedPosts: analyticsStats?.deletedPosts ?? 0,
+    queuedPosts: analyticsStats?.queuedPosts ?? 0,
+    failedPosts: analyticsStats?.failedPosts ?? 0,
   }
 
   // Helper to format relative time

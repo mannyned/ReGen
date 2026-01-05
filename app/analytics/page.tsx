@@ -61,7 +61,11 @@ interface AIRecommendation {
 // Real analytics stats interface
 interface AnalyticsStats {
   totalPosts: number
+  postsThisWeek: number
   postsInRange: number
+  deletedPosts: number
+  queuedPosts: number
+  failedPosts: number
   aiGenerated: number
   platformStats: Record<string, number>
 }
