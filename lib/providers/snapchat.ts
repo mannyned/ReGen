@@ -76,12 +76,11 @@ const config: ProviderConfig = {
   tokenUrl: SNAPCHAT_TOKEN_URL,
   identityUrl: SNAPCHAT_USERINFO_URL,
 
-  // Login Kit scopes
+  // Login Kit scopes - using short format
   // See: https://developers.snap.com/api/login-kit/reference#scopes
   scopes: [
-    'https://auth.snapchat.com/oauth2/api/user.display_name',  // Display name
-    'https://auth.snapchat.com/oauth2/api/user.bitmoji.avatar', // Bitmoji avatar
-    'https://auth.snapchat.com/oauth2/api/user.external_id',    // External ID
+    'user.display_name',   // Display name
+    'user.external_id',    // External ID (required)
   ],
 
   capabilities: {
@@ -279,7 +278,7 @@ async function verifyToken(params: TokenVerificationParams): Promise<TokenVerifi
 async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
   try {
     const url = new URL(config.identityUrl);
-    url.searchParams.set('query', '{me{displayName,bitmoji{avatar},externalId}}');
+    url.searchParams.set('query', '{me{displayName,externalId}}');
 
     const response = await fetch(url.toString(), {
       headers: {
@@ -305,11 +304,9 @@ async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
     return {
       providerAccountId: userData.externalId,
       displayName: userData.displayName,
-      avatarUrl: userData.bitmoji?.avatar,
       metadata: {
         snapchatId: userData.externalId,
         displayName: userData.displayName,
-        bitmojiAvatar: userData.bitmoji?.avatar,
       },
     };
   } catch (error) {
