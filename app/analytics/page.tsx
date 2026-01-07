@@ -59,6 +59,27 @@ interface AIRecommendation {
 }
 
 // Real analytics stats interface
+interface EngagementMetrics {
+  totalLikes: number
+  totalComments: number
+  totalShares: number
+  totalSaves: number
+  totalReach: number
+  totalImpressions: number
+  avgEngagementRate: string | null
+  postsWithMetrics: number
+}
+
+interface PlatformEngagement {
+  posts: number
+  likes: number
+  comments: number
+  shares: number
+  reach: number
+  impressions: number
+  saves: number
+}
+
 interface AnalyticsStats {
   totalPosts: number
   postsThisWeek: number
@@ -68,6 +89,8 @@ interface AnalyticsStats {
   failedPosts: number
   aiGenerated: number
   platformStats: Record<string, number>
+  engagement?: EngagementMetrics
+  platformEngagement?: Record<string, PlatformEngagement>
 }
 
 export default function AnalyticsPage() {
@@ -82,6 +105,8 @@ export default function AnalyticsPage() {
   const [isTeamMember, setIsTeamMember] = useState(false)
   const [realStats, setRealStats] = useState<AnalyticsStats | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [lastSyncResult, setLastSyncResult] = useState<{ synced: number; total: number } | null>(null)
 
   // Upgrade intent tracking
   const upgradeIntent = useUpgradeIntent()
@@ -107,6 +132,27 @@ export default function AnalyticsPage() {
   // Manual refresh handler
   const handleRefresh = () => {
     fetchAnalyticsStats(timeRange, true)
+  }
+
+  // Sync analytics from connected platforms
+  const handleSyncAnalytics = async () => {
+    setIsSyncing(true)
+    setLastSyncResult(null)
+    try {
+      const response = await fetch('/api/analytics/sync', {
+        method: 'POST',
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setLastSyncResult({ synced: data.synced, total: data.total })
+        // Refresh stats after sync
+        await fetchAnalyticsStats(timeRange, false)
+      }
+    } catch (error) {
+      console.error('Failed to sync analytics:', error)
+    } finally {
+      setIsSyncing(false)
+    }
   }
 
   useEffect(() => {
@@ -245,10 +291,32 @@ export default function AnalyticsPage() {
   // Stats using real data from API
   const stats = {
     totalPosts: realStats?.totalPosts?.toString() || '0',
-    totalReach: '—', // Requires platform API access
-    avgEngagement: '—', // Requires platform API access
+    totalReach: realStats?.engagement?.totalReach
+      ? realStats.engagement.totalReach.toLocaleString()
+      : '—',
+    avgEngagement: realStats?.engagement?.avgEngagementRate
+      ? `${realStats.engagement.avgEngagementRate}%`
+      : '—',
     aiGenerated: realStats?.aiGenerated?.toString() || '0'
   }
+
+  // Build real platform data from API
+  const realPlatformData = realStats?.platformEngagement
+    ? Object.entries(realStats.platformEngagement).map(([platform, data]) => {
+        const engagementRate = data.reach > 0
+          ? ((data.likes + data.comments + data.shares + data.saves) / data.reach * 100).toFixed(1)
+          : '0'
+        return {
+          platform: platform.charAt(0).toUpperCase() + platform.slice(1),
+          posts: data.posts,
+          engagement: parseFloat(engagementRate),
+          reach: data.reach,
+          likes: data.likes,
+          comments: data.comments,
+          saves: data.saves,
+        }
+      })
+    : []
 
   if (!mounted) return null
 
@@ -418,6 +486,31 @@ export default function AnalyticsPage() {
                   ))}
                 </div>
 
+                {/* Sync Analytics Button */}
+                <button
+                  onClick={handleSyncAnalytics}
+                  disabled={isSyncing}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  title="Sync analytics from Instagram/Facebook"
+                >
+                  <svg
+                    className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                    />
+                  </svg>
+                  <span className="text-sm font-medium">
+                    {isSyncing ? 'Syncing...' : 'Sync'}
+                  </span>
+                </button>
+
                 {/* Refresh Button */}
                 <button
                   onClick={handleRefresh}
@@ -450,6 +543,31 @@ export default function AnalyticsPage() {
                 />
               </div>
             </div>
+
+            {/* Sync Result Notification */}
+            {lastSyncResult && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center justify-between animate-fade-in">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">✅</span>
+                  <div>
+                    <p className="font-medium text-green-800">
+                      Analytics synced successfully
+                    </p>
+                    <p className="text-sm text-green-600">
+                      {lastSyncResult.synced} of {lastSyncResult.total} posts updated with latest metrics
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setLastSyncResult(null)}
+                  className="text-green-600 hover:text-green-800"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
 
             {/* AI Recommendations - Pro Plan Only */}
             {userPlan === 'pro' && (
@@ -983,15 +1101,20 @@ export default function AnalyticsPage() {
                   </Badge>
                 )}
               </div>
-              {platformData.length === 0 ? (
+              {/* Use real data in production, mock data in development */}
+              {(isProduction ? realPlatformData : platformData).length === 0 ? (
                 <div className="text-center py-12">
                   <span className="text-5xl mb-4 block">📊</span>
                   <p className="text-text-secondary">No platform data yet.</p>
-                  <p className="text-sm text-text-secondary/70">Start posting to see your performance across platforms.</p>
+                  <p className="text-sm text-text-secondary/70">
+                    {isProduction
+                      ? 'Click "Sync" to fetch analytics from your connected platforms.'
+                      : 'Start posting to see your performance across platforms.'}
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {platformData.map((platform) => (
+                  {(isProduction ? realPlatformData : platformData).map((platform) => (
                     <div key={platform.platform}>
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
@@ -1003,37 +1126,47 @@ export default function AnalyticsPage() {
                           <span className="font-semibold text-text-primary">{platform.platform}</span>
                         </div>
                         <div className="flex items-center gap-4">
-                          {userPlan === 'pro' && (
+                          {userPlan === 'pro' && 'bestTime' in platform && (
                             <>
                               <span className="text-xs text-text-secondary">
                                 Best time: <span className="font-medium text-primary">{platform.bestTime}</span>
                               </span>
-                              <span className={`text-xs font-medium ${platform.growth > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {platform.growth > 0 ? '↑' : '↓'} {Math.abs(platform.growth)}%
-                              </span>
                             </>
+                          )}
+                          {'growth' in platform && userPlan === 'pro' && (
+                            <span className={`text-xs font-medium ${platform.growth > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {platform.growth > 0 ? '↑' : '↓'} {Math.abs(platform.growth)}%
+                            </span>
                           )}
                           <span className="text-sm text-text-secondary">{platform.posts} posts</span>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-4 mb-2">
+                      <div className="grid grid-cols-4 gap-4 mb-2">
                         <div>
-                          <p className="text-xs text-text-secondary mb-1">Engagement Rate</p>
+                          <p className="text-xs text-text-secondary mb-1">Engagement</p>
                           <p className="text-lg font-bold text-primary">{platform.engagement}%</p>
                         </div>
                         <div>
                           <p className="text-xs text-text-secondary mb-1">Reach</p>
                           <p className="text-lg font-bold text-text-primary">{platform.reach.toLocaleString()}</p>
                         </div>
-                        <div>
-                          <p className="text-xs text-text-secondary mb-1">Avg per Post</p>
-                          <p className="text-lg font-bold text-text-primary">{Math.round(platform.reach / platform.posts)}</p>
-                        </div>
+                        {'likes' in platform && (
+                          <div>
+                            <p className="text-xs text-text-secondary mb-1">Likes</p>
+                            <p className="text-lg font-bold text-text-primary">{platform.likes.toLocaleString()}</p>
+                          </div>
+                        )}
+                        {'saves' in platform && (
+                          <div>
+                            <p className="text-xs text-text-secondary mb-1">Saves</p>
+                            <p className="text-lg font-bold text-text-primary">{platform.saves.toLocaleString()}</p>
+                          </div>
+                        )}
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                         <div
                           className="bg-gradient-primary h-3 rounded-full transition-all duration-500"
-                          style={{ width: `${platform.engagement * 5}%` }}
+                          style={{ width: `${Math.min(platform.engagement * 5, 100)}%` }}
                         />
                       </div>
                     </div>
