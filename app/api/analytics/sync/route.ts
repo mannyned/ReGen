@@ -34,6 +34,8 @@ interface PostInsightsResponse {
 
 /**
  * Fetch Instagram media insights
+ * Note: As of 2024-2025, likes/comments come from media object, not insights endpoint
+ * Insights returns: impressions, reach, saved, shares (for supported media types)
  */
 async function fetchInstagramInsights(
   mediaId: string,
@@ -47,53 +49,74 @@ async function fetchInstagramInsights(
   shares: number
 } | null> {
   try {
-    // Instagram media insights - available metrics depend on media type
-    const metrics = 'impressions,reach,saved,likes,comments,shares'
-    const url = `${META_GRAPH_API}/${mediaId}/insights?metric=${metrics}&access_token=${accessToken}`
+    // Step 1: Get likes and comments from media object
+    const mediaUrl = `${META_GRAPH_API}/${mediaId}?fields=like_count,comments_count,media_type&access_token=${accessToken}`
+    const mediaResponse = await fetch(mediaUrl)
 
-    const response = await fetch(url)
+    let likes = 0
+    let comments = 0
+    let mediaType = 'IMAGE'
 
-    if (!response.ok) {
-      const error = await response.text()
-      console.error(`[Instagram Insights] Failed for ${mediaId}:`, error)
-      return null
+    if (mediaResponse.ok) {
+      const mediaData = await mediaResponse.json()
+      likes = mediaData.like_count || 0
+      comments = mediaData.comments_count || 0
+      mediaType = mediaData.media_type || 'IMAGE'
+      console.log(`[Instagram] Media ${mediaId}: type=${mediaType}, likes=${likes}, comments=${comments}`)
+    } else {
+      const error = await mediaResponse.text()
+      console.error(`[Instagram] Failed to get media object for ${mediaId}:`, error)
     }
 
-    const data: MediaInsightsResponse = await response.json()
+    // Step 2: Get insights (impressions, reach, saved, shares)
+    // Note: Available metrics depend on media type
+    // For Reels: plays, reach, saved, shares, total_interactions
+    // For Feed posts: impressions, reach, saved
+    const insightMetrics = mediaType === 'VIDEO' || mediaType === 'REEL'
+      ? 'reach,saved,shares,plays'
+      : 'impressions,reach,saved'
+
+    const insightsUrl = `${META_GRAPH_API}/${mediaId}/insights?metric=${insightMetrics}&access_token=${accessToken}`
+    const insightsResponse = await fetch(insightsUrl)
 
     const result = {
       impressions: 0,
       reach: 0,
-      likes: 0,
-      comments: 0,
+      likes,
+      comments,
       saved: 0,
       shares: 0,
     }
 
-    for (const insight of data.data || []) {
-      const value = insight.values?.[0]?.value || 0
-      switch (insight.name) {
-        case 'impressions':
-          result.impressions = value
-          break
-        case 'reach':
-          result.reach = value
-          break
-        case 'likes':
-          result.likes = value
-          break
-        case 'comments':
-          result.comments = value
-          break
-        case 'saved':
-          result.saved = value
-          break
-        case 'shares':
-          result.shares = value
-          break
+    if (insightsResponse.ok) {
+      const insightsData: MediaInsightsResponse = await insightsResponse.json()
+      console.log(`[Instagram] Insights for ${mediaId}:`, JSON.stringify(insightsData).slice(0, 300))
+
+      for (const insight of insightsData.data || []) {
+        const value = insight.values?.[0]?.value || 0
+        switch (insight.name) {
+          case 'impressions':
+          case 'plays':
+            result.impressions = value
+            break
+          case 'reach':
+            result.reach = value
+            break
+          case 'saved':
+            result.saved = value
+            break
+          case 'shares':
+            result.shares = value
+            break
+        }
       }
+    } else {
+      const error = await insightsResponse.text()
+      console.error(`[Instagram] Insights failed for ${mediaId}:`, error)
+      // Still return what we have from media object
     }
 
+    console.log(`[Instagram] Final metrics for ${mediaId}:`, result)
     return result
   } catch (error) {
     console.error(`[Instagram Insights] Error for ${mediaId}:`, error)
@@ -305,6 +328,13 @@ export async function POST(request: NextRequest) {
       take: 50, // Limit to 50 most recent posts
     })
 
+    // Log what posts were found
+    const postsByProvider: Record<string, number> = {}
+    for (const post of posts) {
+      postsByProvider[post.provider] = (postsByProvider[post.provider] || 0) + 1
+    }
+    console.log(`[Analytics Sync] Found ${posts.length} posts:`, postsByProvider)
+
     if (posts.length === 0) {
       return NextResponse.json({
         success: true,
@@ -340,6 +370,9 @@ export async function POST(request: NextRequest) {
     const instagramToken = metaToken
     const facebookToken = metaToken
 
+    // Log token status
+    console.log(`[Analytics Sync] Token status: Meta=${!!metaToken}, YouTube=${!!youtubeToken}`)
+
     // Check if we have any tokens
     if (!instagramToken && !facebookToken && !youtubeToken) {
       return NextResponse.json({
@@ -370,8 +403,11 @@ export async function POST(request: NextRequest) {
       else if (platform === 'youtube') accessToken = youtubeToken
 
       if (!accessToken || !post.externalPostId) {
+        console.log(`[Analytics Sync] Skipping post ${post.id}: provider=${post.provider}, platform=${platform}, hasToken=${!!accessToken}, hasExternalId=${!!post.externalPostId}`)
         continue
       }
+
+      console.log(`[Analytics Sync] Processing ${platform} post: ${post.externalPostId}`)
 
       let insights: Record<string, number> | null = null
 
