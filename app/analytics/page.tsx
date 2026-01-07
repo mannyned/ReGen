@@ -107,7 +107,6 @@ export default function AnalyticsPage() {
   const [isTeamMember, setIsTeamMember] = useState(false)
   const [realStats, setRealStats] = useState<AnalyticsStats | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [isSyncing, setIsSyncing] = useState(false)
   const [lastSyncResult, setLastSyncResult] = useState<{ synced: number; total: number } | null>(null)
 
   // Upgrade intent tracking
@@ -131,29 +130,30 @@ export default function AnalyticsPage() {
     }
   }
 
-  // Manual refresh handler
-  const handleRefresh = () => {
-    fetchAnalyticsStats(timeRange, true)
-  }
-
-  // Sync analytics from connected platforms
-  const handleSyncAnalytics = async () => {
-    setIsSyncing(true)
+  // Combined refresh handler - syncs from platforms then refreshes display
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
     setLastSyncResult(null)
+
     try {
-      const response = await fetch('/api/analytics/sync', {
+      // Step 1: Sync analytics from connected platforms
+      const syncResponse = await fetch('/api/analytics/sync', {
         method: 'POST',
       })
-      if (response.ok) {
-        const data = await response.json()
-        setLastSyncResult({ synced: data.synced, total: data.total })
-        // Refresh stats after sync
-        await fetchAnalyticsStats(timeRange, false)
+
+      if (syncResponse.ok) {
+        const syncData = await syncResponse.json()
+        if (syncData.synced > 0) {
+          setLastSyncResult({ synced: syncData.synced, total: syncData.total })
+        }
       }
+
+      // Step 2: Refresh stats from database
+      await fetchAnalyticsStats(timeRange, false)
     } catch (error) {
-      console.error('Failed to sync analytics:', error)
+      console.error('Failed to refresh analytics:', error)
     } finally {
-      setIsSyncing(false)
+      setIsRefreshing(false)
     }
   }
 
@@ -491,40 +491,15 @@ export default function AnalyticsPage() {
                   ))}
                 </div>
 
-                {/* Sync Analytics Button */}
-                <button
-                  onClick={handleSyncAnalytics}
-                  disabled={isSyncing}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
-                  title="Sync analytics from Instagram, Facebook & YouTube"
-                >
-                  <svg
-                    className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-                    />
-                  </svg>
-                  <span className="text-sm font-medium">
-                    {isSyncing ? 'Syncing...' : 'Sync'}
-                  </span>
-                </button>
-
-                {/* Refresh Button */}
+                {/* Refresh Button - Syncs from platforms & refreshes display */}
                 <button
                   onClick={handleRefresh}
                   disabled={isRefreshing}
-                  className="p-2.5 bg-white rounded-xl shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
-                  title="Refresh analytics"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-xl shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-50 border border-gray-200"
+                  title="Refresh analytics from all connected platforms"
                 >
                   <svg
-                    className={`w-5 h-5 text-text-secondary ${isRefreshing ? 'animate-spin' : ''}`}
+                    className={`w-4 h-4 text-text-secondary ${isRefreshing ? 'animate-spin' : ''}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -536,6 +511,9 @@ export default function AnalyticsPage() {
                       d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                     />
                   </svg>
+                  <span className="text-sm font-medium text-text-secondary">
+                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                  </span>
                 </button>
 
                 {/* Export Analytics Button - PRO Only */}
