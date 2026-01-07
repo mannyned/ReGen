@@ -82,6 +82,15 @@ interface PlatformEngagement {
   views: number
 }
 
+interface AdvancedMetrics {
+  contentVelocity: number
+  viralityScore: number
+  crossPlatformSynergy: number
+  hashtagPerformance: number
+  postsPerWeek: number
+  avgReachPerPost: number
+}
+
 interface AnalyticsStats {
   totalPosts: number
   postsThisWeek: number
@@ -93,6 +102,7 @@ interface AnalyticsStats {
   platformStats: Record<string, number>
   engagement?: EngagementMetrics
   platformEngagement?: Record<string, PlatformEngagement>
+  advancedMetrics?: AdvancedMetrics
 }
 
 export default function AnalyticsPage() {
@@ -274,20 +284,14 @@ export default function AnalyticsPage() {
     }
   ]
 
-  const advancedMetrics = isProduction ? {
-    sentimentScore: 0,
-    audienceRetention: 0,
-    viralityScore: 0,
-    contentVelocity: 0,
-    crossPlatformSynergy: 0,
-    hashtagPerformance: 0
-  } : {
-    sentimentScore: 78,
-    audienceRetention: 65,
-    viralityScore: 42,
-    contentVelocity: 3.2,
-    crossPlatformSynergy: 85,
-    hashtagPerformance: 72
+  // Use real advanced metrics from API, with fallback to 0
+  const advancedMetrics = {
+    sentimentScore: 0, // Not implemented yet - needs AI/NLP
+    audienceRetention: 0, // Not implemented yet - needs YouTube Analytics API
+    viralityScore: realStats?.advancedMetrics?.viralityScore ?? 0,
+    contentVelocity: realStats?.advancedMetrics?.contentVelocity ?? 0,
+    crossPlatformSynergy: realStats?.advancedMetrics?.crossPlatformSynergy ?? 0,
+    hashtagPerformance: realStats?.advancedMetrics?.hashtagPerformance ?? 0,
   }
 
   // Stats using real data from API

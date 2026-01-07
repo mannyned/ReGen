@@ -191,6 +191,66 @@ export async function GET(request: NextRequest) {
       ? ((totalEngagement / totalReach) * 100).toFixed(2)
       : null
 
+    // ============================================
+    // ADVANCED METRICS CALCULATIONS
+    // ============================================
+
+    // 1. Content Velocity - Posts per day in the time range
+    const contentVelocity = days > 0 ? parseFloat((postsInRange / days).toFixed(2)) : 0
+
+    // 2. Virality Score - Based on shares + saves relative to reach
+    // Score 0-100: Higher means more viral potential
+    let viralityScore = 0
+    if (totalReach > 0) {
+      const viralActions = totalShares + totalSaves
+      const viralRatio = viralActions / totalReach
+      // Scale to 0-100 (assuming 5% viral rate is excellent = 100)
+      viralityScore = Math.min(100, Math.round(viralRatio * 2000))
+    }
+
+    // 3. Cross-Platform Synergy - Consistency of engagement across platforms
+    // Score 0-100: Higher means more consistent performance
+    let crossPlatformSynergy = 0
+    const platformEngagementRates: number[] = []
+
+    for (const [, data] of Object.entries(platformEngagement)) {
+      if (data.posts > 0 && data.reach > 0) {
+        const platformRate = ((data.likes + data.comments + data.shares + data.saves) / data.reach) * 100
+        platformEngagementRates.push(platformRate)
+      }
+    }
+
+    if (platformEngagementRates.length >= 2) {
+      // Calculate coefficient of variation (lower = more consistent)
+      const mean = platformEngagementRates.reduce((a, b) => a + b, 0) / platformEngagementRates.length
+      const variance = platformEngagementRates.reduce((sum, rate) => sum + Math.pow(rate - mean, 2), 0) / platformEngagementRates.length
+      const stdDev = Math.sqrt(variance)
+      const coeffOfVariation = mean > 0 ? stdDev / mean : 1
+
+      // Convert to 0-100 score (lower variation = higher synergy)
+      crossPlatformSynergy = Math.max(0, Math.min(100, Math.round((1 - coeffOfVariation) * 100)))
+    } else if (platformEngagementRates.length === 1) {
+      // Only one platform with data - give a baseline score
+      crossPlatformSynergy = 50
+    }
+
+    // 4. Hashtag Performance - Placeholder (would need hashtag tracking)
+    // For now, estimate based on reach per post
+    const avgReachPerPost = postsWithMetrics > 0 ? totalReach / postsWithMetrics : 0
+    // Score based on reach benchmarks (1000 reach per post = 50%, 5000+ = 100%)
+    const hashtagPerformance = Math.min(100, Math.round((avgReachPerPost / 5000) * 100))
+
+    // Bundle advanced metrics
+    const advancedMetrics = {
+      contentVelocity,
+      viralityScore,
+      crossPlatformSynergy,
+      hashtagPerformance,
+      // Additional context
+      postsPerWeek: parseFloat((postsInRange / (days / 7)).toFixed(1)),
+      avgReachPerPost: Math.round(avgReachPerPost),
+    }
+
     return NextResponse.json({
       totalPosts,
       postsThisWeek,
@@ -214,6 +274,8 @@ export async function GET(request: NextRequest) {
         postsWithMetrics,
       },
       platformEngagement,
+      // Advanced metrics (Pro feature)
+      advancedMetrics,
     })
   } catch (error) {
     console.error('[Analytics Stats Error]', error)
