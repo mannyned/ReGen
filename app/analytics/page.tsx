@@ -59,38 +59,6 @@ interface AIRecommendation {
 }
 
 // Real analytics stats interface
-interface EngagementMetrics {
-  totalLikes: number
-  totalComments: number
-  totalShares: number
-  totalSaves: number
-  totalViews: number
-  totalReach: number
-  totalImpressions: number
-  avgEngagementRate: string | null
-  postsWithMetrics: number
-}
-
-interface PlatformEngagement {
-  posts: number
-  likes: number
-  comments: number
-  shares: number
-  reach: number
-  impressions: number
-  saves: number
-  views: number
-}
-
-interface AdvancedMetrics {
-  contentVelocity: number
-  viralityScore: number
-  crossPlatformSynergy: number
-  hashtagPerformance: number
-  postsPerWeek: number
-  avgReachPerPost: number
-}
-
 interface AnalyticsStats {
   totalPosts: number
   postsThisWeek: number
@@ -100,9 +68,6 @@ interface AnalyticsStats {
   failedPosts: number
   aiGenerated: number
   platformStats: Record<string, number>
-  engagement?: EngagementMetrics
-  platformEngagement?: Record<string, PlatformEngagement>
-  advancedMetrics?: AdvancedMetrics
 }
 
 export default function AnalyticsPage() {
@@ -116,8 +81,6 @@ export default function AnalyticsPage() {
   const [analyticsPermissions, setAnalyticsPermissions] = useState<AnalyticsPermissions | null>(null)
   const [isTeamMember, setIsTeamMember] = useState(false)
   const [realStats, setRealStats] = useState<AnalyticsStats | null>(null)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [lastSyncResult, setLastSyncResult] = useState<{ synced: number; total: number } | null>(null)
 
   // Upgrade intent tracking
   const upgradeIntent = useUpgradeIntent()
@@ -125,9 +88,8 @@ export default function AnalyticsPage() {
   const isProduction = process.env.NODE_ENV === 'production'
 
   // Fetch real analytics stats
-  const fetchAnalyticsStats = async (days: string, showRefreshState = false) => {
+  const fetchAnalyticsStats = async (days: string) => {
     try {
-      if (showRefreshState) setIsRefreshing(true)
       const response = await fetch(`/api/analytics/stats?days=${days}`)
       if (response.ok) {
         const data = await response.json()
@@ -135,35 +97,6 @@ export default function AnalyticsPage() {
       }
     } catch (error) {
       console.error('Failed to fetch analytics stats:', error)
-    } finally {
-      if (showRefreshState) setIsRefreshing(false)
-    }
-  }
-
-  // Combined refresh handler - syncs from platforms then refreshes display
-  const handleRefresh = async () => {
-    setIsRefreshing(true)
-    setLastSyncResult(null)
-
-    try {
-      // Step 1: Sync analytics from connected platforms
-      const syncResponse = await fetch('/api/analytics/sync', {
-        method: 'POST',
-      })
-
-      if (syncResponse.ok) {
-        const syncData = await syncResponse.json()
-        if (syncData.synced > 0) {
-          setLastSyncResult({ synced: syncData.synced, total: syncData.total })
-        }
-      }
-
-      // Step 2: Refresh stats from database
-      await fetchAnalyticsStats(timeRange, false)
-    } catch (error) {
-      console.error('Failed to refresh analytics:', error)
-    } finally {
-      setIsRefreshing(false)
     }
   }
 
@@ -284,48 +217,29 @@ export default function AnalyticsPage() {
     }
   ]
 
-  // Use real advanced metrics from API, with fallback to 0
-  const advancedMetrics = {
-    sentimentScore: 0, // Not implemented yet - needs AI/NLP
-    audienceRetention: 0, // Not implemented yet - needs YouTube Analytics API
-    viralityScore: realStats?.advancedMetrics?.viralityScore ?? 0,
-    contentVelocity: realStats?.advancedMetrics?.contentVelocity ?? 0,
-    crossPlatformSynergy: realStats?.advancedMetrics?.crossPlatformSynergy ?? 0,
-    hashtagPerformance: realStats?.advancedMetrics?.hashtagPerformance ?? 0,
+  const advancedMetrics = isProduction ? {
+    sentimentScore: 0,
+    audienceRetention: 0,
+    viralityScore: 0,
+    contentVelocity: 0,
+    crossPlatformSynergy: 0,
+    hashtagPerformance: 0
+  } : {
+    sentimentScore: 78,
+    audienceRetention: 65,
+    viralityScore: 42,
+    contentVelocity: 3.2,
+    crossPlatformSynergy: 85,
+    hashtagPerformance: 72
   }
 
   // Stats using real data from API
   const stats = {
     totalPosts: realStats?.totalPosts?.toString() || '0',
-    totalReach: realStats?.engagement?.totalReach
-      ? realStats.engagement.totalReach.toLocaleString()
-      : '—',
-    avgEngagement: realStats?.engagement?.avgEngagementRate
-      ? `${realStats.engagement.avgEngagementRate}%`
-      : '—',
+    totalReach: '—', // Requires platform API access
+    avgEngagement: '—', // Requires platform API access
     aiGenerated: realStats?.aiGenerated?.toString() || '0'
   }
-
-  // Build real platform data from API
-  const realPlatformData = realStats?.platformEngagement
-    ? Object.entries(realStats.platformEngagement).map(([platform, data]) => {
-        // For YouTube, use views as reach
-        const effectiveReach = platform === 'youtube' ? data.views : data.reach
-        const engagementRate = effectiveReach > 0
-          ? ((data.likes + data.comments + data.shares + data.saves) / effectiveReach * 100).toFixed(1)
-          : '0'
-        return {
-          platform: platform.charAt(0).toUpperCase() + platform.slice(1),
-          posts: data.posts,
-          engagement: parseFloat(engagementRate),
-          reach: effectiveReach,
-          likes: data.likes,
-          comments: data.comments,
-          saves: data.saves,
-          views: data.views,
-        }
-      })
-    : []
 
   if (!mounted) return null
 
@@ -495,31 +409,6 @@ export default function AnalyticsPage() {
                   ))}
                 </div>
 
-                {/* Refresh Button - Syncs from platforms & refreshes display */}
-                <button
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-xl shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-50 border border-gray-200"
-                  title="Refresh analytics from all connected platforms"
-                >
-                  <svg
-                    className={`w-4 h-4 text-text-secondary ${isRefreshing ? 'animate-spin' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
-                  <span className="text-sm font-medium text-text-secondary">
-                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
-                  </span>
-                </button>
-
                 {/* Export Analytics Button - PRO Only */}
                 <ExportAnalytics
                   userId="demo-user-id"
@@ -530,31 +419,6 @@ export default function AnalyticsPage() {
                 />
               </div>
             </div>
-
-            {/* Sync Result Notification */}
-            {lastSyncResult && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center justify-between animate-fade-in">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">✅</span>
-                  <div>
-                    <p className="font-medium text-green-800">
-                      Analytics synced successfully
-                    </p>
-                    <p className="text-sm text-green-600">
-                      {lastSyncResult.synced} of {lastSyncResult.total} posts updated with latest metrics
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setLastSyncResult(null)}
-                  className="text-green-600 hover:text-green-800"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            )}
 
             {/* AI Recommendations - Pro Plan Only */}
             {userPlan === 'pro' && (
@@ -840,14 +704,18 @@ export default function AnalyticsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <div className="text-right hidden md:block">
-                          <p className="text-2xl font-bold">47</p>
-                          <p className="text-xs text-white/80">Countries</p>
-                        </div>
-                        <div className="text-right hidden md:block">
-                          <p className="text-2xl font-bold">234</p>
-                          <p className="text-xs text-white/80">Cities</p>
-                        </div>
+                        {!isProduction && (
+                          <>
+                            <div className="text-right hidden md:block">
+                              <p className="text-2xl font-bold">47</p>
+                              <p className="text-xs text-white/80">Countries</p>
+                            </div>
+                            <div className="text-right hidden md:block">
+                              <p className="text-2xl font-bold">234</p>
+                              <p className="text-xs text-white/80">Cities</p>
+                            </div>
+                          </>
+                        )}
                         <div className="ml-4 bg-white/20 rounded-full p-3 group-hover:bg-white/30 transition-colors">
                           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -872,14 +740,18 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="text-right hidden md:block">
-                        <p className="text-2xl font-bold">2.9%</p>
-                        <p className="text-xs text-white/80">Avg Save Rate</p>
-                      </div>
-                      <div className="text-right hidden md:block">
-                        <p className="text-2xl font-bold">4,520</p>
-                        <p className="text-xs text-white/80">Total Saves</p>
-                      </div>
+                      {!isProduction && (
+                        <>
+                          <div className="text-right hidden md:block">
+                            <p className="text-2xl font-bold">2.9%</p>
+                            <p className="text-xs text-white/80">Avg Save Rate</p>
+                          </div>
+                          <div className="text-right hidden md:block">
+                            <p className="text-2xl font-bold">4,520</p>
+                            <p className="text-xs text-white/80">Total Saves</p>
+                          </div>
+                        </>
+                      )}
                       <div className="ml-4 bg-white/20 rounded-full p-3 group-hover:bg-white/30 transition-colors">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -930,14 +802,18 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="text-right hidden md:block">
-                        <p className="text-2xl font-bold">82%</p>
-                        <p className="text-xs text-white/80">Hook Score</p>
-                      </div>
-                      <div className="text-right hidden md:block">
-                        <p className="text-2xl font-bold">28%</p>
-                        <p className="text-xs text-white/80">Completion</p>
-                      </div>
+                      {!isProduction && (
+                        <>
+                          <div className="text-right hidden md:block">
+                            <p className="text-2xl font-bold">82%</p>
+                            <p className="text-xs text-white/80">Hook Score</p>
+                          </div>
+                          <div className="text-right hidden md:block">
+                            <p className="text-2xl font-bold">28%</p>
+                            <p className="text-xs text-white/80">Completion</p>
+                          </div>
+                        </>
+                      )}
                       <div className="ml-4 bg-white/20 rounded-full p-3 group-hover:bg-white/30 transition-colors">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -1076,20 +952,15 @@ export default function AnalyticsPage() {
                   </Badge>
                 )}
               </div>
-              {/* Use real data in production, mock data in development */}
-              {(isProduction ? realPlatformData : platformData).length === 0 ? (
+              {platformData.length === 0 ? (
                 <div className="text-center py-12">
                   <span className="text-5xl mb-4 block">📊</span>
                   <p className="text-text-secondary">No platform data yet.</p>
-                  <p className="text-sm text-text-secondary/70">
-                    {isProduction
-                      ? 'Click "Sync" to fetch analytics from your connected platforms.'
-                      : 'Start posting to see your performance across platforms.'}
-                  </p>
+                  <p className="text-sm text-text-secondary/70">Start posting to see your performance across platforms.</p>
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {(isProduction ? realPlatformData : platformData).map((platform) => (
+                  {platformData.map((platform) => (
                     <div key={platform.platform}>
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
@@ -1101,59 +972,37 @@ export default function AnalyticsPage() {
                           <span className="font-semibold text-text-primary">{platform.platform}</span>
                         </div>
                         <div className="flex items-center gap-4">
-                          {userPlan === 'pro' && 'bestTime' in platform && (
+                          {userPlan === 'pro' && (
                             <>
                               <span className="text-xs text-text-secondary">
                                 Best time: <span className="font-medium text-primary">{platform.bestTime}</span>
                               </span>
+                              <span className={`text-xs font-medium ${platform.growth > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {platform.growth > 0 ? '↑' : '↓'} {Math.abs(platform.growth)}%
+                              </span>
                             </>
-                          )}
-                          {'growth' in platform && userPlan === 'pro' && (
-                            <span className={`text-xs font-medium ${platform.growth > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {platform.growth > 0 ? '↑' : '↓'} {Math.abs(platform.growth)}%
-                            </span>
                           )}
                           <span className="text-sm text-text-secondary">{platform.posts} posts</span>
                         </div>
                       </div>
-                      <div className="grid grid-cols-4 gap-4 mb-2">
+                      <div className="grid grid-cols-3 gap-4 mb-2">
                         <div>
-                          <p className="text-xs text-text-secondary mb-1">Engagement</p>
+                          <p className="text-xs text-text-secondary mb-1">Engagement Rate</p>
                           <p className="text-lg font-bold text-primary">{platform.engagement}%</p>
                         </div>
-                        {'views' in platform && platform.views > 0 ? (
-                          <div>
-                            <p className="text-xs text-text-secondary mb-1">Views</p>
-                            <p className="text-lg font-bold text-text-primary">{platform.views.toLocaleString()}</p>
-                          </div>
-                        ) : (
-                          <div>
-                            <p className="text-xs text-text-secondary mb-1">Reach</p>
-                            <p className="text-lg font-bold text-text-primary">{platform.reach.toLocaleString()}</p>
-                          </div>
-                        )}
-                        {'likes' in platform && (
-                          <div>
-                            <p className="text-xs text-text-secondary mb-1">Likes</p>
-                            <p className="text-lg font-bold text-text-primary">{platform.likes.toLocaleString()}</p>
-                          </div>
-                        )}
-                        {'saves' in platform && platform.saves > 0 ? (
-                          <div>
-                            <p className="text-xs text-text-secondary mb-1">Saves</p>
-                            <p className="text-lg font-bold text-text-primary">{platform.saves.toLocaleString()}</p>
-                          </div>
-                        ) : 'comments' in platform ? (
-                          <div>
-                            <p className="text-xs text-text-secondary mb-1">Comments</p>
-                            <p className="text-lg font-bold text-text-primary">{platform.comments.toLocaleString()}</p>
-                          </div>
-                        ) : null}
+                        <div>
+                          <p className="text-xs text-text-secondary mb-1">Reach</p>
+                          <p className="text-lg font-bold text-text-primary">{platform.reach.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-text-secondary mb-1">Avg per Post</p>
+                          <p className="text-lg font-bold text-text-primary">{Math.round(platform.reach / platform.posts)}</p>
+                        </div>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                         <div
                           className="bg-gradient-primary h-3 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(platform.engagement * 5, 100)}%` }}
+                          style={{ width: `${platform.engagement * 5}%` }}
                         />
                       </div>
                     </div>
@@ -1348,29 +1197,37 @@ export default function AnalyticsPage() {
                   </Badge>
                 </div>
 
-                {/* Usage Mode Distribution */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-                    <p className="text-3xl font-bold text-green-600">42</p>
-                    <p className="text-sm text-green-700 font-medium">Identical</p>
-                    <p className="text-xs text-green-600/70">Same across platforms</p>
+                {isProduction ? (
+                  <div className="text-center py-12">
+                    <span className="text-5xl mb-4 block">📝</span>
+                    <p className="text-text-secondary">No caption data yet.</p>
+                    <p className="text-sm text-text-secondary/70">Start posting with captions to see usage analytics.</p>
                   </div>
-                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
-                    <p className="text-3xl font-bold text-purple-600">28</p>
-                    <p className="text-sm text-purple-700 font-medium">Adapted</p>
-                    <p className="text-xs text-purple-600/70">Rule-based changes</p>
-                  </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
-                    <p className="text-3xl font-bold text-blue-600">18</p>
-                    <p className="text-sm text-blue-700 font-medium">Edited</p>
-                    <p className="text-xs text-blue-600/70">Manual modifications</p>
-                  </div>
-                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
-                    <p className="text-3xl font-bold text-orange-600">9</p>
-                    <p className="text-sm text-orange-700 font-medium">Rewritten</p>
-                    <p className="text-xs text-orange-600/70">Full AI rewrites</p>
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    {/* Usage Mode Distribution */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                      <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                        <p className="text-3xl font-bold text-green-600">42</p>
+                        <p className="text-sm text-green-700 font-medium">Identical</p>
+                        <p className="text-xs text-green-600/70">Same across platforms</p>
+                      </div>
+                      <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
+                        <p className="text-3xl font-bold text-purple-600">28</p>
+                        <p className="text-sm text-purple-700 font-medium">Adapted</p>
+                        <p className="text-xs text-purple-600/70">Rule-based changes</p>
+                      </div>
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                        <p className="text-3xl font-bold text-blue-600">18</p>
+                        <p className="text-sm text-blue-700 font-medium">Edited</p>
+                        <p className="text-xs text-blue-600/70">Manual modifications</p>
+                      </div>
+                      <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
+                        <p className="text-3xl font-bold text-orange-600">9</p>
+                        <p className="text-sm text-orange-700 font-medium">Rewritten</p>
+                        <p className="text-xs text-orange-600/70">Full AI rewrites</p>
+                      </div>
+                    </div>
 
                 {/* Performance Comparison Chart */}
                 <div className="bg-gray-50 rounded-xl p-6 mb-6">
@@ -1518,28 +1375,30 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
 
-                {/* Key Insight Banner */}
-                <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="text-4xl">💡</div>
-                    <div>
-                      <h4 className="font-bold text-lg mb-1">Key Insight</h4>
-                      <p className="text-white/90 text-sm mb-2">
-                        <strong>Adapted captions outperform identical by 32%</strong> on average.
-                        The "Shorten" adaptation shows the highest impact, especially on Twitter where
-                        character limits matter. Consider using platform-specific adaptations for all your posts.
-                      </p>
-                      <div className="flex gap-3 mt-3">
-                        <Link
-                          href="/generate"
-                          className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
-                        >
-                          Try Caption Workflow →
-                        </Link>
+                    {/* Key Insight Banner */}
+                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl p-5">
+                      <div className="flex items-start gap-4">
+                        <div className="text-4xl">💡</div>
+                        <div>
+                          <h4 className="font-bold text-lg mb-1">Key Insight</h4>
+                          <p className="text-white/90 text-sm mb-2">
+                            <strong>Adapted captions outperform identical by 32%</strong> on average.
+                            The "Shorten" adaptation shows the highest impact, especially on Twitter where
+                            character limits matter. Consider using platform-specific adaptations for all your posts.
+                          </p>
+                          <div className="flex gap-3 mt-3">
+                            <Link
+                              href="/generate"
+                              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
+                            >
+                              Try Caption Workflow →
+                            </Link>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
+                  </>
+                )}
               </Card>
             )}
 
@@ -1547,20 +1406,28 @@ export default function AnalyticsPage() {
             {userPlan === 'pro' && (
               <Card className="p-6 lg:p-8 mt-8" hover={false}>
                 <h2 className="text-2xl font-bold text-text-primary mb-6">📅 Content Calendar Insights</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                    <h3 className="font-semibold text-green-900 mb-2">Peak Performance Days</h3>
-                    <p className="text-sm text-green-700">Tuesday & Thursday show 40% higher engagement</p>
+                {isProduction ? (
+                  <div className="text-center py-12">
+                    <span className="text-5xl mb-4 block">📅</span>
+                    <p className="text-text-secondary">No calendar insights yet.</p>
+                    <p className="text-sm text-text-secondary/70">Post content regularly to discover your optimal schedule.</p>
                   </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                    <h3 className="font-semibold text-blue-900 mb-2">Optimal Frequency</h3>
-                    <p className="text-sm text-blue-700">3-4 posts per platform per week maximizes reach</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                      <h3 className="font-semibold text-green-900 mb-2">Peak Performance Days</h3>
+                      <p className="text-sm text-green-700">Tuesday & Thursday show 40% higher engagement</p>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                      <h3 className="font-semibold text-blue-900 mb-2">Optimal Frequency</h3>
+                      <p className="text-sm text-blue-700">3-4 posts per platform per week maximizes reach</p>
+                    </div>
+                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                      <h3 className="font-semibold text-purple-900 mb-2">Content Mix</h3>
+                      <p className="text-sm text-purple-700">60% educational, 30% entertaining, 10% promotional</p>
+                    </div>
                   </div>
-                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                    <h3 className="font-semibold text-purple-900 mb-2">Content Mix</h3>
-                    <p className="text-sm text-purple-700">60% educational, 30% entertaining, 10% promotional</p>
-                  </div>
-                </div>
+                )}
               </Card>
             )}
 
