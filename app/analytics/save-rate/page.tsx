@@ -525,24 +525,10 @@ export default function SaveRateAnalyticsPage() {
   const loadData = async () => {
     setIsLoading(true);
 
-    // In production, load empty data (real API integration would go here)
-    const isProduction = process.env.NODE_ENV === 'production';
-
-    if (isProduction) {
-      // Production: Show empty state until real data is available
-      setSummary(null);
-      setByFormat([]);
-      setByPlatform([]);
-      setTrends([]);
-      setTopPosts([]);
-      setIsLoading(false);
-      return;
-    }
-
-    // Development: Simulate API calls with mock data
+    // Simulate API calls
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Mock data for development only
+    // Mock data
     setSummary({
       saves: 12450,
       impressions: 845000,
