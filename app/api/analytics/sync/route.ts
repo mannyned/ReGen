@@ -103,6 +103,7 @@ async function fetchInstagramInsights(
 
 /**
  * Fetch Facebook post insights
+ * Note: Facebook Page posts require Page access token and insights permission
  */
 async function fetchFacebookInsights(
   postId: string,
@@ -114,6 +115,32 @@ async function fetchFacebookInsights(
   clicks: number
 } | null> {
   try {
+    // First try to get basic post data (likes, comments, shares)
+    const basicUrl = `${META_GRAPH_API}/${postId}?fields=likes.summary(true),comments.summary(true),shares&access_token=${accessToken}`
+    const basicResponse = await fetch(basicUrl)
+
+    if (!basicResponse.ok) {
+      const error = await basicResponse.text()
+      console.error(`[Facebook Basic] Failed for ${postId}:`, error)
+      // Try insights endpoint as fallback
+    } else {
+      const basicData = await basicResponse.json()
+      console.log(`[Facebook Basic] Success for ${postId}:`, JSON.stringify(basicData).slice(0, 200))
+
+      // Return basic metrics if available
+      if (basicData.likes || basicData.comments || basicData.shares) {
+        return {
+          impressions: 0,
+          reach: 0,
+          engaged_users: (basicData.likes?.summary?.total_count || 0) +
+                         (basicData.comments?.summary?.total_count || 0) +
+                         (basicData.shares?.count || 0),
+          clicks: 0,
+        }
+      }
+    }
+
+    // Try insights endpoint (requires Page token with read_insights)
     const metrics = 'post_impressions,post_impressions_unique,post_engaged_users,post_clicks'
     const url = `${META_GRAPH_API}/${postId}/insights?metric=${metrics}&access_token=${accessToken}`
 
@@ -172,8 +199,15 @@ async function fetchYouTubeInsights(
   shares: number
 } | null> {
   try {
-    const url = `${YOUTUBE_API}/videos?part=statistics&id=${videoId}&access_token=${accessToken}`
-    const response = await fetch(url)
+    // YouTube API requires the key parameter or OAuth token in Authorization header
+    const url = `${YOUTUBE_API}/videos?part=statistics&id=${videoId}`
+
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+      },
+    })
 
     if (!response.ok) {
       const error = await response.text()
@@ -182,18 +216,24 @@ async function fetchYouTubeInsights(
     }
 
     const data = await response.json()
+    console.log(`[YouTube Insights] Response for ${videoId}:`, JSON.stringify(data).slice(0, 300))
+
     const stats = data.items?.[0]?.statistics
 
     if (!stats) {
+      console.error(`[YouTube Insights] No stats found for ${videoId}`)
       return null
     }
 
-    return {
+    const result = {
       views: parseInt(stats.viewCount || '0', 10),
       likes: parseInt(stats.likeCount || '0', 10),
       comments: parseInt(stats.commentCount || '0', 10),
       shares: 0, // YouTube doesn't expose share count in basic API
     }
+
+    console.log(`[YouTube Insights] Parsed stats for ${videoId}:`, result)
+    return result
   } catch (error) {
     console.error(`[YouTube Insights] Error for ${videoId}:`, error)
     return null
@@ -274,38 +314,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Get access tokens for Instagram, Facebook, and YouTube
-    let instagramToken: string | null = null
-    let facebookToken: string | null = null
+    // Note: Instagram and Facebook both use Meta OAuth (stored as 'meta')
+    // YouTube uses Google OAuth (stored as 'google')
+    let metaToken: string | null = null
     let youtubeToken: string | null = null
 
+    // Try to get Meta token (used for both Instagram and Facebook)
     try {
-      instagramToken = await tokenManager.getValidAccessToken(profileId, 'instagram')
+      metaToken = await tokenManager.getValidAccessToken(profileId, 'meta')
+      console.log('[Analytics Sync] Meta token retrieved successfully')
     } catch {
-      console.log('[Analytics Sync] No Instagram token available')
+      console.log('[Analytics Sync] No Meta token available')
     }
 
-    try {
-      facebookToken = await tokenManager.getValidAccessToken(profileId, 'facebook')
-    } catch {
-      console.log('[Analytics Sync] No Facebook token available')
-    }
-
+    // Try to get YouTube/Google token
     try {
       youtubeToken = await tokenManager.getValidAccessToken(profileId, 'youtube')
+      console.log('[Analytics Sync] YouTube token retrieved successfully')
     } catch {
       console.log('[Analytics Sync] No YouTube token available')
     }
 
-    // If no Meta token, try to get one
-    if (!instagramToken && !facebookToken) {
-      try {
-        const metaToken = await tokenManager.getValidAccessToken(profileId, 'meta')
-        instagramToken = metaToken
-        facebookToken = metaToken
-      } catch {
-        console.log('[Analytics Sync] No Meta token available')
-      }
-    }
+    // Use Meta token for both Instagram and Facebook
+    const instagramToken = metaToken
+    const facebookToken = metaToken
 
     // Check if we have any tokens
     if (!instagramToken && !facebookToken && !youtubeToken) {
@@ -363,26 +395,40 @@ export async function POST(request: NextRequest) {
           }
         }
       } else if (platform === 'facebook') {
+        console.log(`[Analytics Sync] Fetching Facebook insights for ${post.externalPostId}`)
         const fullInsights = await fetchFacebookInsights(post.externalPostId, accessToken)
 
         if (fullInsights) {
+          // Get likes/comments from separate call
+          const basic = await fetchBasicEngagement(post.externalPostId, accessToken, 'facebook')
+
           insights = {
             impressions: fullInsights.impressions,
             reach: fullInsights.reach,
-            likes: fullInsights.engaged_users, // Approximate
-            comments: 0,
+            likes: basic?.likes || 0,
+            comments: basic?.comments || 0,
             shares: 0,
             saves: 0,
+            engaged_users: fullInsights.engaged_users,
+          }
+          console.log(`[Analytics Sync] Facebook insights for ${post.externalPostId}:`, insights)
+        } else {
+          // Try basic engagement only as fallback
+          const basic = await fetchBasicEngagement(post.externalPostId, accessToken, 'facebook')
+          if (basic) {
+            insights = {
+              impressions: 0,
+              reach: 0,
+              likes: basic.likes,
+              comments: basic.comments,
+              shares: 0,
+              saves: 0,
+            }
+            console.log(`[Analytics Sync] Facebook basic for ${post.externalPostId}:`, insights)
           }
         }
-
-        // Get likes/comments count
-        const basic = await fetchBasicEngagement(post.externalPostId, accessToken, 'facebook')
-        if (basic && insights) {
-          insights.likes = basic.likes
-          insights.comments = basic.comments
-        }
       } else if (platform === 'youtube') {
+        console.log(`[Analytics Sync] Fetching YouTube insights for ${post.externalPostId}`)
         const youtubeInsights = await fetchYouTubeInsights(post.externalPostId, accessToken)
 
         if (youtubeInsights) {
