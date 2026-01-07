@@ -64,6 +64,7 @@ interface EngagementMetrics {
   totalComments: number
   totalShares: number
   totalSaves: number
+  totalViews: number
   totalReach: number
   totalImpressions: number
   avgEngagementRate: string | null
@@ -78,6 +79,7 @@ interface PlatformEngagement {
   reach: number
   impressions: number
   saves: number
+  views: number
 }
 
 interface AnalyticsStats {
@@ -303,17 +305,20 @@ export default function AnalyticsPage() {
   // Build real platform data from API
   const realPlatformData = realStats?.platformEngagement
     ? Object.entries(realStats.platformEngagement).map(([platform, data]) => {
-        const engagementRate = data.reach > 0
-          ? ((data.likes + data.comments + data.shares + data.saves) / data.reach * 100).toFixed(1)
+        // For YouTube, use views as reach
+        const effectiveReach = platform === 'youtube' ? data.views : data.reach
+        const engagementRate = effectiveReach > 0
+          ? ((data.likes + data.comments + data.shares + data.saves) / effectiveReach * 100).toFixed(1)
           : '0'
         return {
           platform: platform.charAt(0).toUpperCase() + platform.slice(1),
           posts: data.posts,
           engagement: parseFloat(engagementRate),
-          reach: data.reach,
+          reach: effectiveReach,
           likes: data.likes,
           comments: data.comments,
           saves: data.saves,
+          views: data.views,
         }
       })
     : []
@@ -1146,22 +1151,34 @@ export default function AnalyticsPage() {
                           <p className="text-xs text-text-secondary mb-1">Engagement</p>
                           <p className="text-lg font-bold text-primary">{platform.engagement}%</p>
                         </div>
-                        <div>
-                          <p className="text-xs text-text-secondary mb-1">Reach</p>
-                          <p className="text-lg font-bold text-text-primary">{platform.reach.toLocaleString()}</p>
-                        </div>
+                        {'views' in platform && platform.views > 0 ? (
+                          <div>
+                            <p className="text-xs text-text-secondary mb-1">Views</p>
+                            <p className="text-lg font-bold text-text-primary">{platform.views.toLocaleString()}</p>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="text-xs text-text-secondary mb-1">Reach</p>
+                            <p className="text-lg font-bold text-text-primary">{platform.reach.toLocaleString()}</p>
+                          </div>
+                        )}
                         {'likes' in platform && (
                           <div>
                             <p className="text-xs text-text-secondary mb-1">Likes</p>
                             <p className="text-lg font-bold text-text-primary">{platform.likes.toLocaleString()}</p>
                           </div>
                         )}
-                        {'saves' in platform && (
+                        {'saves' in platform && platform.saves > 0 ? (
                           <div>
                             <p className="text-xs text-text-secondary mb-1">Saves</p>
                             <p className="text-lg font-bold text-text-primary">{platform.saves.toLocaleString()}</p>
                           </div>
-                        )}
+                        ) : 'comments' in platform ? (
+                          <div>
+                            <p className="text-xs text-text-secondary mb-1">Comments</p>
+                            <p className="text-lg font-bold text-text-primary">{platform.comments.toLocaleString()}</p>
+                          </div>
+                        ) : null}
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                         <div

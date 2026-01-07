@@ -128,6 +128,7 @@ export async function GET(request: NextRequest) {
     let totalReach = 0
     let totalImpressions = 0
     let totalSaves = 0
+    let totalViews = 0
     let postsWithMetrics = 0
 
     const platformEngagement: Record<string, {
@@ -138,6 +139,7 @@ export async function GET(request: NextRequest) {
       reach: number
       impressions: number
       saves: number
+      views: number
     }> = {}
 
     for (const post of postsWithAnalytics) {
@@ -152,9 +154,14 @@ export async function GET(request: NextRequest) {
         totalReach += analytics.reach || 0
         totalImpressions += analytics.impressions || 0
         totalSaves += analytics.saved || analytics.saves || 0
+        totalViews += analytics.views || 0
 
         // Per-platform aggregation
-        const provider = post.provider
+        // Normalize provider names for display
+        let provider = post.provider
+        if (provider === 'meta') provider = 'instagram'
+        if (provider === 'google') provider = 'youtube'
+
         if (!platformEngagement[provider]) {
           platformEngagement[provider] = {
             posts: 0,
@@ -164,6 +171,7 @@ export async function GET(request: NextRequest) {
             reach: 0,
             impressions: 0,
             saves: 0,
+            views: 0,
           }
         }
         platformEngagement[provider].posts++
@@ -173,6 +181,7 @@ export async function GET(request: NextRequest) {
         platformEngagement[provider].reach += analytics.reach || 0
         platformEngagement[provider].impressions += analytics.impressions || 0
         platformEngagement[provider].saves += analytics.saved || analytics.saves || 0
+        platformEngagement[provider].views += analytics.views || 0
       }
     }
 
@@ -198,6 +207,7 @@ export async function GET(request: NextRequest) {
         totalComments,
         totalShares,
         totalSaves,
+        totalViews,
         totalReach,
         totalImpressions,
         avgEngagementRate,

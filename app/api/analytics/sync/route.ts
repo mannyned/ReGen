@@ -13,6 +13,7 @@ import { TokenManager } from '@/lib/services/oauth/TokenManager'
 export const runtime = 'nodejs'
 
 const META_GRAPH_API = 'https://graph.facebook.com/v19.0'
+const YOUTUBE_API = 'https://www.googleapis.com/youtube/v3'
 
 interface InsightValue {
   value: number
@@ -159,6 +160,47 @@ async function fetchFacebookInsights(
 }
 
 /**
+ * Fetch YouTube video statistics
+ */
+async function fetchYouTubeInsights(
+  videoId: string,
+  accessToken: string
+): Promise<{
+  views: number
+  likes: number
+  comments: number
+  shares: number
+} | null> {
+  try {
+    const url = `${YOUTUBE_API}/videos?part=statistics&id=${videoId}&access_token=${accessToken}`
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error(`[YouTube Insights] Failed for ${videoId}:`, error)
+      return null
+    }
+
+    const data = await response.json()
+    const stats = data.items?.[0]?.statistics
+
+    if (!stats) {
+      return null
+    }
+
+    return {
+      views: parseInt(stats.viewCount || '0', 10),
+      likes: parseInt(stats.likeCount || '0', 10),
+      comments: parseInt(stats.commentCount || '0', 10),
+      shares: 0, // YouTube doesn't expose share count in basic API
+    }
+  } catch (error) {
+    console.error(`[YouTube Insights] Error for ${videoId}:`, error)
+    return null
+  }
+}
+
+/**
  * Fetch basic engagement counts directly from media/post object
  */
 async function fetchBasicEngagement(
@@ -207,14 +249,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get posts to sync (Instagram and Facebook only, last 30 days)
+    // Get posts to sync (Instagram, Facebook, and YouTube, last 30 days)
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
     const posts = await prisma.outboundPost.findMany({
       where: {
         profileId,
-        provider: { in: ['instagram', 'facebook', 'meta'] },
+        provider: { in: ['instagram', 'facebook', 'meta', 'youtube', 'google'] },
         status: 'POSTED',
         externalPostId: { not: null },
         postedAt: { gte: thirtyDaysAgo },
@@ -231,9 +273,10 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Get access tokens for Instagram and Facebook
+    // Get access tokens for Instagram, Facebook, and YouTube
     let instagramToken: string | null = null
     let facebookToken: string | null = null
+    let youtubeToken: string | null = null
 
     try {
       instagramToken = await TokenManager.getValidAccessToken(profileId, 'instagram')
@@ -247,6 +290,12 @@ export async function POST(request: NextRequest) {
       console.log('[Analytics Sync] No Facebook token available')
     }
 
+    try {
+      youtubeToken = await TokenManager.getValidAccessToken(profileId, 'youtube')
+    } catch {
+      console.log('[Analytics Sync] No YouTube token available')
+    }
+
     // If no Meta token, try to get one
     if (!instagramToken && !facebookToken) {
       try {
@@ -254,12 +303,17 @@ export async function POST(request: NextRequest) {
         instagramToken = metaToken
         facebookToken = metaToken
       } catch {
-        return NextResponse.json({
-          success: false,
-          error: 'No connected Instagram or Facebook account',
-          code: 'NO_CONNECTION',
-        }, { status: 400 })
+        console.log('[Analytics Sync] No Meta token available')
       }
+    }
+
+    // Check if we have any tokens
+    if (!instagramToken && !facebookToken && !youtubeToken) {
+      return NextResponse.json({
+        success: false,
+        error: 'No connected Instagram, Facebook, or YouTube account',
+        code: 'NO_CONNECTION',
+      }, { status: 400 })
     }
 
     let syncedCount = 0
@@ -271,8 +325,16 @@ export async function POST(request: NextRequest) {
     }> = []
 
     for (const post of posts) {
-      const platform = post.provider === 'meta' ? 'instagram' : post.provider
-      const accessToken = platform === 'instagram' ? instagramToken : facebookToken
+      // Normalize platform names
+      let platform = post.provider
+      if (platform === 'meta') platform = 'instagram'
+      if (platform === 'google') platform = 'youtube'
+
+      // Get the appropriate token
+      let accessToken: string | null = null
+      if (platform === 'instagram') accessToken = instagramToken
+      else if (platform === 'facebook') accessToken = facebookToken
+      else if (platform === 'youtube') accessToken = youtubeToken
 
       if (!accessToken || !post.externalPostId) {
         continue
@@ -319,6 +381,20 @@ export async function POST(request: NextRequest) {
         if (basic && insights) {
           insights.likes = basic.likes
           insights.comments = basic.comments
+        }
+      } else if (platform === 'youtube') {
+        const youtubeInsights = await fetchYouTubeInsights(post.externalPostId, accessToken)
+
+        if (youtubeInsights) {
+          insights = {
+            views: youtubeInsights.views,
+            likes: youtubeInsights.likes,
+            comments: youtubeInsights.comments,
+            shares: youtubeInsights.shares,
+            reach: youtubeInsights.views, // Use views as reach for YouTube
+            impressions: youtubeInsights.views,
+            saves: 0,
+          }
         }
       }
 
