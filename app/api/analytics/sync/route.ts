@@ -10,9 +10,6 @@ import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/auth/getUser'
 import { tokenManager } from '@/lib/services/oauth/TokenManager'
 
-// Import providers to ensure they're registered with OAuthEngine
-import '@/lib/providers'
-
 export const runtime = 'nodejs'
 
 const META_GRAPH_API = 'https://graph.facebook.com/v19.0'
@@ -331,12 +328,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Try to get YouTube/Google token
-    // Note: YouTube uses Google OAuth, stored as 'google' provider
+    // Note: TokenManager internally maps 'youtube' -> 'google' for OAuth lookup
     try {
-      youtubeToken = await tokenManager.getValidAccessToken(profileId, 'google')
-      console.log('[Analytics Sync] YouTube/Google token retrieved successfully')
+      youtubeToken = await tokenManager.getValidAccessToken(profileId, 'youtube')
+      console.log('[Analytics Sync] YouTube token retrieved successfully')
     } catch {
-      console.log('[Analytics Sync] No YouTube/Google token available')
+      console.log('[Analytics Sync] No YouTube token available')
     }
 
     // Use Meta token for both Instagram and Facebook

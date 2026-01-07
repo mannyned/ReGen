@@ -41,6 +41,10 @@ import { encrypt, decrypt, generateSecureRandom, encryptOptional, decryptOptiona
 import { prisma } from '../db';
 import type { Prisma } from '@prisma/client';
 
+// Auto-register all providers when OAuthEngine is imported
+// This ensures providers are available even when engine is dynamically imported
+import '../providers';
+
 // ============================================
 // PROVIDER REGISTRY
 // ============================================
