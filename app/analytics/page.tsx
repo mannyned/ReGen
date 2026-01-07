@@ -81,6 +81,7 @@ export default function AnalyticsPage() {
   const [analyticsPermissions, setAnalyticsPermissions] = useState<AnalyticsPermissions | null>(null)
   const [isTeamMember, setIsTeamMember] = useState(false)
   const [realStats, setRealStats] = useState<AnalyticsStats | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Upgrade intent tracking
   const upgradeIntent = useUpgradeIntent()
@@ -88,8 +89,9 @@ export default function AnalyticsPage() {
   const isProduction = process.env.NODE_ENV === 'production'
 
   // Fetch real analytics stats
-  const fetchAnalyticsStats = async (days: string) => {
+  const fetchAnalyticsStats = async (days: string, showRefreshState = false) => {
     try {
+      if (showRefreshState) setIsRefreshing(true)
       const response = await fetch(`/api/analytics/stats?days=${days}`)
       if (response.ok) {
         const data = await response.json()
@@ -97,7 +99,14 @@ export default function AnalyticsPage() {
       }
     } catch (error) {
       console.error('Failed to fetch analytics stats:', error)
+    } finally {
+      if (showRefreshState) setIsRefreshing(false)
     }
+  }
+
+  // Manual refresh handler
+  const handleRefresh = () => {
+    fetchAnalyticsStats(timeRange, true)
   }
 
   useEffect(() => {
@@ -408,6 +417,28 @@ export default function AnalyticsPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* Refresh Button */}
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="p-2.5 bg-white rounded-xl shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  title="Refresh analytics"
+                >
+                  <svg
+                    className={`w-5 h-5 text-text-secondary ${isRefreshing ? 'animate-spin' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                </button>
 
                 {/* Export Analytics Button - PRO Only */}
                 <ExportAnalytics
