@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/auth/getUser'
-import { TokenManager } from '@/lib/services/oauth/TokenManager'
+import { tokenManager } from '@/lib/services/oauth/TokenManager'
 
 export const runtime = 'nodejs'
 
@@ -279,19 +279,19 @@ export async function POST(request: NextRequest) {
     let youtubeToken: string | null = null
 
     try {
-      instagramToken = await TokenManager.getValidAccessToken(profileId, 'instagram')
+      instagramToken = await tokenManager.getValidAccessToken(profileId, 'instagram')
     } catch {
       console.log('[Analytics Sync] No Instagram token available')
     }
 
     try {
-      facebookToken = await TokenManager.getValidAccessToken(profileId, 'facebook')
+      facebookToken = await tokenManager.getValidAccessToken(profileId, 'facebook')
     } catch {
       console.log('[Analytics Sync] No Facebook token available')
     }
 
     try {
-      youtubeToken = await TokenManager.getValidAccessToken(profileId, 'youtube')
+      youtubeToken = await tokenManager.getValidAccessToken(profileId, 'youtube')
     } catch {
       console.log('[Analytics Sync] No YouTube token available')
     }
@@ -299,7 +299,7 @@ export async function POST(request: NextRequest) {
     // If no Meta token, try to get one
     if (!instagramToken && !facebookToken) {
       try {
-        const metaToken = await TokenManager.getValidAccessToken(profileId, 'meta')
+        const metaToken = await tokenManager.getValidAccessToken(profileId, 'meta')
         instagramToken = metaToken
         facebookToken = metaToken
       } catch {
