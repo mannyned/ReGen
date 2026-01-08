@@ -195,17 +195,50 @@ export default function AnalyticsPage() {
   }
 
   // Build platform data from real API response when available
+  // Use platformStats for post counts, enrich with platformEngagement for metrics
   const platformData = (() => {
+    const platformNameMap: Record<string, string> = {
+      instagram: 'Instagram',
+      meta: 'Instagram', // Meta provider maps to Instagram
+      twitter: 'Twitter',
+      linkedin: 'LinkedIn',
+      facebook: 'Facebook',
+      tiktok: 'TikTok',
+      youtube: 'YouTube',
+      google: 'YouTube', // Google provider maps to YouTube
+      snapchat: 'Snapchat',
+    }
+
+    // First check if we have platformStats (post counts by platform)
+    if (realStats?.platformStats && Object.keys(realStats.platformStats).length > 0) {
+      return Object.entries(realStats.platformStats).map(([provider, postCount]) => {
+        // Normalize provider name
+        const normalizedProvider = provider === 'meta' ? 'instagram' : provider === 'google' ? 'youtube' : provider
+
+        // Get engagement data if available
+        const engagementData = realStats.platformEngagement?.[normalizedProvider] ||
+                               realStats.platformEngagement?.[provider]
+
+        const totalEngagement = engagementData
+          ? engagementData.likes + engagementData.comments + engagementData.shares + engagementData.saves
+          : 0
+        const engagementRate = engagementData && engagementData.reach > 0
+          ? ((totalEngagement / engagementData.reach) * 100)
+          : 0
+
+        return {
+          platform: platformNameMap[provider] || provider,
+          posts: postCount as number,
+          engagement: parseFloat(engagementRate.toFixed(1)),
+          reach: engagementData?.reach || 0,
+          growth: 0, // Would need historical data to calculate
+          bestTime: '—', // Would need time-based analysis
+        }
+      })
+    }
+
+    // Fallback to platformEngagement if platformStats is empty
     if (realStats?.platformEngagement && Object.keys(realStats.platformEngagement).length > 0) {
-      const platformNameMap: Record<string, string> = {
-        instagram: 'Instagram',
-        twitter: 'Twitter',
-        linkedin: 'LinkedIn',
-        facebook: 'Facebook',
-        tiktok: 'TikTok',
-        youtube: 'YouTube',
-        snapchat: 'Snapchat',
-      }
       return Object.entries(realStats.platformEngagement).map(([platform, data]) => {
         const totalEngagement = data.likes + data.comments + data.shares + data.saves
         const engagementRate = data.reach > 0 ? ((totalEngagement / data.reach) * 100) : 0
@@ -214,11 +247,12 @@ export default function AnalyticsPage() {
           posts: data.posts,
           engagement: parseFloat(engagementRate.toFixed(1)),
           reach: data.reach,
-          growth: 0, // Would need historical data to calculate
-          bestTime: '—', // Would need time-based analysis
+          growth: 0,
+          bestTime: '—',
         }
       })
     }
+
     // Fallback to mock data in development
     return isProduction ? [] : [
       { platform: 'Instagram', posts: 24, engagement: 12.5, reach: 5200, growth: 2.3, bestTime: '6PM-8PM' },
