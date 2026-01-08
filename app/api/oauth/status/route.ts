@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getUserId } from '@/lib/auth/getUser'
 
 // ============================================
 // GET /api/oauth/status
@@ -8,8 +9,14 @@ import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId') || 'default-user'
+    // Get authenticated user ID
+    const userId = await getUserId(request)
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'Not authenticated', connectedPlatforms: [], totalConnected: 0 },
+        { status: 401 }
+      )
+    }
 
     // Query from oAuthConnection table (where OAuth engine stores connections)
     const connections = await prisma.oAuthConnection.findMany({
@@ -72,14 +79,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { userId, platform } = body
+    // Get authenticated user ID
+    const userId = await getUserId(request)
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
 
-    if (!userId || !platform) {
+    const body = await request.json()
+    const { platform } = body
+
+    if (!platform) {
       return NextResponse.json(
         {
           success: false,
-          error: 'userId and platform are required',
+          error: 'platform is required',
         },
         { status: 400 }
       )

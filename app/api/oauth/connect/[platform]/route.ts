@@ -3,6 +3,7 @@ import type { SocialPlatform } from '@/lib/types/social'
 import { OAUTH_CONFIGS, isOAuthConfigured, validatePlatform } from '@/lib/config/oauth'
 import { oauthService } from '@/lib/services/oauth/OAuthService'
 import { validatePlatformParam, validationErrorResponse } from '@/lib/middleware/validation'
+import { getUserId } from '@/lib/auth/getUser'
 
 // ============================================
 // GET /api/oauth/connect/[platform]
@@ -14,8 +15,14 @@ export async function GET(
   { params }: { params: Promise<{ platform: string }> }
 ) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId') || 'default-user'
+    // Get authenticated user ID
+    const userId = await getUserId(request)
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
     const { platform } = await params
 
     // Validate platform

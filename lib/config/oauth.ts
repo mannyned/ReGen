@@ -16,12 +16,12 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
     refreshUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
     revokeUrl: 'https://graph.facebook.com/v19.0/me/permissions',
     scopes: [
+      // Core approved scopes
       'instagram_basic',
       'instagram_content_publish',
-      'instagram_manage_insights',
       'pages_read_engagement',
       'pages_show_list',
-      'business_management',
+      // Note: instagram_manage_insights requires additional Meta approval
     ],
     responseType: 'code',
     grantType: 'authorization_code',
@@ -210,13 +210,13 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
     refreshUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
     revokeUrl: 'https://graph.facebook.com/v19.0/me/permissions',
     scopes: [
+      // Core approved scopes for Instagram/Facebook publishing
       'instagram_basic',
       'instagram_content_publish',
-      'instagram_manage_insights',
       'pages_manage_posts',
       'pages_read_engagement',
       'pages_show_list',
-      'business_management',
+      // Note: instagram_manage_insights requires additional Meta approval
     ],
     responseType: 'code',
     grantType: 'authorization_code',

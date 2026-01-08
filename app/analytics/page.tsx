@@ -111,11 +111,40 @@ export default function AnalyticsPage() {
   const [analyticsPermissions, setAnalyticsPermissions] = useState<AnalyticsPermissions | null>(null)
   const [isTeamMember, setIsTeamMember] = useState(false)
   const [realStats, setRealStats] = useState<AnalyticsStats | null>(null)
+  const [platformData, setPlatformData] = useState<Array<{
+    platform: string
+    posts: number
+    engagement: number
+    reach: number
+    growth: number
+    bestTime: string
+  }> | null>(null)
 
   // Upgrade intent tracking
   const upgradeIntent = useUpgradeIntent()
 
   const isProduction = process.env.NODE_ENV === 'production'
+
+  const [isSyncing, setIsSyncing] = useState(false)
+
+  // Sync analytics from connected platforms (Meta, YouTube)
+  const syncAnalytics = async () => {
+    try {
+      setIsSyncing(true)
+      const response = await fetch('/api/analytics/sync', { method: 'POST' })
+      const result = await response.json()
+      if (response.ok) {
+        console.log('[Analytics] Sync completed:', result)
+      } else {
+        console.warn('[Analytics] Sync failed:', result)
+        // Don't block on sync errors - still load stats
+      }
+    } catch (error) {
+      console.error('Failed to sync analytics:', error)
+    } finally {
+      setIsSyncing(false)
+    }
+  }
 
   // Fetch real analytics stats
   const fetchAnalyticsStats = async (days: string) => {
@@ -133,8 +162,12 @@ export default function AnalyticsPage() {
   useEffect(() => {
     setMounted(true)
 
-    // Fetch real analytics stats
-    fetchAnalyticsStats(timeRange)
+    // Sync analytics first, then fetch stats
+    const loadAnalytics = async () => {
+      await syncAnalytics()
+      await fetchAnalyticsStats(timeRange)
+    }
+    loadAnalytics()
 
     // In production, fetch actual user tier from API
     if (isProduction) {
@@ -196,7 +229,7 @@ export default function AnalyticsPage() {
 
   // Build platform data from real API response when available
   // Use platformStats for post counts, enrich with platformEngagement for metrics
-  const platformData = (() => {
+  useEffect(() => {
     const platformNameMap: Record<string, string> = {
       instagram: 'Instagram',
       meta: 'Instagram', // Meta provider maps to Instagram
@@ -211,7 +244,7 @@ export default function AnalyticsPage() {
 
     // First check if we have platformStats (post counts by platform)
     if (realStats?.platformStats && Object.keys(realStats.platformStats).length > 0) {
-      return Object.entries(realStats.platformStats).map(([provider, postCount]) => {
+      const data = Object.entries(realStats.platformStats).map(([provider, postCount]) => {
         // Normalize provider name
         const normalizedProvider = provider === 'meta' ? 'instagram' : provider === 'google' ? 'youtube' : provider
 
@@ -235,33 +268,33 @@ export default function AnalyticsPage() {
           bestTime: '—', // Would need time-based analysis
         }
       })
+      setPlatformData(data)
+      return
     }
 
     // Fallback to platformEngagement if platformStats is empty
     if (realStats?.platformEngagement && Object.keys(realStats.platformEngagement).length > 0) {
-      return Object.entries(realStats.platformEngagement).map(([platform, data]) => {
-        const totalEngagement = data.likes + data.comments + data.shares + data.saves
-        const engagementRate = data.reach > 0 ? ((totalEngagement / data.reach) * 100) : 0
+      const data = Object.entries(realStats.platformEngagement).map(([platform, engData]) => {
+        const totalEngagement = engData.likes + engData.comments + engData.shares + engData.saves
+        const engagementRate = engData.reach > 0 ? ((totalEngagement / engData.reach) * 100) : 0
         return {
           platform: platformNameMap[platform] || platform,
-          posts: data.posts,
+          posts: engData.posts,
           engagement: parseFloat(engagementRate.toFixed(1)),
-          reach: data.reach,
+          reach: engData.reach,
           growth: 0,
           bestTime: '—',
         }
       })
+      setPlatformData(data)
+      return
     }
 
-    // Fallback to mock data in development
-    return isProduction ? [] : [
-      { platform: 'Instagram', posts: 24, engagement: 12.5, reach: 5200, growth: 2.3, bestTime: '6PM-8PM' },
-      { platform: 'Twitter', posts: 45, engagement: 8.3, reach: 3800, growth: -1.2, bestTime: '12PM-2PM' },
-      { platform: 'LinkedIn', posts: 18, engagement: 15.2, reach: 2900, growth: 5.7, bestTime: '9AM-11AM' },
-      { platform: 'Facebook', posts: 32, engagement: 6.8, reach: 4100, growth: 0.8, bestTime: '7PM-9PM' },
-      { platform: 'TikTok', posts: 28, engagement: 18.7, reach: 6500, growth: 8.9, bestTime: '5PM-7PM' }
-    ]
-  })()
+    // If realStats exists but no platform data, set empty array
+    if (realStats) {
+      setPlatformData([])
+    }
+  }, [realStats])
 
   const topFormats = isProduction ? [] : [
     { type: 'Video', count: 42, avgEngagement: 14.2, trend: 'up' },
@@ -1055,7 +1088,14 @@ export default function AnalyticsPage() {
                   </Badge>
                 )}
               </div>
-              {platformData.length === 0 ? (
+              {platformData === null ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-text-secondary">
+                    {isSyncing ? 'Syncing engagement data from platforms...' : 'Loading platform data...'}
+                  </p>
+                </div>
+              ) : platformData.length === 0 ? (
                 <div className="text-center py-12">
                   <span className="text-5xl mb-4 block">📊</span>
                   <p className="text-text-secondary">No platform data yet.</p>
