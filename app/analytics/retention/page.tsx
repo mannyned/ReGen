@@ -683,56 +683,212 @@ export default function RetentionAnalyticsPage() {
   const loadData = async () => {
     setIsLoading(true);
 
-    // Simulate API calls
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      // Get user info first
+      const userRes = await fetch('/api/auth/me');
+      if (!userRes.ok) {
+        setIsLoading(false);
+        return;
+      }
+      const userData = await userRes.json();
+      const userId = userData?.id;
 
-    // Mock data
-    setSummary({
-      avgHookRetention: 72.5,
-      avgCompletionRate: 34.2,
-      avgViewDuration: 45,
-      totalVideos: 48,
-      totalViews: 287000
-    });
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      }
 
-    setHookScore({
-      score: 78,
-      rating: 'good',
-      percentile: 72,
-      trend: { direction: 'up', changePercent: 5 }
-    });
+      // Calculate date range based on period
+      const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
 
-    // Generate retention curve data
-    const curveData: RetentionDataPoint[] = [];
-    const duration = 60;
-    for (let i = 0; i <= duration; i++) {
-      const retention = 100 * Math.exp(-0.03 * i) * (1 - 0.1 * Math.sin(i * 0.2));
-      curveData.push({
-        second: i,
-        retention: Math.max(0, Math.min(100, retention)),
-        viewers: Math.floor(10000 * (retention / 100))
-      });
+      // Fetch analytics stats to get video metrics
+      const statsRes = await fetch(`/api/analytics/stats?days=${days}`);
+      let statsData = null;
+      if (statsRes.ok) {
+        statsData = await statsRes.json();
+      }
+
+      // Try to get recent video posts to fetch retention data
+      const postsRes = await fetch('/api/posts/recent?limit=20');
+      let videoPosts: Array<{ id: string; provider: string; platformPostId?: string }> = [];
+      if (postsRes.ok) {
+        const postsData = await postsRes.json();
+        // Filter to only video posts
+        videoPosts = (postsData.posts || []).filter((p: { metadata?: { mediaType?: string } }) =>
+          p.metadata?.mediaType === 'video' || p.metadata?.mediaType === 'reel'
+        );
+      }
+
+      // Try to get retention data from YouTube if available
+      const allRetentionData: Array<{ timestamp: number; retention: number }[]> = [];
+      const platform = 'youtube'; // YouTube is the main platform with retention data
+
+      for (const post of videoPosts.slice(0, 5)) { // Check first 5 videos
+        if (post.provider === 'google' || post.provider === 'youtube') {
+          try {
+            const postId = post.platformPostId || post.id;
+            const res = await fetch(
+              `/api/analytics?type=retention&platform=${platform}&userId=${userId}&postId=${postId}`
+            );
+            if (res.ok) {
+              const data = await res.json();
+              if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                allRetentionData.push(data.data);
+              }
+            }
+          } catch (err) {
+            console.error('Failed to fetch retention data:', err);
+          }
+        }
+      }
+
+      // Calculate aggregate metrics from stats
+      const totalViews = statsData?.engagement?.totalViews || 0;
+      const totalVideos = videoPosts.length;
+
+      if (totalViews === 0 && allRetentionData.length === 0) {
+        // No retention data available - show empty states
+        setSummary(null);
+        setHookScore(null);
+        setRetentionData([]);
+        setDropOffs([]);
+        setByFormat([]);
+        setInsights([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // If we have retention curve data, aggregate it
+      if (allRetentionData.length > 0) {
+        // Average the retention curves
+        const maxLength = Math.max(...allRetentionData.map(d => d.length));
+        const avgCurve: RetentionDataPoint[] = [];
+
+        for (let i = 0; i < maxLength; i++) {
+          const values = allRetentionData
+            .filter(curve => curve[i])
+            .map(curve => curve[i].retention);
+
+          if (values.length > 0) {
+            const avgRetention = values.reduce((a, b) => a + b, 0) / values.length;
+            avgCurve.push({
+              second: i,
+              retention: avgRetention,
+              viewers: Math.floor((totalViews / totalVideos) * (avgRetention / 100))
+            });
+          }
+        }
+
+        setRetentionData(avgCurve);
+
+        // Calculate hook retention (first 3 seconds average)
+        const hookPoints = avgCurve.slice(0, 4);
+        const avgHookRetention = hookPoints.length > 0
+          ? hookPoints.reduce((sum, p) => sum + p.retention, 0) / hookPoints.length
+          : 0;
+
+        // Calculate completion rate (last point)
+        const completionRate = avgCurve.length > 0 ? avgCurve[avgCurve.length - 1].retention : 0;
+
+        // Average view duration estimate
+        const avgViewDuration = avgCurve.length > 0
+          ? avgCurve.reduce((sum, p) => sum + (p.retention / 100), 0)
+          : 0;
+
+        setSummary({
+          avgHookRetention,
+          avgCompletionRate: completionRate,
+          avgViewDuration: Math.round(avgViewDuration),
+          totalVideos,
+          totalViews
+        });
+
+        // Calculate hook score (0-100 based on hook retention)
+        const score = Math.min(100, Math.round(avgHookRetention * 1.2));
+        const rating: 'excellent' | 'good' | 'average' | 'needs_improvement' = score >= 80 ? 'excellent' : score >= 60 ? 'good' : score >= 40 ? 'average' : 'needs_improvement';
+        setHookScore({
+          score,
+          rating,
+          percentile: Math.min(99, Math.round(score * 0.9)),
+          trend: undefined
+        });
+
+        // Detect drop-offs (where retention drops significantly)
+        const detectedDropOffs: DropOffPoint[] = [];
+        for (let i = 1; i < avgCurve.length; i++) {
+          const drop = avgCurve[i - 1].retention - avgCurve[i].retention;
+          if (drop > 5) {
+            const severity = drop > 15 ? 'major' : drop > 10 ? 'moderate' : 'minor';
+            detectedDropOffs.push({
+              second: avgCurve[i].second,
+              dropPercent: Math.round(drop),
+              severity,
+              label: i < 5 ? 'Early Drop-off' : i > avgCurve.length - 10 ? 'End Drop-off' : 'Mid-Video Drop',
+              suggestion: i < 5
+                ? 'Your hook may need work. Try starting with a stronger statement or question.'
+                : i > avgCurve.length - 10
+                ? 'Normal end-video behavior. Your CTA timing looks good.'
+                : 'Consider adding a pattern interrupt or changing the visual pace around this point.'
+            });
+          }
+        }
+        setDropOffs(detectedDropOffs.slice(0, 5)); // Show top 5
+
+        // Generate insights based on data
+        const newInsights: RetentionInsight[] = [];
+        if (avgHookRetention > 70) {
+          newInsights.push({
+            type: 'positive',
+            title: 'Strong Hook Performance',
+            description: `Your first 3 seconds retain ${avgHookRetention.toFixed(1)}% of viewers.`
+          });
+        } else if (avgHookRetention < 50) {
+          newInsights.push({
+            type: 'warning',
+            title: 'Hook Needs Improvement',
+            description: `Only ${avgHookRetention.toFixed(1)}% of viewers stay past the first 3 seconds. Try a more compelling opening.`
+          });
+        }
+        if (completionRate > 30) {
+          newInsights.push({
+            type: 'positive',
+            title: 'Good Completion Rate',
+            description: `${completionRate.toFixed(1)}% of viewers watch to the end - that's above average!`
+          });
+        }
+        setInsights(newInsights);
+
+      } else {
+        // No retention curve data, but we have view counts
+        setSummary({
+          avgHookRetention: 0,
+          avgCompletionRate: 0,
+          avgViewDuration: 0,
+          totalVideos,
+          totalViews
+        });
+        setHookScore(null);
+        setRetentionData([]);
+        setDropOffs([]);
+        setInsights([{
+          type: 'tip',
+          title: 'Retention Data Coming Soon',
+          description: 'Connect your YouTube account to see detailed retention analytics for your videos.'
+        }]);
+      }
+
+      // Format breakdown would need more detailed data
+      setByFormat([]);
+
+    } catch (error) {
+      console.error('Failed to load retention data:', error);
+      setSummary(null);
+      setHookScore(null);
+      setRetentionData([]);
+      setDropOffs([]);
+      setByFormat([]);
+      setInsights([]);
     }
-    setRetentionData(curveData);
-
-    setDropOffs([
-      { second: 3, dropPercent: 15, severity: 'moderate', label: 'Early Drop-off', suggestion: 'Your hook may need work. Try starting with a stronger statement or question.' },
-      { second: 28, dropPercent: 22, severity: 'major', label: 'Mid-Video Drop', suggestion: 'Consider adding a pattern interrupt or changing the visual pace around this point.' },
-      { second: 52, dropPercent: 8, severity: 'minor', label: 'Pre-CTA Drop', suggestion: 'Normal end-video behavior. Your CTA timing looks good.' }
-    ]);
-
-    setByFormat([
-      { formatType: 'video_clip', avgHookRetention: 76.5, avgCompletionRate: 42.3, avgViewDuration: 28, videoCount: 22 },
-      { formatType: 'reel', avgHookRetention: 68.2, avgCompletionRate: 38.1, avgViewDuration: 22, videoCount: 18 },
-      { formatType: 'video_long', avgHookRetention: 62.4, avgCompletionRate: 28.5, avgViewDuration: 180, videoCount: 8 },
-    ]);
-
-    setInsights([
-      { type: 'positive', title: 'Strong Hook Performance', description: 'Your first 3 seconds retain 72.5% of viewers - 15% above average for your niche.' },
-      { type: 'warning', title: 'Mid-Video Engagement Dip', description: 'Most viewers drop off around 0:28. Consider adding visual variety or new information at this point.' },
-      { type: 'tip', title: 'Optimal Video Length', description: 'Your short-form videos (under 30s) have 42% completion vs 28% for longer content.' },
-      { type: 'improvement', title: 'Try the Loop Technique', description: 'Videos that loop back to the opening have 23% higher completion. Try referencing your hook in the outro.' }
-    ]);
 
     setIsLoading(false);
   };

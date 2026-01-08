@@ -525,56 +525,184 @@ export default function SaveRateAnalyticsPage() {
   const loadData = async () => {
     setIsLoading(true);
 
-    // Simulate API calls
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      // Get user info first
+      const userRes = await fetch('/api/auth/me');
+      if (!userRes.ok) {
+        setIsLoading(false);
+        return;
+      }
+      const userData = await userRes.json();
+      const userId = userData?.id;
 
-    // Mock data
-    setSummary({
-      saves: 12450,
-      impressions: 845000,
-      saveRate: 1.47,
-      contentCount: 87,
-      trend: { direction: 'up', changePercent: 12 }
-    });
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      }
 
-    setByFormat([
-      { formatType: 'carousel', saves: 4200, impressions: 180000, saveRate: 2.33, contentCount: 24, trend: { direction: 'up', changePercent: 18 } },
-      { formatType: 'infographic', saves: 2800, impressions: 145000, saveRate: 1.93, contentCount: 15, trend: { direction: 'up', changePercent: 8 } },
-      { formatType: 'video_clip', saves: 2100, impressions: 210000, saveRate: 1.00, contentCount: 28, trend: { direction: 'stable', changePercent: 2 } },
-      { formatType: 'single_image', saves: 1800, impressions: 165000, saveRate: 1.09, contentCount: 35, trend: { direction: 'down', changePercent: 5 } },
-      { formatType: 'reel', saves: 1550, impressions: 145000, saveRate: 1.07, contentCount: 22, trend: { direction: 'up', changePercent: 22 } },
-    ]);
+      // Calculate date range based on period
+      const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
 
-    setByPlatform([
-      { platform: 'instagram', saves: 5200, impressions: 320000, saveRate: 1.63, contentCount: 42 },
-      { platform: 'tiktok', saves: 3100, impressions: 280000, saveRate: 1.11, contentCount: 35 },
-      { platform: 'linkedin', saves: 2800, impressions: 145000, saveRate: 1.93, contentCount: 28 },
-      { platform: 'youtube', saves: 1350, impressions: 100000, saveRate: 1.35, contentCount: 12 },
-    ]);
+      // Fetch save rate data from platforms that support it
+      const platforms = ['instagram']; // Instagram is the main platform with save data
+      const allSaveData: Array<{
+        totalSaves: number;
+        saveRate: number;
+        topSavedPosts: Array<{ postId: string; saves: number; format: string }>;
+        formatBreakdown: Record<string, { saves: number; posts: number; rate: number }>;
+      }> = [];
 
-    // Generate trend data
-    const trendData: SaveRateTrendPoint[] = [];
-    const now = new Date();
-    const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      trendData.push({
-        date: date.toISOString().split('T')[0],
-        saveRate: 1.2 + Math.random() * 0.6 + (i < days / 2 ? 0 : 0.2),
-        saves: Math.floor(300 + Math.random() * 200),
-        impressions: Math.floor(20000 + Math.random() * 10000)
+      for (const platform of platforms) {
+        try {
+          const res = await fetch(
+            `/api/analytics?type=save-rate&platform=${platform}&userId=${userId}&start=${startDate.toISOString()}&end=${endDate.toISOString()}`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.data) {
+              allSaveData.push(data.data);
+            }
+          }
+        } catch (err) {
+          console.error(`Failed to fetch ${platform} save rate data:`, err);
+        }
+      }
+
+      // Also fetch from analytics stats endpoint for aggregated data
+      const statsRes = await fetch(`/api/analytics/stats?days=${days}`);
+      let statsData = null;
+      if (statsRes.ok) {
+        statsData = await statsRes.json();
+      }
+
+      // Aggregate save data
+      let totalSaves = 0;
+      let totalImpressions = 0;
+      const formatData: Record<string, { saves: number; posts: number; impressions: number }> = {};
+      const platformData: Record<string, { saves: number; posts: number; impressions: number }> = {};
+      const topPostsList: Array<{ postId: string; saves: number; format: string; platform: string }> = [];
+
+      // Use data from save-rate API
+      for (const data of allSaveData) {
+        totalSaves += data.totalSaves;
+
+        // Process format breakdown
+        for (const [format, fdata] of Object.entries(data.formatBreakdown)) {
+          if (!formatData[format]) {
+            formatData[format] = { saves: 0, posts: 0, impressions: 0 };
+          }
+          formatData[format].saves += fdata.saves;
+          formatData[format].posts += fdata.posts;
+        }
+
+        // Process top posts
+        for (const post of data.topSavedPosts) {
+          topPostsList.push({ ...post, platform: 'instagram' });
+        }
+      }
+
+      // Use platformEngagement from stats if available
+      if (statsData?.platformEngagement) {
+        for (const [platform, pdata] of Object.entries(statsData.platformEngagement)) {
+          const pd = pdata as { posts: number; saves: number; impressions: number };
+          if (pd.saves > 0) {
+            platformData[platform] = {
+              saves: pd.saves,
+              posts: pd.posts,
+              impressions: pd.impressions
+            };
+            if (!allSaveData.length) {
+              totalSaves += pd.saves;
+            }
+            totalImpressions += pd.impressions;
+          }
+        }
+      }
+
+      // Use engagement totals from stats
+      if (statsData?.engagement) {
+        if (totalImpressions === 0) {
+          totalImpressions = statsData.engagement.totalImpressions || 1;
+        }
+        if (totalSaves === 0) {
+          totalSaves = statsData.engagement.totalSaves || 0;
+        }
+      }
+
+      // Calculate overall save rate
+      const overallSaveRate = totalImpressions > 0 ? (totalSaves / totalImpressions) * 100 : 0;
+
+      if (totalSaves === 0 && Object.keys(platformData).length === 0) {
+        // No data available - show empty states
+        setSummary(null);
+        setByFormat([]);
+        setByPlatform([]);
+        setTrends([]);
+        setTopPosts([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Set summary
+      setSummary({
+        saves: totalSaves,
+        impressions: totalImpressions,
+        saveRate: overallSaveRate,
+        contentCount: statsData?.postsInRange || 0,
+        trend: { direction: 'stable', changePercent: 0 } // Would need historical data for real trends
       });
-    }
-    setTrends(trendData);
 
-    setTopPosts([
-      { rank: 1, contentId: '1', title: '10 Tips for Better Morning Routine', thumbnail: '', platform: 'instagram', formatType: 'carousel', saves: 892, impressions: 23400, saveRate: 3.81, publishedAt: '2024-01-18' },
-      { rank: 2, contentId: '2', title: 'Complete Guide to Productivity', thumbnail: '', platform: 'linkedin', formatType: 'infographic', saves: 654, impressions: 18200, saveRate: 3.59, publishedAt: '2024-01-15' },
-      { rank: 3, contentId: '3', title: 'How I Built My Side Hustle', thumbnail: '', platform: 'tiktok', formatType: 'video_clip', saves: 521, impressions: 45000, saveRate: 1.16, publishedAt: '2024-01-20' },
-      { rank: 4, contentId: '4', title: 'Financial Freedom Checklist', thumbnail: '', platform: 'instagram', formatType: 'carousel', saves: 487, impressions: 14800, saveRate: 3.29, publishedAt: '2024-01-12' },
-      { rank: 5, contentId: '5', title: 'Weekly Planning Template', thumbnail: '', platform: 'linkedin', formatType: 'single_image', saves: 423, impressions: 12100, saveRate: 3.50, publishedAt: '2024-01-22' },
-    ]);
+      // Set format breakdown
+      const formatList: SaveRateByFormat[] = Object.entries(formatData).map(([format, data]) => ({
+        formatType: format.toLowerCase() as SaveRateByFormat['formatType'],
+        saves: data.saves,
+        impressions: data.impressions || Math.round(data.saves / (overallSaveRate / 100) || 1),
+        saveRate: data.impressions > 0 ? (data.saves / data.impressions) * 100 : data.posts > 0 ? data.saves / data.posts : 0,
+        contentCount: data.posts,
+        trend: { direction: 'stable' as const, changePercent: 0 }
+      }));
+      setByFormat(formatList);
+
+      // Set platform breakdown
+      const platformList: SaveRateByPlatform[] = Object.entries(platformData).map(([platform, data]) => ({
+        platform: platform as SaveRateByPlatform['platform'],
+        saves: data.saves,
+        impressions: data.impressions || 1,
+        saveRate: data.impressions > 0 ? (data.saves / data.impressions) * 100 : 0,
+        contentCount: data.posts
+      }));
+      setByPlatform(platformList);
+
+      // Set trends (empty for now - would need time-series data)
+      setTrends([]);
+
+      // Set top posts
+      const sortedPosts = topPostsList.sort((a, b) => b.saves - a.saves).slice(0, 5);
+      const topPostsFormatted: TopSavedPost[] = sortedPosts.map((post, idx) => ({
+        rank: idx + 1,
+        contentId: post.postId,
+        title: `Post ${post.postId.substring(0, 8)}...`,
+        thumbnail: '',
+        platform: post.platform as TopSavedPost['platform'],
+        formatType: post.format.toLowerCase() as TopSavedPost['formatType'],
+        saves: post.saves,
+        impressions: 0,
+        saveRate: 0,
+        publishedAt: new Date().toISOString().split('T')[0]
+      }));
+      setTopPosts(topPostsFormatted);
+
+    } catch (error) {
+      console.error('Failed to load save rate data:', error);
+      setSummary(null);
+      setByFormat([]);
+      setByPlatform([]);
+      setTrends([]);
+      setTopPosts([]);
+    }
 
     setIsLoading(false);
   };

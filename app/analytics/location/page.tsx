@@ -525,77 +525,205 @@ export default function LocationAnalyticsPage() {
     loadData();
   }, [period]);
 
+  // Country code to name mapping
+  const countryNames: Record<string, string> = {
+    US: 'United States', GB: 'United Kingdom', CA: 'Canada', AU: 'Australia',
+    DE: 'Germany', FR: 'France', BR: 'Brazil', MX: 'Mexico', IN: 'India',
+    JP: 'Japan', KR: 'South Korea', ES: 'Spain', IT: 'Italy', NL: 'Netherlands',
+    SE: 'Sweden', NO: 'Norway', DK: 'Denmark', FI: 'Finland', PL: 'Poland',
+    AT: 'Austria', CH: 'Switzerland', BE: 'Belgium', PT: 'Portugal', IE: 'Ireland',
+    NZ: 'New Zealand', SG: 'Singapore', HK: 'Hong Kong', AE: 'UAE', SA: 'Saudi Arabia',
+    ZA: 'South Africa', AR: 'Argentina', CL: 'Chile', CO: 'Colombia', PE: 'Peru',
+    PH: 'Philippines', ID: 'Indonesia', MY: 'Malaysia', TH: 'Thailand', VN: 'Vietnam',
+    TR: 'Turkey', RU: 'Russia', UA: 'Ukraine', EG: 'Egypt', NG: 'Nigeria',
+  };
+
+  // Country coordinates for map (approximate centers)
+  const countryCoords: Record<string, [number, number]> = {
+    US: [-98.58, 39.83], GB: [-3.44, 55.38], CA: [-106.35, 56.13], AU: [133.78, -25.27],
+    DE: [10.45, 51.17], FR: [2.21, 46.23], BR: [-51.93, -14.24], MX: [-102.55, 23.63],
+    IN: [78.96, 20.59], JP: [138.25, 36.20], KR: [127.77, 35.91], ES: [-3.75, 40.46],
+    IT: [12.57, 41.87], NL: [5.29, 52.13], SE: [18.64, 60.13], NO: [8.47, 60.47],
+    DK: [9.50, 56.26], FI: [25.75, 61.92], PL: [19.15, 51.92], AT: [14.55, 47.52],
+    CH: [8.23, 46.82], BE: [4.47, 50.50], PT: [-8.22, 39.40], IE: [-8.24, 53.41],
+    NZ: [174.89, -40.90], SG: [103.82, 1.35], HK: [114.11, 22.40], AE: [53.85, 23.42],
+    SA: [45.08, 23.89], ZA: [22.94, -30.56], AR: [-63.62, -38.42], CL: [-71.54, -35.68],
+    CO: [-74.30, 4.57], PE: [-75.02, -9.19], PH: [121.77, 12.88], ID: [113.92, -0.79],
+    MY: [101.98, 4.21], TH: [100.99, 15.87], VN: [108.28, 14.06], TR: [35.24, 38.96],
+    RU: [105.32, 61.52], UA: [31.17, 48.38], EG: [30.80, 26.82], NG: [8.68, 9.08],
+  };
+
   const loadData = async () => {
     setIsLoading(true);
 
-    // Simulate API calls
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      // Fetch location data from connected platforms
+      const platforms = ['instagram', 'youtube', 'facebook'];
+      const allLocationData: Array<{ country: string; percentage: number; engagement: number }> = [];
 
-    // Mock data
-    setMetrics({
-      topCountry: { name: 'United States', code: 'US', engagement: 45200, change: 12 },
-      topCity: { name: 'Los Angeles', country: 'US', engagement: 9800, change: 24 },
-      emergingRegion: { name: 'São Paulo', growth: 156, previous: 2100, current: 5400 },
-      globalReach: { countries: 47, cities: 234, newThisPeriod: 8 }
-    });
-
-    setTopLocations([
-      { rank: 1, location: { id: '1', name: 'United States', countryCode: 'US', flag: '🇺🇸' }, metric: { name: 'engagement', value: 45200, formattedValue: '45.2K' }, change: { value: 12, direction: 'up' } },
-      { rank: 2, location: { id: '2', name: 'United Kingdom', countryCode: 'GB', flag: '🇬🇧' }, metric: { name: 'engagement', value: 18900, formattedValue: '18.9K' }, change: { value: 8, direction: 'up' } },
-      { rank: 3, location: { id: '3', name: 'Canada', countryCode: 'CA', flag: '🇨🇦' }, metric: { name: 'engagement', value: 12400, formattedValue: '12.4K' }, change: { value: 15, direction: 'up' } },
-      { rank: 4, location: { id: '4', name: 'Australia', countryCode: 'AU', flag: '🇦🇺' }, metric: { name: 'engagement', value: 8700, formattedValue: '8.7K' }, change: { value: 22, direction: 'up' } },
-      { rank: 5, location: { id: '5', name: 'Germany', countryCode: 'DE', flag: '🇩🇪' }, metric: { name: 'engagement', value: 6200, formattedValue: '6.2K' }, change: { value: 5, direction: 'up' } },
-    ]);
-
-    setMapData({
-      features: [
-        { type: 'Feature', geometry: { type: 'Point', coordinates: [-118.24, 34.05] }, properties: { locationId: '1', name: 'Los Angeles', country: 'US', engagement: 9800, intensity: 0.95, radius: 20 } },
-        { type: 'Feature', geometry: { type: 'Point', coordinates: [-0.12, 51.51] }, properties: { locationId: '2', name: 'London', country: 'GB', engagement: 7200, intensity: 0.72, radius: 16 } },
-        { type: 'Feature', geometry: { type: 'Point', coordinates: [-73.94, 40.67] }, properties: { locationId: '3', name: 'New York', country: 'US', engagement: 6900, intensity: 0.68, radius: 15 } },
-        { type: 'Feature', geometry: { type: 'Point', coordinates: [-79.38, 43.65] }, properties: { locationId: '4', name: 'Toronto', country: 'CA', engagement: 4500, intensity: 0.45, radius: 12 } },
-        { type: 'Feature', geometry: { type: 'Point', coordinates: [151.21, -33.87] }, properties: { locationId: '5', name: 'Sydney', country: 'AU', engagement: 3800, intensity: 0.38, radius: 10 } },
-        { type: 'Feature', geometry: { type: 'Point', coordinates: [-46.63, -23.55] }, properties: { locationId: '6', name: 'São Paulo', country: 'BR', engagement: 5400, intensity: 0.54, radius: 13 } },
-      ]
-    });
-
-    setInsights([
-      {
-        id: '1',
-        type: 'format_outperformer',
-        title: 'Carousel Sweet Spot in London',
-        description: 'Your carousel posts get 34% more saves in London compared to your global average. Consider creating more carousel content for your UK audience.',
-        locationId: '2',
-        locationName: 'London',
-        formatId: 'carousel',
-        formatName: 'Carousel',
-        metrics: { name: 'saves', value: 8.2, comparison: 6.1, changePercent: 34 },
-        priority: 80,
-        isActionable: true,
-        actionLabel: 'Create Carousel for UK',
-        actionUrl: '/generate?format=carousel',
-        validFrom: '2024-01-24',
-        validUntil: '2024-01-31',
-        createdAt: '2024-01-24T00:00:00Z'
-      },
-      {
-        id: '2',
-        type: 'emerging_region',
-        title: 'São Paulo is Heating Up',
-        description: 'Your audience in São Paulo has grown 156% this week. This emerging market shows strong potential for localized content.',
-        locationId: '6',
-        locationName: 'São Paulo',
-        formatId: null,
-        formatName: null,
-        metrics: { name: 'growth', value: 156, comparison: 100, changePercent: 156 },
-        priority: 90,
-        isActionable: true,
-        actionLabel: 'Explore Brazil Market',
-        actionUrl: '/analytics/location?country=BR',
-        validFrom: '2024-01-24',
-        validUntil: '2024-02-07',
-        createdAt: '2024-01-24T00:00:00Z'
+      // Try to get user info first
+      const userRes = await fetch('/api/auth/me');
+      if (!userRes.ok) {
+        setIsLoading(false);
+        return;
       }
-    ]);
+      const userData = await userRes.json();
+      const userId = userData?.id;
+
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch location data from each connected platform
+      for (const platform of platforms) {
+        try {
+          const res = await fetch(`/api/analytics?type=location&platform=${platform}&userId=${userId}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && Array.isArray(data.data)) {
+              allLocationData.push(...data.data);
+            }
+          }
+        } catch (err) {
+          console.error(`Failed to fetch ${platform} location data:`, err);
+        }
+      }
+
+      // Aggregate location data by country
+      const aggregated: Record<string, { percentage: number; engagement: number }> = {};
+      for (const loc of allLocationData) {
+        if (!aggregated[loc.country]) {
+          aggregated[loc.country] = { percentage: 0, engagement: 0 };
+        }
+        aggregated[loc.country].percentage += loc.percentage;
+        aggregated[loc.country].engagement += loc.engagement;
+      }
+
+      // Sort by engagement
+      const sortedCountries = Object.entries(aggregated)
+        .sort((a, b) => b[1].engagement - a[1].engagement);
+
+      if (sortedCountries.length === 0) {
+        // No data available - show empty states
+        setMetrics(null);
+        setTopLocations([]);
+        setMapData(null);
+        setInsights([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Build metrics from real data
+      const topCountryCode = sortedCountries[0][0];
+      const topCountryData = sortedCountries[0][1];
+      const totalEngagement = sortedCountries.reduce((sum, [, data]) => sum + data.engagement, 0);
+
+      setMetrics({
+        topCountry: {
+          name: countryNames[topCountryCode] || topCountryCode,
+          code: topCountryCode,
+          engagement: topCountryData.engagement,
+          change: 0 // Would need historical data
+        },
+        topCity: {
+          name: '—', // City-level data requires more detailed API access
+          country: topCountryCode,
+          engagement: 0,
+          change: 0
+        },
+        emergingRegion: {
+          name: sortedCountries.length > 3 ? (countryNames[sortedCountries[3][0]] || sortedCountries[3][0]) : '—',
+          growth: 0,
+          previous: 0,
+          current: sortedCountries.length > 3 ? sortedCountries[3][1].engagement : 0
+        },
+        globalReach: {
+          countries: sortedCountries.length,
+          cities: 0, // City count requires detailed data
+          newThisPeriod: 0
+        }
+      });
+
+      // Build top locations list
+      const topLocs: RankedLocation[] = sortedCountries.slice(0, 10).map(([code, data], idx) => ({
+        rank: idx + 1,
+        location: {
+          id: code,
+          name: countryNames[code] || code,
+          countryCode: code,
+          flag: getFlag(code)
+        },
+        metric: {
+          name: 'engagement',
+          value: data.engagement,
+          formattedValue: formatNumber(data.engagement)
+        },
+        change: {
+          value: 0, // Would need historical data
+          direction: 'stable' as const
+        }
+      }));
+      setTopLocations(topLocs);
+
+      // Build map data
+      const maxEngagement = Math.max(...sortedCountries.map(([, d]) => d.engagement));
+      const features: GeoJSONFeature[] = sortedCountries
+        .filter(([code]) => countryCoords[code])
+        .map(([code, data]) => ({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: countryCoords[code]
+          },
+          properties: {
+            locationId: code,
+            name: countryNames[code] || code,
+            country: code,
+            engagement: data.engagement,
+            intensity: maxEngagement > 0 ? data.engagement / maxEngagement : 0,
+            radius: Math.max(6, Math.min(20, (data.engagement / maxEngagement) * 20))
+          }
+        }));
+      setMapData({ features });
+
+      // Generate insights based on real data
+      const newInsights: LocationInsight[] = [];
+      if (sortedCountries.length > 0) {
+        const [topCode, topData] = sortedCountries[0];
+        newInsights.push({
+          id: '1',
+          type: 'geographic_content_match',
+          title: `${countryNames[topCode] || topCode} Leads Your Engagement`,
+          description: `${countryNames[topCode] || topCode} accounts for ${((topData.engagement / totalEngagement) * 100).toFixed(1)}% of your total engagement. Consider creating more content tailored to this audience.`,
+          locationId: topCode,
+          locationName: countryNames[topCode] || topCode,
+          formatId: null,
+          formatName: null,
+          metrics: {
+            name: 'engagement share',
+            value: (topData.engagement / totalEngagement) * 100,
+            comparison: 100 / sortedCountries.length,
+            changePercent: 0
+          },
+          priority: 90,
+          isActionable: true,
+          actionLabel: 'View Content Strategy',
+          actionUrl: '/generate',
+          validFrom: new Date().toISOString().split('T')[0],
+          validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          createdAt: new Date().toISOString()
+        });
+      }
+      setInsights(newInsights);
+
+    } catch (error) {
+      console.error('Failed to load location data:', error);
+      setMetrics(null);
+      setTopLocations([]);
+      setMapData(null);
+      setInsights([]);
+    }
 
     setIsLoading(false);
   };

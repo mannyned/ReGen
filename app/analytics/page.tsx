@@ -68,6 +68,36 @@ interface AnalyticsStats {
   failedPosts: number
   aiGenerated: number
   platformStats: Record<string, number>
+  timeRange: number
+  engagement: {
+    totalLikes: number
+    totalComments: number
+    totalShares: number
+    totalSaves: number
+    totalViews: number
+    totalReach: number
+    totalImpressions: number
+    avgEngagementRate: string | null
+    postsWithMetrics: number
+  }
+  platformEngagement: Record<string, {
+    posts: number
+    likes: number
+    comments: number
+    shares: number
+    reach: number
+    impressions: number
+    saves: number
+    views: number
+  }>
+  advancedMetrics: {
+    contentVelocity: number
+    viralityScore: number
+    crossPlatformSynergy: number
+    hashtagPerformance: number
+    postsPerWeek: number
+    avgReachPerPost: number
+  }
 }
 
 export default function AnalyticsPage() {
@@ -164,14 +194,40 @@ export default function AnalyticsPage() {
     setShowUpgradeModal(false)
   }
 
-  // In production, show empty state. In development, show mock data for testing.
-  const platformData = isProduction ? [] : [
-    { platform: 'Instagram', posts: 24, engagement: 12.5, reach: 5200, growth: 2.3, bestTime: '6PM-8PM' },
-    { platform: 'Twitter', posts: 45, engagement: 8.3, reach: 3800, growth: -1.2, bestTime: '12PM-2PM' },
-    { platform: 'LinkedIn', posts: 18, engagement: 15.2, reach: 2900, growth: 5.7, bestTime: '9AM-11AM' },
-    { platform: 'Facebook', posts: 32, engagement: 6.8, reach: 4100, growth: 0.8, bestTime: '7PM-9PM' },
-    { platform: 'TikTok', posts: 28, engagement: 18.7, reach: 6500, growth: 8.9, bestTime: '5PM-7PM' }
-  ]
+  // Build platform data from real API response when available
+  const platformData = (() => {
+    if (realStats?.platformEngagement && Object.keys(realStats.platformEngagement).length > 0) {
+      const platformNameMap: Record<string, string> = {
+        instagram: 'Instagram',
+        twitter: 'Twitter',
+        linkedin: 'LinkedIn',
+        facebook: 'Facebook',
+        tiktok: 'TikTok',
+        youtube: 'YouTube',
+        snapchat: 'Snapchat',
+      }
+      return Object.entries(realStats.platformEngagement).map(([platform, data]) => {
+        const totalEngagement = data.likes + data.comments + data.shares + data.saves
+        const engagementRate = data.reach > 0 ? ((totalEngagement / data.reach) * 100) : 0
+        return {
+          platform: platformNameMap[platform] || platform,
+          posts: data.posts,
+          engagement: parseFloat(engagementRate.toFixed(1)),
+          reach: data.reach,
+          growth: 0, // Would need historical data to calculate
+          bestTime: '—', // Would need time-based analysis
+        }
+      })
+    }
+    // Fallback to mock data in development
+    return isProduction ? [] : [
+      { platform: 'Instagram', posts: 24, engagement: 12.5, reach: 5200, growth: 2.3, bestTime: '6PM-8PM' },
+      { platform: 'Twitter', posts: 45, engagement: 8.3, reach: 3800, growth: -1.2, bestTime: '12PM-2PM' },
+      { platform: 'LinkedIn', posts: 18, engagement: 15.2, reach: 2900, growth: 5.7, bestTime: '9AM-11AM' },
+      { platform: 'Facebook', posts: 32, engagement: 6.8, reach: 4100, growth: 0.8, bestTime: '7PM-9PM' },
+      { platform: 'TikTok', posts: 28, engagement: 18.7, reach: 6500, growth: 8.9, bestTime: '5PM-7PM' }
+    ]
+  })()
 
   const topFormats = isProduction ? [] : [
     { type: 'Video', count: 42, avgEngagement: 14.2, trend: 'up' },
@@ -217,27 +273,40 @@ export default function AnalyticsPage() {
     }
   ]
 
-  const advancedMetrics = isProduction ? {
-    sentimentScore: 0,
-    audienceRetention: 0,
-    viralityScore: 0,
-    contentVelocity: 0,
-    crossPlatformSynergy: 0,
-    hashtagPerformance: 0
-  } : {
-    sentimentScore: 78,
-    audienceRetention: 65,
-    viralityScore: 42,
-    contentVelocity: 3.2,
-    crossPlatformSynergy: 85,
-    hashtagPerformance: 72
-  }
+  // Use real advanced metrics from API when available
+  const advancedMetrics = (() => {
+    if (realStats?.advancedMetrics) {
+      return {
+        sentimentScore: 0, // Would need sentiment analysis
+        audienceRetention: 0, // Would need video retention data
+        viralityScore: realStats.advancedMetrics.viralityScore,
+        contentVelocity: realStats.advancedMetrics.contentVelocity,
+        crossPlatformSynergy: realStats.advancedMetrics.crossPlatformSynergy,
+        hashtagPerformance: realStats.advancedMetrics.hashtagPerformance
+      }
+    }
+    return isProduction ? {
+      sentimentScore: 0,
+      audienceRetention: 0,
+      viralityScore: 0,
+      contentVelocity: 0,
+      crossPlatformSynergy: 0,
+      hashtagPerformance: 0
+    } : {
+      sentimentScore: 78,
+      audienceRetention: 65,
+      viralityScore: 42,
+      contentVelocity: 3.2,
+      crossPlatformSynergy: 85,
+      hashtagPerformance: 72
+    }
+  })()
 
   // Stats using real data from API
   const stats = {
     totalPosts: realStats?.totalPosts?.toString() || '0',
-    totalReach: '—', // Requires platform API access
-    avgEngagement: '—', // Requires platform API access
+    totalReach: realStats?.engagement?.totalReach ? realStats.engagement.totalReach.toLocaleString() : '—',
+    avgEngagement: realStats?.engagement?.avgEngagementRate ? realStats.engagement.avgEngagementRate + '%' : '—',
     aiGenerated: realStats?.aiGenerated?.toString() || '0'
   }
 
