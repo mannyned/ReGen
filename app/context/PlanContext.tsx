@@ -29,8 +29,11 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         const response = await fetch('/api/auth/me')
         if (response.ok) {
           const data = await response.json()
-          if (data.tier) {
-            const tier = data.tier.toLowerCase() as PlanType
+          // Use effectiveTier from tierInfo if available (handles Beta Pro users)
+          // This ensures Beta Pro users get PRO features even if their database tier is FREE/CREATOR
+          const effectiveTier = data.tierInfo?.effectiveTier || data.tier
+          if (effectiveTier) {
+            const tier = effectiveTier.toLowerCase() as PlanType
             if (['free', 'creator', 'pro'].includes(tier)) {
               setCurrentPlan(tier)
               setPlanFeatures(getPlan(tier))
