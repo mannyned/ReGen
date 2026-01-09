@@ -120,6 +120,14 @@ export default function AnalyticsPage() {
     growth: number
     bestTime: string
   }> | null>(null)
+  const [recentActivity, setRecentActivity] = useState<Array<{
+    id: string
+    action: string
+    time: string
+    icon: string
+    platform: string
+    status: string
+  }> | null>(null)
 
   // Upgrade intent tracking
   const upgradeIntent = useUpgradeIntent()
@@ -127,6 +135,69 @@ export default function AnalyticsPage() {
   const isProduction = process.env.NODE_ENV === 'production'
 
   const [isSyncing, setIsSyncing] = useState(false)
+
+  // Helper function to format relative time
+  const formatRelativeTime = (dateString: string | null | undefined): string => {
+    if (!dateString) return 'Recently'
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+    return date.toLocaleDateString()
+  }
+
+  // Get icon based on platform and media type
+  const getActivityIcon = (platform: string, mediaType?: string): string => {
+    const platformIcons: Record<string, string> = {
+      instagram: '📷',
+      meta: '📷',
+      tiktok: '🎵',
+      youtube: '🎬',
+      twitter: '🐦',
+      linkedin: '💼',
+      facebook: '📘',
+      snapchat: '👻',
+    }
+    if (mediaType === 'VIDEO' || mediaType === 'REELS') return '🎬'
+    return platformIcons[platform.toLowerCase()] || '📝'
+  }
+
+  // Fetch recent activity
+  const fetchRecentActivity = async () => {
+    try {
+      const response = await fetch('/api/posts/recent?limit=10&filter=all')
+      if (response.ok) {
+        const data = await response.json()
+        const activities = data.posts.map((post: {
+          id: string
+          platform: string
+          postedAt?: string
+          status: string
+          mediaType?: string
+        }) => ({
+          id: post.id,
+          action: post.status === 'DELETED'
+            ? `Post deleted from ${post.platform}`
+            : `Post published on ${post.platform}`,
+          time: formatRelativeTime(post.postedAt),
+          icon: getActivityIcon(post.platform, post.mediaType),
+          platform: post.platform,
+          status: post.status,
+        }))
+        setRecentActivity(activities)
+      }
+    } catch (error) {
+      console.error('Failed to fetch recent activity:', error)
+      setRecentActivity([])
+    }
+  }
 
   // Sync analytics from connected platforms (Meta, YouTube)
   const syncAnalytics = async () => {
@@ -163,10 +234,11 @@ export default function AnalyticsPage() {
   useEffect(() => {
     setMounted(true)
 
-    // Sync analytics first, then fetch stats
+    // Sync analytics first, then fetch stats and recent activity
     const loadAnalytics = async () => {
       await syncAnalytics()
       await fetchAnalyticsStats(timeRange)
+      await fetchRecentActivity()
     }
     loadAnalytics()
 
@@ -1643,7 +1715,12 @@ export default function AnalyticsPage() {
             {/* Recent Activity */}
             <Card className="p-6 lg:p-8 mt-8" hover={false}>
               <h2 className="text-2xl font-bold text-text-primary mb-6">Recent Activity</h2>
-              {isProduction ? (
+              {recentActivity === null ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-text-secondary">Loading recent activity...</p>
+                </div>
+              ) : recentActivity.length === 0 ? (
                 <div className="text-center py-12">
                   <span className="text-5xl mb-4 block">📋</span>
                   <p className="text-text-secondary">No recent activity.</p>
@@ -1651,20 +1728,15 @@ export default function AnalyticsPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {[
-                    { action: 'Post published on Instagram', time: '2 hours ago', icon: '📷', performance: userPlan === 'pro' ? '+15% above average' : null },
-                    { action: 'AI caption generated', time: '4 hours ago', icon: '✨', performance: userPlan === 'pro' ? 'Predicted engagement: 14.2%' : null },
-                    { action: 'Post scheduled for LinkedIn', time: '6 hours ago', icon: '💼', performance: userPlan === 'pro' ? 'Optimal time selected' : null },
-                    { action: 'Video uploaded', time: '1 day ago', icon: '🎬', performance: userPlan === 'pro' ? '92% quality score' : null }
-                  ].map((activity, index) => (
-                    <div key={index} className="flex items-center gap-4 p-4 hover:bg-background rounded-xl transition-colors">
+                  {recentActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-center gap-4 p-4 hover:bg-background rounded-xl transition-colors">
                       <span className="text-3xl">{activity.icon}</span>
                       <div className="flex-1">
                         <p className="font-medium text-text-primary">{activity.action}</p>
                         <div className="flex items-center gap-4">
                           <p className="text-sm text-text-secondary">{activity.time}</p>
-                          {activity.performance && (
-                            <p className="text-sm text-primary font-medium">{activity.performance}</p>
+                          {activity.status === 'DELETED' && (
+                            <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded-full">Deleted</span>
                           )}
                         </div>
                       </div>
