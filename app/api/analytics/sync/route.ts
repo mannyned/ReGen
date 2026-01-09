@@ -312,14 +312,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get posts to sync (Instagram, Facebook, and YouTube, last 30 days)
+    // Get posts to sync (Instagram, Facebook, YouTube, and LinkedIn, last 30 days)
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
     const posts = await prisma.outboundPost.findMany({
       where: {
         profileId,
-        provider: { in: ['instagram', 'facebook', 'meta', 'youtube', 'google'] },
+        provider: { in: ['instagram', 'facebook', 'meta', 'youtube', 'google', 'linkedin'] },
         status: 'POSTED',
         externalPostId: { not: null },
         postedAt: { gte: thirtyDaysAgo },
@@ -343,57 +343,42 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Get access tokens for Instagram, Facebook, and YouTube
-    // Note: Connections may be stored as 'meta' (unified) or 'instagram'/'facebook' (separate)
-    // YouTube uses Google OAuth (stored as 'google')
-    let instagramToken: string | null = null
-    let facebookToken: string | null = null
+    // Get access tokens for Instagram, Facebook, YouTube, and LinkedIn
+    // Provider mappings:
+    // - 'meta' -> Instagram & Facebook
+    // - 'google' -> YouTube
+    // - 'linkedin' -> LinkedIn
+    let metaToken: string | null = null
     let youtubeToken: string | null = null
+    let linkedinToken: string | null = null
 
-    // Try to get Instagram token - check both 'meta' and 'instagram' providers
-    try {
-      instagramToken = await tokenManager.getValidAccessToken(profileId, 'meta')
-      console.log('[Analytics Sync] Meta token retrieved successfully (for Instagram)')
-    } catch {
-      console.log('[Analytics Sync] No Meta token, trying instagram provider...')
-      try {
-        instagramToken = await tokenManager.getValidAccessToken(profileId, 'instagram')
-        console.log('[Analytics Sync] Instagram token retrieved successfully')
-      } catch {
-        console.log('[Analytics Sync] No Instagram token available')
-      }
-    }
-
-    // Try to get Facebook token - use same as Instagram if from 'meta', or try 'facebook'
-    if (instagramToken) {
-      // If we got a meta token, it works for both Instagram and Facebook
-      facebookToken = instagramToken
-    } else {
-      try {
-        facebookToken = await tokenManager.getValidAccessToken(profileId, 'facebook')
-        console.log('[Analytics Sync] Facebook token retrieved successfully')
-      } catch {
-        console.log('[Analytics Sync] No Facebook token available')
-      }
-    }
+    // Try to get Meta token (used for both Instagram and Facebook)
+    console.log('[Analytics Sync] Attempting to get Meta token...')
+    metaToken = await tokenManager.getValidAccessToken(profileId, 'meta')
+    console.log(`[Analytics Sync] Meta token result: ${metaToken ? 'SUCCESS' : 'NOT FOUND'}`)
 
     // Try to get YouTube/Google token
-    // Note: TokenManager internally maps 'youtube' -> 'google' for OAuth lookup
-    try {
-      youtubeToken = await tokenManager.getValidAccessToken(profileId, 'youtube')
-      console.log('[Analytics Sync] YouTube token retrieved successfully')
-    } catch {
-      console.log('[Analytics Sync] No YouTube token available')
-    }
+    console.log('[Analytics Sync] Attempting to get YouTube token...')
+    youtubeToken = await tokenManager.getValidAccessToken(profileId, 'youtube')
+    console.log(`[Analytics Sync] YouTube token result: ${youtubeToken ? 'SUCCESS' : 'NOT FOUND'}`)
+
+    // Try to get LinkedIn token
+    console.log('[Analytics Sync] Attempting to get LinkedIn token...')
+    linkedinToken = await tokenManager.getValidAccessToken(profileId, 'linkedin')
+    console.log(`[Analytics Sync] LinkedIn token result: ${linkedinToken ? 'SUCCESS' : 'NOT FOUND'}`)
+
+    // Use Meta token for both Instagram and Facebook
+    const instagramToken = metaToken
+    const facebookToken = metaToken
 
     // Log token status
-    console.log(`[Analytics Sync] Token status: Instagram=${!!instagramToken}, Facebook=${!!facebookToken}, YouTube=${!!youtubeToken}`)
+    console.log(`[Analytics Sync] Final token status: Meta=${!!metaToken}, YouTube=${!!youtubeToken}, LinkedIn=${!!linkedinToken}`)
 
     // Check if we have any tokens
-    if (!instagramToken && !facebookToken && !youtubeToken) {
+    if (!instagramToken && !facebookToken && !youtubeToken && !linkedinToken) {
       return NextResponse.json({
         success: false,
-        error: 'No connected Instagram, Facebook, or YouTube account',
+        error: 'No connected Instagram, Facebook, YouTube, or LinkedIn account',
         code: 'NO_CONNECTION',
       }, { status: 400 })
     }
@@ -417,6 +402,7 @@ export async function POST(request: NextRequest) {
       if (platform === 'instagram') accessToken = instagramToken
       else if (platform === 'facebook') accessToken = facebookToken
       else if (platform === 'youtube') accessToken = youtubeToken
+      else if (platform === 'linkedin') accessToken = linkedinToken
 
       if (!accessToken || !post.externalPostId) {
         console.log(`[Analytics Sync] Skipping post ${post.id}: provider=${post.provider}, platform=${platform}, hasToken=${!!accessToken}, hasExternalId=${!!post.externalPostId}`)

@@ -258,14 +258,18 @@ export class TokenManager {
     // First, try the NEW OAuthConnection table (used by the new OAuth engine)
     // This is where the new /api/auth/[provider]/callback stores tokens
     try {
+      console.log(`[TokenManager] Looking for OAuthConnection: userId=${userId}, provider=${provider}`)
+
       const oauthConnection = await prisma.oAuthConnection.findUnique({
         where: {
           profileId_provider: {
             profileId: userId,
-            provider: provider, // 'google' for YouTube, 'instagram', 'facebook', etc.
+            provider: provider,
           },
         },
       })
+
+      console.log(`[TokenManager] OAuthConnection found: ${!!oauthConnection}`)
 
       if (oauthConnection) {
         // Check if token is expired
@@ -273,23 +277,33 @@ export class TokenManager {
         const isExpired = oauthConnection.expiresAt &&
           new Date(oauthConnection.expiresAt.getTime() - bufferMs) < new Date()
 
+        console.log(`[TokenManager] Token expired: ${isExpired}, expiresAt: ${oauthConnection.expiresAt}`)
+
         if (isExpired && oauthConnection.refreshTokenEnc) {
           // Try to refresh using the OAuthEngine
           try {
+            console.log(`[TokenManager] Attempting token refresh for ${provider}`)
             const { OAuthEngine } = await import('@/lib/oauth/engine')
             const newToken = await OAuthEngine.getAccessToken(provider, userId)
+            console.log(`[TokenManager] Token refresh successful for ${provider}`)
             return newToken
           } catch (error) {
             console.error(`[TokenManager] Failed to refresh OAuthConnection token for ${provider}:`, error)
           }
-        } else {
+        } else if (!isExpired) {
           // Decrypt and return the token
-          const { decrypt } = await import('@/lib/crypto/encrypt')
-          return decrypt(oauthConnection.accessTokenEnc)
+          try {
+            const { decrypt } = await import('@/lib/crypto/encrypt')
+            const decryptedToken = decrypt(oauthConnection.accessTokenEnc)
+            console.log(`[TokenManager] Token decrypted successfully for ${provider}, length: ${decryptedToken?.length || 0}`)
+            return decryptedToken
+          } catch (decryptError) {
+            console.error(`[TokenManager] Token decryption failed for ${provider}:`, decryptError)
+          }
         }
       }
     } catch (error) {
-      console.log(`[TokenManager] OAuthConnection lookup failed for ${platform}, trying SocialConnection:`, error)
+      console.error(`[TokenManager] OAuthConnection lookup failed for ${platform}:`, error)
     }
 
     // Fallback to legacy SocialConnection table
