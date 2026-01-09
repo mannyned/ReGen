@@ -101,6 +101,14 @@ interface AnalyticsStats {
     postsPerWeek: number
     avgReachPerPost: number
   }
+  benchmarks: {
+    sentiment: { industry: number; userAvg: number; trend: 'up' | 'down' | 'stable'; trendValue: number }
+    retention: { industry: number; userAvg: number; trend: 'up' | 'down' | 'stable'; trendValue: number }
+    virality: { industry: number; userAvg: number; trend: 'up' | 'down' | 'stable'; trendValue: number }
+    velocity: { industry: number; userAvg: number; trend: 'up' | 'down' | 'stable'; trendValue: number }
+    crossPlatform: { industry: number; userAvg: number; trend: 'up' | 'down' | 'stable'; trendValue: number }
+    hashtags: { industry: number; userAvg: number; trend: 'up' | 'down' | 'stable'; trendValue: number }
+  }
 }
 
 export default function AnalyticsPage() {
@@ -1130,7 +1138,7 @@ export default function AnalyticsPage() {
                       color: 'text-green-600',
                       sublabel: 'Positive',
                       metricKey: 'sentiment' as const,
-                      benchmark: { industry: 72, userAvg: 78, trend: 'up' as const, trendValue: 8 }
+                      benchmark: realStats?.benchmarks?.sentiment || { industry: 65, userAvg: 0, trend: 'stable' as const, trendValue: 0 }
                     },
                     {
                       icon: '👁️',
@@ -1140,7 +1148,7 @@ export default function AnalyticsPage() {
                       color: 'text-text-secondary',
                       sublabel: 'Avg watch',
                       metricKey: 'retention' as const,
-                      benchmark: { industry: 55, userAvg: 65, trend: 'up' as const, trendValue: 12 }
+                      benchmark: realStats?.benchmarks?.retention || { industry: 45, userAvg: 0, trend: 'stable' as const, trendValue: 0 }
                     },
                     {
                       icon: '🔥',
@@ -1150,7 +1158,7 @@ export default function AnalyticsPage() {
                       color: 'text-orange-600',
                       sublabel: 'Score',
                       metricKey: 'virality' as const,
-                      benchmark: { industry: 38, userAvg: 42, trend: 'stable' as const, trendValue: 2 }
+                      benchmark: realStats?.benchmarks?.virality || { industry: 25, userAvg: 0, trend: 'stable' as const, trendValue: 0 }
                     },
                     {
                       icon: '⚡',
@@ -1160,7 +1168,7 @@ export default function AnalyticsPage() {
                       color: 'text-text-secondary',
                       sublabel: 'Posts/day',
                       metricKey: 'velocity' as const,
-                      benchmark: { industry: 2.8, userAvg: 3.2, trend: 'up' as const, trendValue: 15 }
+                      benchmark: realStats?.benchmarks?.velocity || { industry: 1.5, userAvg: 0, trend: 'stable' as const, trendValue: 0 }
                     },
                     {
                       icon: '🔗',
@@ -1170,7 +1178,7 @@ export default function AnalyticsPage() {
                       color: 'text-blue-600',
                       sublabel: 'Synergy',
                       metricKey: 'crossPlatform' as const,
-                      benchmark: { industry: 65, userAvg: 85, trend: 'up' as const, trendValue: 22 }
+                      benchmark: realStats?.benchmarks?.crossPlatform || { industry: 55, userAvg: 0, trend: 'stable' as const, trendValue: 0 }
                     },
                     {
                       icon: '#️⃣',
@@ -1180,7 +1188,7 @@ export default function AnalyticsPage() {
                       color: 'text-purple-600',
                       sublabel: 'Performance',
                       metricKey: 'hashtags' as const,
-                      benchmark: { industry: 58, userAvg: 72, trend: 'down' as const, trendValue: -3 }
+                      benchmark: realStats?.benchmarks?.hashtags || { industry: 40, userAvg: 0, trend: 'stable' as const, trendValue: 0 }
                     }
                   ].map((metric) => (
                     <Card key={metric.label} className="p-4 group hover:shadow-lg transition-shadow" hover={false}>

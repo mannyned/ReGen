@@ -294,6 +294,199 @@ export async function GET(request: NextRequest) {
       avgReachPerPost: Math.round(avgReachPerPost),
     }
 
+    // ============================================
+    // CALCULATE PREVIOUS PERIOD FOR TREND COMPARISON
+    // ============================================
+
+    // Previous period: same duration, ending where current period starts
+    const previousPeriodEnd = new Date(startDate)
+    const previousPeriodStart = new Date(startDate)
+    previousPeriodStart.setDate(previousPeriodStart.getDate() - days)
+
+    // Fetch posts from previous period
+    const previousPeriodPosts = await prisma.outboundPost.findMany({
+      where: {
+        profileId,
+        status: 'POSTED',
+        postedAt: {
+          gte: previousPeriodStart,
+          lt: previousPeriodEnd,
+        },
+      },
+      select: {
+        provider: true,
+        metadata: true,
+      },
+    })
+
+    // Calculate previous period engagement
+    let prevTotalLikes = 0
+    let prevTotalComments = 0
+    let prevTotalShares = 0
+    let prevTotalReach = 0
+    let prevTotalSaves = 0
+    let prevTotalViews = 0
+    let prevTotalImpressions = 0
+    let prevPostsWithMetrics = 0
+
+    const prevPlatformEngagement: Record<string, { posts: number; reach: number; likes: number; comments: number; shares: number; saves: number }> = {}
+
+    for (const post of previousPeriodPosts) {
+      const metadata = post.metadata as Record<string, unknown> | null
+      const analytics = metadata?.analytics as Record<string, number> | null
+
+      if (analytics) {
+        prevPostsWithMetrics++
+        prevTotalLikes += analytics.likes || 0
+        prevTotalComments += analytics.comments || 0
+        prevTotalShares += analytics.shares || 0
+        prevTotalReach += analytics.reach || 0
+        prevTotalSaves += analytics.saved || analytics.saves || 0
+        prevTotalViews += analytics.views || 0
+        prevTotalImpressions += analytics.impressions || 0
+
+        let provider = post.provider
+        if (provider === 'meta') provider = 'instagram'
+        if (provider === 'google') provider = 'youtube'
+
+        if (!prevPlatformEngagement[provider]) {
+          prevPlatformEngagement[provider] = { posts: 0, reach: 0, likes: 0, comments: 0, shares: 0, saves: 0 }
+        }
+        prevPlatformEngagement[provider].posts++
+        prevPlatformEngagement[provider].reach += analytics.reach || 0
+        prevPlatformEngagement[provider].likes += analytics.likes || 0
+        prevPlatformEngagement[provider].comments += analytics.comments || 0
+        prevPlatformEngagement[provider].shares += analytics.shares || 0
+        prevPlatformEngagement[provider].saves += analytics.saved || analytics.saves || 0
+      }
+    }
+
+    // Calculate previous period advanced metrics
+    const prevTotalEngagement = prevTotalLikes + prevTotalComments + prevTotalShares + prevTotalSaves
+
+    // Previous Sentiment
+    let prevSentimentScore = 0
+    if (prevTotalEngagement > 0) {
+      const prevPositiveSignals = prevTotalLikes + prevTotalSaves
+      const prevPositiveRatio = prevPositiveSignals / prevTotalEngagement
+      const prevEngagementBonus = prevTotalReach > 0 ? Math.min(20, (prevTotalEngagement / prevTotalReach) * 500) : 0
+      prevSentimentScore = Math.min(100, Math.round(prevPositiveRatio * 80 + prevEngagementBonus))
+    }
+
+    // Previous Retention
+    let prevAudienceRetention = 0
+    if (prevTotalViews > 0 && prevTotalImpressions > 0) {
+      prevAudienceRetention = Math.min(100, Math.round((prevTotalViews / prevTotalImpressions) * 100))
+    } else if (prevTotalEngagement > 0) {
+      const prevDeepEngagement = prevTotalComments + prevTotalSaves + prevTotalShares
+      const prevSurfaceEngagement = prevTotalLikes
+      const prevTotalEng = prevDeepEngagement + prevSurfaceEngagement
+      if (prevTotalEng > 0) {
+        const prevDepthRatio = prevDeepEngagement / prevTotalEng
+        prevAudienceRetention = Math.min(100, Math.round(30 + prevDepthRatio * 70))
+      }
+    }
+
+    // Previous Virality
+    let prevViralityScore = 0
+    if (prevTotalReach > 0) {
+      const prevViralActions = prevTotalShares + prevTotalSaves
+      prevViralityScore = Math.min(100, Math.round((prevViralActions / prevTotalReach) * 2000))
+    }
+
+    // Previous Velocity
+    const prevContentVelocity = days > 0 ? parseFloat((previousPeriodPosts.length / days).toFixed(2)) : 0
+
+    // Previous Cross-Platform Synergy
+    let prevCrossPlatformSynergy = 0
+    const prevPlatformRates: number[] = []
+    for (const [, data] of Object.entries(prevPlatformEngagement)) {
+      if (data.posts > 0 && data.reach > 0) {
+        const rate = ((data.likes + data.comments + data.shares + data.saves) / data.reach) * 100
+        prevPlatformRates.push(rate)
+      }
+    }
+    if (prevPlatformRates.length >= 2) {
+      const mean = prevPlatformRates.reduce((a, b) => a + b, 0) / prevPlatformRates.length
+      const variance = prevPlatformRates.reduce((sum, rate) => sum + Math.pow(rate - mean, 2), 0) / prevPlatformRates.length
+      const stdDev = Math.sqrt(variance)
+      const coeffOfVariation = mean > 0 ? stdDev / mean : 1
+      prevCrossPlatformSynergy = Math.max(0, Math.min(100, Math.round((1 - coeffOfVariation) * 100)))
+    } else if (prevPlatformRates.length === 1) {
+      prevCrossPlatformSynergy = 50
+    }
+
+    // Previous Hashtag Performance
+    const prevAvgReachPerPost = prevPostsWithMetrics > 0 ? prevTotalReach / prevPostsWithMetrics : 0
+    const prevHashtagPerformance = Math.min(100, Math.round((prevAvgReachPerPost / 5000) * 100))
+
+    // ============================================
+    // CALCULATE TRENDS (current vs previous)
+    // ============================================
+
+    const calculateTrend = (current: number, previous: number): { trend: 'up' | 'down' | 'stable'; trendValue: number } => {
+      if (previous === 0 && current === 0) {
+        return { trend: 'stable', trendValue: 0 }
+      }
+      if (previous === 0) {
+        return { trend: 'up', trendValue: 100 } // New metric, treat as 100% increase
+      }
+      const change = ((current - previous) / previous) * 100
+      const roundedChange = Math.round(change * 10) / 10 // Round to 1 decimal
+
+      if (Math.abs(roundedChange) < 1) {
+        return { trend: 'stable', trendValue: 0 }
+      }
+      return {
+        trend: roundedChange > 0 ? 'up' : 'down',
+        trendValue: Math.abs(roundedChange)
+      }
+    }
+
+    // Industry averages (static reference points based on general social media benchmarks)
+    const industryBenchmarks = {
+      sentiment: 65,      // Average positive sentiment
+      retention: 45,      // Average retention rate
+      virality: 25,       // Average virality score
+      velocity: 1.5,      // Average posts per day
+      crossPlatform: 55,  // Average cross-platform consistency
+      hashtags: 40,       // Average hashtag reach performance
+    }
+
+    // Calculate benchmarks with real trends
+    const benchmarks = {
+      sentiment: {
+        industry: industryBenchmarks.sentiment,
+        userAvg: prevSentimentScore || sentimentScore, // Use previous as "average", or current if no previous
+        ...calculateTrend(sentimentScore, prevSentimentScore)
+      },
+      retention: {
+        industry: industryBenchmarks.retention,
+        userAvg: prevAudienceRetention || audienceRetention,
+        ...calculateTrend(audienceRetention, prevAudienceRetention)
+      },
+      virality: {
+        industry: industryBenchmarks.virality,
+        userAvg: prevViralityScore || viralityScore,
+        ...calculateTrend(viralityScore, prevViralityScore)
+      },
+      velocity: {
+        industry: industryBenchmarks.velocity,
+        userAvg: prevContentVelocity || contentVelocity,
+        ...calculateTrend(contentVelocity, prevContentVelocity)
+      },
+      crossPlatform: {
+        industry: industryBenchmarks.crossPlatform,
+        userAvg: prevCrossPlatformSynergy || crossPlatformSynergy,
+        ...calculateTrend(crossPlatformSynergy, prevCrossPlatformSynergy)
+      },
+      hashtags: {
+        industry: industryBenchmarks.hashtags,
+        userAvg: prevHashtagPerformance || hashtagPerformance,
+        ...calculateTrend(hashtagPerformance, prevHashtagPerformance)
+      },
+    }
+
     return NextResponse.json({
       totalPosts,
       postsThisWeek,
@@ -319,6 +512,8 @@ export async function GET(request: NextRequest) {
       platformEngagement,
       // Advanced metrics (Pro feature)
       advancedMetrics,
+      // Benchmark data for tooltips (Pro feature)
+      benchmarks,
     })
   } catch (error) {
     console.error('[Analytics Stats Error]', error)
