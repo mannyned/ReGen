@@ -37,21 +37,36 @@ export async function GET(request: NextRequest) {
       // Get connections for the user
       const targetUserId = userId || user?.id
       if (targetUserId) {
-        const dbConnections = await prisma.socialConnection.findMany({
+        // Check oAuthConnection table (new OAuth engine)
+        const oauthConnections = await prisma.oAuthConnection.findMany({
+          where: { profileId: targetUserId },
+          select: {
+            provider: true,
+            providerAccountId: true,
+            metadata: true,
+            createdAt: true,
+            expiresAt: true,
+          }
+        })
+        connectionCount = oauthConnections.length
+        connections = oauthConnections.map(c => {
+          const metadata = c.metadata as any
+          return {
+            platform: c.provider,
+            username: metadata?.username || metadata?.displayName || c.providerAccountId,
+            isActive: !c.expiresAt || c.expiresAt > new Date(),
+          }
+        })
+
+        // Also check legacy socialConnection table for comparison
+        const legacyConnections = await prisma.socialConnection.findMany({
           where: { profileId: targetUserId },
           select: {
             platform: true,
             username: true,
             isActive: true,
-            createdAt: true,
           }
-        })
-        connectionCount = dbConnections.length
-        connections = dbConnections.map(c => ({
-          platform: c.platform,
-          username: c.username,
-          isActive: c.isActive,
-        }))
+        }).catch(() => []) // Ignore if table doesn't exist
       }
     } catch (dbError) {
       console.error('Database error:', dbError)

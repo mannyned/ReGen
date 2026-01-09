@@ -24,6 +24,7 @@ import type { SocialPlatform } from '@/lib/types/social'
 
 type TimeRange = '7' | '30' | '90' | '365'
 type PlanType = 'free' | 'creator' | 'pro'
+type PlatformFilter = 'all' | SocialPlatform
 
 // Analytics permission types
 interface AnalyticsPermissions {
@@ -104,7 +105,7 @@ export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('30')
   const [userPlan, setUserPlan] = useState<PlanType>('free')
   const [mounted, setMounted] = useState(false)
-  const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatform>('instagram')
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformFilter>('all')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [upgradeModalMetric, setUpgradeModalMetric] = useState<LockedMetricId | null>(null)
   const [activeTrialMetric, setActiveTrialMetric] = useState<LockedMetricId | null>(null)
@@ -377,6 +378,58 @@ export default function AnalyticsPage() {
     aiGenerated: realStats?.aiGenerated?.toString() || '0'
   }
 
+  // Filtered stats based on selected platform
+  const filteredStats = (() => {
+    if (selectedPlatform === 'all' || !realStats) {
+      return stats
+    }
+
+    // Map display names to platform keys for filtering
+    const platformKeyMap: Record<string, string[]> = {
+      instagram: ['instagram', 'meta'],
+      youtube: ['youtube', 'google'],
+      tiktok: ['tiktok'],
+      twitter: ['twitter'],
+      linkedin: ['linkedin'],
+      facebook: ['facebook'],
+      snapchat: ['snapchat'],
+    }
+
+    const platformKeys = platformKeyMap[selectedPlatform] || [selectedPlatform]
+
+    // Calculate filtered post count from platformStats
+    const filteredPostCount = platformKeys.reduce((total, key) => {
+      return total + (realStats.platformStats?.[key] || 0)
+    }, 0)
+
+    // Calculate filtered engagement from platformEngagement
+    const filteredEngagement = platformKeys.reduce((acc, key) => {
+      const engData = realStats.platformEngagement?.[key]
+      if (engData) {
+        return {
+          reach: acc.reach + engData.reach,
+          likes: acc.likes + engData.likes,
+          comments: acc.comments + engData.comments,
+          shares: acc.shares + engData.shares,
+          saves: acc.saves + engData.saves,
+        }
+      }
+      return acc
+    }, { reach: 0, likes: 0, comments: 0, shares: 0, saves: 0 })
+
+    const totalEngagement = filteredEngagement.likes + filteredEngagement.comments + filteredEngagement.shares + filteredEngagement.saves
+    const engagementRate = filteredEngagement.reach > 0
+      ? ((totalEngagement / filteredEngagement.reach) * 100).toFixed(1)
+      : null
+
+    return {
+      totalPosts: filteredPostCount.toString(),
+      totalReach: filteredEngagement.reach > 0 ? filteredEngagement.reach.toLocaleString() : '—',
+      avgEngagement: engagementRate ? engagementRate + '%' : '—',
+      aiGenerated: '—' // AI generated count is not platform-specific in current data
+    }
+  })()
+
   if (!mounted) return null
 
   return (
@@ -522,8 +575,28 @@ export default function AnalyticsPage() {
                 </p>
               </div>
 
-              {/* Time Range Selector and Export Button */}
-              <div className="flex items-center gap-4">
+              {/* Time Range Selector, Platform Filter, and Export Button */}
+              <div className="flex flex-wrap items-center gap-4">
+                {/* Platform Context Filter */}
+                <div className="flex items-center gap-2 bg-white rounded-xl shadow-sm px-3 py-1.5">
+                  <span className="text-xs text-text-secondary font-medium">Platform:</span>
+                  <select
+                    value={selectedPlatform}
+                    onChange={(e) => setSelectedPlatform(e.target.value as PlatformFilter)}
+                    className="text-sm px-2 py-1.5 border-0 bg-transparent text-text-primary font-medium focus:outline-none focus:ring-0 cursor-pointer"
+                  >
+                    <option value="all">All Platforms</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="youtube">YouTube</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="twitter">Twitter</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="snapchat">Snapchat</option>
+                  </select>
+                </div>
+
+                {/* Time Range Selector */}
                 <div className="flex gap-2 bg-white rounded-xl shadow-sm p-1.5">
                   {[
                     { value: '7' as TimeRange, label: '7 Days' },
@@ -794,10 +867,10 @@ export default function AnalyticsPage() {
 
             {/* Key Metrics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <StatCard label="Total Posts" value={stats.totalPosts} icon="📊" trend={isProduction ? undefined : { value: 12, positive: true }} />
-              <StatCard label="Total Reach" value={stats.totalReach} icon="👥" trend={isProduction ? undefined : { value: 24, positive: true }} />
-              <StatCard label="Avg Engagement" value={stats.avgEngagement} icon="❤️" trend={isProduction ? undefined : { value: 5.2, positive: true }} />
-              <StatCard label="AI Generated" value={stats.aiGenerated} icon="✨" subtitle={isProduction ? undefined : "60% of total posts"} />
+              <StatCard label="Total Posts" value={filteredStats.totalPosts} icon="📊" trend={isProduction ? undefined : { value: 12, positive: true }} />
+              <StatCard label="Total Reach" value={filteredStats.totalReach} icon="👥" trend={isProduction ? undefined : { value: 24, positive: true }} />
+              <StatCard label="Avg Engagement" value={filteredStats.avgEngagement} icon="❤️" trend={isProduction ? undefined : { value: 5.2, positive: true }} />
+              <StatCard label="AI Generated" value={filteredStats.aiGenerated} icon="✨" subtitle={isProduction ? undefined : "60% of total posts"} />
             </div>
 
             {/* Feature Cards */}
@@ -965,24 +1038,13 @@ export default function AnalyticsPage() {
             {/* Advanced Metrics - Pro Plan Only */}
             {userPlan === 'pro' && (
               <div className="mb-8">
-                {/* Platform Filter for Tooltips */}
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-text-primary">Advanced Metrics</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-text-secondary">Platform context:</span>
-                    <select
-                      value={selectedPlatform}
-                      onChange={(e) => setSelectedPlatform(e.target.value as SocialPlatform)}
-                      className="text-xs px-2 py-1 border border-gray-200 rounded-lg bg-white text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    >
-                      <option value="instagram">Instagram</option>
-                      <option value="tiktok">TikTok</option>
-                      <option value="youtube">YouTube</option>
-                      <option value="linkedin">LinkedIn</option>
-                      <option value="twitter">Twitter</option>
-                      <option value="facebook">Facebook</option>
-                    </select>
-                  </div>
+                  {selectedPlatform !== 'all' && (
+                    <span className="text-xs text-text-secondary bg-primary/10 px-2 py-1 rounded-full">
+                      Filtered by {selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}
+                    </span>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                   {[
@@ -1052,7 +1114,7 @@ export default function AnalyticsPage() {
                         <span className="text-xl group-hover:scale-110 transition-transform">{metric.icon}</span>
                         <MetricInfo
                           metric={metric.metricKey}
-                          platform={selectedPlatform}
+                          platform={selectedPlatform === 'all' ? 'instagram' : selectedPlatform}
                           userPlan={userPlan}
                           currentValue={metric.value}
                           benchmark={metric.benchmark}
@@ -1077,84 +1139,7 @@ export default function AnalyticsPage() {
               </div>
             )}
 
-
-            {/* Platform Performance */}
-            <Card className="p-6 lg:p-8 mb-8" hover={false}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-text-primary">Platform Performance</h2>
-                {userPlan === 'creator' && (
-                  <Badge variant="primary" className="bg-purple-100 text-purple-700">
-                    🔒 Pro: Unlock best posting times
-                  </Badge>
-                )}
-              </div>
-              {platformData === null ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-text-secondary">
-                    {isSyncing ? 'Syncing engagement data from platforms...' : 'Loading platform data...'}
-                  </p>
-                </div>
-              ) : platformData.length === 0 ? (
-                <div className="text-center py-12">
-                  <span className="text-5xl mb-4 block">📊</span>
-                  <p className="text-text-secondary">No platform data yet.</p>
-                  <p className="text-sm text-text-secondary/70">Start posting to see your performance across platforms.</p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {platformData.map((platform) => (
-                    <div key={platform.platform}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <PlatformLogo
-                            platform={PLATFORM_ID_MAP[platform.platform]}
-                            size="sm"
-                            variant="color"
-                          />
-                          <span className="font-semibold text-text-primary">{platform.platform}</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          {userPlan === 'pro' && (
-                            <>
-                              <span className="text-xs text-text-secondary">
-                                Best time: <span className="font-medium text-primary">{platform.bestTime}</span>
-                              </span>
-                              <span className={`text-xs font-medium ${platform.growth > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {platform.growth > 0 ? '↑' : '↓'} {Math.abs(platform.growth)}%
-                              </span>
-                            </>
-                          )}
-                          <span className="text-sm text-text-secondary">{platform.posts} posts</span>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4 mb-2">
-                        <div>
-                          <p className="text-xs text-text-secondary mb-1">Engagement Rate</p>
-                          <p className="text-lg font-bold text-primary">{platform.engagement}%</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-text-secondary mb-1">Reach</p>
-                          <p className="text-lg font-bold text-text-primary">{platform.reach.toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-text-secondary mb-1">Avg per Post</p>
-                          <p className="text-lg font-bold text-text-primary">{Math.round(platform.reach / platform.posts)}</p>
-                        </div>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                        <div
-                          className="bg-gradient-primary h-3 rounded-full transition-all duration-500"
-                          style={{ width: `${platform.engagement * 5}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
               {/* Top Performing Formats */}
               <Card className="p-6 lg:p-8" hover={false}>
                 <div className="flex items-center justify-between mb-6">
@@ -1573,6 +1558,87 @@ export default function AnalyticsPage() {
                 )}
               </Card>
             )}
+
+            {/* Platform Performance - NOT affected by Platform Context filter */}
+            <Card className="p-6 lg:p-8 mt-8" hover={false}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-text-primary">Platform Performance</h2>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-text-secondary bg-gray-100 px-2 py-1 rounded-full">
+                    All platforms
+                  </span>
+                  {userPlan === 'creator' && (
+                    <Badge variant="primary" className="bg-purple-100 text-purple-700">
+                      🔒 Pro: Unlock best posting times
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              {platformData === null ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-text-secondary">
+                    {isSyncing ? 'Syncing engagement data from platforms...' : 'Loading platform data...'}
+                  </p>
+                </div>
+              ) : platformData.length === 0 ? (
+                <div className="text-center py-12">
+                  <span className="text-5xl mb-4 block">📊</span>
+                  <p className="text-text-secondary">No platform data yet.</p>
+                  <p className="text-sm text-text-secondary/70">Start posting to see your performance across platforms.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {platformData.map((platform) => (
+                    <div key={platform.platform}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <PlatformLogo
+                            platform={PLATFORM_ID_MAP[platform.platform]}
+                            size="sm"
+                            variant="color"
+                          />
+                          <span className="font-semibold text-text-primary">{platform.platform}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          {userPlan === 'pro' && (
+                            <>
+                              <span className="text-xs text-text-secondary">
+                                Best time: <span className="font-medium text-primary">{platform.bestTime}</span>
+                              </span>
+                              <span className={`text-xs font-medium ${platform.growth > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {platform.growth > 0 ? '↑' : '↓'} {Math.abs(platform.growth)}%
+                              </span>
+                            </>
+                          )}
+                          <span className="text-sm text-text-secondary">{platform.posts} posts</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 mb-2">
+                        <div>
+                          <p className="text-xs text-text-secondary mb-1">Engagement Rate</p>
+                          <p className="text-lg font-bold text-primary">{platform.engagement}%</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-text-secondary mb-1">Reach</p>
+                          <p className="text-lg font-bold text-text-primary">{platform.reach.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-text-secondary mb-1">Avg per Post</p>
+                          <p className="text-lg font-bold text-text-primary">{Math.round(platform.reach / platform.posts)}</p>
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div
+                          className="bg-gradient-primary h-3 rounded-full transition-all duration-500"
+                          style={{ width: `${platform.engagement * 5}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
 
             {/* Recent Activity */}
             <Card className="p-6 lg:p-8 mt-8" hover={false}>

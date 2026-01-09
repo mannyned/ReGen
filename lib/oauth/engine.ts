@@ -558,6 +558,13 @@ export async function getAccessToken(
  * Creates or updates existing connection
  */
 async function storeConnection(data: OAuthConnectionData): Promise<void> {
+  console.log('[OAuth Engine] Storing connection:', {
+    profileId: data.profileId,
+    provider: data.provider,
+    providerAccountId: data.providerAccountId,
+    expiresAt: data.expiresAt,
+  });
+
   const encryptedData = {
     accessTokenEnc: encrypt(data.accessToken),
     refreshTokenEnc: encryptOptional(data.refreshToken),

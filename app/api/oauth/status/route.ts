@@ -11,7 +11,10 @@ export async function GET(request: NextRequest) {
   try {
     // Get authenticated user ID
     const userId = await getUserId(request)
+    console.log('[OAuth Status] getUserId returned:', userId)
+
     if (!userId) {
+      console.log('[OAuth Status] No userId, returning 401')
       return NextResponse.json(
         { success: false, error: 'Not authenticated', connectedPlatforms: [], totalConnected: 0 },
         { status: 401 }
@@ -24,6 +27,12 @@ export async function GET(request: NextRequest) {
         profileId: userId,
       },
     })
+
+    console.log('[OAuth Status] Found connections:', connections.map(c => ({
+      provider: c.provider,
+      providerAccountId: c.providerAccountId,
+      createdAt: c.createdAt,
+    })))
 
     const connectedPlatforms = connections.map(connection => {
       const metadata = connection.metadata as any;
