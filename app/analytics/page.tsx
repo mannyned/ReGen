@@ -96,6 +96,8 @@ interface AnalyticsStats {
     viralityScore: number
     crossPlatformSynergy: number
     hashtagPerformance: number
+    sentimentScore: number
+    audienceRetention: number
     postsPerWeek: number
     avgReachPerPost: number
   }
@@ -417,12 +419,12 @@ export default function AnalyticsPage() {
   const advancedMetrics = (() => {
     if (realStats?.advancedMetrics) {
       return {
-        sentimentScore: 0, // Would need sentiment analysis
-        audienceRetention: 0, // Would need video retention data
-        viralityScore: realStats.advancedMetrics.viralityScore,
-        contentVelocity: realStats.advancedMetrics.contentVelocity,
-        crossPlatformSynergy: realStats.advancedMetrics.crossPlatformSynergy,
-        hashtagPerformance: realStats.advancedMetrics.hashtagPerformance
+        sentimentScore: realStats.advancedMetrics.sentimentScore || 0,
+        audienceRetention: realStats.advancedMetrics.audienceRetention || 0,
+        viralityScore: realStats.advancedMetrics.viralityScore || 0,
+        contentVelocity: realStats.advancedMetrics.contentVelocity || 0,
+        crossPlatformSynergy: realStats.advancedMetrics.crossPlatformSynergy || 0,
+        hashtagPerformance: realStats.advancedMetrics.hashtagPerformance || 0
       }
     }
     return isProduction ? {

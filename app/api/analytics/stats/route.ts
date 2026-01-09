@@ -240,12 +240,55 @@ export async function GET(request: NextRequest) {
     // Score based on reach benchmarks (1000 reach per post = 50%, 5000+ = 100%)
     const hashtagPerformance = Math.min(100, Math.round((avgReachPerPost / 5000) * 100))
 
+    // 5. Sentiment Score - Based on engagement quality signals
+    // Higher likes/saves ratio vs comments indicates positive sentiment
+    // Score 0-100: Positive engagement signals = higher score
+    let sentimentScore = 0
+    if (totalEngagement > 0) {
+      // Positive signals: likes and saves (appreciation)
+      const positiveSignals = totalLikes + totalSaves
+      // Neutral signals: comments (could be positive or negative, but engagement)
+      // Shares are also positive but weighted less
+      const totalSignals = totalEngagement
+
+      // Base sentiment on ratio of positive signals
+      const positiveRatio = positiveSignals / totalSignals
+
+      // Also factor in engagement rate (higher engagement = more positive audience)
+      const engagementBonus = totalReach > 0
+        ? Math.min(20, (totalEngagement / totalReach) * 500)
+        : 0
+
+      sentimentScore = Math.min(100, Math.round(positiveRatio * 80 + engagementBonus))
+    }
+
+    // 6. Audience Retention - Based on views vs impressions for video content
+    // For non-video, estimate based on engagement depth (comments + saves vs likes)
+    let audienceRetention = 0
+    if (totalViews > 0 && totalImpressions > 0) {
+      // Video retention: views / impressions ratio
+      audienceRetention = Math.min(100, Math.round((totalViews / totalImpressions) * 100))
+    } else if (totalEngagement > 0) {
+      // Estimate from engagement depth (deeper engagement = higher retention)
+      const deepEngagement = totalComments + totalSaves + totalShares
+      const surfaceEngagement = totalLikes
+      const totalEng = deepEngagement + surfaceEngagement
+
+      if (totalEng > 0) {
+        // Deep engagement indicates people stayed and engaged meaningfully
+        const depthRatio = deepEngagement / totalEng
+        audienceRetention = Math.min(100, Math.round(30 + depthRatio * 70))
+      }
+    }
+
     // Bundle advanced metrics
     const advancedMetrics = {
       contentVelocity,
       viralityScore,
       crossPlatformSynergy,
       hashtagPerformance,
+      sentimentScore,
+      audienceRetention,
       // Additional context
       postsPerWeek: parseFloat((postsInRange / (days / 7)).toFixed(1)),
       avgReachPerPost: Math.round(avgReachPerPost),
