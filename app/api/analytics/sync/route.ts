@@ -344,17 +344,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Get access tokens for Instagram, Facebook, and YouTube
-    // Note: Instagram and Facebook both use Meta OAuth (stored as 'meta')
+    // Note: Connections may be stored as 'meta' (unified) or 'instagram'/'facebook' (separate)
     // YouTube uses Google OAuth (stored as 'google')
-    let metaToken: string | null = null
+    let instagramToken: string | null = null
+    let facebookToken: string | null = null
     let youtubeToken: string | null = null
 
-    // Try to get Meta token (used for both Instagram and Facebook)
+    // Try to get Instagram token - check both 'meta' and 'instagram' providers
     try {
-      metaToken = await tokenManager.getValidAccessToken(profileId, 'meta')
-      console.log('[Analytics Sync] Meta token retrieved successfully')
+      instagramToken = await tokenManager.getValidAccessToken(profileId, 'meta')
+      console.log('[Analytics Sync] Meta token retrieved successfully (for Instagram)')
     } catch {
-      console.log('[Analytics Sync] No Meta token available')
+      console.log('[Analytics Sync] No Meta token, trying instagram provider...')
+      try {
+        instagramToken = await tokenManager.getValidAccessToken(profileId, 'instagram')
+        console.log('[Analytics Sync] Instagram token retrieved successfully')
+      } catch {
+        console.log('[Analytics Sync] No Instagram token available')
+      }
+    }
+
+    // Try to get Facebook token - use same as Instagram if from 'meta', or try 'facebook'
+    if (instagramToken) {
+      // If we got a meta token, it works for both Instagram and Facebook
+      facebookToken = instagramToken
+    } else {
+      try {
+        facebookToken = await tokenManager.getValidAccessToken(profileId, 'facebook')
+        console.log('[Analytics Sync] Facebook token retrieved successfully')
+      } catch {
+        console.log('[Analytics Sync] No Facebook token available')
+      }
     }
 
     // Try to get YouTube/Google token
@@ -366,12 +386,8 @@ export async function POST(request: NextRequest) {
       console.log('[Analytics Sync] No YouTube token available')
     }
 
-    // Use Meta token for both Instagram and Facebook
-    const instagramToken = metaToken
-    const facebookToken = metaToken
-
     // Log token status
-    console.log(`[Analytics Sync] Token status: Meta=${!!metaToken}, YouTube=${!!youtubeToken}`)
+    console.log(`[Analytics Sync] Token status: Instagram=${!!instagramToken}, Facebook=${!!facebookToken}, YouTube=${!!youtubeToken}`)
 
     // Check if we have any tokens
     if (!instagramToken && !facebookToken && !youtubeToken) {

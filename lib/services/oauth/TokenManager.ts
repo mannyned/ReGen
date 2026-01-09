@@ -248,9 +248,10 @@ export class TokenManager {
   ): Promise<string | null> {
     // Map platform names to OAuth provider names
     // Some platforms use different OAuth providers (e.g., YouTube uses Google OAuth)
+    // Note: Instagram/Facebook may be stored as 'meta' (unified) or separately
     const platformToProvider: Record<string, string> = {
       youtube: 'google',  // YouTube uses Google OAuth
-      // Add other mappings here if needed
+      // instagram and facebook stay as-is, we'll try both 'meta' and individual providers
     }
     const provider = platformToProvider[platform] || platform
 
