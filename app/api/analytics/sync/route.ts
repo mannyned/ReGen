@@ -190,6 +190,12 @@ async function fetchFacebookInsights(
     } else {
       const photoError = await photoResponse.text()
       console.log(`[Facebook Photo] Failed for ${photoId}: ${photoError.slice(0, 200)}`)
+      facebookDebug?.apiErrors?.push({
+        postId,
+        endpoint: 'photo',
+        status: photoResponse.status,
+        error: photoError.slice(0, 300),
+      })
     }
 
     // Try multiple approaches to get engagement data
