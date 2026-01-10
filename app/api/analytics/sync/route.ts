@@ -263,6 +263,9 @@ async function fetchYouTubeInsights(
   }
 }
 
+// Store debug info for response
+let facebookDebug: { userToken: boolean; pageTokenResult: string; error?: string } | null = null
+
 /**
  * Get Facebook Page Access Token from User Token
  * Required because Facebook post insights need a Page Token, not User Token
@@ -270,25 +273,32 @@ async function fetchYouTubeInsights(
 async function getFacebookPageToken(userToken: string): Promise<string | null> {
   try {
     const url = `${META_GRAPH_API}/me/accounts?fields=id,name,access_token&access_token=${userToken}`
+    console.log('[Facebook] Calling /me/accounts to get Page Token...')
     const response = await fetch(url)
 
     if (!response.ok) {
-      console.error('[Facebook] Failed to get Page Token:', await response.text())
+      const errorText = await response.text()
+      console.error('[Facebook] Failed to get Page Token:', errorText)
+      facebookDebug = { userToken: true, pageTokenResult: 'API_ERROR', error: errorText.slice(0, 200) }
       return null
     }
 
     const data = await response.json()
+    console.log('[Facebook] /me/accounts response:', JSON.stringify(data).slice(0, 300))
     const page = data.data?.[0]
 
     if (page?.access_token) {
-      console.log(`[Facebook] Got Page Token for: ${page.name}`)
+      console.log(`[Facebook] Got Page Token for: ${page.name} (ID: ${page.id})`)
+      facebookDebug = { userToken: true, pageTokenResult: `SUCCESS: ${page.name}` }
       return page.access_token
     }
 
-    console.error('[Facebook] No pages found in /me/accounts response')
+    console.error('[Facebook] No pages found in /me/accounts response. Data:', JSON.stringify(data))
+    facebookDebug = { userToken: true, pageTokenResult: 'NO_PAGES', error: 'No pages in response' }
     return null
   } catch (error) {
     console.error('[Facebook] Error getting Page Token:', error)
+    facebookDebug = { userToken: true, pageTokenResult: 'EXCEPTION', error: String(error) }
     return null
   }
 }
@@ -332,6 +342,9 @@ async function fetchBasicEngagement(
 }
 
 export async function POST(request: NextRequest) {
+  // Reset debug state
+  facebookDebug = null
+
   try {
     const profileId = await getUserId(request)
 
@@ -407,6 +420,8 @@ export async function POST(request: NextRequest) {
     if (facebookToken) {
       facebookPageToken = await getFacebookPageToken(facebookToken)
       console.log(`[Analytics Sync] Facebook Page Token: ${facebookPageToken ? 'SUCCESS' : 'NOT FOUND'}`)
+    } else {
+      facebookDebug = { userToken: false, pageTokenResult: 'NO_USER_TOKEN', error: 'No Facebook user token found' }
     }
 
     // Try to get YouTube/Google token
@@ -567,6 +582,9 @@ export async function POST(request: NextRequest) {
       total: posts.length,
       errors: errors.length > 0 ? errors : undefined,
       results,
+      debug: {
+        facebook: facebookDebug,
+      },
     })
   } catch (error) {
     console.error('[Analytics Sync Error]', error)
