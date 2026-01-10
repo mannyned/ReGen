@@ -161,6 +161,37 @@ async function fetchFacebookInsights(
       }
     }
 
+    // For photo posts, try reading from the photo object directly
+    // Photo posts may have format {page_id}_{photo_id} OR just {photo_id}
+    const postIdParts = postId.split('_')
+    const photoId = postIdParts.length === 2 ? postIdParts[1] : postId
+    console.log(`[Facebook] Trying photo endpoint for ${photoId}`)
+
+    // Try getting engagement from the photo object
+    const photoUrl = `${META_GRAPH_API}/${photoId}?fields=likes.summary(true),comments.summary(true)&access_token=${accessToken}`
+    const photoResponse = await fetch(photoUrl)
+
+    if (photoResponse.ok) {
+      const photoData = await photoResponse.json()
+      console.log(`[Facebook Photo] Success for ${photoId}:`, JSON.stringify(photoData).slice(0, 300))
+
+      const likes = photoData.likes?.summary?.total_count || 0
+      const comments = photoData.comments?.summary?.total_count || 0
+
+      return {
+        impressions: 0,
+        reach: 0,
+        engaged_users: likes + comments,
+        clicks: 0,
+        likes,
+        comments,
+        shares: 0,
+      }
+    } else {
+      const photoError = await photoResponse.text()
+      console.log(`[Facebook Photo] Failed for ${photoId}: ${photoError.slice(0, 200)}`)
+    }
+
     // Try multiple approaches to get engagement data
 
     // Approach 1: Try reactions.summary instead of likes.summary (more permissive)
