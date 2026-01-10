@@ -138,6 +138,8 @@ export default function AnalyticsPage() {
     platform: string
     status: string
   }> | null>(null)
+  const [aiRecommendations, setAiRecommendations] = useState<AIRecommendation[]>([])
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false)
 
   // Upgrade intent tracking
   const upgradeIntent = useUpgradeIntent()
@@ -209,6 +211,24 @@ export default function AnalyticsPage() {
     }
   }
 
+  // Fetch AI-powered recommendations
+  const fetchRecommendations = async () => {
+    try {
+      setIsLoadingRecommendations(true)
+      const response = await fetch('/api/analytics/recommendations')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.recommendations && data.recommendations.length > 0) {
+          setAiRecommendations(data.recommendations)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch recommendations:', error)
+    } finally {
+      setIsLoadingRecommendations(false)
+    }
+  }
+
   // Sync analytics from connected platforms (Meta, YouTube)
   const syncAnalytics = async () => {
     try {
@@ -244,10 +264,11 @@ export default function AnalyticsPage() {
   useEffect(() => {
     setMounted(true)
 
-    // Sync analytics first, then fetch stats and recent activity
+    // Sync analytics first, then fetch stats, recommendations, and recent activity
     const loadAnalytics = async () => {
       await syncAnalytics()
       await fetchAnalyticsStats(timeRange)
+      await fetchRecommendations()
       await fetchRecentActivity()
     }
     loadAnalytics()
@@ -383,44 +404,6 @@ export default function AnalyticsPage() {
     { type: 'Video', count: 42, avgEngagement: 14.2, trend: 'up' },
     { type: 'Image', count: 38, avgEngagement: 11.5, trend: 'stable' },
     { type: 'Text', count: 27, avgEngagement: 8.9, trend: 'down' }
-  ]
-
-  const aiRecommendations: AIRecommendation[] = isProduction ? [] : [
-    {
-      id: '1',
-      title: 'Post More Videos on TikTok',
-      description: 'Your TikTok videos get 3x more engagement than other formats. Consider increasing video content to 60% of your posts.',
-      impact: 'high',
-      icon: '🎬'
-    },
-    {
-      id: '2',
-      title: 'Optimize LinkedIn Posting Time',
-      description: 'Your LinkedIn posts at 9-11AM get 45% more engagement. Schedule more content during this window.',
-      impact: 'high',
-      icon: '⏰'
-    },
-    {
-      id: '3',
-      title: 'Leverage Trending Hashtags',
-      description: 'Posts with trending hashtags show 28% higher reach. Use our AI to suggest relevant trending tags.',
-      impact: 'medium',
-      icon: '#️⃣'
-    },
-    {
-      id: '4',
-      title: 'Diversify Facebook Content',
-      description: 'Your Facebook engagement is below average. Try mixing in more carousel posts and live videos.',
-      impact: 'medium',
-      icon: '🎯'
-    },
-    {
-      id: '5',
-      title: 'Increase Story Frequency',
-      description: 'Accounts posting 5+ stories/week see 2x profile visits. You\'re currently at 2 stories/week.',
-      impact: 'low',
-      icon: '📱'
-    }
   ]
 
   // Use real advanced metrics from API when available
@@ -722,33 +705,48 @@ export default function AnalyticsPage() {
                     </h2>
                     <p className="text-white/90 mt-1">Personalized insights to boost your performance</p>
                   </div>
-                  <button className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-medium transition-colors backdrop-blur-sm">
-                    View All
-                  </button>
+                  {aiRecommendations.length > 3 && (
+                    <button className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-medium transition-colors backdrop-blur-sm">
+                      View All ({aiRecommendations.length})
+                    </button>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {aiRecommendations.slice(0, 3).map((rec) => (
-                    <div key={rec.id} className="bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
-                      <div className="flex items-start gap-3">
-                        <span className="text-3xl">{rec.icon}</span>
-                        <div className="flex-1">
-                          <h3 className="font-semibold mb-1">{rec.title}</h3>
-                          <p className="text-sm text-white/80 mb-2">{rec.description}</p>
-                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                            rec.impact === 'high'
-                              ? 'bg-red-500/30 text-white'
-                              : rec.impact === 'medium'
-                              ? 'bg-yellow-500/30 text-white'
-                              : 'bg-green-500/30 text-white'
-                          }`}>
-                            {rec.impact.toUpperCase()} IMPACT
-                          </span>
+                {isLoadingRecommendations ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mr-3"></div>
+                    <p className="text-white/80">Analyzing your performance data...</p>
+                  </div>
+                ) : aiRecommendations.length === 0 ? (
+                  <div className="text-center py-8">
+                    <span className="text-4xl mb-3 block">📊</span>
+                    <p className="text-white/90 font-medium">No recommendations yet</p>
+                    <p className="text-white/70 text-sm mt-1">Post more content to receive personalized AI insights</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {aiRecommendations.slice(0, 3).map((rec) => (
+                      <div key={rec.id} className="bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
+                        <div className="flex items-start gap-3">
+                          <span className="text-3xl">{rec.icon}</span>
+                          <div className="flex-1">
+                            <h3 className="font-semibold mb-1">{rec.title}</h3>
+                            <p className="text-sm text-white/80 mb-2">{rec.description}</p>
+                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                              rec.impact === 'high'
+                                ? 'bg-red-500/30 text-white'
+                                : rec.impact === 'medium'
+                                ? 'bg-yellow-500/30 text-white'
+                                : 'bg-green-500/30 text-white'
+                            }`}>
+                              {rec.impact.toUpperCase()} IMPACT
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </GradientBanner>
             )}
 
