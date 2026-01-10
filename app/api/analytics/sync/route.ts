@@ -298,10 +298,17 @@ let facebookDebug: {
   userToken: boolean
   pageTokenResult: string
   pageId?: string
+  pageName?: string
+  allPages?: Array<{ id: string; name: string }>
+  postPageId?: string
+  pageIdMatch?: boolean
   error?: string
   dbConnections?: Array<{ provider: string; accountId: string; expired: boolean }>
   apiErrors?: Array<{ postId: string; endpoint: string; status: number; error: string }>
 } | null = null
+
+// Store the page ID from the token for matching with posts
+let tokenPageId: string | null = null
 
 /**
  * Get Facebook Page Access Token from User Token
@@ -321,17 +328,38 @@ async function getFacebookPageToken(userToken: string): Promise<string | null> {
     }
 
     const data = await response.json()
-    console.log('[Facebook] /me/accounts response:', JSON.stringify(data).slice(0, 300))
+    const rawResponse = JSON.stringify(data)
+    console.log('[Facebook] /me/accounts FULL response:', rawResponse)
+
+    // Store all pages for debugging
+    const allPages = (data.data || []).map((p: { id: string; name: string }) => ({
+      id: p.id || 'NO_ID',
+      name: p.name || 'NO_NAME',
+    }))
+
     const page = data.data?.[0]
 
     if (page?.access_token) {
+      // Store the page ID for later matching
+      tokenPageId = page.id || null
       console.log(`[Facebook] Got Page Token for: ${page.name} (ID: ${page.id})`)
-      facebookDebug = { userToken: true, pageTokenResult: `SUCCESS: ${page.name}`, pageId: page.id }
+      facebookDebug = {
+        userToken: true,
+        pageTokenResult: `SUCCESS: ${page.name}`,
+        pageId: page.id || 'MISSING_IN_RESPONSE',
+        pageName: page.name,
+        allPages,
+      }
       return page.access_token
     }
 
-    console.error('[Facebook] No pages found in /me/accounts response. Data:', JSON.stringify(data))
-    facebookDebug = { userToken: true, pageTokenResult: 'NO_PAGES', error: 'No pages in response' }
+    console.error('[Facebook] No pages found in /me/accounts response. Full data:', rawResponse)
+    facebookDebug = {
+      userToken: true,
+      pageTokenResult: 'NO_PAGES',
+      error: 'No pages in response',
+      allPages,
+    }
     return null
   } catch (error) {
     console.error('[Facebook] Error getting Page Token:', error)
@@ -381,6 +409,7 @@ async function fetchBasicEngagement(
 export async function POST(request: NextRequest) {
   // Reset debug state
   facebookDebug = null
+  tokenPageId = null
 
   try {
     const profileId = await getUserId(request)
@@ -549,7 +578,23 @@ export async function POST(request: NextRequest) {
           }
         }
       } else if (platform === 'facebook') {
-        console.log(`[Analytics Sync] Fetching Facebook insights for ${post.externalPostId}`)
+        // Extract page ID from post ID (format: {page_id}_{post_id})
+        const postPageId = post.externalPostId.split('_')[0]
+        const pageIdMatch = tokenPageId === postPageId
+
+        // Store debug info about page ID matching
+        if (facebookDebug) {
+          facebookDebug.postPageId = postPageId
+          facebookDebug.pageIdMatch = pageIdMatch
+        }
+
+        console.log(`[Analytics Sync] Facebook post: ${post.externalPostId}`)
+        console.log(`[Analytics Sync] Post Page ID: ${postPageId}, Token Page ID: ${tokenPageId}, Match: ${pageIdMatch}`)
+
+        if (!pageIdMatch && tokenPageId) {
+          console.warn(`[Analytics Sync] Page ID mismatch! Token is for page ${tokenPageId} but post is from page ${postPageId}`)
+        }
+
         const fullInsights = await fetchFacebookInsights(post.externalPostId, accessToken)
 
         if (fullInsights) {
