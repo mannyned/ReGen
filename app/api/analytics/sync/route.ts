@@ -136,29 +136,49 @@ async function fetchFacebookInsights(
   reach: number
   engaged_users: number
   clicks: number
+  likes: number
+  comments: number
+  shares: number
 } | null> {
+  // Initialize apiErrors array if needed
+  if (facebookDebug && !facebookDebug.apiErrors) {
+    facebookDebug.apiErrors = []
+  }
+
   try {
     // First try to get basic post data (likes, comments, shares)
     const basicUrl = `${META_GRAPH_API}/${postId}?fields=likes.summary(true),comments.summary(true),shares&access_token=${accessToken}`
+    console.log(`[Facebook] Fetching basic data for ${postId}`)
     const basicResponse = await fetch(basicUrl)
 
     if (!basicResponse.ok) {
-      const error = await basicResponse.text()
-      console.error(`[Facebook Basic] Failed for ${postId}:`, error)
+      const errorText = await basicResponse.text()
+      console.error(`[Facebook Basic] Failed for ${postId} (${basicResponse.status}):`, errorText)
+      facebookDebug?.apiErrors?.push({
+        postId,
+        endpoint: 'basic',
+        status: basicResponse.status,
+        error: errorText.slice(0, 300),
+      })
       // Try insights endpoint as fallback
     } else {
       const basicData = await basicResponse.json()
       console.log(`[Facebook Basic] Success for ${postId}:`, JSON.stringify(basicData).slice(0, 200))
 
+      const likes = basicData.likes?.summary?.total_count || 0
+      const comments = basicData.comments?.summary?.total_count || 0
+      const shares = basicData.shares?.count || 0
+
       // Return basic metrics if available
-      if (basicData.likes || basicData.comments || basicData.shares) {
+      if (likes > 0 || comments > 0 || shares > 0 || basicData.likes || basicData.comments) {
         return {
           impressions: 0,
           reach: 0,
-          engaged_users: (basicData.likes?.summary?.total_count || 0) +
-                         (basicData.comments?.summary?.total_count || 0) +
-                         (basicData.shares?.count || 0),
+          engaged_users: likes + comments + shares,
           clicks: 0,
+          likes,
+          comments,
+          shares,
         }
       }
     }
@@ -166,12 +186,19 @@ async function fetchFacebookInsights(
     // Try insights endpoint (requires Page token with read_insights)
     const metrics = 'post_impressions,post_impressions_unique,post_engaged_users,post_clicks'
     const url = `${META_GRAPH_API}/${postId}/insights?metric=${metrics}&access_token=${accessToken}`
+    console.log(`[Facebook] Fetching insights for ${postId}`)
 
     const response = await fetch(url)
 
     if (!response.ok) {
-      const error = await response.text()
-      console.error(`[Facebook Insights] Failed for ${postId}:`, error)
+      const errorText = await response.text()
+      console.error(`[Facebook Insights] Failed for ${postId} (${response.status}):`, errorText)
+      facebookDebug?.apiErrors?.push({
+        postId,
+        endpoint: 'insights',
+        status: response.status,
+        error: errorText.slice(0, 300),
+      })
       return null
     }
 
@@ -182,6 +209,9 @@ async function fetchFacebookInsights(
       reach: 0,
       engaged_users: 0,
       clicks: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
     }
 
     for (const insight of data.data || []) {
@@ -269,6 +299,7 @@ let facebookDebug: {
   pageTokenResult: string
   error?: string
   dbConnections?: Array<{ provider: string; accountId: string; expired: boolean }>
+  apiErrors?: Array<{ postId: string; endpoint: string; status: number; error: string }>
 } | null = null
 
 /**
