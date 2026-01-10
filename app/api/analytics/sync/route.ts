@@ -304,6 +304,7 @@ let facebookDebug: {
   pageIdMatch?: boolean
   tokenPermissions?: string[]
   tokenType?: string
+  accessiblePosts?: Array<{ id: string; message?: string }>
   error?: string
   dbConnections?: Array<{ provider: string; accountId: string; expired: boolean }>
   apiErrors?: Array<{ postId: string; endpoint: string; status: number; error: string }>
@@ -385,6 +386,26 @@ async function getFacebookPageToken(userToken: string): Promise<string | null> {
       // Debug the PAGE token to see its permissions
       const pageTokenDebug = await debugFacebookToken(page.access_token)
 
+      // Try to list posts the page token CAN access
+      let accessiblePosts: Array<{ id: string; message?: string }> = []
+      try {
+        const postsUrl = `${META_GRAPH_API}/${page.id}/posts?fields=id,message&limit=5&access_token=${page.access_token}`
+        const postsResponse = await fetch(postsUrl)
+        if (postsResponse.ok) {
+          const postsData = await postsResponse.json()
+          accessiblePosts = (postsData.data || []).map((p: { id: string; message?: string }) => ({
+            id: p.id,
+            message: p.message?.slice(0, 50),
+          }))
+          console.log(`[Facebook] Accessible posts:`, accessiblePosts)
+        } else {
+          const postsError = await postsResponse.text()
+          console.error(`[Facebook] Failed to list posts:`, postsError)
+        }
+      } catch (err) {
+        console.error(`[Facebook] Error listing posts:`, err)
+      }
+
       facebookDebug = {
         userToken: true,
         pageTokenResult: `SUCCESS: ${page.name}`,
@@ -393,6 +414,7 @@ async function getFacebookPageToken(userToken: string): Promise<string | null> {
         allPages,
         tokenPermissions: pageTokenDebug?.permissions || userPermissions?.permissions,
         tokenType: pageTokenDebug ? 'page_token' : 'user_token_permissions',
+        accessiblePosts,
       }
       return page.access_token
     }
