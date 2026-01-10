@@ -146,6 +146,21 @@ async function fetchFacebookInsights(
   }
 
   try {
+    // Approach 0: Check if we already have this post's engagement from page listing
+    const cachedPost = pagePostsWithEngagement.find(p => p.id === postId)
+    if (cachedPost && (cachedPost.likes !== undefined || cachedPost.comments !== undefined)) {
+      console.log(`[Facebook] Using cached engagement for ${postId}: likes=${cachedPost.likes}, comments=${cachedPost.comments}`)
+      return {
+        impressions: 0,
+        reach: 0,
+        engaged_users: (cachedPost.likes || 0) + (cachedPost.comments || 0),
+        clicks: 0,
+        likes: cachedPost.likes || 0,
+        comments: cachedPost.comments || 0,
+        shares: 0,
+      }
+    }
+
     // Try multiple approaches to get engagement data
 
     // Approach 1: Try reactions.summary instead of likes.summary (more permissive)
@@ -362,6 +377,9 @@ let facebookDebug: {
 // Store the page ID from the token for matching with posts
 let tokenPageId: string | null = null
 
+// Store posts with engagement data fetched from page listing (workaround for permission issues)
+let pagePostsWithEngagement: Array<{ id: string; message?: string; likes?: number; comments?: number }> = []
+
 /**
  * Debug token to see what permissions it has
  */
@@ -435,21 +453,39 @@ async function getFacebookPageToken(userToken: string): Promise<string | null> {
       // Debug the PAGE token to see its permissions
       const pageTokenDebug = await debugFacebookToken(page.access_token)
 
-      // Try to list posts the page token CAN access
-      let accessiblePosts: Array<{ id: string; message?: string }> = []
+      // Try to list posts WITH engagement data - this might work when individual queries don't
+      let accessiblePosts: Array<{ id: string; message?: string; likes?: number; comments?: number }> = []
       try {
-        const postsUrl = `${META_GRAPH_API}/${page.id}/posts?fields=id,message&limit=5&access_token=${page.access_token}`
+        // Try getting engagement data from the posts endpoint directly
+        const postsUrl = `${META_GRAPH_API}/${page.id}/posts?fields=id,message,likes.summary(true),comments.summary(true),shares&limit=10&access_token=${page.access_token}`
+        console.log(`[Facebook] Trying to list posts with engagement from /${page.id}/posts`)
         const postsResponse = await fetch(postsUrl)
         if (postsResponse.ok) {
           const postsData = await postsResponse.json()
-          accessiblePosts = (postsData.data || []).map((p: { id: string; message?: string }) => ({
+          accessiblePosts = (postsData.data || []).map((p: { id: string; message?: string; likes?: { summary?: { total_count?: number } }; comments?: { summary?: { total_count?: number } } }) => ({
             id: p.id,
             message: p.message?.slice(0, 50),
+            likes: p.likes?.summary?.total_count,
+            comments: p.comments?.summary?.total_count,
           }))
-          console.log(`[Facebook] Accessible posts:`, accessiblePosts)
+          console.log(`[Facebook] Posts with engagement:`, JSON.stringify(accessiblePosts).slice(0, 500))
+
+          // Store the engagement data for later use
+          pagePostsWithEngagement = accessiblePosts
         } else {
           const postsError = await postsResponse.text()
-          console.error(`[Facebook] Failed to list posts:`, postsError)
+          console.error(`[Facebook] Failed to list posts with engagement:`, postsError)
+
+          // Fall back to simple listing
+          const simpleUrl = `${META_GRAPH_API}/${page.id}/posts?fields=id,message&limit=10&access_token=${page.access_token}`
+          const simpleResponse = await fetch(simpleUrl)
+          if (simpleResponse.ok) {
+            const simpleData = await simpleResponse.json()
+            accessiblePosts = (simpleData.data || []).map((p: { id: string; message?: string }) => ({
+              id: p.id,
+              message: p.message?.slice(0, 50),
+            }))
+          }
         }
       } catch (err) {
         console.error(`[Facebook] Error listing posts:`, err)
@@ -526,6 +562,7 @@ export async function POST(request: NextRequest) {
   // Reset debug state
   facebookDebug = null
   tokenPageId = null
+  pagePostsWithEngagement = []
 
   try {
     const profileId = await getUserId(request)
