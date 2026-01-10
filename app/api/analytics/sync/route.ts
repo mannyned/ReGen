@@ -137,12 +137,59 @@ interface ApiError {
 const detailedErrors: ApiError[] = []
 
 /**
+ * Get Facebook Page Access Token from User Token
+ * The User Token can fetch the list of pages with their Page Access Tokens
+ */
+async function getFacebookPageToken(userAccessToken: string): Promise<string | null> {
+  try {
+    const url = `${META_GRAPH_API}/me/accounts?fields=id,name,access_token&access_token=${userAccessToken}`
+    console.log('[Facebook] Fetching Page Token from /me/accounts')
+
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`[Facebook] Failed to get pages (${response.status}):`, errorText.slice(0, 300))
+      detailedErrors.push({
+        platform: 'facebook',
+        postId: 'page_token',
+        endpoint: '/me/accounts',
+        status: response.status,
+        error: errorText.slice(0, 500),
+      })
+      return null
+    }
+
+    const data = await response.json()
+    const page = data.data?.[0]
+
+    if (!page?.access_token) {
+      console.error('[Facebook] No pages found or no access token returned')
+      detailedErrors.push({
+        platform: 'facebook',
+        postId: 'page_token',
+        endpoint: '/me/accounts',
+        status: 200,
+        error: 'No pages found in response or missing access_token',
+      })
+      return null
+    }
+
+    console.log(`[Facebook] Got Page Token for page: ${page.name} (${page.id})`)
+    return page.access_token
+  } catch (error) {
+    console.error('[Facebook] Exception getting page token:', error)
+    return null
+  }
+}
+
+/**
  * Fetch Facebook post insights
  * Note: Facebook Page posts require Page access token and insights permission
  */
 async function fetchFacebookInsights(
   postId: string,
-  accessToken: string
+  pageAccessToken: string
 ): Promise<{
   impressions: number
   reach: number
@@ -154,7 +201,7 @@ async function fetchFacebookInsights(
 } | null> {
   try {
     // First try to get basic post data (likes, comments, shares)
-    const basicUrl = `${META_GRAPH_API}/${postId}?fields=likes.summary(true),comments.summary(true),shares&access_token=${accessToken}`
+    const basicUrl = `${META_GRAPH_API}/${postId}?fields=likes.summary(true),comments.summary(true),shares&access_token=${pageAccessToken}`
     console.log(`[Facebook] Fetching basic data for ${postId}`)
     const basicResponse = await fetch(basicUrl)
 
@@ -196,7 +243,7 @@ async function fetchFacebookInsights(
 
     // Try insights endpoint (requires Page token with read_insights)
     const metrics = 'post_impressions,post_impressions_unique,post_engaged_users,post_clicks'
-    const url = `${META_GRAPH_API}/${postId}/insights?metric=${metrics}&access_token=${accessToken}`
+    const url = `${META_GRAPH_API}/${postId}/insights?metric=${metrics}&access_token=${pageAccessToken}`
     console.log(`[Facebook] Fetching insights for ${postId}`)
 
     const response = await fetch(url)
@@ -571,6 +618,14 @@ export async function POST(request: NextRequest) {
     }
     console.log(`[Analytics Sync] Facebook token result: ${facebookToken ? 'SUCCESS' : 'NOT FOUND'}`)
 
+    // Exchange Facebook User Token for Page Token (required for post insights)
+    let facebookPageToken: string | null = null
+    if (facebookToken) {
+      console.log('[Analytics Sync] Exchanging Facebook User Token for Page Token...')
+      facebookPageToken = await getFacebookPageToken(facebookToken)
+      console.log(`[Analytics Sync] Facebook Page Token result: ${facebookPageToken ? 'SUCCESS' : 'NOT FOUND'}`)
+    }
+
     // Try to get YouTube/Google token
     console.log('[Analytics Sync] Attempting to get YouTube token...')
     youtubeToken = await tokenManager.getValidAccessToken(profileId, 'youtube')
@@ -608,9 +663,10 @@ export async function POST(request: NextRequest) {
       if (platform === 'google') platform = 'youtube'
 
       // Get the appropriate token
+      // Note: Facebook uses Page Token for analytics, others use User Token
       let accessToken: string | null = null
       if (platform === 'instagram') accessToken = instagramToken
-      else if (platform === 'facebook') accessToken = facebookToken
+      else if (platform === 'facebook') accessToken = facebookPageToken // Use Page Token, not User Token
       else if (platform === 'youtube') accessToken = youtubeToken
       else if (platform === 'linkedin') accessToken = linkedinToken
 
