@@ -302,6 +302,8 @@ let facebookDebug: {
   allPages?: Array<{ id: string; name: string }>
   postPageId?: string
   pageIdMatch?: boolean
+  tokenPermissions?: string[]
+  tokenType?: string
   error?: string
   dbConnections?: Array<{ provider: string; accountId: string; expired: boolean }>
   apiErrors?: Array<{ postId: string; endpoint: string; status: number; error: string }>
@@ -311,11 +313,42 @@ let facebookDebug: {
 let tokenPageId: string | null = null
 
 /**
+ * Debug token to see what permissions it has
+ */
+async function debugFacebookToken(accessToken: string): Promise<{ permissions: string[]; type: string } | null> {
+  try {
+    // Use the token to check /me/permissions
+    const url = `${META_GRAPH_API}/me/permissions?access_token=${accessToken}`
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      console.error('[Facebook] Failed to get token permissions')
+      return null
+    }
+
+    const data = await response.json()
+    const permissions = (data.data || [])
+      .filter((p: { status: string }) => p.status === 'granted')
+      .map((p: { permission: string }) => p.permission)
+
+    console.log('[Facebook] Token permissions:', permissions)
+    return { permissions, type: 'page_token' }
+  } catch (error) {
+    console.error('[Facebook] Error debugging token:', error)
+    return null
+  }
+}
+
+/**
  * Get Facebook Page Access Token from User Token
  * Required because Facebook post insights need a Page Token, not User Token
  */
 async function getFacebookPageToken(userToken: string): Promise<string | null> {
   try {
+    // First, check what permissions the USER token has
+    const userPermissions = await debugFacebookToken(userToken)
+    console.log('[Facebook] User token permissions:', userPermissions?.permissions)
+
     const url = `${META_GRAPH_API}/me/accounts?fields=id,name,access_token&access_token=${userToken}`
     console.log('[Facebook] Calling /me/accounts to get Page Token...')
     const response = await fetch(url)
@@ -323,7 +356,12 @@ async function getFacebookPageToken(userToken: string): Promise<string | null> {
     if (!response.ok) {
       const errorText = await response.text()
       console.error('[Facebook] Failed to get Page Token:', errorText)
-      facebookDebug = { userToken: true, pageTokenResult: 'API_ERROR', error: errorText.slice(0, 200) }
+      facebookDebug = {
+        userToken: true,
+        pageTokenResult: 'API_ERROR',
+        error: errorText.slice(0, 200),
+        tokenPermissions: userPermissions?.permissions,
+      }
       return null
     }
 
@@ -343,12 +381,18 @@ async function getFacebookPageToken(userToken: string): Promise<string | null> {
       // Store the page ID for later matching
       tokenPageId = page.id || null
       console.log(`[Facebook] Got Page Token for: ${page.name} (ID: ${page.id})`)
+
+      // Debug the PAGE token to see its permissions
+      const pageTokenDebug = await debugFacebookToken(page.access_token)
+
       facebookDebug = {
         userToken: true,
         pageTokenResult: `SUCCESS: ${page.name}`,
         pageId: page.id || 'MISSING_IN_RESPONSE',
         pageName: page.name,
         allPages,
+        tokenPermissions: pageTokenDebug?.permissions || userPermissions?.permissions,
+        tokenType: pageTokenDebug ? 'page_token' : 'user_token_permissions',
       }
       return page.access_token
     }
@@ -359,6 +403,7 @@ async function getFacebookPageToken(userToken: string): Promise<string | null> {
       pageTokenResult: 'NO_PAGES',
       error: 'No pages in response',
       allPages,
+      tokenPermissions: userPermissions?.permissions,
     }
     return null
   } catch (error) {
