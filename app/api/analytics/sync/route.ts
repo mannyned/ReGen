@@ -264,7 +264,12 @@ async function fetchYouTubeInsights(
 }
 
 // Store debug info for response
-let facebookDebug: { userToken: boolean; pageTokenResult: string; error?: string } | null = null
+let facebookDebug: {
+  userToken: boolean
+  pageTokenResult: string
+  error?: string
+  dbConnections?: Array<{ provider: string; accountId: string; expired: boolean }>
+} | null = null
 
 /**
  * Get Facebook Page Access Token from User Token
@@ -421,7 +426,21 @@ export async function POST(request: NextRequest) {
       facebookPageToken = await getFacebookPageToken(facebookToken)
       console.log(`[Analytics Sync] Facebook Page Token: ${facebookPageToken ? 'SUCCESS' : 'NOT FOUND'}`)
     } else {
-      facebookDebug = { userToken: false, pageTokenResult: 'NO_USER_TOKEN', error: 'No Facebook user token found' }
+      // Debug: Check what connections actually exist in the database
+      const allConnections = await prisma.oAuthConnection.findMany({
+        where: { profileId },
+        select: { provider: true, providerAccountId: true, expiresAt: true },
+      })
+      facebookDebug = {
+        userToken: false,
+        pageTokenResult: 'NO_USER_TOKEN',
+        error: 'No Facebook user token found',
+        dbConnections: allConnections.map(c => ({
+          provider: c.provider,
+          accountId: c.providerAccountId?.slice(0, 10) + '...',
+          expired: c.expiresAt ? c.expiresAt < new Date() : false,
+        })),
+      }
     }
 
     // Try to get YouTube/Google token
@@ -583,6 +602,14 @@ export async function POST(request: NextRequest) {
       errors: errors.length > 0 ? errors : undefined,
       results,
       debug: {
+        profileId,
+        tokens: {
+          instagram: !!instagramToken,
+          facebook: !!facebookToken,
+          facebookPage: !!facebookPageToken,
+          youtube: !!youtubeToken,
+          linkedin: !!linkedinToken,
+        },
         facebook: facebookDebug,
       },
     })
