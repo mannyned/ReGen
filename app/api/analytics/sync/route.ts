@@ -454,39 +454,70 @@ async function getFacebookPageToken(userToken: string): Promise<string | null> {
       const pageTokenDebug = await debugFacebookToken(page.access_token)
 
       // Try to list posts WITH engagement data - this might work when individual queries don't
-      let accessiblePosts: Array<{ id: string; message?: string; likes?: number; comments?: number }> = []
+      let accessiblePosts: Array<{ id: string; message?: string; likes?: number; comments?: number; source?: string }> = []
       try {
-        // Try getting engagement data from the posts endpoint directly
-        const postsUrl = `${META_GRAPH_API}/${page.id}/posts?fields=id,message,likes.summary(true),comments.summary(true),shares&limit=10&access_token=${page.access_token}`
-        console.log(`[Facebook] Trying to list posts with engagement from /${page.id}/posts`)
-        const postsResponse = await fetch(postsUrl)
-        if (postsResponse.ok) {
-          const postsData = await postsResponse.json()
-          accessiblePosts = (postsData.data || []).map((p: { id: string; message?: string; likes?: { summary?: { total_count?: number } }; comments?: { summary?: { total_count?: number } } }) => ({
+        // Try the /feed endpoint first (includes more post types)
+        const feedUrl = `${META_GRAPH_API}/${page.id}/feed?fields=id,message,likes.summary(true),comments.summary(true),shares&limit=25&access_token=${page.access_token}`
+        console.log(`[Facebook] Trying /${page.id}/feed with engagement`)
+        const feedResponse = await fetch(feedUrl)
+
+        if (feedResponse.ok) {
+          const feedData = await feedResponse.json()
+          accessiblePosts = (feedData.data || []).map((p: { id: string; message?: string; likes?: { summary?: { total_count?: number } }; comments?: { summary?: { total_count?: number } } }) => ({
             id: p.id,
             message: p.message?.slice(0, 50),
             likes: p.likes?.summary?.total_count,
             comments: p.comments?.summary?.total_count,
+            source: 'feed',
           }))
-          console.log(`[Facebook] Posts with engagement:`, JSON.stringify(accessiblePosts).slice(0, 500))
-
-          // Store the engagement data for later use
+          console.log(`[Facebook] Feed posts: ${accessiblePosts.length}`)
           pagePostsWithEngagement = accessiblePosts
         } else {
-          const postsError = await postsResponse.text()
-          console.error(`[Facebook] Failed to list posts with engagement:`, postsError)
+          const feedError = await feedResponse.text()
+          console.log(`[Facebook] Feed endpoint failed: ${feedError.slice(0, 200)}`)
+        }
 
-          // Fall back to simple listing
-          const simpleUrl = `${META_GRAPH_API}/${page.id}/posts?fields=id,message&limit=10&access_token=${page.access_token}`
-          const simpleResponse = await fetch(simpleUrl)
-          if (simpleResponse.ok) {
-            const simpleData = await simpleResponse.json()
-            accessiblePosts = (simpleData.data || []).map((p: { id: string; message?: string }) => ({
-              id: p.id,
-              message: p.message?.slice(0, 50),
-            }))
+        // Also try /posts to compare
+        const postsUrl = `${META_GRAPH_API}/${page.id}/posts?fields=id,message,likes.summary(true),comments.summary(true)&limit=25&access_token=${page.access_token}`
+        console.log(`[Facebook] Trying /${page.id}/posts with engagement`)
+        const postsResponse = await fetch(postsUrl)
+
+        if (postsResponse.ok) {
+          const postsData = await postsResponse.json()
+          const postsList = (postsData.data || []).map((p: { id: string; message?: string; likes?: { summary?: { total_count?: number } }; comments?: { summary?: { total_count?: number } } }) => ({
+            id: p.id,
+            message: p.message?.slice(0, 50),
+            likes: p.likes?.summary?.total_count,
+            comments: p.comments?.summary?.total_count,
+            source: 'posts',
+          }))
+          console.log(`[Facebook] Posts endpoint: ${postsList.length} posts`)
+
+          // Merge with existing, preferring feed data
+          for (const post of postsList) {
+            if (!pagePostsWithEngagement.find(p => p.id === post.id)) {
+              pagePostsWithEngagement.push(post)
+            }
           }
         }
+
+        // Also get simple listing to see ALL posts (even without engagement)
+        const simpleUrl = `${META_GRAPH_API}/${page.id}/posts?fields=id,message,created_time&limit=25&access_token=${page.access_token}`
+        const simpleResponse = await fetch(simpleUrl)
+        if (simpleResponse.ok) {
+          const simpleData = await simpleResponse.json()
+          const allPostIds = (simpleData.data || []).map((p: { id: string }) => p.id)
+          console.log(`[Facebook] All post IDs (no engagement): ${allPostIds.length} - ${allPostIds.slice(0, 5).join(', ')}...`)
+
+          // Add to debug which posts exist but have no engagement access
+          const postsWithEngagementIds = pagePostsWithEngagement.map(p => p.id)
+          const postsWithoutEngagement = allPostIds.filter((id: string) => !postsWithEngagementIds.includes(id))
+          if (postsWithoutEngagement.length > 0) {
+            console.log(`[Facebook] Posts WITHOUT engagement access: ${postsWithoutEngagement.join(', ')}`)
+          }
+        }
+
+        accessiblePosts = pagePostsWithEngagement
       } catch (err) {
         console.error(`[Facebook] Error listing posts:`, err)
       }
