@@ -14,7 +14,6 @@ export const runtime = 'nodejs'
 
 const META_GRAPH_API = 'https://graph.facebook.com/v19.0'
 const YOUTUBE_API = 'https://www.googleapis.com/youtube/v3'
-const LINKEDIN_API = 'https://api.linkedin.com/v2'
 
 interface InsightValue {
   value: number
@@ -125,153 +124,64 @@ async function fetchInstagramInsights(
   }
 }
 
-interface ApiError {
-  platform: string
-  postId: string
-  endpoint: string
-  status: number
-  error: string
-}
-
-// Collect detailed errors for debugging
-const detailedErrors: ApiError[] = []
-
-/**
- * Get Facebook Page Access Token from User Token
- * The User Token can fetch the list of pages with their Page Access Tokens
- */
-async function getFacebookPageToken(userAccessToken: string): Promise<string | null> {
-  try {
-    const url = `${META_GRAPH_API}/me/accounts?fields=id,name,access_token&access_token=${userAccessToken}`
-    console.log('[Facebook] Fetching Page Token from /me/accounts')
-
-    const response = await fetch(url)
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`[Facebook] Failed to get pages (${response.status}):`, errorText.slice(0, 300))
-      detailedErrors.push({
-        platform: 'facebook',
-        postId: 'page_token',
-        endpoint: '/me/accounts',
-        status: response.status,
-        error: errorText.slice(0, 500),
-      })
-      return null
-    }
-
-    const data = await response.json()
-    const page = data.data?.[0]
-
-    if (!page?.access_token) {
-      console.error('[Facebook] No pages found or no access token returned')
-      detailedErrors.push({
-        platform: 'facebook',
-        postId: 'page_token',
-        endpoint: '/me/accounts',
-        status: 200,
-        error: 'No pages found in response or missing access_token',
-      })
-      return null
-    }
-
-    console.log(`[Facebook] Got Page Token for page: ${page.name} (${page.id})`)
-    return page.access_token
-  } catch (error) {
-    console.error('[Facebook] Exception getting page token:', error)
-    return null
-  }
-}
-
 /**
  * Fetch Facebook post insights
  * Note: Facebook Page posts require Page access token and insights permission
  */
 async function fetchFacebookInsights(
   postId: string,
-  pageAccessToken: string
+  accessToken: string
 ): Promise<{
   impressions: number
   reach: number
   engaged_users: number
   clicks: number
-  likes: number
-  comments: number
-  shares: number
 } | null> {
   try {
     // First try to get basic post data (likes, comments, shares)
-    const basicUrl = `${META_GRAPH_API}/${postId}?fields=likes.summary(true),comments.summary(true),shares&access_token=${pageAccessToken}`
-    console.log(`[Facebook] Fetching basic data for ${postId}`)
+    const basicUrl = `${META_GRAPH_API}/${postId}?fields=likes.summary(true),comments.summary(true),shares&access_token=${accessToken}`
     const basicResponse = await fetch(basicUrl)
 
-    let likes = 0
-    let comments = 0
-    let shares = 0
-
     if (!basicResponse.ok) {
-      const errorText = await basicResponse.text()
-      console.error(`[Facebook Basic] Failed for ${postId} (${basicResponse.status}):`, errorText)
-      detailedErrors.push({
-        platform: 'facebook',
-        postId,
-        endpoint: 'basic',
-        status: basicResponse.status,
-        error: errorText.slice(0, 500),
-      })
+      const error = await basicResponse.text()
+      console.error(`[Facebook Basic] Failed for ${postId}:`, error)
+      // Try insights endpoint as fallback
     } else {
       const basicData = await basicResponse.json()
-      console.log(`[Facebook Basic] Success for ${postId}:`, JSON.stringify(basicData).slice(0, 300))
+      console.log(`[Facebook Basic] Success for ${postId}:`, JSON.stringify(basicData).slice(0, 200))
 
-      likes = basicData.likes?.summary?.total_count || 0
-      comments = basicData.comments?.summary?.total_count || 0
-      shares = basicData.shares?.count || 0
-
-      // If we got engagement data, return it
-      if (likes > 0 || comments > 0 || shares > 0) {
+      // Return basic metrics if available
+      if (basicData.likes || basicData.comments || basicData.shares) {
         return {
           impressions: 0,
           reach: 0,
-          engaged_users: likes + comments + shares,
+          engaged_users: (basicData.likes?.summary?.total_count || 0) +
+                         (basicData.comments?.summary?.total_count || 0) +
+                         (basicData.shares?.count || 0),
           clicks: 0,
-          likes,
-          comments,
-          shares,
         }
       }
     }
 
     // Try insights endpoint (requires Page token with read_insights)
     const metrics = 'post_impressions,post_impressions_unique,post_engaged_users,post_clicks'
-    const url = `${META_GRAPH_API}/${postId}/insights?metric=${metrics}&access_token=${pageAccessToken}`
-    console.log(`[Facebook] Fetching insights for ${postId}`)
+    const url = `${META_GRAPH_API}/${postId}/insights?metric=${metrics}&access_token=${accessToken}`
 
     const response = await fetch(url)
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`[Facebook Insights] Failed for ${postId} (${response.status}):`, errorText)
-      detailedErrors.push({
-        platform: 'facebook',
-        postId,
-        endpoint: 'insights',
-        status: response.status,
-        error: errorText.slice(0, 500),
-      })
+      const error = await response.text()
+      console.error(`[Facebook Insights] Failed for ${postId}:`, error)
       return null
     }
 
     const data: PostInsightsResponse = await response.json()
-    console.log(`[Facebook Insights] Success for ${postId}:`, JSON.stringify(data).slice(0, 300))
 
     const result = {
       impressions: 0,
       reach: 0,
       engaged_users: 0,
       clicks: 0,
-      likes,
-      comments,
-      shares,
     }
 
     for (const insight of data.data || []) {
@@ -295,13 +205,6 @@ async function fetchFacebookInsights(
     return result
   } catch (error) {
     console.error(`[Facebook Insights] Error for ${postId}:`, error)
-    detailedErrors.push({
-      platform: 'facebook',
-      postId,
-      endpoint: 'exception',
-      status: 0,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    })
     return null
   }
 }
@@ -361,152 +264,6 @@ async function fetchYouTubeInsights(
 }
 
 /**
- * Fetch LinkedIn post analytics
- * Note: LinkedIn's API access depends on the type of account:
- * - Personal profiles: Limited to basic engagement via share statistics
- * - Organization pages: Full analytics via organizationalEntityShareStatistics
- */
-async function fetchLinkedInInsights(
-  postId: string,
-  accessToken: string
-): Promise<{
-  impressions: number
-  likes: number
-  comments: number
-  shares: number
-} | null> {
-  try {
-    // LinkedIn post URNs come in different formats:
-    // - urn:li:share:123456789
-    // - urn:li:ugcPost:123456789
-    // - Just the ID: 123456789
-
-    // Keep the original URN format
-    const originalUrn = postId
-    console.log(`[LinkedIn] Fetching analytics for: ${originalUrn}`)
-
-    // Try multiple endpoints to get engagement data
-
-    // 1. Try socialActions endpoint (for shares)
-    const socialActionsUrl = `${LINKEDIN_API}/socialActions/${encodeURIComponent(originalUrn)}`
-    console.log(`[LinkedIn] Trying socialActions: ${socialActionsUrl}`)
-
-    const socialResponse = await fetch(socialActionsUrl, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'LinkedIn-Version': '202401',
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-    })
-
-    if (socialResponse.ok) {
-      const data = await socialResponse.json()
-      console.log(`[LinkedIn] socialActions SUCCESS:`, JSON.stringify(data).slice(0, 500))
-
-      return {
-        impressions: 0,
-        likes: data.likesSummary?.totalLikes || data.likesCount || 0,
-        comments: data.commentsSummary?.totalFirstLevelComments || data.commentsCount || 0,
-        shares: data.sharesSummary?.totalShares || 0,
-      }
-    } else {
-      const errorText = await socialResponse.text()
-      console.error(`[LinkedIn] socialActions FAILED (${socialResponse.status}):`, errorText.slice(0, 500))
-      detailedErrors.push({
-        platform: 'linkedin',
-        postId: originalUrn,
-        endpoint: 'socialActions',
-        status: socialResponse.status,
-        error: errorText.slice(0, 500),
-      })
-    }
-
-    // 2. Try reactions endpoint
-    const reactionsUrl = `${LINKEDIN_API}/reactions/${encodeURIComponent(originalUrn)}?count=0`
-    console.log(`[LinkedIn] Trying reactions: ${reactionsUrl}`)
-
-    const reactionsResponse = await fetch(reactionsUrl, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'LinkedIn-Version': '202401',
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-    })
-
-    if (reactionsResponse.ok) {
-      const reactionsData = await reactionsResponse.json()
-      console.log(`[LinkedIn] reactions SUCCESS:`, JSON.stringify(reactionsData).slice(0, 500))
-
-      return {
-        impressions: 0,
-        likes: reactionsData.paging?.total || reactionsData.elements?.length || 0,
-        comments: 0,
-        shares: 0,
-      }
-    } else {
-      const errorText = await reactionsResponse.text()
-      console.error(`[LinkedIn] reactions FAILED (${reactionsResponse.status}):`, errorText.slice(0, 500))
-      detailedErrors.push({
-        platform: 'linkedin',
-        postId: originalUrn,
-        endpoint: 'reactions',
-        status: reactionsResponse.status,
-        error: errorText.slice(0, 500),
-      })
-    }
-
-    // 3. Try the posts endpoint (newer API)
-    const postsUrl = `${LINKEDIN_API}/posts/${encodeURIComponent(originalUrn)}`
-    console.log(`[LinkedIn] Trying posts: ${postsUrl}`)
-
-    const postsResponse = await fetch(postsUrl, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'LinkedIn-Version': '202401',
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-    })
-
-    if (postsResponse.ok) {
-      const postsData = await postsResponse.json()
-      console.log(`[LinkedIn] posts SUCCESS:`, JSON.stringify(postsData).slice(0, 500))
-
-      return {
-        impressions: postsData.impressionCount || 0,
-        likes: postsData.likeCount || postsData.numLikes || 0,
-        comments: postsData.commentCount || postsData.numComments || 0,
-        shares: postsData.shareCount || postsData.numShares || 0,
-      }
-    } else {
-      const errorText = await postsResponse.text()
-      console.error(`[LinkedIn] posts FAILED (${postsResponse.status}):`, errorText.slice(0, 500))
-      detailedErrors.push({
-        platform: 'linkedin',
-        postId: originalUrn,
-        endpoint: 'posts',
-        status: postsResponse.status,
-        error: errorText.slice(0, 500),
-      })
-    }
-
-    // If all endpoints failed, return null
-    console.log(`[LinkedIn] All endpoints failed for ${postId}`)
-    return null
-
-  } catch (error) {
-    console.error(`[LinkedIn Insights] Exception for ${postId}:`, error)
-    detailedErrors.push({
-      platform: 'linkedin',
-      postId,
-      endpoint: 'exception',
-      status: 0,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    })
-    return null
-  }
-}
-
-/**
  * Fetch basic engagement counts directly from media/post object
  */
 async function fetchBasicEngagement(
@@ -545,9 +302,6 @@ async function fetchBasicEngagement(
 }
 
 export async function POST(request: NextRequest) {
-  // Clear detailed errors from previous requests
-  detailedErrors.length = 0
-
   try {
     const profileId = await getUserId(request)
 
@@ -618,14 +372,6 @@ export async function POST(request: NextRequest) {
     }
     console.log(`[Analytics Sync] Facebook token result: ${facebookToken ? 'SUCCESS' : 'NOT FOUND'}`)
 
-    // Exchange Facebook User Token for Page Token (required for post insights)
-    let facebookPageToken: string | null = null
-    if (facebookToken) {
-      console.log('[Analytics Sync] Exchanging Facebook User Token for Page Token...')
-      facebookPageToken = await getFacebookPageToken(facebookToken)
-      console.log(`[Analytics Sync] Facebook Page Token result: ${facebookPageToken ? 'SUCCESS' : 'NOT FOUND'}`)
-    }
-
     // Try to get YouTube/Google token
     console.log('[Analytics Sync] Attempting to get YouTube token...')
     youtubeToken = await tokenManager.getValidAccessToken(profileId, 'youtube')
@@ -663,10 +409,9 @@ export async function POST(request: NextRequest) {
       if (platform === 'google') platform = 'youtube'
 
       // Get the appropriate token
-      // Note: Facebook uses Page Token for analytics, others use User Token
       let accessToken: string | null = null
       if (platform === 'instagram') accessToken = instagramToken
-      else if (platform === 'facebook') accessToken = facebookPageToken // Use Page Token, not User Token
+      else if (platform === 'facebook') accessToken = facebookToken
       else if (platform === 'youtube') accessToken = youtubeToken
       else if (platform === 'linkedin') accessToken = linkedinToken
 
@@ -704,16 +449,33 @@ export async function POST(request: NextRequest) {
         const fullInsights = await fetchFacebookInsights(post.externalPostId, accessToken)
 
         if (fullInsights) {
+          // Get likes/comments from separate call
+          const basic = await fetchBasicEngagement(post.externalPostId, accessToken, 'facebook')
+
           insights = {
             impressions: fullInsights.impressions,
             reach: fullInsights.reach,
-            likes: fullInsights.likes,
-            comments: fullInsights.comments,
-            shares: fullInsights.shares,
+            likes: basic?.likes || 0,
+            comments: basic?.comments || 0,
+            shares: 0,
             saves: 0,
             engaged_users: fullInsights.engaged_users,
           }
           console.log(`[Analytics Sync] Facebook insights for ${post.externalPostId}:`, insights)
+        } else {
+          // Try basic engagement only as fallback
+          const basic = await fetchBasicEngagement(post.externalPostId, accessToken, 'facebook')
+          if (basic) {
+            insights = {
+              impressions: 0,
+              reach: 0,
+              likes: basic.likes,
+              comments: basic.comments,
+              shares: 0,
+              saves: 0,
+            }
+            console.log(`[Analytics Sync] Facebook basic for ${post.externalPostId}:`, insights)
+          }
         }
       } else if (platform === 'youtube') {
         console.log(`[Analytics Sync] Fetching YouTube insights for ${post.externalPostId}`)
@@ -728,21 +490,6 @@ export async function POST(request: NextRequest) {
             reach: youtubeInsights.views, // Use views as reach for YouTube
             impressions: youtubeInsights.views,
             saves: 0,
-          }
-        }
-      } else if (platform === 'linkedin') {
-        console.log(`[Analytics Sync] Fetching LinkedIn insights for ${post.externalPostId}`)
-        const linkedinInsights = await fetchLinkedInInsights(post.externalPostId, accessToken)
-
-        if (linkedinInsights) {
-          insights = {
-            likes: linkedinInsights.likes,
-            comments: linkedinInsights.comments,
-            shares: linkedinInsights.shares,
-            reach: linkedinInsights.impressions, // Use impressions as reach for LinkedIn
-            impressions: linkedinInsights.impressions,
-            saves: 0,
-            views: 0,
           }
         }
       }
@@ -781,7 +528,6 @@ export async function POST(request: NextRequest) {
       synced: syncedCount,
       total: posts.length,
       errors: errors.length > 0 ? errors : undefined,
-      detailedErrors: detailedErrors.length > 0 ? detailedErrors : undefined,
       results,
     })
   } catch (error) {
@@ -791,202 +537,6 @@ export async function POST(request: NextRequest) {
       {
         error: error instanceof Error ? error.message : 'Failed to sync analytics',
         code: 'SYNC_ERROR',
-      },
-      { status: 500 }
-    )
-  }
-}
-
-/**
- * GET /api/analytics/sync
- *
- * Debug endpoint to check analytics sync status:
- * - Posts available for each platform
- * - Token availability
- * - Recent posts with their analytics status
- */
-export async function GET(request: NextRequest) {
-  try {
-    const profileId = await getUserId(request)
-
-    if (!profileId) {
-      return NextResponse.json(
-        { error: 'Not authenticated', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      )
-    }
-
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-    // Get all posts for supported platforms
-    const allPosts = await prisma.outboundPost.findMany({
-      where: {
-        profileId,
-        provider: { in: ['instagram', 'facebook', 'meta', 'youtube', 'google', 'linkedin'] },
-        postedAt: { gte: thirtyDaysAgo },
-      },
-      orderBy: { postedAt: 'desc' },
-      take: 100,
-      select: {
-        id: true,
-        provider: true,
-        status: true,
-        externalPostId: true,
-        postedAt: true,
-        metadata: true,
-        createdAt: true,
-      },
-    })
-
-    // Group posts by platform and status
-    const postsByPlatform: Record<string, {
-      total: number
-      posted: number
-      withExternalId: number
-      withAnalytics: number
-      statuses: Record<string, number>
-    }> = {}
-
-    for (const post of allPosts) {
-      const platform = post.provider === 'meta' ? 'instagram' :
-                       post.provider === 'google' ? 'youtube' : post.provider
-
-      if (!postsByPlatform[platform]) {
-        postsByPlatform[platform] = {
-          total: 0,
-          posted: 0,
-          withExternalId: 0,
-          withAnalytics: 0,
-          statuses: {},
-        }
-      }
-
-      postsByPlatform[platform].total++
-      postsByPlatform[platform].statuses[post.status] =
-        (postsByPlatform[platform].statuses[post.status] || 0) + 1
-
-      if (post.status === 'POSTED') {
-        postsByPlatform[platform].posted++
-        if (post.externalPostId) {
-          postsByPlatform[platform].withExternalId++
-        }
-        const metadata = post.metadata as Record<string, unknown> | null
-        if (metadata?.analytics) {
-          postsByPlatform[platform].withAnalytics++
-        }
-      }
-    }
-
-    // Check token availability for each platform
-    const tokenStatus: Record<string, {
-      available: boolean
-      source: string | null
-      error: string | null
-    }> = {}
-
-    const platforms = ['instagram', 'facebook', 'linkedin', 'youtube'] as const
-
-    for (const platform of platforms) {
-      try {
-        const token = await tokenManager.getValidAccessToken(profileId, platform)
-        tokenStatus[platform] = {
-          available: !!token,
-          source: token ? 'OAuthConnection or SocialConnection' : null,
-          error: token ? null : 'No valid token found',
-        }
-      } catch (error) {
-        tokenStatus[platform] = {
-          available: false,
-          source: null,
-          error: error instanceof Error ? error.message : 'Token lookup failed',
-        }
-      }
-    }
-
-    // Get sample of recent posts with analytics details
-    const recentPostsWithDetails = allPosts
-      .filter(p => p.status === 'POSTED')
-      .slice(0, 10)
-      .map(post => {
-        const metadata = post.metadata as Record<string, unknown> | null
-        const analytics = metadata?.analytics as Record<string, unknown> | null
-
-        return {
-          id: post.id,
-          platform: post.provider,
-          externalPostId: post.externalPostId ?
-            `${post.externalPostId.slice(0, 20)}...` : null,
-          postedAt: post.postedAt,
-          hasAnalytics: !!analytics,
-          analyticsSyncedAt: analytics?.syncedAt || null,
-          metrics: analytics ? {
-            likes: analytics.likes || 0,
-            comments: analytics.comments || 0,
-            shares: analytics.shares || 0,
-            reach: analytics.reach || 0,
-            impressions: analytics.impressions || 0,
-          } : null,
-        }
-      })
-
-    // Summary diagnostics
-    const diagnostics = {
-      totalPostsLast30Days: allPosts.length,
-      postsEligibleForSync: allPosts.filter(
-        p => p.status === 'POSTED' && p.externalPostId
-      ).length,
-      postsWithAnalytics: allPosts.filter(p => {
-        const metadata = p.metadata as Record<string, unknown> | null
-        return metadata?.analytics
-      }).length,
-      issues: [] as string[],
-    }
-
-    // Identify issues
-    if (diagnostics.postsEligibleForSync === 0) {
-      diagnostics.issues.push(
-        'No posts eligible for sync. Posts need status=POSTED and externalPostId set.'
-      )
-    }
-
-    for (const [platform, status] of Object.entries(tokenStatus)) {
-      if (!status.available) {
-        diagnostics.issues.push(
-          `${platform}: No valid access token - ${status.error}`
-        )
-      }
-    }
-
-    for (const [platform, data] of Object.entries(postsByPlatform)) {
-      if (data.posted > 0 && data.withExternalId === 0) {
-        diagnostics.issues.push(
-          `${platform}: ${data.posted} posted but none have externalPostId`
-        )
-      }
-      if (data.withExternalId > 0 && data.withAnalytics === 0) {
-        diagnostics.issues.push(
-          `${platform}: ${data.withExternalId} posts with externalPostId but no analytics synced`
-        )
-      }
-    }
-
-    return NextResponse.json({
-      debug: true,
-      profileId,
-      timestamp: new Date().toISOString(),
-      tokenStatus,
-      postsByPlatform,
-      recentPosts: recentPostsWithDetails,
-      diagnostics,
-    })
-  } catch (error) {
-    console.error('[Analytics Sync Debug Error]', error)
-
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Debug endpoint failed',
-        code: 'DEBUG_ERROR',
       },
       { status: 500 }
     )
