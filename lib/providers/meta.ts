@@ -97,11 +97,12 @@ const config: ProviderConfig = {
     'pages_show_list',           // List Facebook Pages
     'pages_manage_posts',        // Publish posts to Facebook Pages (REQUIRED FOR FB POSTING)
     'pages_read_engagement',     // Page engagement metrics
+    'pages_read_user_content',   // Read posts/comments on Pages (REQUIRED FOR FB ANALYTICS)
     // Instagram permissions (approved)
     'instagram_basic',           // Basic IG account info
     'instagram_content_publish', // Publish content to Instagram (REQUIRED FOR IG POSTING)
+    'instagram_manage_insights', // Instagram analytics
     // NOTE: The following require additional Meta approval:
-    // - instagram_manage_insights: For IG analytics
     // - publish_video: For video uploads to FB Pages
     // - business_management: For business account management
   ],
