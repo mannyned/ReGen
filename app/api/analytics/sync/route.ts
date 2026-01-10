@@ -344,18 +344,33 @@ export async function POST(request: NextRequest) {
     }
 
     // Get access tokens for Instagram, Facebook, YouTube, and LinkedIn
-    // Provider mappings:
-    // - 'meta' -> Instagram & Facebook
-    // - 'google' -> YouTube
-    // - 'linkedin' -> LinkedIn
-    let metaToken: string | null = null
+    // Provider names in database may vary:
+    // - Instagram: 'meta' or 'instagram'
+    // - Facebook: 'meta' or 'facebook'
+    // - YouTube: 'google'
+    // - LinkedIn: 'linkedin'
+    let instagramToken: string | null = null
+    let facebookToken: string | null = null
     let youtubeToken: string | null = null
     let linkedinToken: string | null = null
 
-    // Try to get Meta token (used for both Instagram and Facebook)
-    console.log('[Analytics Sync] Attempting to get Meta token...')
-    metaToken = await tokenManager.getValidAccessToken(profileId, 'meta')
-    console.log(`[Analytics Sync] Meta token result: ${metaToken ? 'SUCCESS' : 'NOT FOUND'}`)
+    // Try to get Instagram token - check 'instagram' first, then 'meta'
+    console.log('[Analytics Sync] Attempting to get Instagram token...')
+    instagramToken = await tokenManager.getValidAccessToken(profileId, 'instagram')
+    if (!instagramToken) {
+      console.log('[Analytics Sync] No instagram provider, trying meta...')
+      instagramToken = await tokenManager.getValidAccessToken(profileId, 'meta')
+    }
+    console.log(`[Analytics Sync] Instagram token result: ${instagramToken ? 'SUCCESS' : 'NOT FOUND'}`)
+
+    // Try to get Facebook token - check 'facebook' first, then 'meta'
+    console.log('[Analytics Sync] Attempting to get Facebook token...')
+    facebookToken = await tokenManager.getValidAccessToken(profileId, 'facebook')
+    if (!facebookToken) {
+      console.log('[Analytics Sync] No facebook provider, trying meta...')
+      facebookToken = await tokenManager.getValidAccessToken(profileId, 'meta')
+    }
+    console.log(`[Analytics Sync] Facebook token result: ${facebookToken ? 'SUCCESS' : 'NOT FOUND'}`)
 
     // Try to get YouTube/Google token
     console.log('[Analytics Sync] Attempting to get YouTube token...')
@@ -367,12 +382,8 @@ export async function POST(request: NextRequest) {
     linkedinToken = await tokenManager.getValidAccessToken(profileId, 'linkedin')
     console.log(`[Analytics Sync] LinkedIn token result: ${linkedinToken ? 'SUCCESS' : 'NOT FOUND'}`)
 
-    // Use Meta token for both Instagram and Facebook
-    const instagramToken = metaToken
-    const facebookToken = metaToken
-
     // Log token status
-    console.log(`[Analytics Sync] Final token status: Meta=${!!metaToken}, YouTube=${!!youtubeToken}, LinkedIn=${!!linkedinToken}`)
+    console.log(`[Analytics Sync] Final token status: Instagram=${!!instagramToken}, Facebook=${!!facebookToken}, YouTube=${!!youtubeToken}, LinkedIn=${!!linkedinToken}`)
 
     // Check if we have any tokens
     if (!instagramToken && !facebookToken && !youtubeToken && !linkedinToken) {
