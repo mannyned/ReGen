@@ -146,31 +146,22 @@ async function fetchFacebookInsights(
   }
 
   try {
-    // First try to get basic post data (likes, comments, shares)
-    const basicUrl = `${META_GRAPH_API}/${postId}?fields=likes.summary(true),comments.summary(true),shares&access_token=${accessToken}`
-    console.log(`[Facebook] Fetching basic data for ${postId}`)
-    const basicResponse = await fetch(basicUrl)
+    // Try multiple approaches to get engagement data
 
-    if (!basicResponse.ok) {
-      const errorText = await basicResponse.text()
-      console.error(`[Facebook Basic] Failed for ${postId} (${basicResponse.status}):`, errorText)
-      facebookDebug?.apiErrors?.push({
-        postId,
-        endpoint: 'basic',
-        status: basicResponse.status,
-        error: errorText.slice(0, 300),
-      })
-      // Try insights endpoint as fallback
-    } else {
-      const basicData = await basicResponse.json()
-      console.log(`[Facebook Basic] Success for ${postId}:`, JSON.stringify(basicData).slice(0, 200))
+    // Approach 1: Try reactions.summary instead of likes.summary (more permissive)
+    const reactionsUrl = `${META_GRAPH_API}/${postId}?fields=reactions.summary(total_count),comments.summary(total_count),shares&access_token=${accessToken}`
+    console.log(`[Facebook] Trying reactions endpoint for ${postId}`)
+    const reactionsResponse = await fetch(reactionsUrl)
 
-      const likes = basicData.likes?.summary?.total_count || 0
-      const comments = basicData.comments?.summary?.total_count || 0
-      const shares = basicData.shares?.count || 0
+    if (reactionsResponse.ok) {
+      const reactionsData = await reactionsResponse.json()
+      console.log(`[Facebook Reactions] Success for ${postId}:`, JSON.stringify(reactionsData).slice(0, 300))
 
-      // Return basic metrics if available
-      if (likes > 0 || comments > 0 || shares > 0 || basicData.likes || basicData.comments) {
+      const likes = reactionsData.reactions?.summary?.total_count || 0
+      const comments = reactionsData.comments?.summary?.total_count || 0
+      const shares = reactionsData.shares?.count || 0
+
+      if (likes > 0 || comments > 0 || shares > 0) {
         return {
           impressions: 0,
           reach: 0,
@@ -181,12 +172,69 @@ async function fetchFacebookInsights(
           shares,
         }
       }
+    } else {
+      const errorText = await reactionsResponse.text()
+      console.log(`[Facebook Reactions] Failed for ${postId}: ${errorText.slice(0, 200)}`)
     }
 
-    // Try insights endpoint (requires Page token with read_insights)
-    const metrics = 'post_impressions,post_impressions_unique,post_engaged_users,post_clicks'
+    // Approach 2: Try basic fields without summary (might have different permissions)
+    const simpleUrl = `${META_GRAPH_API}/${postId}?fields=id,message,created_time&access_token=${accessToken}`
+    console.log(`[Facebook] Trying simple fields for ${postId}`)
+    const simpleResponse = await fetch(simpleUrl)
+
+    if (simpleResponse.ok) {
+      const simpleData = await simpleResponse.json()
+      console.log(`[Facebook Simple] Can access post: ${postId}, created: ${simpleData.created_time}`)
+      // Post is accessible, but we can't get engagement - return zeros
+    } else {
+      const errorText = await simpleResponse.text()
+      console.error(`[Facebook Simple] Failed for ${postId}:`, errorText.slice(0, 200))
+      facebookDebug?.apiErrors?.push({
+        postId,
+        endpoint: 'simple',
+        status: simpleResponse.status,
+        error: errorText.slice(0, 300),
+      })
+    }
+
+    // Approach 3: Original likes.summary approach
+    const basicUrl = `${META_GRAPH_API}/${postId}?fields=likes.summary(true),comments.summary(true),shares&access_token=${accessToken}`
+    console.log(`[Facebook] Trying likes.summary for ${postId}`)
+    const basicResponse = await fetch(basicUrl)
+
+    if (basicResponse.ok) {
+      const basicData = await basicResponse.json()
+      console.log(`[Facebook Basic] Success for ${postId}:`, JSON.stringify(basicData).slice(0, 200))
+
+      const likes = basicData.likes?.summary?.total_count || 0
+      const comments = basicData.comments?.summary?.total_count || 0
+      const shares = basicData.shares?.count || 0
+
+      return {
+        impressions: 0,
+        reach: 0,
+        engaged_users: likes + comments + shares,
+        clicks: 0,
+        likes,
+        comments,
+        shares,
+      }
+    } else {
+      const errorText = await basicResponse.text()
+      console.error(`[Facebook Basic] Failed for ${postId} (${basicResponse.status}):`, errorText)
+      facebookDebug?.apiErrors?.push({
+        postId,
+        endpoint: 'basic',
+        status: basicResponse.status,
+        error: errorText.slice(0, 300),
+      })
+    }
+
+    // Approach 4: Try insights endpoint with different metrics
+    // Use post_reactions_by_type_total which might have different permission requirements
+    const metrics = 'post_impressions,post_engaged_users'
     const url = `${META_GRAPH_API}/${postId}/insights?metric=${metrics}&access_token=${accessToken}`
-    console.log(`[Facebook] Fetching insights for ${postId}`)
+    console.log(`[Facebook] Trying insights for ${postId}`)
 
     const response = await fetch(url)
 
@@ -203,6 +251,7 @@ async function fetchFacebookInsights(
     }
 
     const data: PostInsightsResponse = await response.json()
+    console.log(`[Facebook Insights] Success for ${postId}:`, JSON.stringify(data).slice(0, 300))
 
     const result = {
       impressions: 0,
