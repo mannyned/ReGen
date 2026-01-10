@@ -297,6 +297,7 @@ async function fetchYouTubeInsights(
 let facebookDebug: {
   userToken: boolean
   pageTokenResult: string
+  pageId?: string
   error?: string
   dbConnections?: Array<{ provider: string; accountId: string; expired: boolean }>
   apiErrors?: Array<{ postId: string; endpoint: string; status: number; error: string }>
@@ -325,7 +326,7 @@ async function getFacebookPageToken(userToken: string): Promise<string | null> {
 
     if (page?.access_token) {
       console.log(`[Facebook] Got Page Token for: ${page.name} (ID: ${page.id})`)
-      facebookDebug = { userToken: true, pageTokenResult: `SUCCESS: ${page.name}` }
+      facebookDebug = { userToken: true, pageTokenResult: `SUCCESS: ${page.name}`, pageId: page.id }
       return page.access_token
     }
 
