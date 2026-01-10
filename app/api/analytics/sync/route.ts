@@ -264,6 +264,36 @@ async function fetchYouTubeInsights(
 }
 
 /**
+ * Get Facebook Page Access Token from User Token
+ * Required because Facebook post insights need a Page Token, not User Token
+ */
+async function getFacebookPageToken(userToken: string): Promise<string | null> {
+  try {
+    const url = `${META_GRAPH_API}/me/accounts?fields=id,name,access_token&access_token=${userToken}`
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      console.error('[Facebook] Failed to get Page Token:', await response.text())
+      return null
+    }
+
+    const data = await response.json()
+    const page = data.data?.[0]
+
+    if (page?.access_token) {
+      console.log(`[Facebook] Got Page Token for: ${page.name}`)
+      return page.access_token
+    }
+
+    console.error('[Facebook] No pages found in /me/accounts response')
+    return null
+  } catch (error) {
+    console.error('[Facebook] Error getting Page Token:', error)
+    return null
+  }
+}
+
+/**
  * Fetch basic engagement counts directly from media/post object
  */
 async function fetchBasicEngagement(
@@ -372,6 +402,13 @@ export async function POST(request: NextRequest) {
     }
     console.log(`[Analytics Sync] Facebook token result: ${facebookToken ? 'SUCCESS' : 'NOT FOUND'}`)
 
+    // Get Facebook Page Token (required for post insights)
+    let facebookPageToken: string | null = null
+    if (facebookToken) {
+      facebookPageToken = await getFacebookPageToken(facebookToken)
+      console.log(`[Analytics Sync] Facebook Page Token: ${facebookPageToken ? 'SUCCESS' : 'NOT FOUND'}`)
+    }
+
     // Try to get YouTube/Google token
     console.log('[Analytics Sync] Attempting to get YouTube token...')
     youtubeToken = await tokenManager.getValidAccessToken(profileId, 'youtube')
@@ -409,9 +446,10 @@ export async function POST(request: NextRequest) {
       if (platform === 'google') platform = 'youtube'
 
       // Get the appropriate token
+      // Note: Facebook uses Page Token for insights, others use User Token
       let accessToken: string | null = null
       if (platform === 'instagram') accessToken = instagramToken
-      else if (platform === 'facebook') accessToken = facebookToken
+      else if (platform === 'facebook') accessToken = facebookPageToken  // Use Page Token
       else if (platform === 'youtube') accessToken = youtubeToken
       else if (platform === 'linkedin') accessToken = linkedinToken
 
