@@ -520,6 +520,7 @@ export default function LocationAnalyticsPage() {
   const [topLocations, setTopLocations] = useState<RankedLocation[]>([]);
   const [mapData, setMapData] = useState<{ features: GeoJSONFeature[] } | null>(null);
   const [insights, setInsights] = useState<LocationInsight[]>([]);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
   useEffect(() => {
     loadData();
@@ -555,6 +556,7 @@ export default function LocationAnalyticsPage() {
 
   const loadData = async () => {
     setIsLoading(true);
+    const debug: string[] = [];
 
     try {
       // Try to get user info for platform API calls
@@ -563,6 +565,9 @@ export default function LocationAnalyticsPage() {
       if (userRes.ok) {
         const userData = await userRes.json();
         userId = userData?.id;
+        debug.push(`User ID: ${userId}`);
+      } else {
+        debug.push('Failed to get user info');
       }
 
       if (!userId) {
@@ -570,6 +575,7 @@ export default function LocationAnalyticsPage() {
         setTopLocations([]);
         setMapData(null);
         setInsights([]);
+        setDebugInfo(debug);
         setIsLoading(false);
         return;
       }
@@ -584,29 +590,34 @@ export default function LocationAnalyticsPage() {
 
       for (const platform of platforms) {
         try {
+          debug.push(`Fetching ${platform}...`);
           const res = await fetch(`/api/analytics?type=location&platform=${platform}&userId=${userId}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-              // Add platform tag to each location for tracking
-              for (const loc of data.data) {
-                allLocationData.push({
-                  ...loc,
-                  platform,
-                });
-              }
-            } else if (data.error) {
-              platformErrors.push(`${platform}: ${data.error}`);
+          const data = await res.json();
+          debug.push(`${platform} response: ${JSON.stringify(data).slice(0, 200)}`);
+
+          if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+            debug.push(`${platform}: Got ${data.data.length} locations`);
+            // Add platform tag to each location for tracking
+            for (const loc of data.data) {
+              allLocationData.push({
+                ...loc,
+                platform,
+              });
             }
+          } else if (data.error) {
+            platformErrors.push(`${platform}: ${data.error}`);
+            debug.push(`${platform} error: ${data.error}`);
           } else {
-            const errorData = await res.json().catch(() => ({}));
-            platformErrors.push(`${platform}: ${errorData.error || 'API error'}`);
+            debug.push(`${platform}: No data (success=${data.success}, count=${data.count || 0})`);
           }
         } catch (err) {
           console.error(`Failed to fetch ${platform} location data:`, err);
           platformErrors.push(`${platform}: Connection failed`);
+          debug.push(`${platform} exception: ${err}`);
         }
       }
+
+      setDebugInfo(debug);
 
       // Aggregate location data by country
       const aggregated: Record<string, { percentage: number; engagement: number }> = {};
@@ -894,6 +905,20 @@ export default function LocationAnalyticsPage() {
               Coming soon: See which content formats perform best in each geographic region.
             </p>
           </Card>
+
+          {/* Debug Info (temporary) */}
+          {debugInfo.length > 0 && (
+            <Card className="p-6 mt-6 bg-gray-50" hover={false}>
+              <h2 className="text-lg font-semibold text-text-primary mb-4">
+                Debug Info (temporary)
+              </h2>
+              <div className="text-xs font-mono text-text-secondary space-y-1 max-h-64 overflow-y-auto">
+                {debugInfo.map((line, i) => (
+                  <div key={i} className="break-all">{line}</div>
+                ))}
+              </div>
+            </Card>
+          )}
         </main>
       </div>
     </ProOnlyGate>
