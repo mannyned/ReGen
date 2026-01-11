@@ -525,8 +525,11 @@ interface FormatPerformance {
   totalEngagement: number;
 }
 
+type PlatformFilter = 'all' | 'instagram' | 'youtube' | 'facebook' | 'tiktok' | 'linkedin';
+
 export default function LocationAnalyticsPage() {
   const [period, setPeriod] = useState<Period>('30d');
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformFilter>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [metrics, setMetrics] = useState<KeyMetrics | null>(null);
   const [topLocations, setTopLocations] = useState<RankedLocation[]>([]);
@@ -536,7 +539,7 @@ export default function LocationAnalyticsPage() {
 
   useEffect(() => {
     loadData();
-  }, [period]);
+  }, [period, selectedPlatform]);
 
   // Country code to name mapping
   const countryNames: Record<string, string> = {
@@ -591,7 +594,11 @@ export default function LocationAnalyticsPage() {
       // YouTube requires yt-analytics.readonly scope
       // Instagram requires instagram_insights with business account
       // Facebook requires read_insights for page
-      const platforms = ['youtube', 'instagram', 'facebook'];
+      const allPlatforms = ['youtube', 'instagram', 'facebook'];
+      // Filter platforms based on selected platform
+      const platforms = selectedPlatform === 'all'
+        ? allPlatforms
+        : allPlatforms.filter(p => p === selectedPlatform);
       const allLocationData: Array<{ country: string; percentage: number; engagement: number }> = [];
 
       for (const platform of platforms) {
@@ -763,7 +770,8 @@ export default function LocationAnalyticsPage() {
       // Fetch format performance data from stats API
       try {
         const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
-        const statsRes = await fetch(`/api/analytics/stats?days=${days}`);
+        const platformParam = selectedPlatform !== 'all' ? `&platform=${selectedPlatform}` : '';
+        const statsRes = await fetch(`/api/analytics/stats?days=${days}${platformParam}`);
         if (statsRes.ok) {
           const statsData = await statsRes.json();
           if (statsData?.topFormats && statsData.topFormats.length > 0) {
@@ -833,6 +841,30 @@ export default function LocationAnalyticsPage() {
                   </h1>
                   <p className="text-sm text-text-secondary">See where your audience engages the most</p>
                 </div>
+              </div>
+
+              {/* Platform Selector */}
+              <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
+                {([
+                  { value: 'all' as PlatformFilter, label: 'All', icon: '📊' },
+                  { value: 'instagram' as PlatformFilter, label: 'Instagram', icon: '📸' },
+                  { value: 'youtube' as PlatformFilter, label: 'YouTube', icon: '▶️' },
+                  { value: 'facebook' as PlatformFilter, label: 'Facebook', icon: '👤' },
+                ] as const).map((platform) => (
+                  <button
+                    key={platform.value}
+                    onClick={() => setSelectedPlatform(platform.value)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      selectedPlatform === platform.value
+                        ? 'bg-primary text-white shadow-md'
+                        : 'text-text-secondary hover:bg-gray-200'
+                    }`}
+                    title={platform.label}
+                  >
+                    <span className="hidden sm:inline">{platform.icon} {platform.label}</span>
+                    <span className="sm:hidden">{platform.icon}</span>
+                  </button>
+                ))}
               </div>
 
               {/* Period Selector */}

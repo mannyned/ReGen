@@ -522,8 +522,11 @@ function PlatformBreakdown({ data, isLoading }: PlatformBreakdownProps) {
 // ============================================
 // Main Page Component
 // ============================================
+type PlatformFilter = 'all' | 'instagram' | 'youtube' | 'facebook' | 'tiktok' | 'linkedin';
+
 export default function SaveRateAnalyticsPage() {
   const [period, setPeriod] = useState<Period>('30d');
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformFilter>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState<SaveRateSummary | null>(null);
   const [byFormat, setByFormat] = useState<SaveRateByFormat[]>([]);
@@ -533,7 +536,7 @@ export default function SaveRateAnalyticsPage() {
 
   useEffect(() => {
     loadData();
-  }, [period]);
+  }, [period, selectedPlatform]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -543,7 +546,8 @@ export default function SaveRateAnalyticsPage() {
       const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
 
       // Fetch from analytics stats endpoint - this uses synced engagement data
-      const statsRes = await fetch(`/api/analytics/stats?days=${days}`);
+      const platformParam = selectedPlatform !== 'all' ? `&platform=${selectedPlatform}` : '';
+      const statsRes = await fetch(`/api/analytics/stats?days=${days}${platformParam}`);
       if (!statsRes.ok) {
         setIsLoading(false);
         return;
@@ -723,21 +727,40 @@ export default function SaveRateAnalyticsPage() {
                 </div>
               </div>
 
-              {/* Period Selector */}
-              <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
-                {(['7d', '30d', '90d', '365d'] as Period[]).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPeriod(p)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      period === p
-                        ? 'bg-emerald-600 text-white shadow-md'
-                        : 'text-text-secondary hover:bg-gray-200'
-                    }`}
-                  >
-                    {p === '7d' ? '7 Days' : p === '30d' ? '30 Days' : p === '90d' ? '90 Days' : '1 Year'}
-                  </button>
-                ))}
+              <div className="flex items-center gap-4">
+                {/* Platform Selector */}
+                <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
+                  {(['all', 'instagram', 'youtube', 'facebook', 'tiktok'] as PlatformFilter[]).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setSelectedPlatform(p)}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        selectedPlatform === p
+                          ? 'bg-emerald-600 text-white shadow-md'
+                          : 'text-text-secondary hover:bg-gray-200'
+                      }`}
+                    >
+                      {p === 'all' ? 'All' : p === 'instagram' ? '📸' : p === 'youtube' ? '▶️' : p === 'facebook' ? '👤' : '🎵'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Period Selector */}
+                <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
+                  {(['7d', '30d', '90d', '365d'] as Period[]).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPeriod(p)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        period === p
+                          ? 'bg-emerald-600 text-white shadow-md'
+                          : 'text-text-secondary hover:bg-gray-200'
+                      }`}
+                    >
+                      {p === '7d' ? '7 Days' : p === '30d' ? '30 Days' : p === '90d' ? '90 Days' : '1 Year'}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

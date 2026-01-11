@@ -686,8 +686,11 @@ function InsightsList({ insights }: InsightsListProps) {
 // ============================================
 // Main Page Component
 // ============================================
+type PlatformFilter = 'all' | 'instagram' | 'youtube' | 'facebook' | 'tiktok' | 'linkedin';
+
 export default function RetentionAnalyticsPage() {
   const [period, setPeriod] = useState<Period>('30d');
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformFilter>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState<RetentionAveragesSummary | null>(null);
   const [hookScore, setHookScore] = useState<HookScore | null>(null);
@@ -698,7 +701,7 @@ export default function RetentionAnalyticsPage() {
 
   useEffect(() => {
     loadData();
-  }, [period]);
+  }, [period, selectedPlatform]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -707,8 +710,11 @@ export default function RetentionAnalyticsPage() {
       // Calculate date range based on period
       const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
 
+      // Build platform parameter
+      const platformParam = selectedPlatform !== 'all' ? `&platform=${selectedPlatform}` : '';
+
       // Fetch analytics stats to get video metrics from synced data
-      const statsRes = await fetch(`/api/analytics/stats?days=${days}`);
+      const statsRes = await fetch(`/api/analytics/stats?days=${days}${platformParam}`);
       if (!statsRes.ok) {
         setIsLoading(false);
         return;
@@ -893,6 +899,29 @@ export default function RetentionAnalyticsPage() {
                   </h1>
                   <p className="text-sm text-text-secondary">Understand how viewers engage with your videos</p>
                 </div>
+              </div>
+
+              {/* Platform Selector */}
+              <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
+                {([
+                  { value: 'all' as PlatformFilter, label: 'All', icon: '📊' },
+                  { value: 'youtube' as PlatformFilter, label: 'YouTube', icon: '▶️' },
+                  { value: 'tiktok' as PlatformFilter, label: 'TikTok', icon: '🎵' },
+                ] as const).map((platform) => (
+                  <button
+                    key={platform.value}
+                    onClick={() => setSelectedPlatform(platform.value)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      selectedPlatform === platform.value
+                        ? 'bg-orange-600 text-white shadow-md'
+                        : 'text-text-secondary hover:bg-gray-200'
+                    }`}
+                    title={platform.label}
+                  >
+                    <span className="hidden sm:inline">{platform.icon} {platform.label}</span>
+                    <span className="sm:hidden">{platform.icon}</span>
+                  </button>
+                ))}
               </div>
 
               {/* Period Selector */}
