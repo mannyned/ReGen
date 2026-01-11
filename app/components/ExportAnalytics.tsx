@@ -151,15 +151,15 @@ export function ExportAnalytics({
     setError(null)
 
     try {
+      // Calculate days from date range
+      const fromDate = new Date(options.dateFrom)
+      const toDate = new Date(options.dateTo)
+      const days = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) || 30
+
       // For CSV, use the fast direct export endpoint
       if (options.format === 'csv') {
         setStatus('processing')
         setCurrentJob({ id: 'direct', status: 'processing', progress: 50 })
-
-        // Calculate days from date range
-        const fromDate = new Date(options.dateFrom)
-        const toDate = new Date(options.dateTo)
-        const days = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) || 30
 
         const response = await fetch(`/api/analytics/export/direct?format=csv&days=${days}`)
 
@@ -182,6 +182,26 @@ export function ExportAnalytics({
         setStatus('completed')
         setCurrentJob({ id: 'direct', status: 'completed', progress: 100 })
         onExportComplete?.('direct', 'csv')
+
+        // Auto close after success
+        setTimeout(() => {
+          setIsOpen(false)
+          resetState()
+        }, 1500)
+        return
+      }
+
+      // For PDF, open printable report in new tab
+      if (options.format === 'pdf') {
+        setStatus('processing')
+        setCurrentJob({ id: 'direct', status: 'processing', progress: 50 })
+
+        // Open PDF report in new window for printing
+        window.open(`/api/analytics/export/direct?format=pdf&days=${days}`, '_blank')
+
+        setStatus('completed')
+        setCurrentJob({ id: 'direct', status: 'completed', progress: 100 })
+        onExportComplete?.('direct', 'pdf')
 
         // Auto close after success
         setTimeout(() => {

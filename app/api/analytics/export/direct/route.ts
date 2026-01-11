@@ -150,13 +150,14 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Default: return summary for PDF preview
+    // Calculate summary stats
     const totalViews = exportData.reduce((sum, p) => sum + p.views, 0)
     const totalLikes = exportData.reduce((sum, p) => sum + p.likes, 0)
     const totalComments = exportData.reduce((sum, p) => sum + p.comments, 0)
     const totalShares = exportData.reduce((sum, p) => sum + p.shares, 0)
     const totalSaves = exportData.reduce((sum, p) => sum + p.saves, 0)
     const totalReach = exportData.reduce((sum, p) => sum + p.reach, 0)
+    const avgEngagementRate = totalReach > 0 ? ((totalLikes + totalComments + totalShares) / totalReach * 100) : 0
 
     // Group by platform
     const byPlatform: Record<string, { posts: number; views: number; engagement: number }> = {}
@@ -169,6 +170,134 @@ export async function GET(request: NextRequest) {
       byPlatform[post.platform].engagement += post.likes + post.comments + post.shares
     }
 
+    // PDF format - return printable HTML
+    if (format === 'pdf') {
+      const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      const platformRows = Object.entries(byPlatform)
+        .map(([platform, data]) => `
+          <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${platform}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${data.posts}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">${data.views.toLocaleString()}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">${data.engagement.toLocaleString()}</td>
+          </tr>
+        `).join('')
+
+      const postRows = exportData.slice(0, 20).map(post => `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 13px;">${post.platform}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 13px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${post.title}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 13px; text-align: right;">${post.views.toLocaleString()}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 13px; text-align: right;">${post.likes.toLocaleString()}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 13px; text-align: right;">${post.comments.toLocaleString()}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 13px; text-align: right;">${post.shares.toLocaleString()}</td>
+        </tr>
+      `).join('')
+
+      const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Analytics Report - ${dateStr}</title>
+  <style>
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 40px; color: #1f2937; }
+    .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
+    .header h1 { margin: 0 0 8px 0; font-size: 28px; color: #7c3aed; }
+    .header p { margin: 0; color: #6b7280; }
+    .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
+    .stat-card { background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); padding: 20px; border-radius: 12px; text-align: center; }
+    .stat-card .value { font-size: 28px; font-weight: 700; color: #1f2937; }
+    .stat-card .label { font-size: 13px; color: #6b7280; margin-top: 4px; }
+    .section { margin-bottom: 32px; }
+    .section h2 { font-size: 18px; margin: 0 0 16px 0; color: #374151; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f9fafb; padding: 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; }
+    th:not(:first-child) { text-align: right; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #9ca3af; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Analytics Report</h1>
+    <p>Generated on ${dateStr} | Last ${days} days</p>
+  </div>
+
+  <div class="summary">
+    <div class="stat-card">
+      <div class="value">${exportData.length}</div>
+      <div class="label">Total Posts</div>
+    </div>
+    <div class="stat-card">
+      <div class="value">${totalViews.toLocaleString()}</div>
+      <div class="label">Total Views</div>
+    </div>
+    <div class="stat-card">
+      <div class="value">${(totalLikes + totalComments + totalShares).toLocaleString()}</div>
+      <div class="label">Total Engagement</div>
+    </div>
+    <div class="stat-card">
+      <div class="value">${avgEngagementRate.toFixed(2)}%</div>
+      <div class="label">Avg Engagement Rate</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Performance by Platform</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Platform</th>
+          <th style="text-align: center;">Posts</th>
+          <th>Views</th>
+          <th>Engagement</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${platformRows || '<tr><td colspan="4" style="padding: 20px; text-align: center; color: #6b7280;">No platform data available</td></tr>'}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>Top Posts${exportData.length > 20 ? ' (Top 20)' : ''}</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Platform</th>
+          <th>Title</th>
+          <th>Views</th>
+          <th>Likes</th>
+          <th>Comments</th>
+          <th>Shares</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${postRows || '<tr><td colspan="6" style="padding: 20px; text-align: center; color: #6b7280;">No posts available</td></tr>'}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <p>Generated by ReGenr Analytics | ${new Date().toISOString()}</p>
+  </div>
+
+  <script>window.onload = function() { window.print(); }</script>
+</body>
+</html>`
+
+      return new NextResponse(html, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html',
+        },
+      })
+    }
+
+    // Default: return JSON summary
     return NextResponse.json({
       success: true,
       exportedAt: new Date().toISOString(),
@@ -180,7 +309,7 @@ export async function GET(request: NextRequest) {
         totalShares,
         totalSaves,
         totalReach,
-        avgEngagementRate: totalReach > 0 ? ((totalLikes + totalComments + totalShares) / totalReach * 100).toFixed(2) + '%' : '0%',
+        avgEngagementRate: avgEngagementRate.toFixed(2) + '%',
       },
       byPlatform,
       posts: exportData,
