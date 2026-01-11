@@ -407,26 +407,62 @@ export async function GET(request: NextRequest) {
 
     // If we have very few or no posts, provide starter recommendations
     if (posts.length < 3) {
-      // Platform-specific starter recommendations
+      // Platform-specific starter recommendations with actionable tips
       if (isFiltered) {
+        // Platform-specific actionable tips for users with few posts
+        const platformStarterTips: Record<string, { title: string; description: string; icon: string }> = {
+          instagram: {
+            title: 'Use Instagram Reels',
+            description: 'Reels get 22% more engagement than static posts. Start creating short-form video content to boost your reach.',
+            icon: '🎬'
+          },
+          tiktok: {
+            title: 'Hook Viewers in 3 Seconds',
+            description: 'TikTok users decide instantly whether to keep watching. Start videos with a strong hook to improve completion rate.',
+            icon: '🎣'
+          },
+          youtube: {
+            title: 'Optimize Your Thumbnails',
+            description: 'Custom thumbnails appear on 90% of top-performing videos. Create eye-catching thumbnails to boost click-through rate.',
+            icon: '🖼️'
+          },
+          linkedin: {
+            title: 'Share Industry Insights',
+            description: 'LinkedIn posts with professional insights get 3x more engagement. Share your expertise and thought leadership.',
+            icon: '💼'
+          },
+          twitter: {
+            title: 'Join Trending Conversations',
+            description: 'Reply to trending topics and engage with others in your niche. Twitter rewards active participation.',
+            icon: '💬'
+          },
+          facebook: {
+            title: 'Post Native Video Content',
+            description: 'Facebook prioritizes native video. Upload videos directly instead of sharing links for better reach.',
+            icon: '🎬'
+          }
+        }
+
+        const platformTip = platformStarterTips[platformFilter]
+
         return NextResponse.json({
           success: true,
           recommendations: [
-            {
+            ...(platformTip ? [{
               id: '1',
-              title: `Start Posting on ${platformDisplayName}`,
-              description: `Create and publish your first few ${platformDisplayName} posts to unlock personalized recommendations for this platform.`,
+              title: platformTip.title,
+              description: platformTip.description,
               impact: 'high' as const,
-              icon: '🚀',
-              category: 'growth' as const
-            },
+              icon: platformTip.icon,
+              category: 'content' as const
+            }] : []),
             {
               id: '2',
-              title: `Learn ${platformDisplayName} Best Practices`,
-              description: `Each platform has unique content styles. Research what works best on ${platformDisplayName} to maximize your engagement.`,
+              title: `Post More on ${platformDisplayName}`,
+              description: `You have ${posts.length} ${platformDisplayName} post${posts.length !== 1 ? 's' : ''}. Post at least 3 times to unlock personalized performance insights.`,
               impact: 'high' as const,
-              icon: '📚',
-              category: 'content' as const
+              icon: '📈',
+              category: 'growth' as const
             },
             {
               id: '3',
