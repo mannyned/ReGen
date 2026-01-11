@@ -10,7 +10,6 @@ import type { SocialPlatform } from '@/lib/types/social'
 
 // Verify cron secret to prevent unauthorized access
 function verifyCronSecret(request: NextRequest): boolean {
-  const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
 
   // In development, allow without secret
@@ -18,8 +17,21 @@ function verifyCronSecret(request: NextRequest): boolean {
     return true
   }
 
-  // Vercel cron jobs send the secret in the Authorization header
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+  // If no secret is configured, allow (for initial setup)
+  if (!cronSecret) {
+    return true
+  }
+
+  // Check Authorization header (Vercel cron jobs)
+  const authHeader = request.headers.get('authorization')
+  if (authHeader === `Bearer ${cronSecret}`) {
+    return true
+  }
+
+  // Check URL parameter (external cron services like cron-job.org)
+  const { searchParams } = new URL(request.url)
+  const urlSecret = searchParams.get('secret')
+  if (urlSecret === cronSecret) {
     return true
   }
 
