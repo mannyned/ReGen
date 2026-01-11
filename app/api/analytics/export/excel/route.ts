@@ -75,7 +75,7 @@ function providerToPlatform(provider: string): SocialPlatform {
   return mapping[provider.toLowerCase()] || provider as SocialPlatform
 }
 
-// Fetch real analytics data from database - optimized single query
+// Fetch real analytics data - matches working stats API pattern
 async function fetchAnalyticsData(
   userId: string,
   options: ExportOptions
@@ -86,84 +86,90 @@ async function fetchAnalyticsData(
     return []
   }
 
-  const { filters } = options
+  const { filters } = options || {}
 
-  // Date range
-  const dateFrom = filters.dateFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-  const dateTo = filters.dateTo || new Date()
+  // Date range - only use start date like working stats API
+  const startDate = new Date()
+  startDate.setDate(startDate.getDate() - 30) // Default 30 days
+  const dateFrom = filters?.dateFrom || startDate
 
-  // Build provider filter if platforms specified
-  let providerFilter: { in: string[] } | undefined
-  if (filters.platforms && filters.platforms.length > 0) {
-    const platformToProviders: Record<string, string[]> = {
+  // Build provider filter (matches stats API pattern)
+  const getProviderFilter = (platforms?: string[]) => {
+    if (!platforms || platforms.length === 0) return undefined
+    const platformMap: Record<string, string[]> = {
       'instagram': ['meta', 'instagram'],
       'youtube': ['google', 'youtube'],
-      'facebook': ['facebook'],
+      'facebook': ['facebook', 'meta'],
       'tiktok': ['tiktok'],
       'linkedin': ['linkedin'],
       'twitter': ['twitter', 'x'],
       'snapchat': ['snapchat'],
     }
     const allProviders: string[] = []
-    for (const platform of filters.platforms) {
-      const providers = platformToProviders[platform] || [platform]
+    for (const platform of platforms) {
+      const providers = platformMap[platform.toLowerCase()] || [platform]
       allProviders.push(...providers)
     }
-    providerFilter = { in: allProviders }
+    return { in: allProviders }
   }
 
-  // Single optimized query to fetch all posts
+  const providerFilter = getProviderFilter(filters?.platforms as string[] | undefined)
+  const providerWhere = providerFilter ? { provider: providerFilter } : {}
+
+  console.log(`[Excel Export] Fetching posts for userId: ${userId}`)
+
+  // Single optimized query matching working stats API
   const posts = await prisma.outboundPost.findMany({
     where: {
       profileId: userId,
       status: 'POSTED',
-      postedAt: {
-        gte: dateFrom,
-        lte: dateTo,
-      },
-      ...(providerFilter ? { provider: providerFilter } : {}),
-      ...(filters.postIds?.length ? { id: { in: filters.postIds } } : {}),
+      postedAt: { gte: dateFrom },
+      ...providerWhere,
+      ...(filters?.postIds?.length ? { id: { in: filters.postIds } } : {}),
     },
-    include: {
-      contentUpload: true,
+    select: {
+      id: true,
+      provider: true,
+      externalPostId: true,
+      metadata: true,
+      postedAt: true,
+      createdAt: true,
+      contentUpload: {
+        select: {
+          fileName: true,
+        },
+      },
     },
     orderBy: {
       postedAt: 'desc',
     },
   })
 
-  // Transform to NormalizedPostAnalytics format
+  console.log(`[Excel Export] Found ${posts.length} posts`)
+
+  // Transform to NormalizedPostAnalytics (matches stats API data extraction)
   return posts.map(post => {
-    const metadata = (post.metadata || {}) as Record<string, unknown>
-    const analytics = (metadata.analytics || {}) as Record<string, unknown>
-    const contentUpload = post.contentUpload
+    const metadata = post.metadata as Record<string, unknown> | null
+    const analytics = metadata?.analytics as Record<string, unknown> | null
     const platform = providerToPlatform(post.provider)
 
-    // Extract metrics from analytics data
-    const views = Number(analytics.views || analytics.viewCount || 0)
-    const likes = Number(analytics.likes || analytics.likeCount || 0)
-    const comments = Number(analytics.comments || analytics.commentCount || 0)
-    const shares = Number(analytics.shares || analytics.shareCount || 0)
-    const saves = Number(analytics.saves || analytics.saveCount || 0)
-    const impressions = Number(analytics.impressions || analytics.reach || views)
-    const reach = Number(analytics.reach || impressions)
+    // Extract metrics matching stats API pattern
+    const views = Number(analytics?.views) || 0
+    const likes = Number(analytics?.likes) || 0
+    const comments = Number(analytics?.comments) || 0
+    const shares = Number(analytics?.shares) || 0
+    const saves = Number(analytics?.saved || analytics?.saves) || 0
+    const reach = Number(analytics?.reach) || 0
+    const impressions = Number(analytics?.impressions) || reach || views
 
     // Calculate engagement rate
     const totalEngagement = likes + comments + shares
-    const engagementRate = impressions > 0 ? (totalEngagement / impressions) * 100 : 0
-    const saveRate = impressions > 0 ? (saves / impressions) * 100 : 0
+    const engagementRate = reach > 0 ? (totalEngagement / reach) * 100 : 0
+    const saveRate = reach > 0 ? (saves / reach) * 100 : 0
 
     // Get title and caption
-    const title = String(metadata.title || contentUpload?.fileName || `${platform} post`)
-    const caption = String(metadata.caption || metadata.description || '')
-
-    // Get location data if available
-    const locationData = analytics.topLocations as Array<{
-      country: string
-      city?: string
-      percentage: number
-      engagement: number
-    }> | undefined
+    const title = String(metadata?.title || post.contentUpload?.fileName || `${platform} post`)
+    const caption = String(metadata?.caption || metadata?.description || '')
 
     return {
       postId: post.id,
@@ -181,9 +187,14 @@ async function fetchAnalyticsData(
       saves,
       engagementRate,
       saveRate,
-      avgWatchTime: analytics.avgWatchTime as number | undefined,
-      completionRate: analytics.completionRate as number | undefined,
-      topLocations: locationData || [],
+      avgWatchTime: analytics?.avgWatchTime ? Number(analytics.avgWatchTime) : undefined,
+      completionRate: analytics?.completionRate ? Number(analytics.completionRate) : undefined,
+      topLocations: Array.isArray(analytics?.topLocations) ? analytics.topLocations as Array<{
+        country: string
+        city?: string
+        percentage: number
+        engagement: number
+      }> : [],
     }
   })
 }
