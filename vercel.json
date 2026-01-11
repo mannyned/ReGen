@@ -8,10 +8,6 @@
     {
       "path": "/api/cron/rss-ingestion",
       "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/scheduled-posts",
-      "schedule": "0 0 * * *"
     }
   ]
 }
