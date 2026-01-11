@@ -916,6 +916,18 @@ export default function RetentionAnalyticsPage() {
         </div>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Sync Info Banner */}
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex items-start gap-3">
+            <span className="text-blue-500 text-lg">ℹ️</span>
+            <div className="text-sm text-blue-700">
+              <p className="font-medium">When do metrics update?</p>
+              <p className="mt-1 text-blue-600">
+                YouTube retention data may take 24-48 hours to appear after upload. TikTok metrics update within a few hours.
+                Data syncs automatically when you visit this page.
+              </p>
+            </div>
+          </div>
+
           {/* Key Metrics Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-fade-in">
             <MetricCard
