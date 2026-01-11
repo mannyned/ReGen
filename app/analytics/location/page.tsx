@@ -287,8 +287,11 @@ function TopLocationsPanel({ locations, isLoading }: TopLocationsPanelProps) {
       <div className="space-y-2">
         {locations.length === 0 ? (
           <div className="text-center py-8 text-text-secondary">
-            <p>No location data yet</p>
-            <p className="text-sm mt-1">Connect your social accounts to see engagement by location</p>
+            <div className="text-3xl mb-2">📍</div>
+            <p className="font-medium text-text-primary">No countries yet</p>
+            <p className="text-sm mt-1 max-w-xs mx-auto">
+              Once your content reaches viewers in different countries, they'll appear here ranked by engagement.
+            </p>
           </div>
         ) : (
           locations.map((loc) => (
@@ -349,10 +352,12 @@ function LocationMap({ data, isLoading }: LocationMapProps) {
   if (!data || !data.features.length) {
     return (
       <div className="h-80 bg-gradient-to-b from-blue-50 to-blue-100 rounded-xl flex items-center justify-center">
-        <div className="text-center text-text-secondary">
-          <div className="text-4xl mb-2">🗺️</div>
-          <p className="font-medium">No location data yet</p>
-          <p className="text-sm mt-1">Connect your accounts to see the map</p>
+        <div className="text-center text-text-secondary px-6">
+          <div className="text-4xl mb-3">🌍</div>
+          <p className="font-medium text-text-primary">Your map is waiting to light up!</p>
+          <p className="text-sm mt-2 max-w-sm">
+            As your content gains views across different countries, this map will show where your audience is located.
+          </p>
         </div>
       </div>
     );
@@ -520,7 +525,6 @@ export default function LocationAnalyticsPage() {
   const [topLocations, setTopLocations] = useState<RankedLocation[]>([]);
   const [mapData, setMapData] = useState<{ features: GeoJSONFeature[] } | null>(null);
   const [insights, setInsights] = useState<LocationInsight[]>([]);
-  const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
   useEffect(() => {
     loadData();
@@ -556,7 +560,6 @@ export default function LocationAnalyticsPage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const debug: string[] = [];
 
     try {
       // Try to get user info for platform API calls
@@ -565,9 +568,6 @@ export default function LocationAnalyticsPage() {
       if (userRes.ok) {
         const userData = await userRes.json();
         userId = userData?.id;
-        debug.push(`User ID: ${userId}`);
-      } else {
-        debug.push('Failed to get user info');
       }
 
       if (!userId) {
@@ -575,7 +575,6 @@ export default function LocationAnalyticsPage() {
         setTopLocations([]);
         setMapData(null);
         setInsights([]);
-        setDebugInfo(debug);
         setIsLoading(false);
         return;
       }
@@ -586,17 +585,13 @@ export default function LocationAnalyticsPage() {
       // Facebook requires read_insights for page
       const platforms = ['youtube', 'instagram', 'facebook'];
       const allLocationData: Array<{ country: string; percentage: number; engagement: number }> = [];
-      const platformErrors: string[] = [];
 
       for (const platform of platforms) {
         try {
-          debug.push(`Fetching ${platform}...`);
           const res = await fetch(`/api/analytics?type=location&platform=${platform}&userId=${userId}`);
           const data = await res.json();
-          debug.push(`${platform} response: ${JSON.stringify(data).slice(0, 200)}`);
 
           if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-            debug.push(`${platform}: Got ${data.data.length} locations`);
             // Add platform tag to each location for tracking
             for (const loc of data.data) {
               allLocationData.push({
@@ -604,20 +599,11 @@ export default function LocationAnalyticsPage() {
                 platform,
               });
             }
-          } else if (data.error) {
-            platformErrors.push(`${platform}: ${data.error}`);
-            debug.push(`${platform} error: ${data.error}`);
-          } else {
-            debug.push(`${platform}: No data (success=${data.success}, count=${data.count || 0})`);
           }
         } catch (err) {
           console.error(`Failed to fetch ${platform} location data:`, err);
-          platformErrors.push(`${platform}: Connection failed`);
-          debug.push(`${platform} exception: ${err}`);
         }
       }
-
-      setDebugInfo(debug);
 
       // Aggregate location data by country
       const aggregated: Record<string, { percentage: number; engagement: number }> = {};
@@ -643,17 +629,17 @@ export default function LocationAnalyticsPage() {
         setInsights([{
           id: '1',
           type: 'untapped_potential',
-          title: 'Enable Location Analytics',
-          description: 'Location data requires platform analytics API access. For YouTube, reconnect with "YouTube Analytics" permissions. For Instagram/Facebook, a Business or Creator account with Insights access is required.',
-          locationId: 'setup',
-          locationName: 'Setup Required',
+          title: 'Building Your Geographic Data',
+          description: 'Location analytics require sufficient engagement data. YouTube, Instagram, and Facebook need a meaningful number of views (typically 50-100+) before they can provide geographic breakdowns. Keep posting content and check back as your audience grows!',
+          locationId: 'growing',
+          locationName: 'Growing Audience',
           formatId: null,
           formatName: null,
           metrics: null,
           priority: 100,
           isActionable: true,
-          actionLabel: 'Manage Connections',
-          actionUrl: '/settings',
+          actionLabel: 'Create Content',
+          actionUrl: '/generate',
           validFrom: new Date().toISOString().split('T')[0],
           validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           createdAt: new Date().toISOString()
@@ -906,19 +892,6 @@ export default function LocationAnalyticsPage() {
             </p>
           </Card>
 
-          {/* Debug Info (temporary) */}
-          {debugInfo.length > 0 && (
-            <Card className="p-6 mt-6 bg-gray-50" hover={false}>
-              <h2 className="text-lg font-semibold text-text-primary mb-4">
-                Debug Info (temporary)
-              </h2>
-              <div className="text-xs font-mono text-text-secondary space-y-1 max-h-64 overflow-y-auto">
-                {debugInfo.map((line, i) => (
-                  <div key={i} className="break-all">{line}</div>
-                ))}
-              </div>
-            </Card>
-          )}
         </main>
       </div>
     </ProOnlyGate>
