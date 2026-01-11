@@ -116,8 +116,16 @@ export async function GET(request: NextRequest) {
         postedAt: { gte: startDate },
       },
       select: {
+        id: true,
         provider: true,
         metadata: true,
+        postedAt: true,
+        contentUpload: {
+          select: {
+            mimeType: true,
+            generatedCaptions: true,
+          },
+        },
       },
     })
 
@@ -292,6 +300,233 @@ export async function GET(request: NextRequest) {
       // Additional context
       postsPerWeek: parseFloat((postsInRange / (days / 7)).toFixed(1)),
       avgReachPerPost: Math.round(avgReachPerPost),
+    }
+
+    // ============================================
+    // TOP FORMATS CALCULATION
+    // ============================================
+    const formatStats: Record<string, { count: number; likes: number; comments: number; shares: number; saves: number; reach: number }> = {}
+
+    for (const post of postsWithAnalytics) {
+      const mimeType = post.contentUpload?.mimeType || 'unknown'
+      // Categorize by format type
+      let formatType = 'Other'
+      if (mimeType.startsWith('video/')) {
+        formatType = 'Video'
+      } else if (mimeType.startsWith('image/')) {
+        formatType = 'Image'
+      } else if (mimeType.startsWith('audio/')) {
+        formatType = 'Audio'
+      }
+
+      if (!formatStats[formatType]) {
+        formatStats[formatType] = { count: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0 }
+      }
+
+      formatStats[formatType].count++
+
+      const metadata = post.metadata as Record<string, unknown> | null
+      const analytics = metadata?.analytics as Record<string, number> | null
+      if (analytics) {
+        formatStats[formatType].likes += analytics.likes || 0
+        formatStats[formatType].comments += analytics.comments || 0
+        formatStats[formatType].shares += analytics.shares || 0
+        formatStats[formatType].saves += analytics.saved || analytics.saves || 0
+        formatStats[formatType].reach += analytics.reach || 0
+      }
+    }
+
+    // Calculate engagement rate per format and create sorted list
+    const topFormats = Object.entries(formatStats)
+      .map(([format, stats]) => {
+        const totalEngagement = stats.likes + stats.comments + stats.shares + stats.saves
+        const engagementRate = stats.reach > 0 ? (totalEngagement / stats.reach) * 100 : 0
+        return {
+          format,
+          count: stats.count,
+          percentage: postsWithAnalytics.length > 0 ? Math.round((stats.count / postsWithAnalytics.length) * 100) : 0,
+          engagementRate: parseFloat(engagementRate.toFixed(2)),
+          totalEngagement,
+        }
+      })
+      .sort((a, b) => b.count - a.count)
+
+    // ============================================
+    // AI IMPACT CALCULATION
+    // ============================================
+    let aiCaptionPosts = { count: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0 }
+    let manualCaptionPosts = { count: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0 }
+
+    for (const post of postsWithAnalytics) {
+      const generatedCaptions = post.contentUpload?.generatedCaptions as unknown[] | null
+      const hasAiCaption = generatedCaptions && generatedCaptions.length > 0
+
+      const metadata = post.metadata as Record<string, unknown> | null
+      const analytics = metadata?.analytics as Record<string, number> | null
+
+      const target = hasAiCaption ? aiCaptionPosts : manualCaptionPosts
+      target.count++
+
+      if (analytics) {
+        target.likes += analytics.likes || 0
+        target.comments += analytics.comments || 0
+        target.shares += analytics.shares || 0
+        target.saves += analytics.saved || analytics.saves || 0
+        target.reach += analytics.reach || 0
+      }
+    }
+
+    const aiEngagement = aiCaptionPosts.likes + aiCaptionPosts.comments + aiCaptionPosts.shares + aiCaptionPosts.saves
+    const manualEngagement = manualCaptionPosts.likes + manualCaptionPosts.comments + manualCaptionPosts.shares + manualCaptionPosts.saves
+
+    const aiImpact = {
+      aiCaptions: {
+        count: aiCaptionPosts.count,
+        totalEngagement: aiEngagement,
+        avgEngagement: aiCaptionPosts.count > 0 ? Math.round(aiEngagement / aiCaptionPosts.count) : 0,
+        engagementRate: aiCaptionPosts.reach > 0 ? parseFloat(((aiEngagement / aiCaptionPosts.reach) * 100).toFixed(2)) : 0,
+      },
+      manualCaptions: {
+        count: manualCaptionPosts.count,
+        totalEngagement: manualEngagement,
+        avgEngagement: manualCaptionPosts.count > 0 ? Math.round(manualEngagement / manualCaptionPosts.count) : 0,
+        engagementRate: manualCaptionPosts.reach > 0 ? parseFloat(((manualEngagement / manualCaptionPosts.reach) * 100).toFixed(2)) : 0,
+      },
+      improvement: manualCaptionPosts.count > 0 && aiCaptionPosts.count > 0
+        ? parseFloat((((aiEngagement / aiCaptionPosts.count) / (manualEngagement / manualCaptionPosts.count) - 1) * 100).toFixed(1))
+        : null,
+    }
+
+    // ============================================
+    // CAPTION USAGE ANALYTICS
+    // ============================================
+    const captionModeStats: Record<string, { count: number; likes: number; comments: number; shares: number; saves: number; reach: number }> = {}
+
+    for (const post of postsWithAnalytics) {
+      const generatedCaptions = post.contentUpload?.generatedCaptions as Array<{ mode?: string }> | null
+
+      // Determine caption mode used
+      let mode = 'Manual'
+      if (generatedCaptions && generatedCaptions.length > 0) {
+        // Try to get the mode from the first caption
+        const firstCaption = generatedCaptions[0]
+        if (firstCaption?.mode) {
+          mode = firstCaption.mode
+        } else {
+          mode = 'AI Generated'
+        }
+      }
+
+      if (!captionModeStats[mode]) {
+        captionModeStats[mode] = { count: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0 }
+      }
+
+      captionModeStats[mode].count++
+
+      const metadata = post.metadata as Record<string, unknown> | null
+      const analytics = metadata?.analytics as Record<string, number> | null
+      if (analytics) {
+        captionModeStats[mode].likes += analytics.likes || 0
+        captionModeStats[mode].comments += analytics.comments || 0
+        captionModeStats[mode].shares += analytics.shares || 0
+        captionModeStats[mode].saves += analytics.saved || analytics.saves || 0
+        captionModeStats[mode].reach += analytics.reach || 0
+      }
+    }
+
+    const captionUsage = Object.entries(captionModeStats)
+      .map(([mode, stats]) => {
+        const modeEngagement = stats.likes + stats.comments + stats.shares + stats.saves
+        return {
+          mode,
+          count: stats.count,
+          percentage: postsWithAnalytics.length > 0 ? Math.round((stats.count / postsWithAnalytics.length) * 100) : 0,
+          avgEngagement: stats.count > 0 ? Math.round(modeEngagement / stats.count) : 0,
+          engagementRate: stats.reach > 0 ? parseFloat(((modeEngagement / stats.reach) * 100).toFixed(2)) : 0,
+        }
+      })
+      .sort((a, b) => b.count - a.count)
+
+    // ============================================
+    // CONTENT CALENDAR INSIGHTS
+    // ============================================
+    const dayOfWeekStats: Record<number, { count: number; likes: number; comments: number; shares: number; saves: number; reach: number }> = {}
+    const hourOfDayStats: Record<number, { count: number; likes: number; comments: number; shares: number; saves: number; reach: number }> = {}
+
+    for (const post of postsWithAnalytics) {
+      if (!post.postedAt) continue
+
+      const postedDate = new Date(post.postedAt)
+      const dayOfWeek = postedDate.getDay() // 0 = Sunday, 6 = Saturday
+      const hourOfDay = postedDate.getHours()
+
+      // Initialize day stats
+      if (!dayOfWeekStats[dayOfWeek]) {
+        dayOfWeekStats[dayOfWeek] = { count: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0 }
+      }
+      dayOfWeekStats[dayOfWeek].count++
+
+      // Initialize hour stats
+      if (!hourOfDayStats[hourOfDay]) {
+        hourOfDayStats[hourOfDay] = { count: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0 }
+      }
+      hourOfDayStats[hourOfDay].count++
+
+      const metadata = post.metadata as Record<string, unknown> | null
+      const analytics = metadata?.analytics as Record<string, number> | null
+      if (analytics) {
+        dayOfWeekStats[dayOfWeek].likes += analytics.likes || 0
+        dayOfWeekStats[dayOfWeek].comments += analytics.comments || 0
+        dayOfWeekStats[dayOfWeek].shares += analytics.shares || 0
+        dayOfWeekStats[dayOfWeek].saves += analytics.saved || analytics.saves || 0
+        dayOfWeekStats[dayOfWeek].reach += analytics.reach || 0
+
+        hourOfDayStats[hourOfDay].likes += analytics.likes || 0
+        hourOfDayStats[hourOfDay].comments += analytics.comments || 0
+        hourOfDayStats[hourOfDay].shares += analytics.shares || 0
+        hourOfDayStats[hourOfDay].saves += analytics.saved || analytics.saves || 0
+        hourOfDayStats[hourOfDay].reach += analytics.reach || 0
+      }
+    }
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+    // Calculate best days to post
+    const bestDays = Object.entries(dayOfWeekStats)
+      .map(([day, stats]) => {
+        const dayEngagement = stats.likes + stats.comments + stats.shares + stats.saves
+        return {
+          day: dayNames[parseInt(day)],
+          dayIndex: parseInt(day),
+          posts: stats.count,
+          avgEngagement: stats.count > 0 ? Math.round(dayEngagement / stats.count) : 0,
+          engagementRate: stats.reach > 0 ? parseFloat(((dayEngagement / stats.reach) * 100).toFixed(2)) : 0,
+        }
+      })
+      .sort((a, b) => b.avgEngagement - a.avgEngagement)
+
+    // Calculate best hours to post
+    const bestHours = Object.entries(hourOfDayStats)
+      .map(([hour, stats]) => {
+        const hourEngagement = stats.likes + stats.comments + stats.shares + stats.saves
+        const hourNum = parseInt(hour)
+        const displayHour = hourNum === 0 ? '12 AM' : hourNum < 12 ? `${hourNum} AM` : hourNum === 12 ? '12 PM' : `${hourNum - 12} PM`
+        return {
+          hour: displayHour,
+          hourIndex: hourNum,
+          posts: stats.count,
+          avgEngagement: stats.count > 0 ? Math.round(hourEngagement / stats.count) : 0,
+          engagementRate: stats.reach > 0 ? parseFloat(((hourEngagement / stats.reach) * 100).toFixed(2)) : 0,
+        }
+      })
+      .sort((a, b) => b.avgEngagement - a.avgEngagement)
+
+    const calendarInsights = {
+      bestDays: bestDays.slice(0, 3), // Top 3 best days
+      bestHours: bestHours.slice(0, 5), // Top 5 best hours
+      allDays: bestDays.sort((a, b) => a.dayIndex - b.dayIndex), // All days in order
+      allHours: bestHours.sort((a, b) => a.hourIndex - b.hourIndex), // All hours in order
+      totalPostsAnalyzed: postsWithAnalytics.filter(p => p.postedAt).length,
     }
 
     // ============================================
@@ -514,6 +749,11 @@ export async function GET(request: NextRequest) {
       advancedMetrics,
       // Benchmark data for tooltips (Pro feature)
       benchmarks,
+      // New analytics features
+      topFormats,
+      aiImpact,
+      captionUsage,
+      calendarInsights,
     })
   } catch (error) {
     console.error('[Analytics Stats Error]', error)

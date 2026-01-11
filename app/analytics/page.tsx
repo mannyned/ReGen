@@ -109,6 +109,67 @@ interface AnalyticsStats {
     crossPlatform: { industry: number; userAvg: number; trend: 'up' | 'down' | 'stable'; trendValue: number }
     hashtags: { industry: number; userAvg: number; trend: 'up' | 'down' | 'stable'; trendValue: number }
   }
+  // New analytics features
+  topFormats: Array<{
+    format: string
+    count: number
+    percentage: number
+    engagementRate: number
+    totalEngagement: number
+  }>
+  aiImpact: {
+    aiCaptions: {
+      count: number
+      totalEngagement: number
+      avgEngagement: number
+      engagementRate: number
+    }
+    manualCaptions: {
+      count: number
+      totalEngagement: number
+      avgEngagement: number
+      engagementRate: number
+    }
+    improvement: number | null
+  }
+  captionUsage: Array<{
+    mode: string
+    count: number
+    percentage: number
+    avgEngagement: number
+    engagementRate: number
+  }>
+  calendarInsights: {
+    bestDays: Array<{
+      day: string
+      dayIndex: number
+      posts: number
+      avgEngagement: number
+      engagementRate: number
+    }>
+    bestHours: Array<{
+      hour: string
+      hourIndex: number
+      posts: number
+      avgEngagement: number
+      engagementRate: number
+    }>
+    allDays: Array<{
+      day: string
+      dayIndex: number
+      posts: number
+      avgEngagement: number
+      engagementRate: number
+    }>
+    allHours: Array<{
+      hour: string
+      hourIndex: number
+      posts: number
+      avgEngagement: number
+      engagementRate: number
+    }>
+    totalPostsAnalyzed: number
+  }
 }
 
 export default function AnalyticsPage() {
@@ -412,11 +473,22 @@ export default function AnalyticsPage() {
     }
   }, [realStats])
 
-  const topFormats = isProduction ? [] : [
-    { type: 'Video', count: 42, avgEngagement: 14.2, trend: 'up' },
-    { type: 'Image', count: 38, avgEngagement: 11.5, trend: 'stable' },
-    { type: 'Text', count: 27, avgEngagement: 8.9, trend: 'down' }
-  ]
+  // Use real topFormats data from API when available
+  const topFormats = (() => {
+    if (realStats?.topFormats && realStats.topFormats.length > 0) {
+      return realStats.topFormats.map(f => ({
+        type: f.format,
+        count: f.count,
+        avgEngagement: f.engagementRate,
+        trend: 'stable' as const // Would need historical data for trends
+      }))
+    }
+    return isProduction ? [] : [
+      { type: 'Video', count: 42, avgEngagement: 14.2, trend: 'up' as const },
+      { type: 'Image', count: 38, avgEngagement: 11.5, trend: 'stable' as const },
+      { type: 'Text', count: 27, avgEngagement: 8.9, trend: 'down' as const }
+    ]
+  })()
 
   // Use real advanced metrics from API when available
   const advancedMetrics = (() => {
@@ -1300,39 +1372,69 @@ export default function AnalyticsPage() {
               {/* AI Impact */}
               <Card className="p-6 lg:p-8" hover={false}>
                 <h2 className="text-2xl font-bold text-text-primary mb-6">AI Impact</h2>
-                {isProduction ? (
-                  <div className="text-center py-12">
-                    <span className="text-5xl mb-4 block">✨</span>
-                    <p className="text-text-secondary">No AI data yet.</p>
-                    <p className="text-sm text-text-secondary/70">Use AI captions to see their impact on engagement.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-text-primary font-medium">With AI Captions</span>
-                        <span className="text-3xl">✨</span>
-                      </div>
-                      <p className="text-4xl font-bold text-primary mb-2">14.8%</p>
-                      <p className="text-sm text-text-secondary">Average engagement rate</p>
-                    </div>
+                {(() => {
+                  const aiData = realStats?.aiImpact
+                  const hasData = aiData && (aiData.aiCaptions.count > 0 || aiData.manualCaptions.count > 0)
 
-                    <div className="bg-gray-100 rounded-xl p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-text-primary font-medium">Without AI Captions</span>
-                        <span className="text-3xl">📝</span>
+                  if (!hasData && isProduction) {
+                    return (
+                      <div className="text-center py-12">
+                        <span className="text-5xl mb-4 block">✨</span>
+                        <p className="text-text-secondary">No AI data yet.</p>
+                        <p className="text-sm text-text-secondary/70">Use AI captions to see their impact on engagement.</p>
                       </div>
-                      <p className="text-4xl font-bold text-text-secondary mb-2">11.2%</p>
-                      <p className="text-sm text-text-secondary">Average engagement rate</p>
-                    </div>
+                    )
+                  }
 
-                    <GradientBanner className="!p-6">
-                      <p className="text-sm font-medium mb-1">Performance Improvement</p>
-                      <p className="text-5xl font-bold">+32%</p>
-                      <p className="text-sm mt-2 opacity-90">AI captions perform significantly better</p>
-                    </GradientBanner>
-                  </div>
-                )}
+                  // Use real data if available, otherwise mock data in dev
+                  const aiRate = hasData ? aiData.aiCaptions.engagementRate : 14.8
+                  const manualRate = hasData ? aiData.manualCaptions.engagementRate : 11.2
+                  const improvement = hasData
+                    ? aiData.improvement
+                    : 32
+                  const aiCount = hasData ? aiData.aiCaptions.count : 0
+                  const manualCount = hasData ? aiData.manualCaptions.count : 0
+
+                  return (
+                    <div className="space-y-6">
+                      <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-text-primary font-medium">With AI Captions</span>
+                          <span className="text-3xl">✨</span>
+                        </div>
+                        <p className="text-4xl font-bold text-primary mb-2">{aiRate}%</p>
+                        <p className="text-sm text-text-secondary">
+                          Average engagement rate {hasData && <span className="text-xs">({aiCount} posts)</span>}
+                        </p>
+                      </div>
+
+                      <div className="bg-gray-100 rounded-xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-text-primary font-medium">Without AI Captions</span>
+                          <span className="text-3xl">📝</span>
+                        </div>
+                        <p className="text-4xl font-bold text-text-secondary mb-2">{manualRate}%</p>
+                        <p className="text-sm text-text-secondary">
+                          Average engagement rate {hasData && <span className="text-xs">({manualCount} posts)</span>}
+                        </p>
+                      </div>
+
+                      {improvement !== null && (
+                        <GradientBanner className="!p-6">
+                          <p className="text-sm font-medium mb-1">Performance Improvement</p>
+                          <p className="text-5xl font-bold">{improvement > 0 ? '+' : ''}{improvement}%</p>
+                          <p className="text-sm mt-2 opacity-90">
+                            {improvement > 0
+                              ? 'AI captions perform significantly better'
+                              : improvement < 0
+                                ? 'Manual captions performing better currently'
+                                : 'Similar performance between AI and manual captions'}
+                          </p>
+                        </GradientBanner>
+                      )}
+                    </div>
+                  )
+                })()}
               </Card>
             </div>
 
@@ -1429,215 +1531,112 @@ export default function AnalyticsPage() {
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold text-text-primary">📝 Caption Usage Analytics</h2>
-                    <p className="text-sm text-text-secondary mt-1">Compare performance of identical vs adapted captions</p>
+                    <p className="text-sm text-text-secondary mt-1">Compare performance of different caption modes</p>
                   </div>
                   <Badge variant="primary" className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
                     Caption Workflow Insights
                   </Badge>
                 </div>
 
-                {isProduction ? (
-                  <div className="text-center py-12">
-                    <span className="text-5xl mb-4 block">📝</span>
-                    <p className="text-text-secondary">No caption data yet.</p>
-                    <p className="text-sm text-text-secondary/70">Start posting with captions to see usage analytics.</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Usage Mode Distribution */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                      <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-                        <p className="text-3xl font-bold text-green-600">42</p>
-                        <p className="text-sm text-green-700 font-medium">Identical</p>
-                        <p className="text-xs text-green-600/70">Same across platforms</p>
-                      </div>
-                      <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
-                        <p className="text-3xl font-bold text-purple-600">28</p>
-                        <p className="text-sm text-purple-700 font-medium">Adapted</p>
-                        <p className="text-xs text-purple-600/70">Rule-based changes</p>
-                      </div>
-                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
-                        <p className="text-3xl font-bold text-blue-600">18</p>
-                        <p className="text-sm text-blue-700 font-medium">Edited</p>
-                        <p className="text-xs text-blue-600/70">Manual modifications</p>
-                      </div>
-                      <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
-                        <p className="text-3xl font-bold text-orange-600">9</p>
-                        <p className="text-sm text-orange-700 font-medium">Rewritten</p>
-                        <p className="text-xs text-orange-600/70">Full AI rewrites</p>
-                      </div>
-                    </div>
+                {(() => {
+                  const captionData = realStats?.captionUsage
+                  const hasData = captionData && captionData.length > 0
 
-                {/* Performance Comparison Chart */}
-                <div className="bg-gray-50 rounded-xl p-6 mb-6">
-                  <h3 className="font-semibold text-text-primary mb-4">Performance by Caption Mode</h3>
-                  <div className="space-y-4">
-                    {/* Identical */}
-                    <div className="flex items-center gap-4">
-                      <div className="w-24 text-sm font-medium text-text-primary">Identical</div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-green-500 rounded-full" style={{ width: '68%' }}></div>
-                          </div>
-                          <span className="text-sm font-bold text-green-600 w-16">11.2%</span>
-                        </div>
-                        <p className="text-xs text-text-secondary">Avg engagement • 3,240 avg reach • 142 avg likes</p>
+                  if (!hasData && isProduction) {
+                    return (
+                      <div className="text-center py-12">
+                        <span className="text-5xl mb-4 block">📝</span>
+                        <p className="text-text-secondary">No caption data yet.</p>
+                        <p className="text-sm text-text-secondary/70">Start posting with captions to see usage analytics.</p>
                       </div>
-                    </div>
-                    {/* Adapted */}
-                    <div className="flex items-center gap-4">
-                      <div className="w-24 text-sm font-medium text-text-primary">Adapted</div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-purple-500 rounded-full" style={{ width: '85%' }}></div>
-                          </div>
-                          <span className="text-sm font-bold text-purple-600 w-16">14.8%</span>
-                        </div>
-                        <p className="text-xs text-text-secondary">Avg engagement • 4,120 avg reach • 198 avg likes</p>
-                      </div>
-                    </div>
-                    {/* Manual Edit */}
-                    <div className="flex items-center gap-4">
-                      <div className="w-24 text-sm font-medium text-text-primary">Edited</div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-blue-500 rounded-full" style={{ width: '72%' }}></div>
-                          </div>
-                          <span className="text-sm font-bold text-blue-600 w-16">12.1%</span>
-                        </div>
-                        <p className="text-xs text-text-secondary">Avg engagement • 3,480 avg reach • 156 avg likes</p>
-                      </div>
-                    </div>
-                    {/* Full Rewrite */}
-                    <div className="flex items-center gap-4">
-                      <div className="w-24 text-sm font-medium text-text-primary">Rewritten</div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-orange-500 rounded-full" style={{ width: '78%' }}></div>
-                          </div>
-                          <span className="text-sm font-bold text-orange-600 w-16">13.2%</span>
-                        </div>
-                        <p className="text-xs text-text-secondary">Avg engagement • 3,890 avg reach • 172 avg likes</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                    )
+                  }
 
-                {/* Adaptation Breakdown */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div className="bg-white border border-gray-200 rounded-xl p-5">
-                    <h4 className="font-semibold text-text-primary mb-3 flex items-center gap-2">
-                      <span>🏆</span> Top Performing Adaptations
-                    </h4>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span>✂️</span>
-                          <span className="text-sm">Shorten</span>
-                        </div>
-                        <span className="text-sm font-bold text-green-600">+18% engagement</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span>📢</span>
-                          <span className="text-sm">Add CTA</span>
-                        </div>
-                        <span className="text-sm font-bold text-green-600">+15% engagement</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span>↵</span>
-                          <span className="text-sm">Add Line Breaks</span>
-                        </div>
-                        <span className="text-sm font-bold text-green-600">+12% engagement</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span>👔</span>
-                          <span className="text-sm">Professional Tone</span>
-                        </div>
-                        <span className="text-sm font-bold text-green-600">+9% engagement</span>
-                      </div>
-                    </div>
-                  </div>
+                  // Color mapping for caption modes
+                  const modeColors: Record<string, { bg: string; border: string; text: string; accent: string }> = {
+                    'Manual': { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-600', accent: 'bg-gray-500' },
+                    'AI Generated': { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-600', accent: 'bg-purple-500' },
+                    'Adapted': { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-600', accent: 'bg-green-500' },
+                    'Identical': { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600', accent: 'bg-blue-500' },
+                  }
 
-                  <div className="bg-white border border-gray-200 rounded-xl p-5">
-                    <h4 className="font-semibold text-text-primary mb-3 flex items-center gap-2">
-                      <span>📊</span> Platform Comparison
-                    </h4>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <PlatformLogo platform="twitter" size="sm" variant="color" />
-                          <span className="text-sm">Twitter</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-sm font-bold text-purple-600">Adapted +32%</span>
-                          <p className="text-xs text-text-secondary">Shorten works best</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <PlatformLogo platform="linkedin" size="sm" variant="color" />
-                          <span className="text-sm">LinkedIn</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-sm font-bold text-purple-600">Adapted +28%</span>
-                          <p className="text-xs text-text-secondary">Professional tone wins</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <PlatformLogo platform="instagram" size="sm" variant="color" />
-                          <span className="text-sm">Instagram</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-sm font-bold text-green-600">Identical +5%</span>
-                          <p className="text-xs text-text-secondary">Full captions perform well</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <PlatformLogo platform="tiktok" size="sm" variant="color" />
-                          <span className="text-sm">TikTok</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-sm font-bold text-purple-600">Adapted +22%</span>
-                          <p className="text-xs text-text-secondary">Casual tone preferred</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  const getColors = (mode: string) => modeColors[mode] || modeColors['Manual']
 
-                    {/* Key Insight Banner */}
-                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl p-5">
-                      <div className="flex items-start gap-4">
-                        <div className="text-4xl">💡</div>
-                        <div>
-                          <h4 className="font-bold text-lg mb-1">Key Insight</h4>
-                          <p className="text-white/90 text-sm mb-2">
-                            <strong>Adapted captions outperform identical by 32%</strong> on average.
-                            The "Shorten" adaptation shows the highest impact, especially on Twitter where
-                            character limits matter. Consider using platform-specific adaptations for all your posts.
-                          </p>
-                          <div className="flex gap-3 mt-3">
-                            <Link
-                              href="/generate"
-                              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
-                            >
-                              Try Caption Workflow →
-                            </Link>
+                  // Use real data if available, otherwise mock data in dev
+                  const displayData = hasData ? captionData : [
+                    { mode: 'AI Generated', count: 42, percentage: 43, avgEngagement: 198, engagementRate: 14.8 },
+                    { mode: 'Manual', count: 28, percentage: 29, avgEngagement: 142, engagementRate: 11.2 },
+                    { mode: 'Adapted', count: 18, percentage: 18, avgEngagement: 172, engagementRate: 13.2 },
+                    { mode: 'Identical', count: 9, percentage: 10, avgEngagement: 156, engagementRate: 12.1 },
+                  ]
+
+                  // Find max engagement rate for bar width calculation
+                  const maxRate = Math.max(...displayData.map(d => d.engagementRate))
+
+                  return (
+                    <>
+                      {/* Usage Mode Distribution */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                        {displayData.slice(0, 4).map((mode) => {
+                          const colors = getColors(mode.mode)
+                          return (
+                            <div key={mode.mode} className={`${colors.bg} border ${colors.border} rounded-xl p-4 text-center`}>
+                              <p className={`text-3xl font-bold ${colors.text}`}>{mode.count}</p>
+                              <p className={`text-sm font-medium ${colors.text}`}>{mode.mode}</p>
+                              <p className={`text-xs ${colors.text}/70`}>{mode.percentage}% of posts</p>
+                            </div>
+                          )
+                        })}
+                      </div>
+
+                      {/* Performance Comparison Chart */}
+                      <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                        <h3 className="font-semibold text-text-primary mb-4">Performance by Caption Mode</h3>
+                        <div className="space-y-4">
+                          {displayData.map((mode) => {
+                            const colors = getColors(mode.mode)
+                            const barWidth = maxRate > 0 ? (mode.engagementRate / maxRate) * 100 : 0
+                            return (
+                              <div key={mode.mode} className="flex items-center gap-4">
+                                <div className="w-28 text-sm font-medium text-text-primary">{mode.mode}</div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
+                                      <div className={`h-full ${colors.accent} rounded-full`} style={{ width: `${barWidth}%` }}></div>
+                                    </div>
+                                    <span className={`text-sm font-bold ${colors.text} w-16`}>{mode.engagementRate}%</span>
+                                  </div>
+                                  <p className="text-xs text-text-secondary">
+                                    Avg engagement rate • {mode.count} posts • {mode.avgEngagement} avg engagement
+                                  </p>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Best Performing Mode */}
+                      {displayData.length > 0 && (
+                        <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl p-5 mb-6">
+                          <div className="flex items-start gap-4">
+                            <div className="text-4xl">🏆</div>
+                            <div>
+                              <h4 className="font-bold text-lg mb-1">Best Performing Mode</h4>
+                              <p className="text-white/90 text-sm">
+                                <strong>{displayData[0].mode}</strong> captions have the highest engagement rate at{' '}
+                                <strong>{displayData[0].engagementRate}%</strong>.
+                                {displayData.length > 1 && (
+                                  <> That's {((displayData[0].engagementRate / displayData[displayData.length - 1].engagementRate - 1) * 100).toFixed(0)}% better than {displayData[displayData.length - 1].mode}.</>
+                                )}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  </>
-                )}
+                      )}
+                    </>
+                  )
+                })()}
               </Card>
             )}
 
@@ -1645,28 +1644,115 @@ export default function AnalyticsPage() {
             {userPlan === 'pro' && (
               <Card className="p-6 lg:p-8 mt-8" hover={false}>
                 <h2 className="text-2xl font-bold text-text-primary mb-6">📅 Content Calendar Insights</h2>
-                {isProduction ? (
-                  <div className="text-center py-12">
-                    <span className="text-5xl mb-4 block">📅</span>
-                    <p className="text-text-secondary">No calendar insights yet.</p>
-                    <p className="text-sm text-text-secondary/70">Post content regularly to discover your optimal schedule.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                      <h3 className="font-semibold text-green-900 mb-2">Peak Performance Days</h3>
-                      <p className="text-sm text-green-700">Tuesday & Thursday show 40% higher engagement</p>
-                    </div>
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                      <h3 className="font-semibold text-blue-900 mb-2">Optimal Frequency</h3>
-                      <p className="text-sm text-blue-700">3-4 posts per platform per week maximizes reach</p>
-                    </div>
-                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                      <h3 className="font-semibold text-purple-900 mb-2">Content Mix</h3>
-                      <p className="text-sm text-purple-700">60% educational, 30% entertaining, 10% promotional</p>
-                    </div>
-                  </div>
-                )}
+                {(() => {
+                  const calendarData = realStats?.calendarInsights
+                  const hasData = calendarData && calendarData.totalPostsAnalyzed > 0
+
+                  if (!hasData && isProduction) {
+                    return (
+                      <div className="text-center py-12">
+                        <span className="text-5xl mb-4 block">📅</span>
+                        <p className="text-text-secondary">No calendar insights yet.</p>
+                        <p className="text-sm text-text-secondary/70">Post content regularly to discover your optimal schedule.</p>
+                      </div>
+                    )
+                  }
+
+                  // Use real data if available, otherwise mock data in dev
+                  const bestDays = hasData && calendarData.bestDays.length > 0
+                    ? calendarData.bestDays
+                    : [
+                        { day: 'Tuesday', avgEngagement: 245, posts: 12 },
+                        { day: 'Thursday', avgEngagement: 232, posts: 10 },
+                        { day: 'Wednesday', avgEngagement: 198, posts: 8 },
+                      ]
+
+                  const bestHours = hasData && calendarData.bestHours.length > 0
+                    ? calendarData.bestHours
+                    : [
+                        { hour: '10 AM', avgEngagement: 312, posts: 15 },
+                        { hour: '2 PM', avgEngagement: 287, posts: 12 },
+                        { hour: '7 PM', avgEngagement: 265, posts: 18 },
+                      ]
+
+                  const postsAnalyzed = hasData ? calendarData.totalPostsAnalyzed : 97
+
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        {/* Best Days */}
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-5">
+                          <h3 className="font-semibold text-green-900 mb-4 flex items-center gap-2">
+                            <span>📆</span> Best Days to Post
+                          </h3>
+                          <div className="space-y-3">
+                            {bestDays.slice(0, 3).map((day, index) => (
+                              <div key={day.day} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                    index === 0 ? 'bg-green-500 text-white' : 'bg-green-200 text-green-700'
+                                  }`}>
+                                    {index + 1}
+                                  </span>
+                                  <span className="text-sm font-medium text-green-900">{day.day}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-sm font-bold text-green-600">{day.avgEngagement} avg</span>
+                                  <p className="text-xs text-green-600/70">{day.posts} posts</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Best Hours */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+                          <h3 className="font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                            <span>🕐</span> Best Times to Post
+                          </h3>
+                          <div className="space-y-3">
+                            {bestHours.slice(0, 3).map((hour, index) => (
+                              <div key={hour.hour} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                    index === 0 ? 'bg-blue-500 text-white' : 'bg-blue-200 text-blue-700'
+                                  }`}>
+                                    {index + 1}
+                                  </span>
+                                  <span className="text-sm font-medium text-blue-900">{hour.hour}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-sm font-bold text-blue-600">{hour.avgEngagement} avg</span>
+                                  <p className="text-xs text-blue-600/70">{hour.posts} posts</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Summary */}
+                      <div className="bg-purple-50 border border-purple-200 rounded-xl p-5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-semibold text-purple-900 mb-1">Optimal Posting Schedule</h3>
+                            <p className="text-sm text-purple-700">
+                              Based on {postsAnalyzed} posts analyzed, your best performance comes from posting on{' '}
+                              <strong>{bestDays[0]?.day || 'weekdays'}</strong> around{' '}
+                              <strong>{bestHours[0]?.hour || 'morning'}</strong>.
+                            </p>
+                          </div>
+                          <Link
+                            href="/schedule"
+                            className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 transition-colors whitespace-nowrap"
+                          >
+                            Schedule Posts →
+                          </Link>
+                        </div>
+                      </div>
+                    </>
+                  )
+                })()}
               </Card>
             )}
 
