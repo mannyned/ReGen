@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { tokenManager } from '@/lib/services/oauth/TokenManager'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
 
 // ============================================
 // DEBUG: Test YouTube Analytics API directly
 // ============================================
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    const userId = session.user.id
+    const userId = user.id
 
     // Get YouTube access token
     const accessToken = await tokenManager.getValidAccessToken(userId, 'youtube')
