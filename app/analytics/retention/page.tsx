@@ -234,7 +234,11 @@ function HookScoreDisplay({ score, isLoading }: HookScoreDisplayProps) {
   if (!score) {
     return (
       <div className="h-40 bg-gray-50 rounded-xl flex items-center justify-center text-text-secondary">
-        No hook data available
+        <div className="text-center px-4">
+          <div className="text-3xl mb-2">🎣</div>
+          <p className="font-medium text-text-primary">Hook score coming soon</p>
+          <p className="text-sm mt-1">Post videos to see how well your hooks perform</p>
+        </div>
       </div>
     );
   }
@@ -305,11 +309,13 @@ function RetentionCurveChart({ data, dropOffs, duration, isLoading }: RetentionC
 
   if (data.length === 0) {
     return (
-      <div className="h-80 bg-gray-50 rounded-xl flex items-center justify-center">
-        <div className="text-center text-text-secondary">
-          <div className="text-4xl mb-2">📊</div>
-          <p className="font-medium">No retention data yet</p>
-          <p className="text-sm mt-1">Post video content to see retention curves</p>
+      <div className="h-80 bg-gradient-to-b from-orange-50 to-red-50 rounded-xl flex items-center justify-center">
+        <div className="text-center text-text-secondary px-6">
+          <div className="text-4xl mb-3">📊</div>
+          <p className="font-medium text-text-primary">Your retention curve is waiting!</p>
+          <p className="text-sm mt-2 max-w-sm">
+            Post video content on YouTube or TikTok to see how viewers engage throughout your videos. We'll show you exactly where they stay hooked.
+          </p>
         </div>
       </div>
     );
@@ -509,7 +515,11 @@ function FormatRetentionTable({ data, isLoading }: FormatRetentionTableProps) {
   if (data.length === 0) {
     return (
       <div className="text-center py-8 text-text-secondary">
-        <p>No format retention data yet</p>
+        <div className="text-3xl mb-2">🎬</div>
+        <p className="font-medium text-text-primary">No format data yet</p>
+        <p className="text-sm mt-2 max-w-xs mx-auto">
+          Post different video formats (shorts, long-form, tutorials) to compare retention performance.
+        </p>
       </div>
     );
   }
@@ -632,7 +642,17 @@ interface InsightsListProps {
 }
 
 function InsightsList({ insights }: InsightsListProps) {
-  if (insights.length === 0) return null;
+  if (insights.length === 0) {
+    return (
+      <div className="text-center py-8 text-text-secondary">
+        <div className="text-3xl mb-2">💡</div>
+        <p className="font-medium text-text-primary">Insights loading...</p>
+        <p className="text-sm mt-2 max-w-xs mx-auto">
+          AI-powered tips will appear here as we analyze your video performance.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">

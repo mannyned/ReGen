@@ -197,10 +197,12 @@ function TrendChart({ data, isLoading }: TrendChartProps) {
   if (data.length === 0) {
     return (
       <div className="h-64 bg-gray-50 rounded-xl flex items-center justify-center">
-        <div className="text-center text-text-secondary">
-          <div className="text-4xl mb-2">📈</div>
-          <p className="font-medium">No trend data yet</p>
-          <p className="text-sm mt-1">Start posting to see your save rate trends</p>
+        <div className="text-center text-text-secondary px-6">
+          <div className="text-4xl mb-3">📈</div>
+          <p className="font-medium text-text-primary">Your trend chart is brewing!</p>
+          <p className="text-sm mt-2 max-w-sm">
+            As your content gets saved by viewers, we'll track the trends here. Keep posting quality content!
+          </p>
         </div>
       </div>
     );
@@ -318,8 +320,11 @@ function FormatTable({ data, isLoading }: FormatTableProps) {
   if (data.length === 0) {
     return (
       <div className="text-center py-8 text-text-secondary">
-        <p>No format data yet</p>
-        <p className="text-sm mt-1">Post different content types to see format analytics</p>
+        <div className="text-3xl mb-2">🎨</div>
+        <p className="font-medium text-text-primary">No format data yet</p>
+        <p className="text-sm mt-2 max-w-xs mx-auto">
+          Post different content types (carousels, reels, images) to see which formats get saved the most.
+        </p>
       </div>
     );
   }
@@ -398,9 +403,11 @@ function TopSavedPostsWidget({ posts, isLoading }: TopPostsProps) {
   if (posts.length === 0) {
     return (
       <div className="text-center py-8 text-text-secondary">
-        <div className="text-4xl mb-2">🔖</div>
-        <p>No saved posts yet</p>
-        <p className="text-sm mt-1">Your top performing content will appear here</p>
+        <div className="text-4xl mb-3">🔖</div>
+        <p className="font-medium text-text-primary">Your hall of fame awaits!</p>
+        <p className="text-sm mt-2 max-w-xs mx-auto">
+          As viewers save your content, your top 5 most saved posts will be showcased here.
+        </p>
       </div>
     );
   }
@@ -469,7 +476,11 @@ function PlatformBreakdown({ data, isLoading }: PlatformBreakdownProps) {
   if (data.length === 0) {
     return (
       <div className="text-center py-8 text-text-secondary">
-        <p>No platform data yet</p>
+        <div className="text-3xl mb-2">📱</div>
+        <p className="font-medium text-text-primary">No platform data yet</p>
+        <p className="text-sm mt-2 max-w-xs mx-auto">
+          Connect your social accounts and post content to see save rates across platforms.
+        </p>
       </div>
     );
   }
