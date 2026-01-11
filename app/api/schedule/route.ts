@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getServerSession } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
 // GET /api/schedule - Fetch scheduled posts for the user
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession()
-    if (!session?.user?.id) {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -16,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     // Build where clause
     const where: any = {
-      profileId: session.user.id,
+      profileId: user.id,
     }
 
     if (status && status !== 'all') {
@@ -82,8 +84,10 @@ export async function GET(request: NextRequest) {
 // POST /api/schedule - Create a new scheduled post
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession()
-    if (!session?.user?.id) {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -116,7 +120,7 @@ export async function POST(request: NextRequest) {
     const contentUpload = await prisma.contentUpload.findFirst({
       where: {
         id: contentUploadId,
-        profileId: session.user.id,
+        profileId: user.id,
       },
     })
 
@@ -146,7 +150,7 @@ export async function POST(request: NextRequest) {
     // Create scheduled post
     const scheduledPost = await prisma.scheduledPost.create({
       data: {
-        profileId: session.user.id,
+        profileId: user.id,
         contentUploadId,
         platforms: platformEnums,
         scheduledAt: new Date(scheduledAt),
@@ -177,8 +181,10 @@ export async function POST(request: NextRequest) {
 // DELETE /api/schedule?id=xxx - Cancel a scheduled post
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession()
-    if (!session?.user?.id) {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -196,7 +202,7 @@ export async function DELETE(request: NextRequest) {
     const existingPost = await prisma.scheduledPost.findFirst({
       where: {
         id: postId,
-        profileId: session.user.id,
+        profileId: user.id,
       },
     })
 
