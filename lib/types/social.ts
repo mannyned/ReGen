@@ -137,6 +137,7 @@ export interface PublishResult {
   platformPostId?: string
   platformUrl?: string
   error?: string
+  message?: string  // User-facing message (e.g., for TikTok inbox flow)
   publishedAt?: Date
 }
 
