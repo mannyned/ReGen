@@ -13,6 +13,7 @@ import { csvExportService } from './CSVExportService'
 import { pdfExportService } from './PDFExportService'
 import { assertProAccess, getExportRateLimit } from '../../middleware/roleGuard'
 import { analyticsService } from '../analytics/AnalyticsService'
+import { prisma } from '../../db'
 
 // ============================================
 // EXPORT SERVICE
@@ -259,7 +260,7 @@ export class ExportService {
   }
 
   /**
-   * Fetch posts for a specific platform
+   * Fetch posts for a specific platform from the database
    */
   private async fetchPlatformPosts(
     userId: string,
@@ -267,18 +268,92 @@ export class ExportService {
     dateRange: { start: Date; end: Date },
     postIds?: string[]
   ): Promise<NormalizedPostAnalytics[]> {
-    // In production, fetch from database:
-    // const posts = await prisma.publishedPost.findMany({
-    //   where: {
-    //     socialConnection: { userId, platform },
-    //     publishedAt: { gte: dateRange.start, lte: dateRange.end },
-    //     ...(postIds?.length ? { id: { in: postIds } } : {}),
-    //   },
-    //   include: { analyticsData: true },
-    // })
+    // Map platform to provider values in database
+    const platformToProviders: Record<string, string[]> = {
+      'instagram': ['meta', 'instagram'],
+      'youtube': ['google', 'youtube'],
+      'facebook': ['facebook'],
+      'tiktok': ['tiktok'],
+      'linkedin': ['linkedin'],
+      'twitter': ['twitter', 'x'],
+      'snapchat': ['snapchat'],
+    }
 
-    // For demo, return sample data
-    return this.generateSamplePosts(platform, dateRange)
+    const providers = platformToProviders[platform] || [platform]
+
+    // Fetch posts from database
+    const posts = await prisma.outboundPost.findMany({
+      where: {
+        profileId: userId,
+        provider: { in: providers },
+        status: 'POSTED',
+        postedAt: {
+          gte: dateRange.start,
+          lte: dateRange.end,
+        },
+        ...(postIds?.length ? { id: { in: postIds } } : {}),
+      },
+      include: {
+        contentUpload: true,
+      },
+      orderBy: {
+        postedAt: 'desc',
+      },
+    })
+
+    // Transform to NormalizedPostAnalytics format
+    return posts.map(post => {
+      const metadata = (post.metadata || {}) as Record<string, unknown>
+      const analytics = (metadata.analytics || {}) as Record<string, unknown>
+      const contentUpload = post.contentUpload
+
+      // Extract metrics from analytics data
+      const views = Number(analytics.views || analytics.viewCount || 0)
+      const likes = Number(analytics.likes || analytics.likeCount || 0)
+      const comments = Number(analytics.comments || analytics.commentCount || 0)
+      const shares = Number(analytics.shares || analytics.shareCount || 0)
+      const saves = Number(analytics.saves || analytics.saveCount || 0)
+      const impressions = Number(analytics.impressions || analytics.reach || views)
+      const reach = Number(analytics.reach || impressions)
+
+      // Calculate engagement rate
+      const totalEngagement = likes + comments + shares
+      const engagementRate = impressions > 0 ? (totalEngagement / impressions) * 100 : 0
+      const saveRate = impressions > 0 ? (saves / impressions) * 100 : 0
+
+      // Get title and caption
+      const title = String(metadata.title || contentUpload?.fileName || `${platform} post`)
+      const caption = String(metadata.caption || metadata.description || '')
+
+      // Get location data if available
+      const locationData = analytics.topLocations as Array<{
+        country: string
+        city?: string
+        percentage: number
+        engagement: number
+      }> | undefined
+
+      return {
+        postId: post.id,
+        platform: platform,
+        platformPostId: post.externalPostId || post.id,
+        title,
+        caption,
+        publishedAt: post.postedAt || post.createdAt,
+        views,
+        impressions,
+        reach,
+        likes,
+        comments,
+        shares,
+        saves,
+        engagementRate,
+        saveRate,
+        avgWatchTime: analytics.avgWatchTime as number | undefined,
+        completionRate: analytics.completionRate as number | undefined,
+        topLocations: locationData || [],
+      }
+    })
   }
 
   /**
@@ -327,9 +402,12 @@ export class ExportService {
       ? this.aggregateLocationData(analyticsData)
       : undefined
 
+    // Fetch real user profile data
+    const userProfile = await this.fetchUserProfile(userId)
+
     return {
-      creatorName: 'Creator Name', // In production, fetch from user profile
-      creatorEmail: undefined,
+      creatorName: userProfile.name,
+      creatorEmail: userProfile.email,
       reportTitle: 'Analytics Report',
       dateRange: {
         from: filters.dateFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
@@ -558,61 +636,27 @@ export class ExportService {
   }
 
   /**
-   * Generate sample posts for demo purposes
-   * Optimized for faster generation with fewer posts per platform
+   * Fetch user profile data for reports
    */
-  private generateSamplePosts(
-    platform: SocialPlatform,
-    dateRange: { start: Date; end: Date }
-  ): NormalizedPostAnalytics[] {
-    const posts: NormalizedPostAnalytics[] = []
-    const daysDiff = Math.ceil(
-      (dateRange.end.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24)
-    )
-    // Reduced from 10 to 5 posts max per platform for faster generation
-    const numPosts = Math.min(Math.floor(daysDiff / 5), 5)
-
-    const now = Date.now()
-    for (let i = 0; i < numPosts; i++) {
-      const publishDate = new Date(
-        dateRange.start.getTime() + Math.random() * (dateRange.end.getTime() - dateRange.start.getTime())
-      )
-
-      const views = Math.floor(Math.random() * 50000) + 1000
-      const likes = Math.floor(views * (Math.random() * 0.1 + 0.02))
-      const comments = Math.floor(likes * (Math.random() * 0.3 + 0.05))
-      const shares = Math.floor(likes * (Math.random() * 0.2 + 0.01))
-      const saves = Math.floor(views * (Math.random() * 0.03 + 0.005))
-      const impressions = Math.floor(views * (Math.random() * 0.5 + 1.2))
-      const reach = Math.floor(impressions * (Math.random() * 0.3 + 0.6))
-
-      posts.push({
-        postId: `post_${platform}_${i}_${now}`,
-        platform,
-        platformPostId: `${platform}_${i}${now.toString(36)}`,
-        title: `Sample ${platform} post #${i + 1}`,
-        caption: `This is a sample caption for ${platform} post ${i + 1}`,
-        publishedAt: publishDate,
-        views,
-        impressions,
-        reach,
-        likes,
-        comments,
-        shares,
-        saves,
-        engagementRate: impressions > 0 ? ((likes + comments + shares) / impressions) * 100 : 0,
-        saveRate: impressions > 0 ? (saves / impressions) * 100 : 0,
-        avgWatchTime: platform === 'youtube' || platform === 'tiktok' ? Math.random() * 60 + 10 : undefined,
-        completionRate: platform === 'youtube' || platform === 'tiktok' ? Math.random() * 50 + 20 : undefined,
-        topLocations: [
-          { country: 'United States', city: 'New York', percentage: 35, engagement: Math.floor(likes * 0.35) },
-          { country: 'United Kingdom', city: 'London', percentage: 15, engagement: Math.floor(likes * 0.15) },
-          { country: 'Canada', city: 'Toronto', percentage: 10, engagement: Math.floor(likes * 0.10) },
-        ],
+  private async fetchUserProfile(userId: string): Promise<{ name: string; email?: string }> {
+    try {
+      const profile = await prisma.profile.findUnique({
+        where: { id: userId },
+        select: {
+          displayName: true,
+          email: true,
+        },
       })
+
+      if (profile) {
+        const name = profile.displayName || 'Creator'
+        return { name, email: profile.email || undefined }
+      }
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error)
     }
 
-    return posts.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime())
+    return { name: 'Creator' }
   }
 }
 

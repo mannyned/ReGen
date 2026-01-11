@@ -9,80 +9,172 @@ import { ExcelExportService } from '@/lib/services/export/ExcelExportService'
 import { isProUser } from '@/lib/middleware/roleGuard'
 import type { ExportOptions, NormalizedPostAnalytics } from '@/lib/types/export'
 import type { PlanTier } from '@prisma/client'
+import type { SocialPlatform } from '@/lib/types/social'
+import { prisma } from '@/lib/db'
+import { getUserId } from '@/lib/auth/getUser'
 
-// Mock function to get user from session - replace with actual auth
+// Get current user from session
 async function getCurrentUser(req: NextRequest): Promise<{
   id: string
   email: string
   plan: PlanTier
 } | null> {
-  // In production, implement actual authentication
-  // For now, return a mock PRO user for testing
-  return {
-    id: 'user_123',
-    email: 'test@example.com',
-    plan: 'PRO',
+  try {
+    const profileId = await getUserId(req)
+    if (!profileId) return null
+
+    const profile = await prisma.profile.findUnique({
+      where: { id: profileId },
+      select: {
+        id: true,
+        email: true,
+        tier: true,
+      },
+    })
+
+    if (!profile) return null
+
+    // Map UserTier to PlanTier
+    const tierToPlan: Record<string, PlanTier> = {
+      'FREE': 'FREE',
+      'CREATOR': 'CREATOR',
+      'PRO': 'PRO',
+    }
+
+    return {
+      id: profile.id,
+      email: profile.email || '',
+      plan: tierToPlan[profile.tier] || 'FREE',
+    }
+  } catch (error) {
+    console.error('Failed to get current user:', error)
+    return null
   }
 }
 
-// Mock function to fetch analytics data - replace with actual data fetching
+// Fetch real analytics data from database
 async function fetchAnalyticsData(
   userId: string,
   options: ExportOptions
 ): Promise<NormalizedPostAnalytics[]> {
-  // In production, fetch from database based on filters
-  // Return mock data for testing
-  return [
-    {
-      postId: 'post_1',
-      platform: 'instagram',
-      platformPostId: 'ig_123456',
-      title: 'Summer vibes ☀️',
-      caption: 'Enjoying the beautiful weather! #summer #vibes',
-      publishedAt: new Date('2024-12-01'),
-      views: 15000,
-      impressions: 20000,
-      reach: 12000,
-      likes: 1500,
-      comments: 120,
-      shares: 45,
-      saves: 230,
-      engagementRate: 12.5,
-      saveRate: 1.53,
-      avgWatchTime: 28,
-      completionRate: 75,
-      topLocations: [
-        { country: 'United States', percentage: 45, engagement: 6750 },
-        { country: 'United Kingdom', percentage: 20, engagement: 3000 },
-        { country: 'Canada', percentage: 15, engagement: 2250 },
-      ],
-      deviceBreakdown: { mobile: 75, desktop: 20, tablet: 5 },
-    },
-    {
-      postId: 'post_2',
-      platform: 'tiktok',
-      platformPostId: 'tt_789012',
-      title: 'Dance challenge 💃',
-      publishedAt: new Date('2024-12-05'),
-      views: 50000,
-      impressions: 65000,
-      reach: 45000,
-      likes: 8000,
-      comments: 500,
-      shares: 1200,
-      saves: 890,
-      engagementRate: 21.2,
-      saveRate: 1.78,
-      avgWatchTime: 15,
-      completionRate: 60,
-      topLocations: [
-        { country: 'United States', percentage: 55, engagement: 27500 },
-        { country: 'Brazil', percentage: 15, engagement: 7500 },
-        { country: 'Mexico', percentage: 10, engagement: 5000 },
-      ],
-      deviceBreakdown: { mobile: 90, desktop: 8, tablet: 2 },
-    },
+  const { filters } = options
+  const normalizedPosts: NormalizedPostAnalytics[] = []
+
+  // Determine platforms to fetch
+  const platforms: SocialPlatform[] = filters.platforms || [
+    'instagram', 'tiktok', 'youtube', 'twitter', 'linkedin', 'facebook'
   ]
+
+  // Date range
+  const dateFrom = filters.dateFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  const dateTo = filters.dateTo || new Date()
+
+  // Map platform to provider values in database
+  const platformToProviders: Record<string, string[]> = {
+    'instagram': ['meta', 'instagram'],
+    'youtube': ['google', 'youtube'],
+    'facebook': ['facebook'],
+    'tiktok': ['tiktok'],
+    'linkedin': ['linkedin'],
+    'twitter': ['twitter', 'x'],
+    'snapchat': ['snapchat'],
+  }
+
+  // Get all relevant providers
+  const allProviders: string[] = []
+  for (const platform of platforms) {
+    const providers = platformToProviders[platform] || [platform]
+    allProviders.push(...providers)
+  }
+
+  // Fetch posts from database
+  const posts = await prisma.outboundPost.findMany({
+    where: {
+      profileId: userId,
+      provider: { in: allProviders },
+      status: 'POSTED',
+      postedAt: {
+        gte: dateFrom,
+        lte: dateTo,
+      },
+      ...(filters.postIds?.length ? { id: { in: filters.postIds } } : {}),
+    },
+    include: {
+      contentUpload: true,
+    },
+    orderBy: {
+      postedAt: 'desc',
+    },
+  })
+
+  // Transform to NormalizedPostAnalytics format
+  for (const post of posts) {
+    const metadata = (post.metadata || {}) as Record<string, unknown>
+    const analytics = (metadata.analytics || {}) as Record<string, unknown>
+    const contentUpload = post.contentUpload
+
+    // Map provider back to platform name
+    const providerToPlatform: Record<string, SocialPlatform> = {
+      'meta': 'instagram',
+      'google': 'youtube',
+      'facebook': 'facebook',
+      'tiktok': 'tiktok',
+      'linkedin': 'linkedin',
+      'twitter': 'twitter',
+      'x': 'twitter',
+      'snapchat': 'snapchat',
+    }
+    const platform = providerToPlatform[post.provider] || post.provider as SocialPlatform
+
+    // Extract metrics from analytics data
+    const views = Number(analytics.views || analytics.viewCount || 0)
+    const likes = Number(analytics.likes || analytics.likeCount || 0)
+    const comments = Number(analytics.comments || analytics.commentCount || 0)
+    const shares = Number(analytics.shares || analytics.shareCount || 0)
+    const saves = Number(analytics.saves || analytics.saveCount || 0)
+    const impressions = Number(analytics.impressions || analytics.reach || views)
+    const reach = Number(analytics.reach || impressions)
+
+    // Calculate engagement rate
+    const totalEngagement = likes + comments + shares
+    const engagementRate = impressions > 0 ? (totalEngagement / impressions) * 100 : 0
+    const saveRate = impressions > 0 ? (saves / impressions) * 100 : 0
+
+    // Get title and caption
+    const title = String(metadata.title || contentUpload?.fileName || `${platform} post`)
+    const caption = String(metadata.caption || metadata.description || '')
+
+    // Get location data if available
+    const locationData = analytics.topLocations as Array<{
+      country: string
+      city?: string
+      percentage: number
+      engagement: number
+    }> | undefined
+
+    normalizedPosts.push({
+      postId: post.id,
+      platform,
+      platformPostId: post.externalPostId || post.id,
+      title,
+      caption,
+      publishedAt: post.postedAt || post.createdAt,
+      views,
+      impressions,
+      reach,
+      likes,
+      comments,
+      shares,
+      saves,
+      engagementRate,
+      saveRate,
+      avgWatchTime: analytics.avgWatchTime as number | undefined,
+      completionRate: analytics.completionRate as number | undefined,
+      topLocations: locationData || [],
+    })
+  }
+
+  return normalizedPosts
 }
 
 export async function POST(req: NextRequest) {
