@@ -90,12 +90,20 @@ export function validatePublishContent(
 
   // Validate media format
   if (content.mediaUrl) {
-    const extension = content.mediaUrl.split('.').pop()?.toLowerCase()
-    if (extension && !limits.supportedFormats.includes(extension)) {
-      errors.push({
-        field: 'mediaUrl',
-        message: `File format .${extension} is not supported. Supported: ${limits.supportedFormats.join(', ')}`,
-      })
+    // Extract extension from URL, handling query parameters
+    // e.g., "https://example.com/file.mp4?token=abc" -> "mp4"
+    try {
+      const urlPath = new URL(content.mediaUrl).pathname
+      const extension = urlPath.split('.').pop()?.toLowerCase()
+      // Only validate if we found a recognizable extension
+      if (extension && extension.length <= 5 && !limits.supportedFormats.includes(extension)) {
+        errors.push({
+          field: 'mediaUrl',
+          message: `File format .${extension} is not supported. Supported: ${limits.supportedFormats.join(', ')}`,
+        })
+      }
+    } catch {
+      // If URL parsing fails, skip format validation (will be caught by platform API)
     }
   }
 
