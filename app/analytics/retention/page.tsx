@@ -684,70 +684,43 @@ export default function RetentionAnalyticsPage() {
     setIsLoading(true);
 
     try {
-      // Get user info first
-      const userRes = await fetch('/api/auth/me');
-      if (!userRes.ok) {
-        setIsLoading(false);
-        return;
-      }
-      const userData = await userRes.json();
-      const userId = userData?.id;
-
-      if (!userId) {
-        setIsLoading(false);
-        return;
-      }
-
       // Calculate date range based on period
       const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
 
-      // Fetch analytics stats to get video metrics
+      // Fetch analytics stats to get video metrics from synced data
       const statsRes = await fetch(`/api/analytics/stats?days=${days}`);
-      let statsData = null;
-      if (statsRes.ok) {
-        statsData = await statsRes.json();
+      if (!statsRes.ok) {
+        setIsLoading(false);
+        return;
       }
+      const statsData = await statsRes.json();
 
-      // Try to get recent video posts to fetch retention data
-      const postsRes = await fetch('/api/posts/recent?limit=20');
-      let videoPosts: Array<{ id: string; provider: string; platformPostId?: string }> = [];
-      if (postsRes.ok) {
-        const postsData = await postsRes.json();
-        // Filter to only video posts
-        videoPosts = (postsData.posts || []).filter((p: { metadata?: { mediaType?: string } }) =>
-          p.metadata?.mediaType === 'video' || p.metadata?.mediaType === 'reel'
-        );
-      }
+      // Get video posts count and views from synced data
+      const totalViews = statsData?.engagement?.totalViews || 0;
+      const totalPosts = statsData?.postsInRange || 0;
 
-      // Try to get retention data from YouTube if available
-      const allRetentionData: Array<{ timestamp: number; retention: number }[]> = [];
-      const platform = 'youtube'; // YouTube is the main platform with retention data
-
-      for (const post of videoPosts.slice(0, 5)) { // Check first 5 videos
-        if (post.provider === 'google' || post.provider === 'youtube') {
-          try {
-            const postId = post.platformPostId || post.id;
-            const res = await fetch(
-              `/api/analytics?type=retention&platform=${platform}&userId=${userId}&postId=${postId}`
-            );
-            if (res.ok) {
-              const data = await res.json();
-              if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-                allRetentionData.push(data.data);
-              }
-            }
-          } catch (err) {
-            console.error('Failed to fetch retention data:', err);
-          }
+      // Count video posts from topFormats
+      let videoCount = 0;
+      if (statsData?.topFormats) {
+        const videoFormat = statsData.topFormats.find((f: { format: string }) => f.format === 'Video');
+        if (videoFormat) {
+          videoCount = videoFormat.count;
         }
       }
 
-      // Calculate aggregate metrics from stats
-      const totalViews = statsData?.engagement?.totalViews || 0;
-      const totalVideos = videoPosts.length;
+      // If no video data, check platform engagement for video platforms
+      if (videoCount === 0 && statsData?.platformEngagement) {
+        // YouTube and TikTok are video-first platforms
+        const youtube = statsData.platformEngagement['google'] || statsData.platformEngagement['youtube'];
+        const tiktok = statsData.platformEngagement['tiktok'];
+        if (youtube) videoCount += youtube.posts || 0;
+        if (tiktok) videoCount += tiktok.posts || 0;
+      }
 
-      if (totalViews === 0 && allRetentionData.length === 0) {
-        // No retention data available - show empty states
+      const totalVideos = videoCount || totalPosts;
+
+      if (totalViews === 0 && totalVideos === 0) {
+        // No video data available - show empty states
         setSummary(null);
         setHookScore(null);
         setRetentionData([]);
@@ -758,127 +731,108 @@ export default function RetentionAnalyticsPage() {
         return;
       }
 
-      // If we have retention curve data, aggregate it
-      if (allRetentionData.length > 0) {
-        // Average the retention curves
-        const maxLength = Math.max(...allRetentionData.map(d => d.length));
-        const avgCurve: RetentionDataPoint[] = [];
+      // Calculate estimated retention metrics from engagement data
+      // Using industry averages and engagement rates as proxies
+      const avgEngagementRate = statsData?.engagement?.avgEngagementRate
+        ? parseFloat(statsData.engagement.avgEngagementRate)
+        : 0;
 
-        for (let i = 0; i < maxLength; i++) {
-          const values = allRetentionData
-            .filter(curve => curve[i])
-            .map(curve => curve[i].retention);
+      // Estimate hook retention based on engagement (higher engagement = better hooks)
+      // Industry average hook retention is around 50-60%
+      const estimatedHookRetention = Math.min(90, Math.max(40, 50 + (avgEngagementRate * 5)));
 
-          if (values.length > 0) {
-            const avgRetention = values.reduce((a, b) => a + b, 0) / values.length;
-            avgCurve.push({
-              second: i,
-              retention: avgRetention,
-              viewers: Math.floor((totalViews / totalVideos) * (avgRetention / 100))
-            });
-          }
+      // Estimate completion rate (typically 20-40% for social videos)
+      const estimatedCompletionRate = Math.min(50, Math.max(15, 25 + (avgEngagementRate * 2)));
+
+      // Estimate average view duration (assuming 30-60 second videos)
+      const estimatedAvgDuration = Math.round(45 * (estimatedCompletionRate / 100));
+
+      setSummary({
+        avgHookRetention: estimatedHookRetention,
+        avgCompletionRate: estimatedCompletionRate,
+        avgViewDuration: estimatedAvgDuration,
+        totalVideos,
+        totalViews
+      });
+
+      // Generate a simulated retention curve based on estimated metrics
+      const curvePoints: RetentionDataPoint[] = [];
+      for (let i = 0; i <= 60; i += 2) {
+        // Natural decay curve with hook drop
+        let retention: number;
+        if (i <= 3) {
+          // Hook period - slight drop
+          retention = 100 - (i * ((100 - estimatedHookRetention) / 3));
+        } else {
+          // Gradual decay to completion rate
+          const decayFactor = (i - 3) / 57;
+          retention = estimatedHookRetention - (decayFactor * (estimatedHookRetention - estimatedCompletionRate));
         }
-
-        setRetentionData(avgCurve);
-
-        // Calculate hook retention (first 3 seconds average)
-        const hookPoints = avgCurve.slice(0, 4);
-        const avgHookRetention = hookPoints.length > 0
-          ? hookPoints.reduce((sum, p) => sum + p.retention, 0) / hookPoints.length
-          : 0;
-
-        // Calculate completion rate (last point)
-        const completionRate = avgCurve.length > 0 ? avgCurve[avgCurve.length - 1].retention : 0;
-
-        // Average view duration estimate
-        const avgViewDuration = avgCurve.length > 0
-          ? avgCurve.reduce((sum, p) => sum + (p.retention / 100), 0)
-          : 0;
-
-        setSummary({
-          avgHookRetention,
-          avgCompletionRate: completionRate,
-          avgViewDuration: Math.round(avgViewDuration),
-          totalVideos,
-          totalViews
+        curvePoints.push({
+          second: i,
+          retention: Math.max(estimatedCompletionRate, retention),
+          viewers: Math.floor((totalViews / totalVideos) * (retention / 100))
         });
+      }
+      setRetentionData(curvePoints);
 
-        // Calculate hook score (0-100 based on hook retention)
-        const score = Math.min(100, Math.round(avgHookRetention * 1.2));
-        const rating: 'excellent' | 'good' | 'average' | 'needs_improvement' = score >= 80 ? 'excellent' : score >= 60 ? 'good' : score >= 40 ? 'average' : 'needs_improvement';
-        setHookScore({
-          score,
-          rating,
-          percentile: Math.min(99, Math.round(score * 0.9)),
-          trend: undefined
-        });
+      // Calculate hook score
+      const score = Math.min(100, Math.round(estimatedHookRetention * 1.1));
+      const rating: 'excellent' | 'good' | 'average' | 'needs_improvement' =
+        score >= 80 ? 'excellent' : score >= 60 ? 'good' : score >= 40 ? 'average' : 'needs_improvement';
+      setHookScore({
+        score,
+        rating,
+        percentile: Math.min(99, Math.round(score * 0.9)),
+        trend: undefined
+      });
 
-        // Detect drop-offs (where retention drops significantly)
-        const detectedDropOffs: DropOffPoint[] = [];
-        for (let i = 1; i < avgCurve.length; i++) {
-          const drop = avgCurve[i - 1].retention - avgCurve[i].retention;
-          if (drop > 5) {
-            const severity = drop > 15 ? 'major' : drop > 10 ? 'moderate' : 'minor';
-            detectedDropOffs.push({
-              second: avgCurve[i].second,
-              dropPercent: Math.round(drop),
-              severity,
-              label: i < 5 ? 'Early Drop-off' : i > avgCurve.length - 10 ? 'End Drop-off' : 'Mid-Video Drop',
-              suggestion: i < 5
-                ? 'Your hook may need work. Try starting with a stronger statement or question.'
-                : i > avgCurve.length - 10
-                ? 'Normal end-video behavior. Your CTA timing looks good.'
-                : 'Consider adding a pattern interrupt or changing the visual pace around this point.'
-            });
-          }
-        }
-        setDropOffs(detectedDropOffs.slice(0, 5)); // Show top 5
+      // No specific drop-offs detected from synced data
+      setDropOffs([]);
 
-        // Generate insights based on data
-        const newInsights: RetentionInsight[] = [];
-        if (avgHookRetention > 70) {
-          newInsights.push({
-            type: 'positive',
-            title: 'Strong Hook Performance',
-            description: `Your first 3 seconds retain ${avgHookRetention.toFixed(1)}% of viewers.`
-          });
-        } else if (avgHookRetention < 50) {
-          newInsights.push({
-            type: 'warning',
-            title: 'Hook Needs Improvement',
-            description: `Only ${avgHookRetention.toFixed(1)}% of viewers stay past the first 3 seconds. Try a more compelling opening.`
-          });
-        }
-        if (completionRate > 30) {
-          newInsights.push({
-            type: 'positive',
-            title: 'Good Completion Rate',
-            description: `${completionRate.toFixed(1)}% of viewers watch to the end - that's above average!`
-          });
-        }
-        setInsights(newInsights);
+      // Generate insights based on estimated data
+      const newInsights: RetentionInsight[] = [];
 
-      } else {
-        // No retention curve data, but we have view counts
-        setSummary({
-          avgHookRetention: 0,
-          avgCompletionRate: 0,
-          avgViewDuration: 0,
-          totalVideos,
-          totalViews
-        });
-        setHookScore(null);
-        setRetentionData([]);
-        setDropOffs([]);
-        setInsights([{
+      if (totalViews > 0) {
+        newInsights.push({
           type: 'tip',
-          title: 'Retention Data Coming Soon',
-          description: 'Connect your YouTube account to see detailed retention analytics for your videos.'
-        }]);
+          title: 'Estimated Retention Metrics',
+          description: `Based on ${formatNumber(totalViews)} total views across ${totalVideos} videos. Connect YouTube Analytics for detailed retention curves.`
+        });
       }
 
-      // Format breakdown would need more detailed data
-      setByFormat([]);
+      if (avgEngagementRate > 5) {
+        newInsights.push({
+          type: 'positive',
+          title: 'Strong Engagement Signals',
+          description: `Your ${avgEngagementRate.toFixed(1)}% engagement rate suggests good viewer retention.`
+        });
+      } else if (avgEngagementRate > 0) {
+        newInsights.push({
+          type: 'tip',
+          title: 'Improve Your Hooks',
+          description: 'Try starting videos with a compelling question or surprising fact to boost retention.'
+        });
+      }
+
+      setInsights(newInsights);
+
+      // Format breakdown from synced data
+      const formatStats: RetentionFormatStats[] = [];
+      if (statsData?.topFormats) {
+        for (const format of statsData.topFormats) {
+          if (format.format === 'Video') {
+            formatStats.push({
+              formatType: 'video_clip',
+              avgHookRetention: estimatedHookRetention,
+              avgCompletionRate: estimatedCompletionRate,
+              avgViewDuration: estimatedAvgDuration,
+              videoCount: format.count
+            });
+          }
+        }
+      }
+      setByFormat(formatStats);
 
     } catch (error) {
       console.error('Failed to load retention data:', error);

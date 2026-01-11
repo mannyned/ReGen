@@ -526,106 +526,43 @@ export default function SaveRateAnalyticsPage() {
     setIsLoading(true);
 
     try {
-      // Get user info first
-      const userRes = await fetch('/api/auth/me');
-      if (!userRes.ok) {
-        setIsLoading(false);
-        return;
-      }
-      const userData = await userRes.json();
-      const userId = userData?.id;
-
-      if (!userId) {
-        setIsLoading(false);
-        return;
-      }
-
       // Calculate date range based on period
       const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - days);
 
-      // Fetch save rate data from platforms that support it
-      const platforms = ['instagram']; // Instagram is the main platform with save data
-      const allSaveData: Array<{
-        totalSaves: number;
-        saveRate: number;
-        topSavedPosts: Array<{ postId: string; saves: number; format: string }>;
-        formatBreakdown: Record<string, { saves: number; posts: number; rate: number }>;
-      }> = [];
-
-      for (const platform of platforms) {
-        try {
-          const res = await fetch(
-            `/api/analytics?type=save-rate&platform=${platform}&userId=${userId}&start=${startDate.toISOString()}&end=${endDate.toISOString()}`
-          );
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success && data.data) {
-              allSaveData.push(data.data);
-            }
-          }
-        } catch (err) {
-          console.error(`Failed to fetch ${platform} save rate data:`, err);
-        }
-      }
-
-      // Also fetch from analytics stats endpoint for aggregated data
+      // Fetch from analytics stats endpoint - this uses synced engagement data
       const statsRes = await fetch(`/api/analytics/stats?days=${days}`);
-      let statsData = null;
-      if (statsRes.ok) {
-        statsData = await statsRes.json();
+      if (!statsRes.ok) {
+        setIsLoading(false);
+        return;
       }
+      const statsData = await statsRes.json();
 
-      // Aggregate save data
+      // Aggregate save data from synced metrics
       let totalSaves = 0;
       let totalImpressions = 0;
-      const formatData: Record<string, { saves: number; posts: number; impressions: number }> = {};
       const platformData: Record<string, { saves: number; posts: number; impressions: number }> = {};
-      const topPostsList: Array<{ postId: string; saves: number; format: string; platform: string }> = [];
 
-      // Use data from save-rate API
-      for (const data of allSaveData) {
-        totalSaves += data.totalSaves;
-
-        // Process format breakdown
-        for (const [format, fdata] of Object.entries(data.formatBreakdown)) {
-          if (!formatData[format]) {
-            formatData[format] = { saves: 0, posts: 0, impressions: 0 };
-          }
-          formatData[format].saves += fdata.saves;
-          formatData[format].posts += fdata.posts;
-        }
-
-        // Process top posts
-        for (const post of data.topSavedPosts) {
-          topPostsList.push({ ...post, platform: 'instagram' });
-        }
-      }
-
-      // Use platformEngagement from stats if available
+      // Use platformEngagement from stats - this has synced data from all platforms
       if (statsData?.platformEngagement) {
         for (const [platform, pdata] of Object.entries(statsData.platformEngagement)) {
-          const pd = pdata as { posts: number; saves: number; impressions: number };
-          if (pd.saves > 0) {
+          const pd = pdata as { posts: number; saves: number; impressions: number; views: number };
+          // Include platforms that have saves data
+          if (pd.saves > 0 || pd.impressions > 0) {
             platformData[platform] = {
-              saves: pd.saves,
-              posts: pd.posts,
-              impressions: pd.impressions
+              saves: pd.saves || 0,
+              posts: pd.posts || 0,
+              impressions: pd.impressions || pd.views || 0
             };
-            if (!allSaveData.length) {
-              totalSaves += pd.saves;
-            }
-            totalImpressions += pd.impressions;
+            totalSaves += pd.saves || 0;
+            totalImpressions += pd.impressions || pd.views || 0;
           }
         }
       }
 
-      // Use engagement totals from stats
+      // Use engagement totals from stats as fallback
       if (statsData?.engagement) {
         if (totalImpressions === 0) {
-          totalImpressions = statsData.engagement.totalImpressions || 1;
+          totalImpressions = statsData.engagement.totalImpressions || statsData.engagement.totalViews || 1;
         }
         if (totalSaves === 0) {
           totalSaves = statsData.engagement.totalSaves || 0;
@@ -635,7 +572,10 @@ export default function SaveRateAnalyticsPage() {
       // Calculate overall save rate
       const overallSaveRate = totalImpressions > 0 ? (totalSaves / totalImpressions) * 100 : 0;
 
-      if (totalSaves === 0 && Object.keys(platformData).length === 0) {
+      // Check if we have any meaningful data
+      const hasData = totalSaves > 0 || Object.keys(platformData).length > 0;
+
+      if (!hasData) {
         // No data available - show empty states
         setSummary(null);
         setByFormat([]);
@@ -652,21 +592,26 @@ export default function SaveRateAnalyticsPage() {
         impressions: totalImpressions,
         saveRate: overallSaveRate,
         contentCount: statsData?.postsInRange || 0,
-        trend: { direction: 'stable', changePercent: 0 } // Would need historical data for real trends
+        trend: { direction: 'stable', changePercent: 0 }
       });
 
-      // Set format breakdown
-      const formatList: SaveRateByFormat[] = Object.entries(formatData).map(([format, data]) => ({
-        formatType: format.toLowerCase() as SaveRateByFormat['formatType'],
-        saves: data.saves,
-        impressions: data.impressions || Math.round(data.saves / (overallSaveRate / 100) || 1),
-        saveRate: data.impressions > 0 ? (data.saves / data.impressions) * 100 : data.posts > 0 ? data.saves / data.posts : 0,
-        contentCount: data.posts,
-        trend: { direction: 'stable' as const, changePercent: 0 }
-      }));
+      // Set format breakdown from topFormats if available
+      const formatList: SaveRateByFormat[] = [];
+      if (statsData?.topFormats) {
+        for (const format of statsData.topFormats) {
+          formatList.push({
+            formatType: format.format.toLowerCase() as SaveRateByFormat['formatType'],
+            saves: Math.round(totalSaves * (format.percentage / 100)),
+            impressions: Math.round(totalImpressions * (format.percentage / 100)),
+            saveRate: overallSaveRate, // Use overall rate as approximation
+            contentCount: format.count,
+            trend: { direction: 'stable' as const, changePercent: 0 }
+          });
+        }
+      }
       setByFormat(formatList);
 
-      // Set platform breakdown
+      // Set platform breakdown from synced data
       const platformList: SaveRateByPlatform[] = Object.entries(platformData).map(([platform, data]) => ({
         platform: platform as SaveRateByPlatform['platform'],
         saves: data.saves,
@@ -679,21 +624,8 @@ export default function SaveRateAnalyticsPage() {
       // Set trends (empty for now - would need time-series data)
       setTrends([]);
 
-      // Set top posts
-      const sortedPosts = topPostsList.sort((a, b) => b.saves - a.saves).slice(0, 5);
-      const topPostsFormatted: TopSavedPost[] = sortedPosts.map((post, idx) => ({
-        rank: idx + 1,
-        contentId: post.postId,
-        title: `Post ${post.postId.substring(0, 8)}...`,
-        thumbnail: '',
-        platform: post.platform as TopSavedPost['platform'],
-        formatType: post.format.toLowerCase() as TopSavedPost['formatType'],
-        saves: post.saves,
-        impressions: 0,
-        saveRate: 0,
-        publishedAt: new Date().toISOString().split('T')[0]
-      }));
-      setTopPosts(topPostsFormatted);
+      // Top posts - we'd need to fetch recent posts to show this
+      setTopPosts([]);
 
     } catch (error) {
       console.error('Failed to load save rate data:', error);
