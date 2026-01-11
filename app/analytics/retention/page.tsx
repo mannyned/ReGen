@@ -1013,18 +1013,92 @@ export default function RetentionAnalyticsPage() {
                 Optimization Tip
               </span>
             </div>
-            <h3 className="text-xl font-bold mb-2">Boost Your Hook with Pattern Interrupts</h3>
-            <p className="text-white/80 mb-4">
-              Videos that start with an unexpected visual or statement in the first 1.5 seconds
-              have 34% higher hook retention. Try opening with movement, a surprising fact, or
-              direct address to capture attention immediately.
-            </p>
-            <Link
-              href="/generate?format=video_clip"
-              className="inline-flex items-center px-4 py-2 bg-white text-orange-600 rounded-xl font-medium hover:bg-orange-50 transition-colors"
-            >
-              Create Optimized Video
-            </Link>
+            {(() => {
+              // Dynamic optimization tip based on actual data
+              const hasVideos = (summary?.totalVideos || 0) > 0;
+              const hasViews = (summary?.totalViews || 0) > 0;
+              const hookRetention = summary?.avgHookRetention || 0;
+              const completionRate = summary?.avgCompletionRate || 0;
+              const score = hookScore?.score || 0;
+
+              if (hasViews && hookRetention > 0) {
+                if (hookRetention >= 70) {
+                  return (
+                    <>
+                      <h3 className="text-xl font-bold mb-2">Your Hooks Are Working!</h3>
+                      <p className="text-white/80 mb-4">
+                        With {hookRetention.toFixed(0)}% hook retention, your opening seconds are capturing attention effectively.
+                        {completionRate >= 30
+                          ? ` Your ${completionRate.toFixed(0)}% completion rate shows viewers are staying engaged throughout.`
+                          : ` Focus on maintaining momentum mid-video to improve your ${completionRate.toFixed(0)}% completion rate.`}
+                      </p>
+                      <Link href="/generate?format=video_clip"
+                        className="inline-flex items-center px-4 py-2 bg-white text-orange-600 rounded-xl font-medium hover:bg-orange-50 transition-colors">
+                        Create More Videos
+                      </Link>
+                    </>
+                  );
+                } else if (hookRetention >= 50) {
+                  return (
+                    <>
+                      <h3 className="text-xl font-bold mb-2">Strengthen Your First 3 Seconds</h3>
+                      <p className="text-white/80 mb-4">
+                        Your {hookRetention.toFixed(0)}% hook retention has room for improvement. Try starting with a bold statement,
+                        unexpected visual, or direct question. Videos that hook in the first 1.5 seconds see 30%+ higher retention.
+                      </p>
+                      <Link href="/generate?format=video_clip"
+                        className="inline-flex items-center px-4 py-2 bg-white text-orange-600 rounded-xl font-medium hover:bg-orange-50 transition-colors">
+                        Create Optimized Video
+                      </Link>
+                    </>
+                  );
+                } else {
+                  return (
+                    <>
+                      <h3 className="text-xl font-bold mb-2">Revamp Your Video Openings</h3>
+                      <p className="text-white/80 mb-4">
+                        With {hookRetention.toFixed(0)}% hook retention, viewers are scrolling past quickly. Start with movement,
+                        a surprising fact, or address viewers directly. Avoid slow intros—get to the value immediately.
+                      </p>
+                      <Link href="/generate?format=video_clip"
+                        className="inline-flex items-center px-4 py-2 bg-white text-orange-600 rounded-xl font-medium hover:bg-orange-50 transition-colors">
+                        Try a New Approach
+                      </Link>
+                    </>
+                  );
+                }
+              }
+
+              if (hasVideos) {
+                return (
+                  <>
+                    <h3 className="text-xl font-bold mb-2">Building Your Retention Data</h3>
+                    <p className="text-white/80 mb-4">
+                      You have {summary?.totalVideos || 0} videos posted. As views come in over the next 24-48 hours,
+                      we'll analyze your hook effectiveness and provide personalized optimization tips.
+                    </p>
+                    <Link href="/generate?format=video_clip"
+                      className="inline-flex items-center px-4 py-2 bg-white text-orange-600 rounded-xl font-medium hover:bg-orange-50 transition-colors">
+                      Create More Videos
+                    </Link>
+                  </>
+                );
+              }
+
+              return (
+                <>
+                  <h3 className="text-xl font-bold mb-2">Boost Your Hook with Pattern Interrupts</h3>
+                  <p className="text-white/80 mb-4">
+                    Videos that start with an unexpected visual or statement in the first 1.5 seconds
+                    have 34% higher hook retention. Post videos to get personalized retention insights.
+                  </p>
+                  <Link href="/generate?format=video_clip"
+                    className="inline-flex items-center px-4 py-2 bg-white text-orange-600 rounded-xl font-medium hover:bg-orange-50 transition-colors">
+                    Create Your First Video
+                  </Link>
+                </>
+              );
+            })()}
           </GradientBanner>
         </main>
       </div>
