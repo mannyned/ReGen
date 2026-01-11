@@ -52,11 +52,23 @@ async function getCurrentUser(req: NextRequest): Promise<{
   }
 }
 
+// Validate if a string is a valid UUID
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return uuidRegex.test(str)
+}
+
 // Fetch real analytics data from database
 async function fetchAnalyticsData(
   userId: string,
   options: ExportOptions
 ): Promise<NormalizedPostAnalytics[]> {
+  // Validate userId is a valid UUID before querying
+  if (!isValidUUID(userId)) {
+    console.warn(`[Excel Export] Invalid UUID format for userId: ${userId}`)
+    return []
+  }
+
   const { filters } = options
   const normalizedPosts: NormalizedPostAnalytics[] = []
 

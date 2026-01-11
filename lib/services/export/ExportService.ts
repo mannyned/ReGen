@@ -260,6 +260,14 @@ export class ExportService {
   }
 
   /**
+   * Validate if a string is a valid UUID
+   */
+  private isValidUUID(str: string): boolean {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    return uuidRegex.test(str)
+  }
+
+  /**
    * Fetch posts for a specific platform from the database
    */
   private async fetchPlatformPosts(
@@ -268,6 +276,12 @@ export class ExportService {
     dateRange: { start: Date; end: Date },
     postIds?: string[]
   ): Promise<NormalizedPostAnalytics[]> {
+    // Validate userId is a valid UUID before querying
+    if (!this.isValidUUID(userId)) {
+      console.warn(`[ExportService] Invalid UUID format for userId: ${userId}`)
+      return []
+    }
+
     // Map platform to provider values in database
     const platformToProviders: Record<string, string[]> = {
       'instagram': ['meta', 'instagram'],
@@ -639,6 +653,11 @@ export class ExportService {
    * Fetch user profile data for reports
    */
   private async fetchUserProfile(userId: string): Promise<{ name: string; email?: string }> {
+    // Validate userId is a valid UUID before querying
+    if (!this.isValidUUID(userId)) {
+      return { name: 'Creator' }
+    }
+
     try {
       const profile = await prisma.profile.findUnique({
         where: { id: userId },
