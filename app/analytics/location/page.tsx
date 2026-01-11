@@ -557,16 +557,6 @@ export default function LocationAnalyticsPage() {
     setIsLoading(true);
 
     try {
-      // Calculate date range based on period
-      const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
-
-      // First, fetch stats to get platform engagement data
-      const statsRes = await fetch(`/api/analytics/stats?days=${days}`);
-      let statsData = null;
-      if (statsRes.ok) {
-        statsData = await statsRes.json();
-      }
-
       // Try to get user info for platform API calls
       const userRes = await fetch('/api/auth/me');
       let userId = null;
@@ -575,24 +565,46 @@ export default function LocationAnalyticsPage() {
         userId = userData?.id;
       }
 
-      // Fetch location data from connected platforms
-      const platforms = ['instagram', 'youtube', 'facebook'];
-      const allLocationData: Array<{ country: string; percentage: number; engagement: number }> = [];
+      if (!userId) {
+        setMetrics(null);
+        setTopLocations([]);
+        setMapData(null);
+        setInsights([]);
+        setIsLoading(false);
+        return;
+      }
 
-      if (userId) {
-        // Fetch location data from each connected platform
-        for (const platform of platforms) {
-          try {
-            const res = await fetch(`/api/analytics?type=location&platform=${platform}&userId=${userId}`);
-            if (res.ok) {
-              const data = await res.json();
-              if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-                allLocationData.push(...data.data);
+      // Fetch location data from connected platforms
+      // YouTube requires yt-analytics.readonly scope
+      // Instagram requires instagram_insights with business account
+      // Facebook requires read_insights for page
+      const platforms = ['youtube', 'instagram', 'facebook'];
+      const allLocationData: Array<{ country: string; percentage: number; engagement: number }> = [];
+      const platformErrors: string[] = [];
+
+      for (const platform of platforms) {
+        try {
+          const res = await fetch(`/api/analytics?type=location&platform=${platform}&userId=${userId}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+              // Add platform tag to each location for tracking
+              for (const loc of data.data) {
+                allLocationData.push({
+                  ...loc,
+                  platform,
+                });
               }
+            } else if (data.error) {
+              platformErrors.push(`${platform}: ${data.error}`);
             }
-          } catch (err) {
-            console.error(`Failed to fetch ${platform} location data:`, err);
+          } else {
+            const errorData = await res.json().catch(() => ({}));
+            platformErrors.push(`${platform}: ${errorData.error || 'API error'}`);
           }
+        } catch (err) {
+          console.error(`Failed to fetch ${platform} location data:`, err);
+          platformErrors.push(`${platform}: Connection failed`);
         }
       }
 
@@ -607,123 +619,35 @@ export default function LocationAnalyticsPage() {
       }
 
       // Sort by engagement
-      let sortedCountries = Object.entries(aggregated)
+      const sortedCountries = Object.entries(aggregated)
         .sort((a, b) => b[1].engagement - a[1].engagement);
 
-      // If no location data from platform APIs, use platform engagement data to show something
-      if (sortedCountries.length === 0 && statsData?.platformEngagement) {
-        // Create platform-based "locations" to show engagement distribution
-        const platformData = Object.entries(statsData.platformEngagement)
-          .filter(([, data]) => {
-            const pd = data as { posts: number; likes: number; comments: number; shares: number };
-            return pd.posts > 0;
-          })
-          .map(([platform, data]) => {
-            const pd = data as { posts: number; likes: number; comments: number; shares: number; reach: number };
-            const engagement = (pd.likes || 0) + (pd.comments || 0) + (pd.shares || 0);
-            return { platform, engagement, reach: pd.reach || engagement };
-          })
-          .sort((a, b) => b.engagement - a.engagement);
-
-        if (platformData.length > 0) {
-          // Show platform engagement as a proxy for location data
-          const totalEngagement = platformData.reduce((sum, p) => sum + p.engagement, 0);
-          const totalReach = statsData?.engagement?.totalReach || totalEngagement;
-
-          setMetrics({
-            topCountry: {
-              name: 'Platform Analytics',
-              code: 'GLOBAL',
-              engagement: totalEngagement,
-              change: 0
-            },
-            topCity: {
-              name: '—',
-              country: 'GLOBAL',
-              engagement: 0,
-              change: 0
-            },
-            emergingRegion: {
-              name: '—',
-              growth: 0,
-              previous: 0,
-              current: 0
-            },
-            globalReach: {
-              countries: 0,
-              cities: 0,
-              newThisPeriod: 0
-            }
-          });
-
-          // Build platform breakdown as top locations
-          const topLocs: RankedLocation[] = platformData.slice(0, 10).map((p, idx) => ({
-            rank: idx + 1,
-            location: {
-              id: p.platform,
-              name: p.platform.charAt(0).toUpperCase() + p.platform.slice(1),
-              countryCode: 'PLATFORM',
-              flag: getPlatformEmoji(p.platform)
-            },
-            metric: {
-              name: 'engagement',
-              value: p.engagement,
-              formattedValue: formatNumber(p.engagement)
-            },
-            change: {
-              value: 0,
-              direction: 'stable' as const
-            }
-          }));
-          setTopLocations(topLocs);
-
-          // No map data without real location info
-          setMapData(null);
-
-          // Show insight about getting location data
-          setInsights([{
-            id: '1',
-            type: 'untapped_potential',
-            title: 'Location Data Requires Platform Analytics Access',
-            description: `You have ${formatNumber(totalEngagement)} total engagement across ${platformData.length} platforms. To see geographic breakdown, ensure your connected accounts have analytics permissions enabled.`,
-            locationId: 'global',
-            locationName: 'Global',
-            formatId: null,
-            formatName: null,
-            metrics: {
-              name: 'total reach',
-              value: totalReach,
-              comparison: totalEngagement,
-              changePercent: 0
-            },
-            priority: 80,
-            isActionable: true,
-            actionLabel: 'Check Connections',
-            actionUrl: '/settings',
-            validFrom: new Date().toISOString().split('T')[0],
-            validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            createdAt: new Date().toISOString()
-          }]);
-
-          setIsLoading(false);
-          return;
-        }
-
-        // No data at all
-        setMetrics(null);
-        setTopLocations([]);
-        setMapData(null);
-        setInsights([]);
-        setIsLoading(false);
-        return;
-      }
-
       if (sortedCountries.length === 0) {
-        // No data available - show empty states
+        // No location data available - show helpful message
         setMetrics(null);
         setTopLocations([]);
         setMapData(null);
-        setInsights([]);
+
+        // Show insight about what's needed for location analytics
+        setInsights([{
+          id: '1',
+          type: 'untapped_potential',
+          title: 'Enable Location Analytics',
+          description: 'Location data requires platform analytics API access. For YouTube, reconnect with "YouTube Analytics" permissions. For Instagram/Facebook, a Business or Creator account with Insights access is required.',
+          locationId: 'setup',
+          locationName: 'Setup Required',
+          formatId: null,
+          formatName: null,
+          metrics: null,
+          priority: 100,
+          isActionable: true,
+          actionLabel: 'Manage Connections',
+          actionUrl: '/settings',
+          validFrom: new Date().toISOString().split('T')[0],
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          createdAt: new Date().toISOString()
+        }]);
+
         setIsLoading(false);
         return;
       }
@@ -852,20 +776,6 @@ export default function LocationAnalyticsPage() {
     if (!code) return '';
     const codePoints = code.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0));
     return String.fromCodePoint(...codePoints);
-  };
-
-  const getPlatformEmoji = (platform: string): string => {
-    const emojis: Record<string, string> = {
-      google: '📺',
-      youtube: '📺',
-      instagram: '📸',
-      tiktok: '🎵',
-      twitter: '🐦',
-      facebook: '👥',
-      linkedin: '💼',
-      meta: '📱',
-    };
-    return emojis[platform.toLowerCase()] || '🌐';
   };
 
   return (

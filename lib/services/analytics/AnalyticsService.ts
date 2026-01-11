@@ -487,23 +487,37 @@ export class AnalyticsService {
   }
 
   private async getYouTubeLocationData(accessToken: string): Promise<LocationData[]> {
-    const response = await fetch(
-      `https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&metrics=views&dimensions=country&sort=-views&maxResults=20`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    )
+    // YouTube Analytics API requires startDate and endDate
+    const endDate = new Date().toISOString().split('T')[0]
+    const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+    const url = `https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&metrics=views&dimensions=country&startDate=${startDate}&endDate=${endDate}&sort=-views&maxResults=20`
+
+    console.log('[YouTube Analytics] Fetching location data:', url.replace(/Bearer.*/, 'Bearer ***'))
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
 
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error('[YouTube Analytics] Location data error:', response.status, errorText)
       return []
     }
 
     const data = await response.json()
-    const totalViews = data.rows?.reduce((sum: number, row: number[]) => sum + row[1], 0) || 1
+    console.log('[YouTube Analytics] Location data response:', JSON.stringify(data).slice(0, 500))
 
-    return (data.rows || []).map((row: [string, number]) => ({
+    if (!data.rows || data.rows.length === 0) {
+      console.log('[YouTube Analytics] No location rows returned')
+      return []
+    }
+
+    const totalViews = data.rows.reduce((sum: number, row: [string, number]) => sum + row[1], 0) || 1
+
+    return data.rows.map((row: [string, number]) => ({
       country: row[0],
       percentage: (row[1] / totalViews) * 100,
       engagement: row[1],
@@ -539,20 +553,28 @@ export class AnalyticsService {
     accessToken: string,
     videoId: string
   ): Promise<RetentionPoint[]> {
-    const response = await fetch(
-      `https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&metrics=audienceWatchRatio&dimensions=elapsedVideoTimeRatio&filters=video==${videoId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    )
+    // YouTube Analytics API requires startDate and endDate
+    const endDate = new Date().toISOString().split('T')[0]
+    const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+    const url = `https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&metrics=audienceWatchRatio&dimensions=elapsedVideoTimeRatio&filters=video==${videoId}&startDate=${startDate}&endDate=${endDate}`
+
+    console.log('[YouTube Analytics] Fetching retention for video:', videoId)
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
 
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error('[YouTube Analytics] Retention error:', response.status, errorText)
       return []
     }
 
     const data = await response.json()
+    console.log('[YouTube Analytics] Retention response rows:', data.rows?.length || 0)
 
     return (data.rows || []).map((row: [number, number]) => ({
       timestamp: row[0] * 100, // Convert ratio to percentage
