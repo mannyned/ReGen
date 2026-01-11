@@ -15,10 +15,15 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserId } from '@/lib/auth/getUser'
-import { tiktokService } from '@/lib/services/tiktok'
 import type { GetTikTokStatusResponse } from '@/lib/types/tiktok'
 
 export const runtime = 'nodejs'
+
+// Lazy import to avoid circular dependency
+async function getTikTokService() {
+  const { tiktokService } = await import('@/lib/services/tiktok')
+  return tiktokService
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,6 +36,9 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    // Get service instance (lazy loaded to avoid circular dependency)
+    const tiktokService = await getTikTokService()
 
     // Get connection status
     const status = await tiktokService.getConnectionStatus(profileId)

@@ -28,10 +28,15 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserId } from '@/lib/auth/getUser'
-import { tiktokService } from '@/lib/services/tiktok'
 import type { CreateTikTokPostRequest, CreateTikTokPostResponse, TikTokPrivacyLevel } from '@/lib/types/tiktok'
 
 export const runtime = 'nodejs'
+
+// Lazy import to avoid circular dependency
+async function getTikTokService() {
+  const { tiktokService } = await import('@/lib/services/tiktok')
+  return tiktokService
+}
 
 // Validate privacy level
 const VALID_PRIVACY_LEVELS: TikTokPrivacyLevel[] = [
@@ -82,6 +87,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Get service instance (lazy loaded to avoid circular dependency)
+    const tiktokService = await getTikTokService()
 
     // Check TikTok connection
     const connectionStatus = await tiktokService.getConnectionStatus(profileId)
