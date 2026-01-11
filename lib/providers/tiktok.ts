@@ -83,12 +83,10 @@ const config: ProviderConfig = {
 
   // Scopes for creator accounts
   // See: https://developers.tiktok.com/doc/tiktok-api-scopes/
+  // NOTE: Only request scopes that have been approved for your app in TikTok Developer Portal
+  // Check: TikTok Developer Portal > Your App > Products to see approved scopes
   scopes: [
-    'user.info.basic',    // Basic profile (avatar, display name, etc.)
-    'user.info.profile',  // Profile info (bio, profile URL)
-    'user.info.stats',    // User stats (follower count, etc.)
-    'video.list',         // Access to user's public videos (Display API)
-    'video.publish',      // Post videos to TikTok (Content Posting API)
+    'user.info.basic',    // Basic profile (avatar, display name) - Login Kit basic scope
   ],
 
   capabilities: {
