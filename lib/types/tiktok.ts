@@ -115,6 +115,7 @@ export interface TikTokPostResult {
   publishId?: string
   shareUrl?: string
   error?: string
+  message?: string  // User-facing message (e.g., "Video sent to your TikTok inbox")
 }
 
 /**

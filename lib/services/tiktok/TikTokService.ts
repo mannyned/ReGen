@@ -394,7 +394,8 @@ export class TikTokService {
   }
 
   /**
-   * Post using PULL_FROM_URL method
+   * Post using PULL_FROM_URL method via Inbox Upload
+   * Uses video.upload scope - video goes to user's inbox for review
    * TikTok pulls the video from your server
    */
   private async postFromUrl(
@@ -410,21 +411,10 @@ export class TikTokService {
       data: { status: 'UPLOADING' },
     })
 
-    const postInfo: Record<string, unknown> = {
-      title: options.caption.substring(0, 150), // TikTok title limit
-      privacy_level: options.privacyLevel || 'PUBLIC_TO_EVERYONE',
-      disable_comment: options.disableComments || false,
-      disable_duet: options.disableDuet || false,
-      disable_stitch: options.disableStitch || false,
-    }
-
-    // Add scheduled time if provided
-    if (options.scheduledAt) {
-      postInfo.schedule_time = Math.floor(options.scheduledAt.getTime() / 1000)
-    }
-
+    // Use inbox upload endpoint (video.upload scope)
+    // Video will appear in user's TikTok inbox for them to review and publish
     const response = await fetch(
-      `${TIKTOK_API_BASE}/post/publish/video/init/`,
+      `${TIKTOK_API_BASE}/post/publish/inbox/video/init/`,
       {
         method: 'POST',
         headers: {
@@ -432,29 +422,39 @@ export class TikTokService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          post_info: postInfo,
           source_info: {
             source: 'PULL_FROM_URL',
             video_url: options.videoUrl,
+            // Include title/description for the inbox notification
+            video_size: 0, // Will be determined by TikTok when pulling
+          },
+          post_info: {
+            title: options.caption.substring(0, 150), // Will show in editing flow
+            description: options.caption,
           },
         }),
       }
     )
 
+    const responseText = await response.text()
+    console.log('[TikTok] Inbox upload response:', response.status, responseText)
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(
-        `TikTok publish error: ${errorData.error?.message || response.statusText}`
-      )
+      let errorMessage = response.statusText
+      try {
+        const errorData = JSON.parse(responseText)
+        errorMessage = errorData.error?.message || errorData.error?.code || errorMessage
+      } catch {}
+      throw new Error(`TikTok inbox upload error: ${errorMessage}`)
     }
 
-    const data = await response.json()
+    const data = JSON.parse(responseText)
 
     // Update post record
     await prisma.tikTokPost.update({
       where: { id: postId },
       data: {
-        status: options.scheduledAt ? 'SCHEDULED' : 'PROCESSING',
+        status: 'PROCESSING', // Video is in user's inbox
         publishId: data.data?.publish_id,
       },
     })
@@ -462,8 +462,9 @@ export class TikTokService {
     return {
       success: true,
       postId,
-      status: options.scheduledAt ? 'scheduled' : 'processing',
+      status: 'processing',
       publishId: data.data?.publish_id,
+      message: 'Video sent to your TikTok inbox. Open TikTok to review and publish.',
     }
   }
 
@@ -568,48 +569,14 @@ export class TikTokService {
       }
     }
 
-    // Step 3: Finalize the post
-    const postInfo: Record<string, unknown> = {
-      title: options.caption.substring(0, 150),
-      privacy_level: options.privacyLevel || 'PUBLIC_TO_EVERYONE',
-      disable_comment: options.disableComments || false,
-      disable_duet: options.disableDuet || false,
-      disable_stitch: options.disableStitch || false,
-    }
-
-    if (options.scheduledAt) {
-      postInfo.schedule_time = Math.floor(options.scheduledAt.getTime() / 1000)
-    }
-
-    const finalizeResponse = await fetch(
-      `${TIKTOK_API_BASE}/post/publish/video/init/`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          publish_id: publishId,
-          post_info: postInfo,
-        }),
-      }
-    )
-
-    if (!finalizeResponse.ok) {
-      const errorData = await finalizeResponse.json().catch(() => ({}))
-      throw new Error(
-        `TikTok finalize error: ${errorData.error?.message || finalizeResponse.statusText}`
-      )
-    }
-
-    const finalizeData = await finalizeResponse.json()
+    // For inbox upload, video is automatically processed after all chunks are uploaded
+    // No separate finalize call needed - video appears in user's TikTok inbox
 
     // Update post record
     await prisma.tikTokPost.update({
       where: { id: postId },
       data: {
-        status: options.scheduledAt ? 'SCHEDULED' : 'PROCESSING',
+        status: 'PROCESSING', // Video is being processed and will appear in inbox
         publishId,
       },
     })
@@ -617,8 +584,9 @@ export class TikTokService {
     return {
       success: true,
       postId,
-      status: options.scheduledAt ? 'scheduled' : 'processing',
+      status: 'processing',
       publishId,
+      message: 'Video sent to your TikTok inbox. Open TikTok to review and publish.',
     }
   }
 
