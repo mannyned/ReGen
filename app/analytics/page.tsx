@@ -212,14 +212,19 @@ export default function AnalyticsPage() {
   }
 
   // Fetch AI-powered recommendations
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = async (platform: PlatformFilter = 'all') => {
     try {
       setIsLoadingRecommendations(true)
-      const response = await fetch('/api/analytics/recommendations')
+      const url = platform && platform !== 'all'
+        ? `/api/analytics/recommendations?platform=${platform}`
+        : '/api/analytics/recommendations'
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         if (data.recommendations && data.recommendations.length > 0) {
           setAiRecommendations(data.recommendations)
+        } else {
+          setAiRecommendations([])
         }
       }
     } catch (error) {
@@ -268,7 +273,7 @@ export default function AnalyticsPage() {
     const loadAnalytics = async () => {
       await syncAnalytics()
       await fetchAnalyticsStats(timeRange)
-      await fetchRecommendations()
+      await fetchRecommendations(selectedPlatform)
       await fetchRecentActivity()
     }
     loadAnalytics()
@@ -312,6 +317,13 @@ export default function AnalyticsPage() {
       }
     }
   }, [isProduction, timeRange])
+
+  // Refetch recommendations when platform selection changes
+  useEffect(() => {
+    if (mounted && userPlan === 'pro') {
+      fetchRecommendations(selectedPlatform)
+    }
+  }, [selectedPlatform, mounted, userPlan])
 
   // Handle opening the upgrade modal
   const handleOpenUpgradeModal = (metricId: LockedMetricId) => {
@@ -702,8 +714,17 @@ export default function AnalyticsPage() {
                     <h2 className="text-2xl font-bold flex items-center gap-2">
                       <span>🤖</span>
                       AI-Powered Recommendations
+                      {selectedPlatform !== 'all' && (
+                        <span className="text-base font-normal bg-white/20 px-2 py-0.5 rounded-full ml-2">
+                          for {selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}
+                        </span>
+                      )}
                     </h2>
-                    <p className="text-white/90 mt-1">Personalized insights to boost your performance</p>
+                    <p className="text-white/90 mt-1">
+                      {selectedPlatform !== 'all'
+                        ? `Platform-specific insights for ${selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}`
+                        : 'Personalized insights to boost your performance'}
+                    </p>
                   </div>
                   <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
                     {aiRecommendations.length} insight{aiRecommendations.length !== 1 ? 's' : ''}
@@ -713,13 +734,25 @@ export default function AnalyticsPage() {
                 {isLoadingRecommendations ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mr-3"></div>
-                    <p className="text-white/80">Analyzing your performance data...</p>
+                    <p className="text-white/80">
+                      {selectedPlatform !== 'all'
+                        ? `Analyzing your ${selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)} performance...`
+                        : 'Analyzing your performance data...'}
+                    </p>
                   </div>
                 ) : aiRecommendations.length === 0 ? (
                   <div className="text-center py-8">
                     <span className="text-4xl mb-3 block">📊</span>
-                    <p className="text-white/90 font-medium">No recommendations yet</p>
-                    <p className="text-white/70 text-sm mt-1">Post more content to receive personalized AI insights</p>
+                    <p className="text-white/90 font-medium">
+                      {selectedPlatform !== 'all'
+                        ? `No ${selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)} recommendations yet`
+                        : 'No recommendations yet'}
+                    </p>
+                    <p className="text-white/70 text-sm mt-1">
+                      {selectedPlatform !== 'all'
+                        ? `Post more content on ${selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)} to receive platform-specific insights`
+                        : 'Post more content to receive personalized AI insights'}
+                    </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
