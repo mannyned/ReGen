@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/auth/getUser'
+import { Prisma } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
@@ -54,12 +55,7 @@ export async function GET(request: NextRequest) {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
     // Build the where clause with optional platform filter
-    const whereClause: {
-      profileId: string
-      status: string
-      postedAt: { gte: Date }
-      provider?: { in: string[] }
-    } = {
+    const whereClause: Prisma.OutboundPostWhereInput = {
       profileId,
       status: 'POSTED',
       postedAt: { gte: thirtyDaysAgo },
