@@ -85,6 +85,8 @@ const config: ProviderConfig = {
   // See: https://developers.tiktok.com/doc/tiktok-api-scopes/
   scopes: [
     'user.info.basic',    // Basic profile (avatar, display name, etc.)
+    'user.info.profile',  // Profile info (bio, profile URL)
+    'user.info.stats',    // User stats (follower count, etc.)
     'video.list',         // Access to user's public videos (Display API)
     'video.publish',      // Post videos to TikTok (Content Posting API)
   ],
@@ -322,24 +324,27 @@ async function verifyToken(params: TokenVerificationParams): Promise<TokenVerifi
 async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
   try {
     // TikTok requires fields to be specified
-    const fields = [
+    // Start with basic fields that are always available with user.info.basic scope
+    const basicFields = [
       'open_id',
       'union_id',
       'avatar_url',
       'avatar_url_100',
       'avatar_large_url',
       'display_name',
-      'bio_description',
-      'profile_deep_link',
-      'is_verified',
-      'follower_count',
-      'following_count',
-      'likes_count',
-      'video_count',
-    ].join(',');
+    ];
+
+    // Additional fields that require extra scopes (user.info.profile, user.info.stats)
+    const profileFields = ['bio_description', 'profile_deep_link', 'is_verified'];
+    const statsFields = ['follower_count', 'following_count', 'likes_count', 'video_count'];
+
+    // Request all fields - TikTok will return what's available based on granted scopes
+    const allFields = [...basicFields, ...profileFields, ...statsFields].join(',');
 
     const url = new URL(config.identityUrl);
-    url.searchParams.set('fields', fields);
+    url.searchParams.set('fields', allFields);
+
+    console.log('[TikTok] Fetching identity with fields:', allFields);
 
     const response = await fetch(url.toString(), {
       method: 'GET',
@@ -348,15 +353,56 @@ async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
       },
     });
 
+    const responseText = await response.text();
+    console.log('[TikTok] Identity response status:', response.status);
+    console.log('[TikTok] Identity response:', responseText.substring(0, 500));
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData;
+      try {
+        errorData = JSON.parse(responseText);
+      } catch {
+        errorData = { error: { message: responseText } };
+      }
+
+      // If the error is about fields/scopes, try with just basic fields
+      if (response.status === 400 || errorData.error?.code === 'invalid_field') {
+        console.log('[TikTok] Retrying with basic fields only');
+        const basicUrl = new URL(config.identityUrl);
+        basicUrl.searchParams.set('fields', basicFields.join(','));
+
+        const basicResponse = await fetch(basicUrl.toString(), {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${params.accessToken}`,
+          },
+        });
+
+        if (basicResponse.ok) {
+          const basicData = await basicResponse.json();
+          const userData = basicData.data?.user || basicData.user || basicData;
+          return {
+            providerAccountId: userData.open_id,
+            displayName: userData.display_name,
+            avatarUrl: userData.avatar_url || userData.avatar_large_url,
+            metadata: {
+              openId: userData.open_id,
+              unionId: userData.union_id,
+              displayName: userData.display_name,
+              avatarUrl: userData.avatar_url,
+              avatarLargeUrl: userData.avatar_large_url,
+            },
+          };
+        }
+      }
+
       throw new IdentityFetchError(
         'tiktok',
         errorData.error?.message || `HTTP ${response.status}`
       );
     }
 
-    const data = await response.json();
+    const data = JSON.parse(responseText);
     const userData = data.data?.user || data.user || data;
 
     return {
@@ -379,6 +425,7 @@ async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
       },
     };
   } catch (error) {
+    console.error('[TikTok] Identity fetch error:', error);
     if (error instanceof IdentityFetchError) {
       throw error;
     }
