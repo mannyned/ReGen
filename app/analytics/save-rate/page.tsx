@@ -501,14 +501,16 @@ function PlatformBreakdown({ data, isLoading }: PlatformBreakdownProps) {
           <div className="text-2xl font-bold text-text-primary mb-1">
             {formatSaveRate(platform.saveRate)}
           </div>
-          <div className="text-sm text-text-secondary">
-            {formatNumber(platform.saves)} saves
+          <div className="text-sm text-text-secondary space-y-0.5">
+            <div>{formatNumber(platform.saves)} saves</div>
+            <div>{formatNumber(platform.impressions)} impressions</div>
+            <div>{platform.contentCount} posts</div>
           </div>
           {/* Mini bar */}
           <div className="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
             <div
               className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-              style={{ width: `${(platform.saveRate / maxRate) * 100}%` }}
+              style={{ width: `${maxRate > 0 ? (platform.saveRate / maxRate) * 100 : 0}%` }}
             />
           </div>
         </div>
@@ -552,31 +554,19 @@ export default function SaveRateAnalyticsPage() {
       const engagement = statsData?.engagement || {};
       const totalSaves = engagement.totalSaves || 0;
       const totalImpressions = engagement.totalImpressions || engagement.totalViews || 0;
-      const totalReach = engagement.totalReach || totalImpressions;
+      const totalReach = engagement.totalReach || totalImpressions || 0;
+      const postsCount = statsData?.postsInRange || statsData?.totalPosts || 0;
 
       // Calculate overall save rate (saves / reach * 100)
       const overallSaveRate = totalReach > 0 ? (totalSaves / totalReach) * 100 : 0;
 
-      // Check if we have any posts at all
-      const hasData = statsData?.postsInRange > 0 || statsData?.totalPosts > 0;
-
-      if (!hasData) {
-        // No posts - show empty states with helpful message
-        setSummary(null);
-        setByFormat([]);
-        setByPlatform([]);
-        setTrends([]);
-        setTopPosts([]);
-        setIsLoading(false);
-        return;
-      }
-
-      // Set summary - even if saves are 0, show the data
+      // Always set summary with current values (even if 0)
+      // This ensures metrics are displayed rather than showing "-"
       setSummary({
         saves: totalSaves,
         impressions: totalReach,
         saveRate: overallSaveRate,
-        contentCount: statsData?.postsInRange || 0,
+        contentCount: postsCount,
         trend: { direction: 'stable', changePercent: 0 }
       });
 
@@ -824,63 +814,83 @@ export default function SaveRateAnalyticsPage() {
                 AI Insight
               </span>
             </div>
-            {byFormat.length > 0 && byFormat[0].saves > 0 ? (
-              <>
-                <h3 className="text-xl font-bold mb-2">
-                  {byFormat[0].formatType === 'video_clip' || byFormat[0].formatType === 'video_long' ? 'Videos' :
-                   byFormat[0].formatType === 'single_image' ? 'Images' :
-                   byFormat[0].formatType === 'carousel' ? 'Carousels' :
-                   byFormat[0].formatType === 'reel' ? 'Reels' :
-                   byFormat[0].formatType === 'story' ? 'Stories' :
-                   'Your Top Format'} Drive the Most Saves
-                </h3>
-                <p className="text-white/80 mb-4">
-                  Your {byFormat[0].formatType.replace('_', ' ')} posts have a {formatSaveRate(byFormat[0].saveRate)} save rate
-                  with {formatNumber(byFormat[0].saves)} total saves. Keep creating this type of content
-                  to maximize audience engagement and bookmarks.
-                </p>
-                <Link
-                  href={`/generate?format=${byFormat[0].formatType}`}
-                  className="inline-flex items-center px-4 py-2 bg-white text-emerald-600 rounded-xl font-medium hover:bg-emerald-50 transition-colors"
-                >
-                  Create More {byFormat[0].formatType === 'video_clip' || byFormat[0].formatType === 'video_long' ? 'Videos' :
-                              byFormat[0].formatType === 'single_image' ? 'Images' :
-                              byFormat[0].formatType === 'carousel' ? 'Carousels' :
-                              byFormat[0].formatType === 'reel' ? 'Reels' :
-                              byFormat[0].formatType === 'story' ? 'Stories' : 'Content'}
-                </Link>
-              </>
-            ) : summary && summary.contentCount > 0 ? (
-              <>
-                <h3 className="text-xl font-bold mb-2">Start Building Your Save Rate</h3>
-                <p className="text-white/80 mb-4">
-                  You have {summary.contentCount} posts published. As your audience grows and engages,
-                  we'll analyze which content types get saved the most. Educational content, how-to guides,
-                  and listicles typically have higher save rates.
-                </p>
-                <Link
-                  href="/generate"
-                  className="inline-flex items-center px-4 py-2 bg-white text-emerald-600 rounded-xl font-medium hover:bg-emerald-50 transition-colors"
-                >
-                  Create New Content
-                </Link>
-              </>
-            ) : (
-              <>
-                <h3 className="text-xl font-bold mb-2">Unlock Save Rate Insights</h3>
-                <p className="text-white/80 mb-4">
-                  Start posting content to track your save rates. Content that provides value—tutorials,
-                  tips, resources—tends to get saved for later reference. We'll show you which formats
-                  work best for your audience.
-                </p>
-                <Link
-                  href="/generate"
-                  className="inline-flex items-center px-4 py-2 bg-white text-emerald-600 rounded-xl font-medium hover:bg-emerald-50 transition-colors"
-                >
-                  Create Your First Post
-                </Link>
-              </>
-            )}
+            {(() => {
+              // Dynamic AI insight based on actual data
+              const topFormat = byFormat.length > 0 ? byFormat[0] : null;
+              const topPlatform = byPlatform.length > 0 ? byPlatform.reduce((a, b) => a.saves > b.saves ? a : b) : null;
+              const hasSaves = (summary?.saves || 0) > 0;
+              const hasPosts = (summary?.contentCount || 0) > 0;
+              const totalImpressions = summary?.impressions || 0;
+
+              if (hasSaves && topFormat && topFormat.saves > 0) {
+                const formatName = topFormat.formatType === 'video_clip' || topFormat.formatType === 'video_long' ? 'Videos' :
+                                   topFormat.formatType === 'single_image' ? 'Images' :
+                                   topFormat.formatType === 'carousel' ? 'Carousels' :
+                                   topFormat.formatType === 'reel' ? 'Reels' :
+                                   topFormat.formatType === 'story' ? 'Stories' : 'Your Top Format';
+                return (
+                  <>
+                    <h3 className="text-xl font-bold mb-2">{formatName} Drive the Most Saves</h3>
+                    <p className="text-white/80 mb-4">
+                      Your {topFormat.formatType.replace('_', ' ')} posts have a {formatSaveRate(topFormat.saveRate)} save rate
+                      with {formatNumber(topFormat.saves)} total saves. Keep creating this type of content!
+                    </p>
+                    <Link href={`/generate?format=${topFormat.formatType}`}
+                      className="inline-flex items-center px-4 py-2 bg-white text-emerald-600 rounded-xl font-medium hover:bg-emerald-50 transition-colors">
+                      Create More {formatName}
+                    </Link>
+                  </>
+                );
+              }
+
+              if (hasPosts && totalImpressions > 0) {
+                return (
+                  <>
+                    <h3 className="text-xl font-bold mb-2">Your Content is Getting Views!</h3>
+                    <p className="text-white/80 mb-4">
+                      You have {formatNumber(summary?.contentCount || 0)} posts with {formatNumber(totalImpressions)} total impressions.
+                      {topPlatform ? ` ${topPlatform.platform.charAt(0).toUpperCase() + topPlatform.platform.slice(1)} is your most active platform with ${formatNumber(topPlatform.impressions)} impressions.` : ''}
+                      {' '}As saves come in, we'll show you which content resonates most.
+                    </p>
+                    <Link href="/generate"
+                      className="inline-flex items-center px-4 py-2 bg-white text-emerald-600 rounded-xl font-medium hover:bg-emerald-50 transition-colors">
+                      Create More Content
+                    </Link>
+                  </>
+                );
+              }
+
+              if (hasPosts) {
+                return (
+                  <>
+                    <h3 className="text-xl font-bold mb-2">Building Your Save Rate</h3>
+                    <p className="text-white/80 mb-4">
+                      You have {formatNumber(summary?.contentCount || 0)} posts published. As your audience grows,
+                      we'll analyze which content types get saved the most. Tip: Educational content and how-to guides
+                      typically have higher save rates!
+                    </p>
+                    <Link href="/generate"
+                      className="inline-flex items-center px-4 py-2 bg-white text-emerald-600 rounded-xl font-medium hover:bg-emerald-50 transition-colors">
+                      Create New Content
+                    </Link>
+                  </>
+                );
+              }
+
+              return (
+                <>
+                  <h3 className="text-xl font-bold mb-2">Unlock Save Rate Insights</h3>
+                  <p className="text-white/80 mb-4">
+                    Start posting content to track your save rates. Content that provides value—tutorials,
+                    tips, resources—tends to get saved for later reference.
+                  </p>
+                  <Link href="/generate"
+                    className="inline-flex items-center px-4 py-2 bg-white text-emerald-600 rounded-xl font-medium hover:bg-emerald-50 transition-colors">
+                    Create Your First Post
+                  </Link>
+                </>
+              );
+            })()}
           </GradientBanner>
         </main>
       </div>
