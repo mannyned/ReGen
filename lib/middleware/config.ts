@@ -82,6 +82,9 @@ export const PUBLIC_ROUTES: RouteConfig[] = [
 
   // Data deletion status (Meta requirement)
   { path: '/data-deletion-status' },
+
+  // Cron job endpoints (external cron services like cron-job.org)
+  { path: '/api/cron', prefix: true },
 ];
 
 /**
