@@ -81,13 +81,25 @@ export async function GET(request: NextRequest) {
         }
 
         case 'location': {
-          const locationData = await analyticsService.getLocationAnalytics(userId, validPlatform)
-          return NextResponse.json({
-            success: true,
-            type: 'location',
-            platform: validPlatform,
-            data: locationData,
-          })
+          try {
+            const locationData = await analyticsService.getLocationAnalytics(userId, validPlatform)
+            return NextResponse.json({
+              success: true,
+              type: 'location',
+              platform: validPlatform,
+              data: locationData,
+              count: locationData.length,
+            })
+          } catch (locationError) {
+            console.error(`[Analytics Route] Location error for ${validPlatform}:`, locationError)
+            return NextResponse.json({
+              success: false,
+              type: 'location',
+              platform: validPlatform,
+              data: [],
+              error: locationError instanceof Error ? locationError.message : 'Failed to fetch location data',
+            })
+          }
         }
 
         case 'retention': {

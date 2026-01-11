@@ -118,23 +118,34 @@ export class AnalyticsService {
     userId: string,
     platform: SocialPlatform
   ): Promise<LocationData[]> {
+    console.log(`[AnalyticsService] Getting location analytics for ${platform}, userId: ${userId}`)
+
     const accessToken = await tokenManager.getValidAccessToken(userId, platform)
 
     if (!accessToken) {
-      throw new Error(`No valid access token for ${platform}`)
+      console.error(`[AnalyticsService] No valid access token for ${platform}`)
+      throw new Error(`No valid access token for ${platform}. You may need to reconnect your account.`)
     }
 
+    console.log(`[AnalyticsService] Got access token for ${platform}, length: ${accessToken.length}`)
+
     // Platform-specific location analytics
-    switch (platform) {
-      case 'instagram':
-        return this.getInstagramLocationData(accessToken)
-      case 'youtube':
-        return this.getYouTubeLocationData(accessToken)
-      case 'facebook':
-        return this.getFacebookLocationData(accessToken)
-      default:
-        // Other platforms may not provide detailed location data
-        return []
+    try {
+      switch (platform) {
+        case 'instagram':
+          return await this.getInstagramLocationData(accessToken)
+        case 'youtube':
+          return await this.getYouTubeLocationData(accessToken)
+        case 'facebook':
+          return await this.getFacebookLocationData(accessToken)
+        default:
+          // Other platforms may not provide detailed location data
+          console.log(`[AnalyticsService] Platform ${platform} doesn't support location analytics`)
+          return []
+      }
+    } catch (error) {
+      console.error(`[AnalyticsService] Error fetching location data for ${platform}:`, error)
+      throw error
     }
   }
 
