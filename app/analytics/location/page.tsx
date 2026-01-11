@@ -518,6 +518,13 @@ function InsightsCarousel({ insights }: InsightsCarouselProps) {
 // ============================================
 // Main Page Component
 // ============================================
+interface FormatPerformance {
+  format: string;
+  count: number;
+  engagementRate: number;
+  totalEngagement: number;
+}
+
 export default function LocationAnalyticsPage() {
   const [period, setPeriod] = useState<Period>('30d');
   const [isLoading, setIsLoading] = useState(true);
@@ -525,6 +532,7 @@ export default function LocationAnalyticsPage() {
   const [topLocations, setTopLocations] = useState<RankedLocation[]>([]);
   const [mapData, setMapData] = useState<{ features: GeoJSONFeature[] } | null>(null);
   const [insights, setInsights] = useState<LocationInsight[]>([]);
+  const [formatPerformance, setFormatPerformance] = useState<FormatPerformance[]>([]);
 
   useEffect(() => {
     loadData();
@@ -752,12 +760,36 @@ export default function LocationAnalyticsPage() {
       }
       setInsights(newInsights);
 
+      // Fetch format performance data from stats API
+      try {
+        const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
+        const statsRes = await fetch(`/api/analytics/stats?days=${days}`);
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          if (statsData?.topFormats && statsData.topFormats.length > 0) {
+            const formats: FormatPerformance[] = statsData.topFormats.map((f: { format: string; count: number; engagementRate: number; totalEngagement: number }) => ({
+              format: f.format,
+              count: f.count,
+              engagementRate: f.engagementRate || 0,
+              totalEngagement: f.totalEngagement || 0
+            }));
+            setFormatPerformance(formats);
+          } else {
+            setFormatPerformance([]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch format data:', err);
+        setFormatPerformance([]);
+      }
+
     } catch (error) {
       console.error('Failed to load location data:', error);
       setMetrics(null);
       setTopLocations([]);
       setMapData(null);
       setInsights([]);
+      setFormatPerformance([]);
     }
 
     setIsLoading(false);
@@ -899,9 +931,65 @@ export default function LocationAnalyticsPage() {
             <h2 className="text-lg font-semibold text-text-primary mb-4">
               Top Performing Formats by Region
             </h2>
-            <p className="text-text-secondary text-sm">
-              Coming soon: See which content formats perform best in each geographic region.
-            </p>
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                ))}
+              </div>
+            ) : formatPerformance.length > 0 ? (
+              <div className="space-y-4">
+                {topLocations.length === 0 && (
+                  <p className="text-sm text-text-secondary mb-4">
+                    Regional breakdown will be available once you have 50+ views. Showing overall format performance:
+                  </p>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {formatPerformance.map((format, idx) => (
+                    <div
+                      key={format.format}
+                      className="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xl">
+                          {format.format === 'Video' ? '🎬' :
+                           format.format === 'Image' ? '🖼️' :
+                           format.format === 'Audio' ? '🎵' : '📄'}
+                        </span>
+                        <span className="font-medium text-text-primary">{format.format}</span>
+                        {idx === 0 && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Top</span>}
+                      </div>
+                      <div className="text-2xl font-bold text-text-primary mb-1">
+                        {format.engagementRate.toFixed(1)}%
+                      </div>
+                      <div className="text-sm text-text-secondary">
+                        {formatNumber(format.totalEngagement)} engagements · {format.count} posts
+                      </div>
+                      {/* Performance bar */}
+                      <div className="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, (format.engagementRate / (formatPerformance[0]?.engagementRate || 1)) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {topLocations.length > 0 && (
+                  <p className="text-xs text-text-secondary mt-4">
+                    💡 Tip: Compare format performance across your top regions to optimize content for each audience.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-text-secondary">
+                <div className="text-3xl mb-2">🎨</div>
+                <p className="font-medium text-text-primary">No format data yet</p>
+                <p className="text-sm mt-2 max-w-xs mx-auto">
+                  Post different content types (videos, images, carousels) to see which formats perform best.
+                </p>
+              </div>
+            )}
           </Card>
 
         </main>
