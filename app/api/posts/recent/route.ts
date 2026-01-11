@@ -1,7 +1,7 @@
 /**
  * GET /api/posts/recent
  *
- * Fetch recent published posts for the dashboard
+ * Fetch recent published and scheduled posts for the dashboard
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -27,13 +27,69 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50)
     const filter = searchParams.get('filter') || 'all' // all, published, scheduled, drafts
 
-    // Build where clause based on filter
+    // For scheduled filter, fetch from scheduledPost table
+    if (filter === 'scheduled') {
+      const scheduledPosts = await prisma.scheduledPost.findMany({
+        where: {
+          profileId,
+          status: { in: ['PENDING', 'PROCESSING'] },
+        },
+        orderBy: {
+          scheduledAt: 'asc',
+        },
+        take: limit,
+        include: {
+          contentUpload: {
+            select: {
+              id: true,
+              fileName: true,
+              thumbnailUrl: true,
+              mimeType: true,
+              processedUrls: true,
+            },
+          },
+        },
+      })
+
+      const recentPosts = scheduledPosts.map((post) => {
+        const processedUrls = post.contentUpload?.processedUrls as { files?: Array<{ publicUrl: string }> } | null
+        const platformContent = post.platformContent as Record<string, { caption?: string }> | null
+        const firstPlatformContent = platformContent?.[post.platforms[0]?.toLowerCase()] ||
+                                     platformContent?.[Object.keys(platformContent || {})[0]]
+
+        return {
+          id: post.id,
+          platform: post.platforms[0]?.toLowerCase() || 'unknown',
+          platforms: post.platforms.map(p => p.toLowerCase()),
+          caption: firstPlatformContent?.caption,
+          postedAt: post.scheduledAt?.toISOString(),
+          scheduledAt: post.scheduledAt?.toISOString(),
+          status: 'SCHEDULED',
+          thumbnail: processedUrls?.files?.[0]?.publicUrl || post.contentUpload?.thumbnailUrl,
+          fileName: post.contentUpload?.fileName,
+          mimeType: post.contentUpload?.mimeType,
+        }
+      })
+
+      const totalScheduled = await prisma.scheduledPost.count({
+        where: {
+          profileId,
+          status: { in: ['PENDING', 'PROCESSING'] },
+        },
+      })
+
+      return NextResponse.json({
+        posts: recentPosts,
+        count: recentPosts.length,
+        totalCount: totalScheduled,
+      })
+    }
+
+    // Build where clause based on filter for outboundPost
     // Available statuses: QUEUED, PROCESSING, POSTED, FAILED, INITIATED, DELETED
     let statusFilter: OutboundPostStatus | OutboundPostStatus[] = OutboundPostStatus.POSTED
     if (filter === 'published') {
       statusFilter = OutboundPostStatus.POSTED
-    } else if (filter === 'scheduled') {
-      statusFilter = OutboundPostStatus.QUEUED // Scheduled posts are queued
     } else if (filter === 'drafts') {
       statusFilter = OutboundPostStatus.INITIATED // Drafts are initiated but not submitted
     } else if (filter === 'deleted') {
@@ -66,7 +122,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Transform for frontend
-    const recentPosts = posts.map((post) => {
+    let recentPosts = posts.map((post) => {
       const metadata = post.metadata as Record<string, unknown> | null
 
       // Use mediaUrl from metadata as thumbnail, fallback to contentUpload
@@ -92,6 +148,54 @@ export async function GET(request: NextRequest) {
         mediaType: metadata?.mediaType as string | undefined,
       }
     })
+
+    // For 'all' filter, also include pending scheduled posts
+    if (filter === 'all') {
+      const scheduledPosts = await prisma.scheduledPost.findMany({
+        where: {
+          profileId,
+          status: { in: ['PENDING', 'PROCESSING'] },
+        },
+        orderBy: {
+          scheduledAt: 'asc',
+        },
+        take: 3, // Limit scheduled posts in 'all' view
+        include: {
+          contentUpload: {
+            select: {
+              id: true,
+              fileName: true,
+              thumbnailUrl: true,
+              mimeType: true,
+              processedUrls: true,
+            },
+          },
+        },
+      })
+
+      const scheduledPostsTransformed = scheduledPosts.map((post) => {
+        const processedUrls = post.contentUpload?.processedUrls as { files?: Array<{ publicUrl: string }> } | null
+        const platformContent = post.platformContent as Record<string, { caption?: string }> | null
+        const firstPlatformContent = platformContent?.[post.platforms[0]?.toLowerCase()] ||
+                                     platformContent?.[Object.keys(platformContent || {})[0]]
+
+        return {
+          id: post.id,
+          platform: post.platforms[0]?.toLowerCase() || 'unknown',
+          platforms: post.platforms.map(p => p.toLowerCase()),
+          caption: firstPlatformContent?.caption,
+          postedAt: post.scheduledAt?.toISOString(),
+          scheduledAt: post.scheduledAt?.toISOString(),
+          status: 'SCHEDULED',
+          thumbnail: processedUrls?.files?.[0]?.publicUrl || post.contentUpload?.thumbnailUrl,
+          fileName: post.contentUpload?.fileName,
+          mimeType: post.contentUpload?.mimeType,
+        }
+      })
+
+      // Prepend scheduled posts to the list
+      recentPosts = [...scheduledPostsTransformed, ...recentPosts].slice(0, limit)
+    }
 
     // Get total count of all posted content (not limited)
     const totalCount = await prisma.outboundPost.count({

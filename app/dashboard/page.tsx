@@ -38,10 +38,12 @@ const PLATFORM_DISPLAY_NAME: Record<string, string> = {
 interface RecentPost {
   id: string
   platform: string
+  platforms?: string[]
   platformPostId?: string
   platformUrl?: string
   caption?: string
   postedAt?: string
+  scheduledAt?: string
   status?: string
   deletedAt?: string
   thumbnail?: string
@@ -509,6 +511,24 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     )}
+                    {/* Scheduled overlay */}
+                    {post.status === 'SCHEDULED' && (
+                      <div className="absolute top-2 right-2 z-10">
+                        <div className="bg-amber-500/90 text-white text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1">
+                          <span>🕐</span>
+                          <span>Scheduled</span>
+                        </div>
+                      </div>
+                    )}
+                    {/* Draft overlay */}
+                    {post.status === 'INITIATED' && (
+                      <div className="absolute top-2 right-2 z-10">
+                        <div className="bg-gray-500/90 text-white text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1">
+                          <span>📝</span>
+                          <span>Draft</span>
+                        </div>
+                      </div>
+                    )}
                     {post.thumbnail ? (
                       <>
                         {post.mediaType === 'video' || post.mimeType?.startsWith('video') ? (
@@ -558,8 +578,14 @@ export default function DashboardPage() {
                         {post.caption?.substring(0, 40) || post.fileName || 'Untitled Post'}
                         {post.caption && post.caption.length > 40 ? '...' : ''}
                       </h3>
-                      <Badge variant={post.status === 'DELETED' ? 'error' : 'success'}>
-                        {post.status === 'DELETED' ? 'deleted' : 'published'}
+                      <Badge variant={
+                        post.status === 'DELETED' ? 'error' :
+                        post.status === 'SCHEDULED' ? 'warning' :
+                        post.status === 'INITIATED' ? 'gray' : 'success'
+                      }>
+                        {post.status === 'DELETED' ? 'deleted' :
+                         post.status === 'SCHEDULED' ? 'scheduled' :
+                         post.status === 'INITIATED' ? 'draft' : 'published'}
                       </Badge>
                     </div>
 
@@ -582,6 +608,10 @@ export default function DashboardPage() {
                       <span className="text-sm text-text-secondary">
                         {post.status === 'DELETED' && post.deletedAt
                           ? `Deleted ${formatRelativeTime(post.deletedAt)}`
+                          : post.status === 'SCHEDULED' && post.scheduledAt
+                          ? `Scheduled for ${new Date(post.scheduledAt).toLocaleDateString()} at ${new Date(post.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                          : post.status === 'INITIATED'
+                          ? `Started ${formatRelativeTime(post.postedAt)}`
                           : formatRelativeTime(post.postedAt)}
                       </span>
                       <div className="flex gap-3">
@@ -589,6 +619,22 @@ export default function DashboardPage() {
                           <span className="text-gray-400 text-sm">
                             No longer available
                           </span>
+                        ) : post.status === 'SCHEDULED' ? (
+                          <Link
+                            href="/schedule"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-primary hover:text-primary-hover text-sm font-medium transition-colors"
+                          >
+                            Manage
+                          </Link>
+                        ) : post.status === 'INITIATED' ? (
+                          <Link
+                            href="/upload"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-primary hover:text-primary-hover text-sm font-medium transition-colors"
+                          >
+                            Continue
+                          </Link>
                         ) : (
                           post.platformUrl && (
                             <button
