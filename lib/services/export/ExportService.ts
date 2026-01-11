@@ -223,43 +223,6 @@ export class ExportService {
   // ============================================
 
   /**
-   * Fetch and normalize analytics data for export
-   */
-  private async fetchAnalyticsData(
-    userId: string,
-    options: ExportOptions
-  ): Promise<NormalizedPostAnalytics[]> {
-    const { filters } = options
-    const normalizedPosts: NormalizedPostAnalytics[] = []
-
-    // Determine platforms to fetch
-    const platforms: SocialPlatform[] = filters.platforms || [
-      'instagram',
-      'tiktok',
-      'youtube',
-      'twitter',
-      'linkedin',
-      'facebook',
-      'snapchat',
-    ]
-
-    // Date range
-    const dateRange = {
-      start: filters.dateFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      end: filters.dateTo || new Date(),
-    }
-
-    // For demo purposes, generate sample data
-    // In production, this would fetch from the database and platform APIs
-    for (const platform of platforms) {
-      const posts = await this.fetchPlatformPosts(userId, platform, dateRange, filters.postIds)
-      normalizedPosts.push(...posts)
-    }
-
-    return normalizedPosts
-  }
-
-  /**
    * Validate if a string is a valid UUID
    */
   private isValidUUID(str: string): boolean {
@@ -268,13 +231,30 @@ export class ExportService {
   }
 
   /**
-   * Fetch posts for a specific platform from the database
+   * Map database provider to platform name
    */
-  private async fetchPlatformPosts(
+  private providerToPlatform(provider: string): SocialPlatform {
+    const mapping: Record<string, SocialPlatform> = {
+      'meta': 'instagram',
+      'instagram': 'instagram',
+      'google': 'youtube',
+      'youtube': 'youtube',
+      'facebook': 'facebook',
+      'tiktok': 'tiktok',
+      'linkedin': 'linkedin',
+      'twitter': 'twitter',
+      'x': 'twitter',
+      'snapchat': 'snapchat',
+    }
+    return mapping[provider.toLowerCase()] || provider as SocialPlatform
+  }
+
+  /**
+   * Fetch and normalize analytics data for export - optimized single query
+   */
+  private async fetchAnalyticsData(
     userId: string,
-    platform: SocialPlatform,
-    dateRange: { start: Date; end: Date },
-    postIds?: string[]
+    options: ExportOptions
   ): Promise<NormalizedPostAnalytics[]> {
     // Validate userId is a valid UUID before querying
     if (!this.isValidUUID(userId)) {
@@ -282,30 +262,43 @@ export class ExportService {
       return []
     }
 
-    // Map platform to provider values in database
-    const platformToProviders: Record<string, string[]> = {
-      'instagram': ['meta', 'instagram'],
-      'youtube': ['google', 'youtube'],
-      'facebook': ['facebook'],
-      'tiktok': ['tiktok'],
-      'linkedin': ['linkedin'],
-      'twitter': ['twitter', 'x'],
-      'snapchat': ['snapchat'],
+    const { filters } = options
+
+    // Date range
+    const dateFrom = filters.dateFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const dateTo = filters.dateTo || new Date()
+
+    // Build provider filter if platforms specified
+    let providerFilter: { in: string[] } | undefined
+    if (filters.platforms && filters.platforms.length > 0) {
+      const platformToProviders: Record<string, string[]> = {
+        'instagram': ['meta', 'instagram'],
+        'youtube': ['google', 'youtube'],
+        'facebook': ['facebook'],
+        'tiktok': ['tiktok'],
+        'linkedin': ['linkedin'],
+        'twitter': ['twitter', 'x'],
+        'snapchat': ['snapchat'],
+      }
+      const allProviders: string[] = []
+      for (const platform of filters.platforms) {
+        const providers = platformToProviders[platform] || [platform]
+        allProviders.push(...providers)
+      }
+      providerFilter = { in: allProviders }
     }
 
-    const providers = platformToProviders[platform] || [platform]
-
-    // Fetch posts from database
+    // Single optimized query to fetch all posts
     const posts = await prisma.outboundPost.findMany({
       where: {
         profileId: userId,
-        provider: { in: providers },
         status: 'POSTED',
         postedAt: {
-          gte: dateRange.start,
-          lte: dateRange.end,
+          gte: dateFrom,
+          lte: dateTo,
         },
-        ...(postIds?.length ? { id: { in: postIds } } : {}),
+        ...(providerFilter ? { provider: providerFilter } : {}),
+        ...(filters.postIds?.length ? { id: { in: filters.postIds } } : {}),
       },
       include: {
         contentUpload: true,
@@ -320,6 +313,7 @@ export class ExportService {
       const metadata = (post.metadata || {}) as Record<string, unknown>
       const analytics = (metadata.analytics || {}) as Record<string, unknown>
       const contentUpload = post.contentUpload
+      const platform = this.providerToPlatform(post.provider)
 
       // Extract metrics from analytics data
       const views = Number(analytics.views || analytics.viewCount || 0)
@@ -349,7 +343,7 @@ export class ExportService {
 
       return {
         postId: post.id,
-        platform: platform,
+        platform,
         platformPostId: post.externalPostId || post.id,
         title,
         caption,

@@ -58,7 +58,24 @@ function isValidUUID(str: string): boolean {
   return uuidRegex.test(str)
 }
 
-// Fetch real analytics data from database
+// Map database provider to platform name
+function providerToPlatform(provider: string): SocialPlatform {
+  const mapping: Record<string, SocialPlatform> = {
+    'meta': 'instagram',
+    'instagram': 'instagram',
+    'google': 'youtube',
+    'youtube': 'youtube',
+    'facebook': 'facebook',
+    'tiktok': 'tiktok',
+    'linkedin': 'linkedin',
+    'twitter': 'twitter',
+    'x': 'twitter',
+    'snapchat': 'snapchat',
+  }
+  return mapping[provider.toLowerCase()] || provider as SocialPlatform
+}
+
+// Fetch real analytics data from database - optimized single query
 async function fetchAnalyticsData(
   userId: string,
   options: ExportOptions
@@ -70,45 +87,41 @@ async function fetchAnalyticsData(
   }
 
   const { filters } = options
-  const normalizedPosts: NormalizedPostAnalytics[] = []
-
-  // Determine platforms to fetch
-  const platforms: SocialPlatform[] = filters.platforms || [
-    'instagram', 'tiktok', 'youtube', 'twitter', 'linkedin', 'facebook'
-  ]
 
   // Date range
   const dateFrom = filters.dateFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
   const dateTo = filters.dateTo || new Date()
 
-  // Map platform to provider values in database
-  const platformToProviders: Record<string, string[]> = {
-    'instagram': ['meta', 'instagram'],
-    'youtube': ['google', 'youtube'],
-    'facebook': ['facebook'],
-    'tiktok': ['tiktok'],
-    'linkedin': ['linkedin'],
-    'twitter': ['twitter', 'x'],
-    'snapchat': ['snapchat'],
+  // Build provider filter if platforms specified
+  let providerFilter: { in: string[] } | undefined
+  if (filters.platforms && filters.platforms.length > 0) {
+    const platformToProviders: Record<string, string[]> = {
+      'instagram': ['meta', 'instagram'],
+      'youtube': ['google', 'youtube'],
+      'facebook': ['facebook'],
+      'tiktok': ['tiktok'],
+      'linkedin': ['linkedin'],
+      'twitter': ['twitter', 'x'],
+      'snapchat': ['snapchat'],
+    }
+    const allProviders: string[] = []
+    for (const platform of filters.platforms) {
+      const providers = platformToProviders[platform] || [platform]
+      allProviders.push(...providers)
+    }
+    providerFilter = { in: allProviders }
   }
 
-  // Get all relevant providers
-  const allProviders: string[] = []
-  for (const platform of platforms) {
-    const providers = platformToProviders[platform] || [platform]
-    allProviders.push(...providers)
-  }
-
-  // Fetch posts from database
+  // Single optimized query to fetch all posts
   const posts = await prisma.outboundPost.findMany({
     where: {
       profileId: userId,
-      provider: { in: allProviders },
       status: 'POSTED',
       postedAt: {
         gte: dateFrom,
         lte: dateTo,
       },
+      ...(providerFilter ? { provider: providerFilter } : {}),
       ...(filters.postIds?.length ? { id: { in: filters.postIds } } : {}),
     },
     include: {
@@ -120,23 +133,11 @@ async function fetchAnalyticsData(
   })
 
   // Transform to NormalizedPostAnalytics format
-  for (const post of posts) {
+  return posts.map(post => {
     const metadata = (post.metadata || {}) as Record<string, unknown>
     const analytics = (metadata.analytics || {}) as Record<string, unknown>
     const contentUpload = post.contentUpload
-
-    // Map provider back to platform name
-    const providerToPlatform: Record<string, SocialPlatform> = {
-      'meta': 'instagram',
-      'google': 'youtube',
-      'facebook': 'facebook',
-      'tiktok': 'tiktok',
-      'linkedin': 'linkedin',
-      'twitter': 'twitter',
-      'x': 'twitter',
-      'snapchat': 'snapchat',
-    }
-    const platform = providerToPlatform[post.provider] || post.provider as SocialPlatform
+    const platform = providerToPlatform(post.provider)
 
     // Extract metrics from analytics data
     const views = Number(analytics.views || analytics.viewCount || 0)
@@ -164,7 +165,7 @@ async function fetchAnalyticsData(
       engagement: number
     }> | undefined
 
-    normalizedPosts.push({
+    return {
       postId: post.id,
       platform,
       platformPostId: post.externalPostId || post.id,
@@ -183,10 +184,8 @@ async function fetchAnalyticsData(
       avgWatchTime: analytics.avgWatchTime as number | undefined,
       completionRate: analytics.completionRate as number | undefined,
       topLocations: locationData || [],
-    })
-  }
-
-  return normalizedPosts
+    }
+  })
 }
 
 export async function POST(req: NextRequest) {
