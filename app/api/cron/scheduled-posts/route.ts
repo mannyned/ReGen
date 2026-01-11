@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/db'
 import { publishingService } from '@/lib/services/publishing'
 import type { SocialPlatform } from '@/lib/types/social'
 

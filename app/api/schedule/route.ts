@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/db'
 import { getServerSession } from '@/lib/supabase/server'
 
 // GET /api/schedule - Fetch scheduled posts for the user
