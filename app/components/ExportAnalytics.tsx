@@ -151,6 +151,47 @@ export function ExportAnalytics({
     setError(null)
 
     try {
+      // For CSV, use the fast direct export endpoint
+      if (options.format === 'csv') {
+        setStatus('processing')
+        setCurrentJob({ id: 'direct', status: 'processing', progress: 50 })
+
+        // Calculate days from date range
+        const fromDate = new Date(options.dateFrom)
+        const toDate = new Date(options.dateTo)
+        const days = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) || 30
+
+        const response = await fetch(`/api/analytics/export/direct?format=csv&days=${days}`)
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Export failed')
+        }
+
+        // Download the CSV directly
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `regen_analytics_${new Date().toISOString().split('T')[0]}.csv`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+
+        setStatus('completed')
+        setCurrentJob({ id: 'direct', status: 'completed', progress: 100 })
+        onExportComplete?.('direct', 'csv')
+
+        // Auto close after success
+        setTimeout(() => {
+          setIsOpen(false)
+          resetState()
+        }, 1500)
+        return
+      }
+
+      // For other formats, use the job-based system
       const endpoint = `/api/analytics/export/${options.format}`
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -181,7 +222,7 @@ export function ExportAnalytics({
       setError(err instanceof Error ? err.message : 'Export failed')
       setStatus('failed')
     }
-  }, [canExport, options, userId, userPlan])
+  }, [canExport, options, userId, userPlan, onExportComplete])
 
   // Download export
   const handleDownload = useCallback(async () => {
