@@ -705,11 +705,9 @@ export default function AnalyticsPage() {
                     </h2>
                     <p className="text-white/90 mt-1">Personalized insights to boost your performance</p>
                   </div>
-                  {aiRecommendations.length > 3 && (
-                    <button className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-medium transition-colors backdrop-blur-sm">
-                      View All ({aiRecommendations.length})
-                    </button>
-                  )}
+                  <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
+                    {aiRecommendations.length} insight{aiRecommendations.length !== 1 ? 's' : ''}
+                  </span>
                 </div>
 
                 {isLoadingRecommendations ? (
@@ -725,7 +723,7 @@ export default function AnalyticsPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {aiRecommendations.slice(0, 3).map((rec) => (
+                    {aiRecommendations.map((rec) => (
                       <div key={rec.id} className="bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors">
                         <div className="flex items-start gap-3">
                           <span className="text-3xl">{rec.icon}</span>
