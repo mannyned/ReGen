@@ -11,7 +11,7 @@
     },
     {
       "path": "/api/cron/scheduled-posts",
-      "schedule": "0 */1 * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
