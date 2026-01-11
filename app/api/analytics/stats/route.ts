@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
     // Get time range from query params (default 30 days)
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '30')
+    const platform = searchParams.get('platform') // Optional platform filter
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
 
@@ -31,11 +32,31 @@ export async function GET(request: NextRequest) {
     const weekStart = new Date()
     weekStart.setDate(weekStart.getDate() - 7)
 
+    // Map platform filter to provider values in database
+    // Database uses: 'meta' for Instagram, 'google' for YouTube, etc.
+    const getProviderFilter = (platformName: string | null) => {
+      if (!platformName || platformName === 'all') return undefined
+      const platformMap: Record<string, string[]> = {
+        'instagram': ['meta', 'instagram'],
+        'youtube': ['google', 'youtube'],
+        'facebook': ['facebook', 'meta'],
+        'tiktok': ['tiktok'],
+        'linkedin': ['linkedin'],
+        'twitter': ['twitter'],
+        'x': ['twitter', 'x'],
+      }
+      return platformMap[platformName.toLowerCase()] || [platformName]
+    }
+
+    const providerFilter = getProviderFilter(platform)
+    const providerWhere = providerFilter ? { provider: { in: providerFilter } } : {}
+
     // Count total posts (published, not deleted)
     const totalPosts = await prisma.outboundPost.count({
       where: {
         profileId,
         status: 'POSTED',
+        ...providerWhere,
       },
     })
 
@@ -47,6 +68,7 @@ export async function GET(request: NextRequest) {
         postedAt: {
           gte: weekStart,
         },
+        ...providerWhere,
       },
     })
 
@@ -55,6 +77,7 @@ export async function GET(request: NextRequest) {
       where: {
         profileId,
         status: 'DELETED',
+        ...providerWhere,
       },
     })
 
@@ -66,6 +89,7 @@ export async function GET(request: NextRequest) {
         postedAt: {
           gte: startDate,
         },
+        ...providerWhere,
       },
     })
 
@@ -74,6 +98,7 @@ export async function GET(request: NextRequest) {
       where: {
         profileId,
         status: 'QUEUED',
+        ...providerWhere,
       },
     })
 
@@ -82,6 +107,7 @@ export async function GET(request: NextRequest) {
       where: {
         profileId,
         status: 'FAILED',
+        ...providerWhere,
       },
     })
 
@@ -91,6 +117,7 @@ export async function GET(request: NextRequest) {
       where: {
         profileId,
         status: 'POSTED',
+        ...providerWhere,
       },
       _count: {
         id: true,
@@ -114,6 +141,7 @@ export async function GET(request: NextRequest) {
         profileId,
         status: 'POSTED',
         postedAt: { gte: startDate },
+        ...providerWhere,
       },
       select: {
         id: true,
@@ -547,6 +575,7 @@ export async function GET(request: NextRequest) {
           gte: previousPeriodStart,
           lt: previousPeriodEnd,
         },
+        ...providerWhere,
       },
       select: {
         provider: true,

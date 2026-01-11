@@ -315,9 +315,10 @@ export default function AnalyticsPage() {
   }
 
   // Fetch real analytics stats
-  const fetchAnalyticsStats = async (days: string) => {
+  const fetchAnalyticsStats = async (days: string, platform: string = 'all') => {
     try {
-      const response = await fetch(`/api/analytics/stats?days=${days}`)
+      const platformParam = platform !== 'all' ? `&platform=${platform}` : ''
+      const response = await fetch(`/api/analytics/stats?days=${days}${platformParam}`)
       if (response.ok) {
         const data = await response.json()
         setRealStats(data)
@@ -333,7 +334,7 @@ export default function AnalyticsPage() {
     // Sync analytics first, then fetch stats, recommendations, and recent activity
     const loadAnalytics = async () => {
       await syncAnalytics()
-      await fetchAnalyticsStats(timeRange)
+      await fetchAnalyticsStats(timeRange, selectedPlatform)
       await fetchRecommendations(selectedPlatform)
       await fetchRecentActivity()
     }
@@ -379,12 +380,15 @@ export default function AnalyticsPage() {
     }
   }, [isProduction, timeRange])
 
-  // Refetch recommendations when platform selection changes
+  // Refetch stats and recommendations when platform selection changes
   useEffect(() => {
-    if (mounted && userPlan === 'pro') {
-      fetchRecommendations(selectedPlatform)
+    if (mounted) {
+      fetchAnalyticsStats(timeRange, selectedPlatform)
+      if (userPlan === 'pro') {
+        fetchRecommendations(selectedPlatform)
+      }
     }
-  }, [selectedPlatform, mounted, userPlan])
+  }, [selectedPlatform, mounted, userPlan, timeRange])
 
   // Handle opening the upgrade modal
   const handleOpenUpgradeModal = (metricId: LockedMetricId) => {
