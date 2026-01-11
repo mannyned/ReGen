@@ -321,28 +321,15 @@ async function verifyToken(params: TokenVerificationParams): Promise<TokenVerifi
  */
 async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
   try {
-    // TikTok requires fields to be specified
-    // Start with basic fields that are always available with user.info.basic scope
-    const basicFields = [
-      'open_id',
-      'union_id',
-      'avatar_url',
-      'avatar_url_100',
-      'avatar_large_url',
-      'display_name',
-    ];
-
-    // Additional fields that require extra scopes (user.info.profile, user.info.stats)
-    const profileFields = ['bio_description', 'profile_deep_link', 'is_verified'];
-    const statsFields = ['follower_count', 'following_count', 'likes_count', 'video_count'];
-
-    // Request all fields - TikTok will return what's available based on granted scopes
-    const allFields = [...basicFields, ...profileFields, ...statsFields].join(',');
+    // TikTok user.info.basic scope only allows these fields:
+    // open_id, union_id, avatar_url, display_name
+    // See: https://developers.tiktok.com/doc/tiktok-api-scopes/
+    const fields = 'open_id,union_id,avatar_url,display_name';
 
     const url = new URL(config.identityUrl);
-    url.searchParams.set('fields', allFields);
+    url.searchParams.set('fields', fields);
 
-    console.log('[TikTok] Fetching identity with fields:', allFields);
+    console.log('[TikTok] Fetching identity from:', url.toString());
 
     const response = await fetch(url.toString(), {
       method: 'GET',
@@ -353,73 +340,39 @@ async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
 
     const responseText = await response.text();
     console.log('[TikTok] Identity response status:', response.status);
-    console.log('[TikTok] Identity response:', responseText.substring(0, 500));
+    console.log('[TikTok] Identity response body:', responseText);
 
     if (!response.ok) {
-      let errorData;
+      let errorMessage = `HTTP ${response.status}`;
       try {
-        errorData = JSON.parse(responseText);
+        const errorData = JSON.parse(responseText);
+        errorMessage = errorData.error?.message || errorData.message || errorMessage;
       } catch {
-        errorData = { error: { message: responseText } };
+        // Use status code as message
       }
-
-      // If the error is about fields/scopes, try with just basic fields
-      if (response.status === 400 || errorData.error?.code === 'invalid_field') {
-        console.log('[TikTok] Retrying with basic fields only');
-        const basicUrl = new URL(config.identityUrl);
-        basicUrl.searchParams.set('fields', basicFields.join(','));
-
-        const basicResponse = await fetch(basicUrl.toString(), {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${params.accessToken}`,
-          },
-        });
-
-        if (basicResponse.ok) {
-          const basicData = await basicResponse.json();
-          const userData = basicData.data?.user || basicData.user || basicData;
-          return {
-            providerAccountId: userData.open_id,
-            displayName: userData.display_name,
-            avatarUrl: userData.avatar_url || userData.avatar_large_url,
-            metadata: {
-              openId: userData.open_id,
-              unionId: userData.union_id,
-              displayName: userData.display_name,
-              avatarUrl: userData.avatar_url,
-              avatarLargeUrl: userData.avatar_large_url,
-            },
-          };
-        }
-      }
-
-      throw new IdentityFetchError(
-        'tiktok',
-        errorData.error?.message || `HTTP ${response.status}`
-      );
+      throw new IdentityFetchError('tiktok', errorMessage);
     }
 
     const data = JSON.parse(responseText);
+
+    // TikTok wraps user data in data.user
     const userData = data.data?.user || data.user || data;
+
+    console.log('[TikTok] Parsed user data:', JSON.stringify(userData));
+
+    if (!userData.open_id) {
+      throw new IdentityFetchError('tiktok', 'No open_id in response');
+    }
 
     return {
       providerAccountId: userData.open_id,
-      displayName: userData.display_name,
-      avatarUrl: userData.avatar_url || userData.avatar_large_url,
+      displayName: userData.display_name || 'TikTok User',
+      avatarUrl: userData.avatar_url,
       metadata: {
         openId: userData.open_id,
         unionId: userData.union_id,
         displayName: userData.display_name,
-        bio: userData.bio_description,
-        profileUrl: userData.profile_deep_link,
-        isVerified: userData.is_verified,
-        followerCount: userData.follower_count,
-        followingCount: userData.following_count,
-        likesCount: userData.likes_count,
-        videoCount: userData.video_count,
         avatarUrl: userData.avatar_url,
-        avatarLargeUrl: userData.avatar_large_url,
       },
     };
   } catch (error) {
