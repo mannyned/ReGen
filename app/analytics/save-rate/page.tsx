@@ -584,14 +584,16 @@ export default function SaveRateAnalyticsPage() {
       const formatList: SaveRateByFormat[] = [];
       if (statsData?.topFormats && statsData.topFormats.length > 0) {
         for (const format of statsData.topFormats) {
-          // Map format names properly
-          let formatType: SaveRateByFormat['formatType'] = 'other';
+          // Map format names to valid FormatType
+          let formatType: SaveRateByFormat['formatType'] = 'single_image';
           const formatLower = format.format.toLowerCase();
-          if (formatLower === 'video') formatType = 'video';
-          else if (formatLower === 'image') formatType = 'image';
+          if (formatLower === 'video') formatType = 'video_clip';
+          else if (formatLower === 'image') formatType = 'single_image';
           else if (formatLower === 'carousel') formatType = 'carousel';
           else if (formatLower === 'reel' || formatLower === 'reels') formatType = 'reel';
           else if (formatLower === 'story' || formatLower === 'stories') formatType = 'story';
+          else if (formatLower === 'infographic') formatType = 'infographic';
+          else if (formatLower === 'thread') formatType = 'thread';
 
           // Estimate saves and impressions for this format based on its percentage
           const formatSaves = Math.round(totalSaves * (format.percentage / 100));
@@ -663,9 +665,9 @@ export default function SaveRateAnalyticsPage() {
               const saves = analytics.saves || analytics.saved || 0;
               const reach = analytics.reach || analytics.impressions || 1;
 
-              let formatType: TopSavedPost['formatType'] = 'image';
+              let formatType: TopSavedPost['formatType'] = 'single_image';
               const mimeType = post.contentUpload?.mimeType || '';
-              if (mimeType.startsWith('video/')) formatType = 'video';
+              if (mimeType.startsWith('video/')) formatType = 'video_clip';
 
               return {
                 rank: idx + 1,
@@ -825,14 +827,15 @@ export default function SaveRateAnalyticsPage() {
             {byFormat.length > 0 && byFormat[0].saves > 0 ? (
               <>
                 <h3 className="text-xl font-bold mb-2">
-                  {byFormat[0].formatType === 'video' ? 'Videos' :
-                   byFormat[0].formatType === 'image' ? 'Images' :
+                  {byFormat[0].formatType === 'video_clip' || byFormat[0].formatType === 'video_long' ? 'Videos' :
+                   byFormat[0].formatType === 'single_image' ? 'Images' :
                    byFormat[0].formatType === 'carousel' ? 'Carousels' :
                    byFormat[0].formatType === 'reel' ? 'Reels' :
+                   byFormat[0].formatType === 'story' ? 'Stories' :
                    'Your Top Format'} Drive the Most Saves
                 </h3>
                 <p className="text-white/80 mb-4">
-                  Your {byFormat[0].formatType} posts have a {formatSaveRate(byFormat[0].saveRate)} save rate
+                  Your {byFormat[0].formatType.replace('_', ' ')} posts have a {formatSaveRate(byFormat[0].saveRate)} save rate
                   with {formatNumber(byFormat[0].saves)} total saves. Keep creating this type of content
                   to maximize audience engagement and bookmarks.
                 </p>
@@ -840,10 +843,11 @@ export default function SaveRateAnalyticsPage() {
                   href={`/generate?format=${byFormat[0].formatType}`}
                   className="inline-flex items-center px-4 py-2 bg-white text-emerald-600 rounded-xl font-medium hover:bg-emerald-50 transition-colors"
                 >
-                  Create More {byFormat[0].formatType === 'video' ? 'Videos' :
-                              byFormat[0].formatType === 'image' ? 'Images' :
+                  Create More {byFormat[0].formatType === 'video_clip' || byFormat[0].formatType === 'video_long' ? 'Videos' :
+                              byFormat[0].formatType === 'single_image' ? 'Images' :
                               byFormat[0].formatType === 'carousel' ? 'Carousels' :
-                              byFormat[0].formatType === 'reel' ? 'Reels' : 'Content'}
+                              byFormat[0].formatType === 'reel' ? 'Reels' :
+                              byFormat[0].formatType === 'story' ? 'Stories' : 'Content'}
                 </Link>
               </>
             ) : summary && summary.contentCount > 0 ? (
