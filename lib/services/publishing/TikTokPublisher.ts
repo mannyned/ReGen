@@ -28,26 +28,28 @@ export class TikTokPublisher extends BasePlatformPublisher {
     const accessToken = await this.getAccessToken(userId)
 
     try {
-      // Step 1: Initialize video upload
-      const uploadInfo = await this.initializeUpload(accessToken, media)
+      // Using video.upload scope - video goes to user's TikTok inbox
+      // User will need to open TikTok app to review and publish
+      const caption = this.formatCaption(content)
 
-      // Step 2: Upload video chunks
-      await this.uploadVideo(uploadInfo, media)
+      // Initialize inbox upload with caption/title included
+      const uploadInfo = await this.initializeInboxUpload(accessToken, media, caption)
 
-      // Step 3: Create the post
-      const postResult = await this.createPost(
-        accessToken,
-        uploadInfo.publish_id,
-        content,
-        options.scheduledAt
-      )
+      // Upload video chunks (for FILE_UPLOAD) or let TikTok pull (for PULL_FROM_URL)
+      if (media.mediaUrl && this.isDirectUrl(media.mediaUrl)) {
+        // TikTok will pull from URL - no upload needed
+      } else {
+        await this.uploadVideo(uploadInfo, media)
+      }
 
+      // With video.upload scope, video goes to inbox - no separate publish step
+      // User opens TikTok to review and publish
       return {
         success: true,
         platform: this.platform,
-        platformPostId: postResult.publish_id,
-        platformUrl: postResult.share_url,
-        publishedAt: options.scheduledAt || new Date(),
+        platformPostId: uploadInfo.publish_id,
+        publishedAt: new Date(),
+        message: 'Video sent to your TikTok inbox. Open TikTok app to review and publish.',
       }
     } catch (error) {
       return {
@@ -55,6 +57,16 @@ export class TikTokPublisher extends BasePlatformPublisher {
         platform: this.platform,
         error: error instanceof Error ? error.message : 'Failed to publish to TikTok',
       }
+    }
+  }
+
+  private isDirectUrl(url: string): boolean {
+    // Check if URL is from a verified domain that TikTok can pull from
+    try {
+      const parsed = new URL(url)
+      return parsed.protocol === 'https:'
+    } catch {
+      return false
     }
   }
 
@@ -99,104 +111,99 @@ export class TikTokPublisher extends BasePlatformPublisher {
   // TIKTOK-SPECIFIC HELPERS
   // ============================================
 
-  private async initializeUpload(
+  private async initializeInboxUpload(
     accessToken: string,
-    media: ContentPayload
+    media: ContentPayload,
+    caption: string
   ): Promise<{
     publish_id: string
-    upload_url: string
+    upload_url?: string
   }> {
+    // Determine source type based on media
+    const isUrlSource = media.mediaUrl && this.isDirectUrl(media.mediaUrl)
+
+    const requestBody: Record<string, unknown> = {
+      post_info: {
+        title: caption.substring(0, 150), // TikTok title limit
+        description: caption,
+      },
+    }
+
+    if (isUrlSource) {
+      // PULL_FROM_URL - TikTok fetches the video
+      requestBody.source_info = {
+        source: 'PULL_FROM_URL',
+        video_url: media.mediaUrl,
+      }
+    } else {
+      // FILE_UPLOAD - We upload the video
+      requestBody.source_info = {
+        source: 'FILE_UPLOAD',
+        video_size: media.fileSize,
+        chunk_size: Math.min(media.fileSize, 10 * 1024 * 1024), // 10MB chunks
+        total_chunk_count: Math.ceil(media.fileSize / (10 * 1024 * 1024)),
+      }
+    }
+
+    console.log('[TikTok] Initializing inbox upload:', JSON.stringify(requestBody))
+
     const response = await this.makeApiRequest<{
       data: {
         publish_id: string
-        upload_url: string
+        upload_url?: string
       }
     }>(
       '/post/publish/inbox/video/init/',
       {
         method: 'POST',
-        body: JSON.stringify({
-          source_info: {
-            source: 'FILE_UPLOAD',
-            video_size: media.fileSize,
-            chunk_size: Math.min(media.fileSize, 10 * 1024 * 1024), // 10MB chunks
-            total_chunk_count: Math.ceil(media.fileSize / (10 * 1024 * 1024)),
-          },
-        }),
+        body: JSON.stringify(requestBody),
       },
       accessToken
     )
+
+    console.log('[TikTok] Inbox upload initialized:', JSON.stringify(response.data))
 
     return response.data
   }
 
   private async uploadVideo(
-    uploadInfo: { publish_id: string; upload_url: string },
+    uploadInfo: { publish_id: string; upload_url?: string },
     media: ContentPayload
   ): Promise<void> {
-    // In production, this would handle chunked video upload
-    // For now, we'll use a direct URL approach
+    if (!uploadInfo.upload_url) {
+      throw new Error('No upload URL provided - use PULL_FROM_URL instead')
+    }
+
+    // Fetch the video from the URL and upload to TikTok
+    console.log('[TikTok] Fetching video from:', media.mediaUrl)
+    const videoResponse = await fetch(media.mediaUrl)
+    if (!videoResponse.ok) {
+      throw new Error(`Failed to fetch video: ${videoResponse.status}`)
+    }
+
+    const videoBuffer = await videoResponse.arrayBuffer()
+    const videoSize = videoBuffer.byteLength
+
+    console.log('[TikTok] Uploading video, size:', videoSize)
+
+    // Upload video to TikTok's upload URL
     const response = await fetch(uploadInfo.upload_url, {
       method: 'PUT',
       headers: {
-        'Content-Type': media.mimeType,
-        'Content-Range': `bytes 0-${media.fileSize - 1}/${media.fileSize}`,
+        'Content-Type': media.mimeType || 'video/mp4',
+        'Content-Length': String(videoSize),
+        'Content-Range': `bytes 0-${videoSize - 1}/${videoSize}`,
       },
-      body: media.mediaUrl, // In production, this would be the actual file buffer
+      body: videoBuffer,
     })
 
     if (!response.ok) {
-      throw new Error('Failed to upload video to TikTok')
-    }
-  }
-
-  private async createPost(
-    accessToken: string,
-    publishId: string,
-    content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> | object },
-    scheduledAt?: Date
-  ): Promise<{
-    publish_id: string
-    share_url: string
-  }> {
-    const caption = this.formatCaption(content)
-    const settings = (content.settings || {}) as Record<string, unknown>
-
-    const postData: Record<string, unknown> = {
-      publish_id: publishId,
-      post_info: {
-        title: caption.substring(0, 150), // TikTok title limit
-        description: caption,
-        privacy_level: settings.privacyLevel || 'PUBLIC_TO_EVERYONE',
-        disable_comment: settings.allowComments === false,
-        disable_duet: settings.allowDuet === false,
-        disable_stitch: settings.allowStitch === false,
-      },
+      const errorText = await response.text()
+      console.error('[TikTok] Upload failed:', response.status, errorText)
+      throw new Error(`Failed to upload video to TikTok: ${response.status}`)
     }
 
-    // Add scheduled time if provided
-    if (scheduledAt) {
-      postData.post_info = {
-        ...postData.post_info as object,
-        schedule_time: Math.floor(scheduledAt.getTime() / 1000),
-      }
-    }
-
-    const response = await this.makeApiRequest<{
-      data: {
-        publish_id: string
-        share_url: string
-      }
-    }>(
-      '/post/publish/video/init/',
-      {
-        method: 'POST',
-        body: JSON.stringify(postData),
-      },
-      accessToken
-    )
-
-    return response.data
+    console.log('[TikTok] Video uploaded successfully')
   }
 }
 
