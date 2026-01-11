@@ -55,6 +55,20 @@ function SchedulePageContent() {
   const [contentId, setContentId] = useState<string | null>(null)
   const [isPublishing, setIsPublishing] = useState(false)
   const [publishingStatus, setPublishingStatus] = useState('')
+  const [upcomingPosts, setUpcomingPosts] = useState<Array<{
+    id: string
+    platforms: string[]
+    scheduledAt: string
+    status: string
+    content: Record<string, any>
+    media?: {
+      fileName?: string
+      mimeType?: string
+      thumbnailUrl?: string
+      publicUrl?: string
+    }
+  }>>([])
+  const [upcomingPostsLoading, setUpcomingPostsLoading] = useState(true)
 
   const platforms: { name: Platform; label: string; icon: string }[] = [
     { name: 'tiktok', label: 'TikTok', icon: '🎵' },
@@ -196,6 +210,27 @@ function SchedulePageContent() {
     }
 
     loadPreviews()
+
+    // Fetch upcoming scheduled posts
+    const fetchUpcomingPosts = async () => {
+      if (!user?.id) return
+
+      try {
+        setUpcomingPostsLoading(true)
+        const response = await fetch('/api/schedule?status=pending&limit=10')
+        const data = await response.json()
+
+        if (data.success && data.posts) {
+          setUpcomingPosts(data.posts)
+        }
+      } catch (error) {
+        console.error('Failed to fetch upcoming posts:', error)
+      } finally {
+        setUpcomingPostsLoading(false)
+      }
+    }
+
+    fetchUpcomingPosts()
   }, [user, authLoading, searchParams])
 
   const togglePlatform = (platform: Platform) => {
@@ -395,7 +430,7 @@ function SchedulePageContent() {
     }
   }
 
-  const handleSchedulePost = () => {
+  const handleSchedulePost = async () => {
     // Check if any selected platforms are not connected
     const unconnectedPlatforms = selectedPlatforms.filter(p => !connectedAccounts.includes(p))
 
@@ -404,25 +439,117 @@ function SchedulePageContent() {
       return
     }
 
-    // Show success message
-    setShowSuccess(true)
-    setPostMode('schedule')
+    if (!contentId) {
+      alert('No content selected. Please go to Generate page first.')
+      return
+    }
 
-    // Hide success message after 3 seconds
-    setTimeout(() => {
-      setShowSuccess(false)
-      // Reset form
-      setSelectedPlatforms([])
-      setSelectedDate('')
-      setSelectedTime('')
-    }, 3000)
+    if (!selectedDate || !selectedTime) {
+      alert('Please select a date and time for scheduling.')
+      return
+    }
+
+    setIsPublishing(true)
+    setPublishingStatus('Scheduling post...')
+
+    try {
+      // Build platform content from previews
+      const platformContent: Record<string, any> = {}
+      selectedPreviews.forEach((preview) => {
+        platformContent[preview.platform] = {
+          caption: preview.caption,
+          hashtags: preview.hashtags,
+        }
+      })
+
+      // Combine date and time into ISO string
+      const scheduledAt = new Date(`${selectedDate}T${selectedTime}:00`)
+
+      const response = await fetch('/api/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contentUploadId: contentId,
+          platforms: selectedPlatforms.map(p => PLATFORM_ID_MAP[p] || p),
+          scheduledAt: scheduledAt.toISOString(),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          platformContent,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to schedule post')
+      }
+
+      // Refresh upcoming posts
+      const upcomingResponse = await fetch('/api/schedule?status=pending&limit=10')
+      const upcomingData = await upcomingResponse.json()
+      if (upcomingData.success && upcomingData.posts) {
+        setUpcomingPosts(upcomingData.posts)
+      }
+
+      // Show success message
+      setShowSuccess(true)
+      setPostMode('schedule')
+
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setShowSuccess(false)
+        // Reset form
+        setSelectedPlatforms([])
+        setSelectedDate('')
+        setSelectedTime('')
+      }, 3000)
+    } catch (error: any) {
+      console.error('Error scheduling post:', error)
+      alert(`Failed to schedule post. ${error.message || 'Unknown error'}`)
+    } finally {
+      setIsPublishing(false)
+      setPublishingStatus('')
+    }
   }
 
-  const upcomingPosts = [
-    { platform: 'Instagram', time: 'Today at 3:00 PM', status: 'scheduled' },
-    { platform: 'Twitter', time: 'Tomorrow at 10:00 AM', status: 'scheduled' },
-    { platform: 'LinkedIn', time: 'Dec 20 at 9:00 AM', status: 'scheduled' }
-  ]
+  // Helper function to format scheduled time
+  const formatScheduledTime = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+
+    if (date.toDateString() === now.toDateString()) {
+      return `Today at ${timeStr}`
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      return `Tomorrow at ${timeStr}`
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ` at ${timeStr}`
+    }
+  }
+
+  // Helper to cancel a scheduled post
+  const handleCancelPost = async (postId: string) => {
+    if (!confirm('Are you sure you want to cancel this scheduled post?')) return
+
+    try {
+      const response = await fetch(`/api/schedule?id=${postId}`, {
+        method: 'DELETE',
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        // Remove from local state
+        setUpcomingPosts(prev => prev.filter(p => p.id !== postId))
+      } else {
+        alert(result.error || 'Failed to cancel post')
+      }
+    } catch (error) {
+      console.error('Error cancelling post:', error)
+      alert('Failed to cancel post')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -768,41 +895,79 @@ function SchedulePageContent() {
           <div>
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <h2 className="text-xl font-bold text-text-primary mb-6">Upcoming Posts</h2>
-              <div className="space-y-4">
-                {upcomingPosts.map((post, index) => {
-                  const platformKey = post.platform.toLowerCase() as Platform
-                  return (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4 hover:border-primary transition-colors">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <PlatformLogo
-                          platform={PLATFORM_ID_MAP[platformKey]}
-                          size="sm"
-                          variant="color"
-                        />
-                        <span className="font-semibold text-text-primary">{post.platform}</span>
-                      </div>
-                      <span className="badge-primary text-xs">
-                        {post.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-text-secondary mb-3">{post.time}</p>
-                    <div className="flex gap-2">
-                      <button className="flex-1 text-xs py-2 px-3 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-lg font-medium transition-colors">
-                        Edit
-                      </button>
-                      <button className="flex-1 text-xs py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors">
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                  )
-                })}
-              </div>
 
-              {upcomingPosts.length === 0 && (
+              {upcomingPostsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : upcomingPosts.length > 0 ? (
+                <div className="space-y-4">
+                  {upcomingPosts.map((post) => (
+                    <div key={post.id} className="border border-gray-200 rounded-lg p-4 hover:border-primary transition-colors">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {post.platforms.map((platform) => {
+                            const platformKey = platform.toLowerCase() as Platform
+                            return (
+                              <div key={platform} className="flex items-center gap-1">
+                                <PlatformLogo
+                                  platform={PLATFORM_ID_MAP[platformKey] || platformKey}
+                                  size="sm"
+                                  variant="color"
+                                />
+                              </div>
+                            )
+                          })}
+                          <span className="font-semibold text-text-primary text-sm">
+                            {post.platforms.length === 1
+                              ? post.platforms[0].charAt(0).toUpperCase() + post.platforms[0].slice(1).toLowerCase()
+                              : `${post.platforms.length} platforms`
+                            }
+                          </span>
+                        </div>
+                        <span className="badge-primary text-xs">
+                          {post.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-text-secondary mb-3">
+                        {formatScheduledTime(post.scheduledAt)}
+                      </p>
+                      {/* Media preview if available */}
+                      {post.media?.publicUrl && (
+                        <div className="mb-3">
+                          {post.media.mimeType?.startsWith('video') ? (
+                            <video
+                              src={post.media.publicUrl}
+                              className="w-full h-20 object-cover rounded-lg"
+                              muted
+                            />
+                          ) : (
+                            <img
+                              src={post.media.publicUrl}
+                              alt="Scheduled content"
+                              className="w-full h-20 object-cover rounded-lg"
+                            />
+                          )}
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleCancelPost(post.id)}
+                          className="flex-1 text-xs py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
                 <div className="text-center py-8 text-text-secondary">
-                  No upcoming posts
+                  <span className="text-4xl mb-3 block">📭</span>
+                  <p>No upcoming posts</p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Schedule a post to see it here
+                  </p>
                 </div>
               )}
             </div>
@@ -810,12 +975,53 @@ function SchedulePageContent() {
             {/* Calendar Preview */}
             <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
               <h2 className="text-xl font-bold text-text-primary mb-4">Calendar</h2>
-              <div className="aspect-square bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg flex items-center justify-center text-6xl">
-                📅
-              </div>
-              <p className="text-center text-sm text-text-secondary mt-4">
-                Calendar view coming soon
-              </p>
+              {upcomingPosts.length > 0 ? (
+                <div className="space-y-2">
+                  {/* Group posts by date */}
+                  {Array.from(new Set(upcomingPosts.map(p => new Date(p.scheduledAt).toDateString()))).slice(0, 5).map((dateStr) => {
+                    const date = new Date(dateStr)
+                    const postsOnDate = upcomingPosts.filter(p => new Date(p.scheduledAt).toDateString() === dateStr)
+                    return (
+                      <div key={dateStr} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                        <div className="text-center min-w-[50px]">
+                          <div className="text-xs text-gray-500 uppercase">
+                            {date.toLocaleDateString('en-US', { weekday: 'short' })}
+                          </div>
+                          <div className="text-lg font-bold text-primary">
+                            {date.getDate()}
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-1">
+                            {postsOnDate.flatMap(p => p.platforms).slice(0, 4).map((platform, i) => (
+                              <PlatformLogo
+                                key={i}
+                                platform={PLATFORM_ID_MAP[platform.toLowerCase() as Platform] || platform.toLowerCase()}
+                                size="xs"
+                                variant="color"
+                              />
+                            ))}
+                            {postsOnDate.length > 1 && (
+                              <span className="text-xs text-gray-500 ml-1">
+                                +{postsOnDate.length - 1} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <>
+                  <div className="aspect-square bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg flex items-center justify-center text-6xl">
+                    📅
+                  </div>
+                  <p className="text-center text-sm text-text-secondary mt-4">
+                    No scheduled posts yet
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>
