@@ -89,10 +89,37 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Direct Export] Found ${posts.length} posts`)
 
-    // Transform posts to export data
+    // Transform posts to export data with ALL analytics
     const exportData = posts.map(post => {
       const metadata = post.metadata as Record<string, unknown> | null
       const analytics = metadata?.analytics as Record<string, unknown> | null
+
+      // Core metrics
+      const views = Number(analytics?.views) || 0
+      const likes = Number(analytics?.likes) || 0
+      const comments = Number(analytics?.comments) || 0
+      const shares = Number(analytics?.shares) || 0
+      const saves = Number(analytics?.saved || analytics?.saves) || 0
+      const reach = Number(analytics?.reach) || 0
+      const impressions = Number(analytics?.impressions) || reach || views
+
+      // Calculated rates
+      const totalEngagement = likes + comments + shares + saves
+      const engagementRate = impressions > 0 ? (totalEngagement / impressions) * 100 : 0
+      const saveRate = impressions > 0 ? (saves / impressions) * 100 : 0
+
+      // Video metrics (if available)
+      const avgWatchTime = Number(analytics?.avgWatchTime || analytics?.averageViewDuration) || 0
+      const completionRate = Number(analytics?.completionRate || analytics?.averageViewPercentage) || 0
+
+      // Additional metrics
+      const profileVisits = Number(analytics?.profileVisits || analytics?.profile_visits) || 0
+      const websiteClicks = Number(analytics?.websiteClicks || analytics?.website_clicks) || 0
+      const followersGained = Number(analytics?.followersGained || analytics?.followers_gained) || 0
+
+      // Location data (top country)
+      const topLocations = analytics?.topLocations as Array<{ country: string; percentage: number }> | undefined
+      const topCountry = topLocations?.[0]?.country || ''
 
       return {
         id: post.id,
@@ -100,20 +127,33 @@ export async function GET(request: NextRequest) {
         title: String(metadata?.title || post.contentUpload?.fileName || 'Untitled'),
         caption: String(metadata?.caption || metadata?.description || ''),
         publishedAt: post.postedAt?.toISOString() || post.createdAt.toISOString(),
-        views: Number(analytics?.views) || 0,
-        likes: Number(analytics?.likes) || 0,
-        comments: Number(analytics?.comments) || 0,
-        shares: Number(analytics?.shares) || 0,
-        saves: Number(analytics?.saved || analytics?.saves) || 0,
-        reach: Number(analytics?.reach) || 0,
-        impressions: Number(analytics?.impressions) || 0,
-        engagementRate: Number(analytics?.engagementRate) || 0,
+        views,
+        likes,
+        comments,
+        shares,
+        saves,
+        reach,
+        impressions,
+        engagementRate,
+        saveRate,
+        avgWatchTime,
+        completionRate,
+        profileVisits,
+        websiteClicks,
+        followersGained,
+        topCountry,
       }
     })
 
     if (format === 'csv') {
-      // Generate CSV
-      const headers = ['ID', 'Platform', 'Title', 'Caption', 'Published At', 'Views', 'Likes', 'Comments', 'Shares', 'Saves', 'Reach', 'Impressions', 'Engagement Rate']
+      // Generate CSV with ALL analytics columns
+      const headers = [
+        'ID', 'Platform', 'Title', 'Caption', 'Published At',
+        'Views', 'Likes', 'Comments', 'Shares', 'Saves',
+        'Reach', 'Impressions', 'Engagement Rate', 'Save Rate',
+        'Avg Watch Time (s)', 'Completion Rate',
+        'Profile Visits', 'Website Clicks', 'Followers Gained', 'Top Country'
+      ]
       const rows = exportData.map(row => [
         row.id,
         row.platform,
@@ -128,6 +168,13 @@ export async function GET(request: NextRequest) {
         row.reach,
         row.impressions,
         row.engagementRate.toFixed(2) + '%',
+        row.saveRate.toFixed(2) + '%',
+        row.avgWatchTime.toFixed(1),
+        row.completionRate.toFixed(1) + '%',
+        row.profileVisits,
+        row.websiteClicks,
+        row.followersGained,
+        `"${row.topCountry}"`,
       ])
 
       const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
@@ -150,14 +197,24 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Calculate summary stats
+    // Calculate comprehensive summary stats
     const totalViews = exportData.reduce((sum, p) => sum + p.views, 0)
     const totalLikes = exportData.reduce((sum, p) => sum + p.likes, 0)
     const totalComments = exportData.reduce((sum, p) => sum + p.comments, 0)
     const totalShares = exportData.reduce((sum, p) => sum + p.shares, 0)
     const totalSaves = exportData.reduce((sum, p) => sum + p.saves, 0)
     const totalReach = exportData.reduce((sum, p) => sum + p.reach, 0)
-    const avgEngagementRate = totalReach > 0 ? ((totalLikes + totalComments + totalShares) / totalReach * 100) : 0
+    const totalImpressions = exportData.reduce((sum, p) => sum + p.impressions, 0)
+    const totalProfileVisits = exportData.reduce((sum, p) => sum + p.profileVisits, 0)
+    const totalWebsiteClicks = exportData.reduce((sum, p) => sum + p.websiteClicks, 0)
+    const totalFollowersGained = exportData.reduce((sum, p) => sum + p.followersGained, 0)
+    const avgEngagementRate = totalReach > 0 ? ((totalLikes + totalComments + totalShares + totalSaves) / totalReach * 100) : 0
+    const avgSaveRate = totalImpressions > 0 ? (totalSaves / totalImpressions * 100) : 0
+
+    // Video metrics averages (only for posts with video data)
+    const videoPosts = exportData.filter(p => p.avgWatchTime > 0 || p.completionRate > 0)
+    const avgWatchTime = videoPosts.length > 0 ? videoPosts.reduce((sum, p) => sum + p.avgWatchTime, 0) / videoPosts.length : 0
+    const avgCompletionRate = videoPosts.length > 0 ? videoPosts.reduce((sum, p) => sum + p.completionRate, 0) / videoPosts.length : 0
 
     // Group by platform
     const byPlatform: Record<string, { posts: number; views: number; engagement: number }> = {}
@@ -203,15 +260,16 @@ export async function GET(request: NextRequest) {
   <style>
     @media print {
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .page-break { page-break-before: always; }
     }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 40px; color: #1f2937; }
     .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
     .header h1 { margin: 0 0 8px 0; font-size: 28px; color: #7c3aed; }
     .header p { margin: 0; color: #6b7280; }
-    .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
-    .stat-card { background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); padding: 20px; border-radius: 12px; text-align: center; }
-    .stat-card .value { font-size: 28px; font-weight: 700; color: #1f2937; }
-    .stat-card .label { font-size: 13px; color: #6b7280; margin-top: 4px; }
+    .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); padding: 16px; border-radius: 12px; text-align: center; }
+    .stat-card .value { font-size: 24px; font-weight: 700; color: #1f2937; }
+    .stat-card .label { font-size: 12px; color: #6b7280; margin-top: 4px; }
     .section { margin-bottom: 32px; }
     .section h2 { font-size: 18px; margin: 0 0 16px 0; color: #374151; }
     table { width: 100%; border-collapse: collapse; }
@@ -236,14 +294,73 @@ export async function GET(request: NextRequest) {
       <div class="label">Total Views</div>
     </div>
     <div class="stat-card">
-      <div class="value">${(totalLikes + totalComments + totalShares).toLocaleString()}</div>
-      <div class="label">Total Engagement</div>
+      <div class="value">${totalReach.toLocaleString()}</div>
+      <div class="label">Total Reach</div>
     </div>
     <div class="stat-card">
-      <div class="value">${avgEngagementRate.toFixed(2)}%</div>
-      <div class="label">Avg Engagement Rate</div>
+      <div class="value">${totalImpressions.toLocaleString()}</div>
+      <div class="label">Impressions</div>
     </div>
   </div>
+
+  <div class="summary">
+    <div class="stat-card">
+      <div class="value">${totalLikes.toLocaleString()}</div>
+      <div class="label">Likes</div>
+    </div>
+    <div class="stat-card">
+      <div class="value">${totalComments.toLocaleString()}</div>
+      <div class="label">Comments</div>
+    </div>
+    <div class="stat-card">
+      <div class="value">${totalShares.toLocaleString()}</div>
+      <div class="label">Shares</div>
+    </div>
+    <div class="stat-card">
+      <div class="value">${totalSaves.toLocaleString()}</div>
+      <div class="label">Saves</div>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="stat-card">
+      <div class="value">${avgEngagementRate.toFixed(2)}%</div>
+      <div class="label">Engagement Rate</div>
+    </div>
+    <div class="stat-card">
+      <div class="value">${avgSaveRate.toFixed(2)}%</div>
+      <div class="label">Save Rate</div>
+    </div>
+    <div class="stat-card">
+      <div class="value">${avgWatchTime.toFixed(1)}s</div>
+      <div class="label">Avg Watch Time</div>
+    </div>
+    <div class="stat-card">
+      <div class="value">${avgCompletionRate.toFixed(1)}%</div>
+      <div class="label">Completion Rate</div>
+    </div>
+  </div>
+
+  ${totalProfileVisits > 0 || totalWebsiteClicks > 0 || totalFollowersGained > 0 ? `
+  <div class="summary">
+    <div class="stat-card">
+      <div class="value">${totalProfileVisits.toLocaleString()}</div>
+      <div class="label">Profile Visits</div>
+    </div>
+    <div class="stat-card">
+      <div class="value">${totalWebsiteClicks.toLocaleString()}</div>
+      <div class="label">Website Clicks</div>
+    </div>
+    <div class="stat-card">
+      <div class="value">${totalFollowersGained >= 0 ? '+' : ''}${totalFollowersGained.toLocaleString()}</div>
+      <div class="label">Followers Gained</div>
+    </div>
+    <div class="stat-card">
+      <div class="value">-</div>
+      <div class="label">-</div>
+    </div>
+  </div>
+  ` : ''}
 
   <div class="section">
     <h2>Performance by Platform</h2>
