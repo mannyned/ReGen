@@ -256,8 +256,8 @@ export default function UploadPage() {
 
       // Validate based on upload type
       let isValid = false
-      if (uploadType === 'media') {
-        // Mixed media mode: accept both images and videos
+      if (uploadType === 'media' || uploadType === 'text') {
+        // Mixed media mode or text mode: accept both images and videos
         isValid = isVideo || isImage
       } else if (uploadType === 'video') {
         isValid = isVideo
@@ -266,7 +266,7 @@ export default function UploadPage() {
       }
 
       if (!isValid) {
-        const expectedType = uploadType === 'media' ? 'image or video' : uploadType
+        const expectedType = (uploadType === 'media' || uploadType === 'text') ? 'image or video' : uploadType
         alert(`File "${file.name}" is not a valid ${expectedType} file`)
         continue
       }
@@ -308,8 +308,8 @@ export default function UploadPage() {
       return
     }
 
-    if (uploadType === 'text' && !textContent && !urlContent) {
-      alert('Please enter text or URL content')
+    if (uploadType === 'text' && !textContent && !urlContent && uploadedFiles.length === 0) {
+      alert('Please enter text/URL content or upload media')
       return
     }
 
@@ -857,31 +857,150 @@ export default function UploadPage() {
                   )}
                 </>
               ) : (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-text-primary mb-2">
-                      Paste Text Content
-                    </label>
-                    <textarea
-                      value={textContent}
-                      onChange={(e) => setTextContent(e.target.value)}
-                      rows={5}
-                      className="input-primary resize-none"
-                      placeholder="Paste your content here..."
-                    />
+                <div className="space-y-6">
+                  {/* Info box for bloggers/news */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <span className="text-lg">📰</span>
+                      </div>
+                      <div className="text-sm">
+                        <p className="font-semibold text-blue-900 mb-1">Perfect for articles, blogs & news</p>
+                        <p className="text-blue-700">
+                          Share text or article URLs with an optional featured image or video.
+                          Great for promoting blog posts, news articles, or any text-based content.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-center text-text-secondary font-medium py-2">OR</div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-primary mb-2">
-                      Import from URL
-                    </label>
-                    <input
-                      type="url"
-                      value={urlContent}
-                      onChange={(e) => setUrlContent(e.target.value)}
-                      className="input-primary"
-                      placeholder="https://example.com/post..."
-                    />
+
+                  {/* Text/URL Input Section */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-2">
+                        Paste Text Content
+                      </label>
+                      <textarea
+                        value={textContent}
+                        onChange={(e) => setTextContent(e.target.value)}
+                        rows={5}
+                        className="input-primary resize-none"
+                        placeholder="Paste your article, blog post, or any text content here..."
+                      />
+                    </div>
+                    <div className="text-center text-text-secondary font-medium py-2">OR</div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-2">
+                        Import from URL
+                      </label>
+                      <input
+                        type="url"
+                        value={urlContent}
+                        onChange={(e) => setUrlContent(e.target.value)}
+                        className="input-primary"
+                        placeholder="https://example.com/your-article..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Optional Media Upload Section */}
+                  <div className="border-t border-gray-200 pt-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="font-semibold text-text-primary">
+                          Featured Media <span className="text-text-secondary font-normal">(Optional)</span>
+                        </h4>
+                        <p className="text-sm text-text-secondary">
+                          Add an image or video to accompany your text/article
+                        </p>
+                      </div>
+                      {uploadedFiles.length > 0 && (
+                        <Badge variant="success">{uploadedFiles.length} file{uploadedFiles.length > 1 ? 's' : ''} added</Badge>
+                      )}
+                    </div>
+
+                    {uploadedFiles.length === 0 ? (
+                      <div
+                        onDragEnter={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDragOver={handleDrag}
+                        onDrop={handleDrop}
+                        className={`relative border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+                          dragActive
+                            ? 'border-primary bg-primary/5'
+                            : 'border-gray-300 hover:border-primary/50'
+                        }`}
+                      >
+                        <div className="text-4xl mb-2">🖼️</div>
+                        <p className="text-text-primary font-medium mb-1">
+                          Drop featured image or video here
+                        </p>
+                        <p className="text-sm text-text-secondary mb-3">
+                          or click to browse
+                        </p>
+                        <input
+                          type="file"
+                          accept="image/*,video/*"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                          id="text-media-upload"
+                        />
+                        <label
+                          htmlFor="text-media-upload"
+                          className="inline-block px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium cursor-pointer transition-colors"
+                        >
+                          Choose File
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {uploadedFiles.map((fileData, index) => (
+                          <div key={fileData.fileId} className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                            <div className="w-16 h-16 rounded-lg overflow-hidden bg-black flex-shrink-0">
+                              {fileData.file.type.startsWith('video/') ? (
+                                <video src={fileData.previewUrl} className="w-full h-full object-cover" muted />
+                              ) : (
+                                <img src={fileData.previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-text-primary truncate text-sm">{fileData.file.name}</p>
+                              <p className="text-xs text-text-secondary">
+                                {(fileData.file.size / 1024 / 1024).toFixed(2)} MB
+                                {fileData.file.type.startsWith('video/') ? ' • Video' : ' • Image'}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => removeFile(index)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Remove"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+
+                        {/* Add more button */}
+                        <label
+                          htmlFor="text-media-upload-more"
+                          className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-primary hover:text-primary cursor-pointer transition-colors"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          <span className="text-sm font-medium">Add another file</span>
+                          <input
+                            type="file"
+                            accept="image/*,video/*"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                            id="text-media-upload-more"
+                          />
+                        </label>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
