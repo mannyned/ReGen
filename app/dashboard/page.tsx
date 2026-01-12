@@ -647,18 +647,20 @@ export default function DashboardPage() {
                       </Badge>
                     </div>
 
-                    {/* Platform */}
+                    {/* Platform(s) */}
                     <div className="flex flex-wrap gap-2 mb-4">
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/5 rounded-lg">
-                        <PlatformLogo
-                          platform={post.platform as SocialPlatform}
-                          size="xs"
-                          variant="color"
-                        />
-                        <span className="text-primary text-xs font-medium">
-                          {PLATFORM_DISPLAY_NAME[post.platform] || post.platform}
-                        </span>
-                      </div>
+                      {(post.platforms && post.platforms.length > 0 ? post.platforms : [post.platform]).map((platform, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5 px-2 py-1 bg-primary/5 rounded-lg">
+                          <PlatformLogo
+                            platform={platform as SocialPlatform}
+                            size="xs"
+                            variant="color"
+                          />
+                          <span className="text-primary text-xs font-medium">
+                            {PLATFORM_DISPLAY_NAME[platform] || platform}
+                          </span>
+                        </div>
+                      ))}
                     </div>
 
                     {/* Footer */}
