@@ -211,7 +211,57 @@ export function ExportAnalytics({
         return
       }
 
-      // For other formats, use the job-based system
+      // For Excel, download directly
+      if (options.format === 'excel') {
+        setStatus('processing')
+        setCurrentJob({ id: 'direct', status: 'processing', progress: 50 })
+
+        const response = await fetch(`/api/analytics/export/excel`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            platforms: options.platforms.length > 0 ? options.platforms : undefined,
+            dateFrom: options.dateFrom,
+            dateTo: options.dateTo,
+          }),
+        })
+
+        if (!response.ok) {
+          // Try to get error message
+          const contentType = response.headers.get('content-type')
+          if (contentType?.includes('application/json')) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || 'Export failed')
+          }
+          throw new Error('Export failed')
+        }
+
+        // Download the Excel file directly
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `regen_analytics_${new Date().toISOString().split('T')[0]}.xlsx`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+
+        setStatus('completed')
+        setCurrentJob({ id: 'direct', status: 'completed', progress: 100 })
+        onExportComplete?.('direct', 'excel')
+
+        // Auto close after success
+        setTimeout(() => {
+          setIsOpen(false)
+          resetState()
+        }, 1500)
+        return
+      }
+
+      // For other formats (google_sheets), use the job-based system
       const endpoint = `/api/analytics/export/${options.format}`
       const response = await fetch(endpoint, {
         method: 'POST',
