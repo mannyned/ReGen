@@ -299,7 +299,7 @@ export function ExportAnalytics({
         setStatus('processing')
         setCurrentJob({ id: 'google_sheets', status: 'processing', progress: 50 })
 
-        const response = await fetch('/api/analytics/export/google_sheets', {
+        const response = await fetch('/api/analytics/export/google-sheets', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
