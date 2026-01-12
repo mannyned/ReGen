@@ -14,7 +14,7 @@ interface CreateContentRequest {
     fileSize: number
     mimeType: string
   }>
-  uploadType: 'video' | 'image' | 'text'
+  uploadType: 'video' | 'image' | 'media' | 'text'
   contentType: 'post' | 'story'
   selectedPlatforms: string[]
   contentDescription?: string
@@ -50,13 +50,16 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validate required fields
-    if (!files || files.length === 0) {
-      if (uploadType !== 'text' || (!textContent && !urlContent)) {
-        return NextResponse.json(
-          { success: false, error: 'No content provided' },
-          { status: 400 }
-        )
-      }
+    // For 'text' mode: require text/URL content OR files (we now allow media with text)
+    // For other modes: require files
+    const hasFiles = files && files.length > 0
+    const hasTextContent = textContent || urlContent
+
+    if (!hasFiles && !hasTextContent) {
+      return NextResponse.json(
+        { success: false, error: 'No content provided. Please upload files or enter text/URL.' },
+        { status: 400 }
+      )
     }
 
     // Get the primary file (first file) or use placeholder for text content
