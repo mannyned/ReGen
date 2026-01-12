@@ -56,6 +56,9 @@ export async function POST(request: NextRequest) {
         contentType?: 'post' | 'story'
       }
 
+      // Log for debugging
+      console.log('[Publish API] Received request with contentType:', contentType)
+
       // Validate required fields
       if (!userId) {
         return validationErrorResponse([{ field: 'userId', message: 'userId is required' }])

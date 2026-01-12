@@ -46,6 +46,12 @@ export class PublishingService {
     platform: SocialPlatform,
     options: PublishOptions
   ): Promise<PublishResult> {
+    console.log('[PublishingService] publishToSingle called:', {
+      platform,
+      contentType: options.contentType,
+      mediaType: options.media?.mediaType,
+    })
+
     const publisher = publishers[platform]
 
     if (!publisher) {

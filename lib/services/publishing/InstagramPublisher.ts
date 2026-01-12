@@ -14,6 +14,13 @@ export class InstagramPublisher extends BasePlatformPublisher {
   async publishContent(options: PublishOptions): Promise<PublishResult> {
     const { userId, content, media, contentType = 'post' } = options
 
+    // Log for debugging
+    console.log('[InstagramPublisher] publishContent called with:', {
+      contentType,
+      mediaType: media?.mediaType,
+      hasMedia: !!media,
+    })
+
     // Instagram requires media - text-only posts not supported
     if (!media) {
       return {
@@ -35,6 +42,14 @@ export class InstagramPublisher extends BasePlatformPublisher {
       const isStoryOrReel = contentType === 'story'
       const isStory = isStoryOrReel && media.mediaType !== 'video' // Stories are for images
       const isReel = isStoryOrReel && media.mediaType === 'video'  // Reels are for videos
+
+      console.log('[InstagramPublisher] Content type detection:', {
+        contentType,
+        isStoryOrReel,
+        isStory,
+        isReel,
+        mediaType: media.mediaType,
+      })
 
       // Step 2: Create media container with appropriate type
       const containerId = await this.createMediaContainer(
@@ -188,6 +203,14 @@ export class InstagramPublisher extends BasePlatformPublisher {
       }
     }
 
+    console.log('[InstagramPublisher] Creating media container with params:', {
+      accountId,
+      media_type: params.media_type,
+      isStoryOrReel,
+      hasImageUrl: !!params.image_url,
+      hasVideoUrl: !!params.video_url,
+    })
+
     const response = await fetch(
       `${this.baseUrl}/${accountId}/media?${new URLSearchParams(params)}`,
       { method: 'POST' }
@@ -195,6 +218,7 @@ export class InstagramPublisher extends BasePlatformPublisher {
 
     if (!response.ok) {
       const error = await response.text()
+      console.error('[InstagramPublisher] Media container creation failed:', error)
       throw new Error(`Failed to create media container: ${error}`)
     }
 

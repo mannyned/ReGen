@@ -392,6 +392,8 @@ function SchedulePageContent() {
         contentType, // Pass content type (post vs story/reel)
       }
 
+      console.log('[Schedule Page] Publishing with contentType:', contentType, 'mediaType:', mediaData?.mediaType)
+
       const response = await fetch('/api/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
