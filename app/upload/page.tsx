@@ -420,7 +420,7 @@ export default function UploadPage() {
                       <ul className="space-y-1.5 text-purple-800">
                         <li className="flex items-start gap-2">
                           <span className="font-medium min-w-[80px]">Instagram:</span>
-                          <span>Images → Story (24h, no caption) | Videos → Reel (permanent, with caption)</span>
+                          <span>Images → Story (24h) | Videos → Reel (permanent)</span>
                         </li>
                         <li className="flex items-start gap-2">
                           <span className="font-medium min-w-[80px]">Facebook:</span>
@@ -439,6 +439,29 @@ export default function UploadPage() {
                           <span className="text-purple-600">Don't support Stories — posts to feed instead</span>
                         </li>
                       </ul>
+
+                      {/* Caption Support Warning */}
+                      <div className="mt-3 pt-3 border-t border-purple-200">
+                        <p className="font-semibold text-purple-900 mb-2">Caption support by platform:</p>
+                        <ul className="space-y-1 text-purple-800">
+                          <li className="flex items-start gap-2">
+                            <span className="text-green-600">✓</span>
+                            <span><span className="font-medium">Instagram Reels, TikTok, YouTube Shorts:</span> Captions will appear with your content</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-amber-600">⚠</span>
+                            <span><span className="font-medium">Instagram Stories (images):</span> Captions are <strong>not supported</strong> — your caption won't appear</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-amber-600">⚠</span>
+                            <span><span className="font-medium">Facebook Stories:</span> Limited caption support — may not display</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-blue-600">ℹ</span>
+                            <span><span className="font-medium">Snapchat:</span> Captions added as text overlay on media</span>
+                          </li>
+                        </ul>
+                      </div>
 
                       {/* Video Duration Limits */}
                       <div className="mt-3 pt-3 border-t border-purple-200">

@@ -1084,6 +1084,57 @@ function GeneratePageContent() {
                           {editingId === preview.id ? 'Done' : '✏️ Edit'}
                         </button>
                       </div>
+
+                      {/* Caption Support Warning for Stories */}
+                      {uploadData?.contentType === 'story' && (
+                        <>
+                          {/* Instagram Story (image) - No caption support */}
+                          {preview.platform === 'instagram' && uploadData?.uploadType === 'image' && (
+                            <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                              <div className="flex items-start gap-2">
+                                <span className="text-amber-500 flex-shrink-0">⚠️</span>
+                                <p className="text-sm text-amber-800">
+                                  <strong>Instagram Stories don't support captions.</strong> Your caption won't appear on this Story. Consider adding text directly to your image before uploading.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          {/* Instagram Reel (video) - Caption supported */}
+                          {preview.platform === 'instagram' && uploadData?.uploadType === 'video' && (
+                            <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <div className="flex items-start gap-2">
+                                <span className="text-green-500 flex-shrink-0">✓</span>
+                                <p className="text-sm text-green-800">
+                                  <strong>This will publish as a Reel.</strong> Your caption will appear with your video.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          {/* Facebook Story - Limited caption support */}
+                          {preview.platform === 'facebook' && uploadData?.uploadType === 'image' && (
+                            <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                              <div className="flex items-start gap-2">
+                                <span className="text-amber-500 flex-shrink-0">⚠️</span>
+                                <p className="text-sm text-amber-800">
+                                  <strong>Facebook Stories have limited caption support.</strong> Your caption may not display as expected.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          {/* X / LinkedIn - Posts to feed instead */}
+                          {(preview.platform === 'x' || preview.platform === 'linkedin') && (
+                            <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <div className="flex items-start gap-2">
+                                <span className="text-blue-500 flex-shrink-0">ℹ️</span>
+                                <p className="text-sm text-blue-800">
+                                  <strong>{preview.platform === 'x' ? 'X' : 'LinkedIn'} doesn't support Stories.</strong> This will post to your feed instead, and your caption will appear normally.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+
                       {editingId === preview.id ? (
                         <textarea
                           value={preview.caption}
