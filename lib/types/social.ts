@@ -161,6 +161,79 @@ export type ScheduleStatus =
   | 'cancelled'
 
 // ============================================
+// CAROUSEL TYPES
+// ============================================
+
+export interface CarouselItem {
+  mediaUrl: string
+  mimeType: string
+  fileSize: number
+  duration?: number
+  order: number
+  caption?: string  // Per-item caption where supported (Pinterest)
+  altText?: string  // Alt text for accessibility
+}
+
+export interface CarouselPayload {
+  items: CarouselItem[]
+  primaryCaption: string
+  hashtags: string[]
+}
+
+export interface CarouselConstraints {
+  minItems: number
+  maxItems: number
+  allowVideo: boolean
+  allowMixed: boolean  // Can mix images and videos
+  isSequential?: boolean  // For platforms like Snapchat that post items separately
+  supportsPerItemCaption?: boolean  // Pinterest supports per-item captions
+}
+
+export interface CarouselPublishOptions {
+  userId: string
+  items: CarouselItem[]
+  content: PlatformContent
+  contentType?: 'post' | 'story'
+}
+
+export interface PlatformCarouselResult {
+  platform: SocialPlatform
+  success: boolean
+  postId?: string
+  postUrl?: string
+  itemIds?: string[]  // Per-item platform IDs where available
+  itemsPublished: number
+  itemsTruncated: number
+  error?: string
+  message?: string
+  publishedAt?: Date
+}
+
+export interface CarouselDistribution {
+  platform: SocialPlatform
+  items: CarouselItem[]
+  willTruncate: boolean
+  truncatedCount: number
+  unsupportedItems: CarouselItem[]  // Items filtered due to media type restrictions
+  canPublish: boolean
+  reason?: string  // If canPublish is false, explain why
+}
+
+// Platform-specific carousel constraints
+export const CAROUSEL_CONSTRAINTS: Record<SocialPlatform, CarouselConstraints> = {
+  instagram: { minItems: 2, maxItems: 10, allowVideo: true, allowMixed: true },
+  facebook: { minItems: 2, maxItems: 10, allowVideo: true, allowMixed: true },
+  twitter: { minItems: 1, maxItems: 4, allowVideo: false, allowMixed: false },
+  linkedin: { minItems: 2, maxItems: 20, allowVideo: false, allowMixed: false },
+  snapchat: { minItems: 1, maxItems: 10, allowVideo: true, allowMixed: true, isSequential: true },
+  discord: { minItems: 1, maxItems: 10, allowVideo: true, allowMixed: true },
+  pinterest: { minItems: 2, maxItems: 5, allowVideo: false, allowMixed: false, supportsPerItemCaption: true },
+  tiktok: { minItems: 1, maxItems: 1, allowVideo: true, allowMixed: false },  // No carousel
+  youtube: { minItems: 1, maxItems: 1, allowVideo: true, allowMixed: false },  // No carousel
+  meta: { minItems: 2, maxItems: 10, allowVideo: true, allowMixed: true },  // Same as Instagram
+}
+
+// ============================================
 // ANALYTICS TYPES
 // ============================================
 

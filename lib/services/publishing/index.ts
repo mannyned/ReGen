@@ -4,6 +4,9 @@ import type {
   PublishResult,
   PostAnalytics,
   ScheduledPost,
+  CarouselItem,
+  CarouselPublishOptions,
+  PlatformCarouselResult,
 } from '../../types/social'
 import { BasePlatformPublisher, ContentPayload, PublishOptions } from './BasePlatformPublisher'
 import { instagramPublisher } from './InstagramPublisher'
@@ -101,6 +104,115 @@ export class PublishingService {
     await Promise.allSettled(publishPromises)
 
     return results
+  }
+
+  // ============================================
+  // CAROUSEL PUBLISHING
+  // ============================================
+
+  /**
+   * Publish a carousel to a single platform
+   */
+  async publishCarouselToSingle(
+    platform: SocialPlatform,
+    options: CarouselPublishOptions
+  ): Promise<PlatformCarouselResult> {
+    console.log('[PublishingService] publishCarouselToSingle called:', {
+      platform,
+      itemCount: options.items.length,
+      contentType: options.contentType,
+    })
+
+    const publisher = publishers[platform]
+
+    if (!publisher) {
+      const isComingSoon = comingSoonPlatforms.includes(platform)
+      return {
+        platform,
+        success: false,
+        error: isComingSoon ? `${platform} integration coming soon` : `Unsupported platform: ${platform}`,
+        itemsPublished: 0,
+        itemsTruncated: 0,
+      }
+    }
+
+    try {
+      return await publisher.publishCarousel(options)
+    } catch (error) {
+      return {
+        platform,
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        itemsPublished: 0,
+        itemsTruncated: options.items.length,
+      }
+    }
+  }
+
+  /**
+   * Publish a carousel to multiple platforms concurrently
+   * Each platform will receive the appropriate number of items based on its limits
+   */
+  async publishCarouselToMultiple(
+    platforms: SocialPlatform[],
+    options: Omit<CarouselPublishOptions, 'platform'> & {
+      platformContent?: Record<SocialPlatform, PlatformContent>
+    }
+  ): Promise<Map<SocialPlatform, PlatformCarouselResult>> {
+    const results = new Map<SocialPlatform, PlatformCarouselResult>()
+
+    console.log('[PublishingService] publishCarouselToMultiple called:', {
+      platforms,
+      itemCount: options.items.length,
+    })
+
+    // Publish to all platforms concurrently
+    const publishPromises = platforms.map(async (platform) => {
+      const platformSpecificContent = options.platformContent?.[platform] || options.content
+
+      const result = await this.publishCarouselToSingle(platform, {
+        ...options,
+        content: platformSpecificContent,
+      })
+
+      results.set(platform, result)
+    })
+
+    await Promise.allSettled(publishPromises)
+
+    // Log summary
+    const succeeded = Array.from(results.values()).filter(r => r.success).length
+    const failed = results.size - succeeded
+    console.log(`[PublishingService] Carousel publish complete: ${succeeded} succeeded, ${failed} failed`)
+
+    return results
+  }
+
+  /**
+   * Check if a platform supports carousel posts
+   */
+  platformSupportsCarousel(platform: SocialPlatform): boolean {
+    const publisher = publishers[platform]
+    return publisher?.supportsCarousel() ?? false
+  }
+
+  /**
+   * Get carousel support info for all active platforms
+   */
+  getCarouselSupportInfo(): Record<SocialPlatform, { supported: boolean; maxItems: number }> {
+    const info: Partial<Record<SocialPlatform, { supported: boolean; maxItems: number }>> = {}
+
+    for (const [platform, publisher] of Object.entries(publishers)) {
+      if (publisher) {
+        const constraints = (publisher as any).getCarouselConstraints?.() || { maxItems: 1 }
+        info[platform as SocialPlatform] = {
+          supported: publisher.supportsCarousel(),
+          maxItems: constraints.maxItems,
+        }
+      }
+    }
+
+    return info as Record<SocialPlatform, { supported: boolean; maxItems: number }>
   }
 
   // ============================================

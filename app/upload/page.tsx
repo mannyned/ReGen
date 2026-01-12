@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { fileStorage, fileToBase64, generateFileId } from '../utils/fileStorage'
 import { AppHeader, Card, Badge, PlatformLogo } from '../components/ui'
+import { CarouselComposer } from '../components/CarouselComposer'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import type { SocialPlatform } from '@/lib/types/social'
 
@@ -31,16 +32,35 @@ interface UploadedFileData {
   fileId: string
 }
 
+// Platform limits for carousel/multi-media posts
 const PLATFORM_LIMITS = {
-  instagram: { post: 6, story: 6 },
-  facebook: { post: 6, story: 6 },
-  tiktok: { post: 1, story: 1 },
-  snapchat: { post: 1, story: 1 },
-  youtube: { post: 1, story: 1 },
-  x: { post: 4, story: 1 },
-  linkedin: { post: 1, story: 1 },
-  pinterest: { post: 1, story: 1 },
-  discord: { post: 1, story: 1 },
+  instagram: { post: 10, story: 1 },  // Carousel: up to 10 images/videos
+  facebook: { post: 10, story: 1 },   // Multi-photo: up to 10 items
+  tiktok: { post: 1, story: 1 },      // No carousel support
+  snapchat: { post: 1, story: 10 },   // Stories posted sequentially
+  youtube: { post: 1, story: 1 },     // No carousel support
+  x: { post: 4, story: 1 },           // Up to 4 images per tweet
+  linkedin: { post: 20, story: 1 },   // Multi-image: 2-20 items
+  pinterest: { post: 5, story: 1 },   // Carousel pin: 2-5 images
+  discord: { post: 10, story: 1 },    // Multi-attachment: up to 10
+}
+
+// Carousel-specific constraints for validation
+const CAROUSEL_PLATFORM_INFO: Record<Platform, {
+  minItems: number
+  maxItems: number
+  allowVideo: boolean
+  description: string
+}> = {
+  instagram: { minItems: 2, maxItems: 10, allowVideo: true, description: 'Carousel with images & videos' },
+  facebook: { minItems: 2, maxItems: 10, allowVideo: true, description: 'Multi-photo post' },
+  tiktok: { minItems: 1, maxItems: 1, allowVideo: true, description: 'Single video only' },
+  snapchat: { minItems: 1, maxItems: 10, allowVideo: true, description: 'Posted as story sequence' },
+  youtube: { minItems: 1, maxItems: 1, allowVideo: true, description: 'Single video only' },
+  x: { minItems: 1, maxItems: 4, allowVideo: false, description: 'Up to 4 images (no video carousel)' },
+  linkedin: { minItems: 2, maxItems: 20, allowVideo: false, description: 'Multi-image post (images only)' },
+  pinterest: { minItems: 2, maxItems: 5, allowVideo: false, description: 'Carousel pin (images only)' },
+  discord: { minItems: 1, maxItems: 10, allowVideo: true, description: 'Multi-attachment message' },
 }
 
 const platforms = [
@@ -89,6 +109,52 @@ export default function UploadPage() {
       PLATFORM_LIMITS[platform]?.[contentType] === 1
     )
   }
+
+  // Generate carousel warnings for platforms that will receive truncated content
+  const getCarouselWarnings = () => {
+    if (uploadedFiles.length <= 1) return []
+
+    const warnings: { platform: Platform; message: string; severity: 'info' | 'warning' }[] = []
+    const fileCount = uploadedFiles.length
+    const hasVideo = uploadedFiles.some(f => f.file.type.startsWith('video/'))
+
+    for (const platform of selectedPlatforms) {
+      const info = CAROUSEL_PLATFORM_INFO[platform]
+      const limit = PLATFORM_LIMITS[platform]?.[contentType] || 1
+
+      // Check if platform will truncate
+      if (fileCount > limit) {
+        warnings.push({
+          platform,
+          message: `${platform === 'x' ? 'X' : platform.charAt(0).toUpperCase() + platform.slice(1)} will only use the first ${limit} item${limit > 1 ? 's' : ''}`,
+          severity: 'warning'
+        })
+      }
+
+      // Check video restrictions
+      if (hasVideo && !info.allowVideo && fileCount > 1) {
+        warnings.push({
+          platform,
+          message: `${platform === 'x' ? 'X' : platform.charAt(0).toUpperCase() + platform.slice(1)} carousels don't support videos - videos will be skipped`,
+          severity: 'warning'
+        })
+      }
+
+      // Check minimum items
+      if (fileCount < info.minItems && info.minItems > 1) {
+        warnings.push({
+          platform,
+          message: `${platform === 'x' ? 'X' : platform.charAt(0).toUpperCase() + platform.slice(1)} carousels require at least ${info.minItems} items`,
+          severity: 'info'
+        })
+      }
+    }
+
+    return warnings
+  }
+
+  // Check if current upload is a carousel (multi-item)
+  const isCarousel = uploadedFiles.length > 1
 
   useEffect(() => {
     setMounted(true)
@@ -210,6 +276,11 @@ export default function UploadPage() {
       updated.splice(index, 1)
       return updated
     })
+  }
+
+  // Handler for carousel reordering
+  const handleReorderFiles = (reorderedFiles: UploadedFileData[]) => {
+    setUploadedFiles(reorderedFiles)
   }
 
   const [isUploading, setIsUploading] = useState(false)
@@ -532,6 +603,32 @@ export default function UploadPage() {
               </div>
             )}
 
+            {/* Carousel Warnings */}
+            {isCarousel && getCarouselWarnings().length > 0 && (
+              <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-lg">⚠️</span>
+                  </div>
+                  <div>
+                    <p className="text-sm text-amber-900 font-medium mb-2">
+                      Carousel compatibility notes:
+                    </p>
+                    <ul className="text-xs text-amber-800 space-y-1">
+                      {getCarouselWarnings().map((warning, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className={warning.severity === 'warning' ? 'text-amber-600' : 'text-blue-600'}>
+                            {warning.severity === 'warning' ? '•' : 'ℹ'}
+                          </span>
+                          <span>{warning.message}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Upload Area */}
             <div className="mt-6">
               {uploadType !== 'text' ? (
@@ -580,11 +677,9 @@ export default function UploadPage() {
                   {/* Uploaded Files */}
                   {uploadedFiles.length > 0 && (
                     <div className="mt-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-text-primary">
-                          Uploaded Files ({uploadedFiles.length}/{maxUploadLimit})
-                        </h3>
-                        {uploadedFiles.length < maxUploadLimit && (
+                      {/* Add More Button */}
+                      {uploadedFiles.length < maxUploadLimit && (
+                        <div className="flex justify-end mb-4">
                           <label
                             htmlFor="file-upload-more"
                             className="px-4 py-2 bg-primary/10 text-primary rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors cursor-pointer"
@@ -599,39 +694,49 @@ export default function UploadPage() {
                               id="file-upload-more"
                             />
                           </label>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {uploadedFiles.map((fileData, index) => (
-                          <div key={index} className="border-2 border-primary/30 rounded-xl p-4 bg-primary/5">
-                            <div className="flex items-start gap-4">
-                              <div className="w-24 h-24 rounded-lg overflow-hidden bg-black flex-shrink-0">
-                                {uploadType === 'video' ? (
-                                  <video src={fileData.previewUrl} className="w-full h-full object-cover" muted />
-                                ) : (
-                                  <img src={fileData.previewUrl} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-text-primary truncate">{fileData.file.name}</p>
-                                <p className="text-sm text-text-secondary">
-                                  {(fileData.file.size / 1024 / 1024).toFixed(2)} MB
-                                </p>
-                                <Badge variant="primary" className="mt-2">Item {index + 1}</Badge>
-                              </div>
-                              <button
-                                onClick={() => removeFile(index)}
-                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
+                      {/* Use CarouselComposer for multiple files, simple view for single file */}
+                      {uploadedFiles.length > 1 ? (
+                        <CarouselComposer
+                          files={uploadedFiles}
+                          selectedPlatforms={selectedPlatforms}
+                          platformConstraints={CAROUSEL_PLATFORM_INFO}
+                          onReorder={handleReorderFiles}
+                          onRemove={removeFile}
+                          uploadType={uploadType}
+                          contentType={contentType}
+                        />
+                      ) : (
+                        /* Single file view */
+                        <div className="border-2 border-primary/30 rounded-xl p-4 bg-primary/5">
+                          <div className="flex items-start gap-4">
+                            <div className="w-24 h-24 rounded-lg overflow-hidden bg-black flex-shrink-0">
+                              {uploadType === 'video' ? (
+                                <video src={uploadedFiles[0].previewUrl} className="w-full h-full object-cover" muted />
+                              ) : (
+                                <img src={uploadedFiles[0].previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                              )}
                             </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-text-primary truncate">{uploadedFiles[0].file.name}</p>
+                              <p className="text-sm text-text-secondary">
+                                {(uploadedFiles[0].file.size / 1024 / 1024).toFixed(2)} MB
+                              </p>
+                              <Badge variant="primary" className="mt-2">Ready to publish</Badge>
+                            </div>
+                            <button
+                              onClick={() => removeFile(0)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </>

@@ -1,5 +1,12 @@
 import { BasePlatformPublisher, ContentPayload, PublishOptions } from './BasePlatformPublisher'
-import type { SocialPlatform, PublishResult, PostAnalytics } from '../../types/social'
+import type {
+  SocialPlatform,
+  PublishResult,
+  PostAnalytics,
+  CarouselPublishOptions,
+  PlatformCarouselResult,
+  CarouselItem,
+} from '../../types/social'
 import { API_BASE_URLS } from '../../config/oauth'
 
 // ============================================
@@ -89,6 +96,153 @@ export class TwitterPublisher extends BasePlatformPublisher {
     } catch {
       return false
     }
+  }
+
+  // ============================================
+  // TWITTER MULTI-IMAGE SUPPORT
+  // ============================================
+
+  /**
+   * Publish a multi-image tweet to Twitter/X (up to 4 images)
+   * Note: Twitter does not support videos in multi-media tweets
+   */
+  async publishCarousel(options: CarouselPublishOptions): Promise<PlatformCarouselResult> {
+    const { userId, items, content } = options
+
+    if (items.length === 0) {
+      return {
+        platform: this.platform,
+        success: false,
+        error: 'No items provided for tweet',
+        itemsPublished: 0,
+        itemsTruncated: 0,
+      }
+    }
+
+    // Filter to images only - Twitter multi-image tweets don't support videos
+    const imageItems = items.filter(item => !item.mimeType.startsWith('video/'))
+    const videoSkipped = items.length - imageItems.length
+
+    // Prepare items (validate, truncate to max 4)
+    const { validItems, truncatedCount } = this.prepareCarouselItems(imageItems)
+
+    // If only 1 item, use regular post
+    if (validItems.length === 1) {
+      const result = await this.publishContent({
+        userId,
+        content,
+        media: {
+          mediaUrl: validItems[0].mediaUrl,
+          mediaType: 'image',
+          mimeType: validItems[0].mimeType,
+          fileSize: validItems[0].fileSize,
+        },
+      })
+
+      return {
+        platform: this.platform,
+        success: result.success,
+        postId: result.platformPostId,
+        postUrl: result.platformUrl,
+        itemIds: result.platformPostId ? [result.platformPostId] : undefined,
+        itemsPublished: result.success ? 1 : 0,
+        itemsTruncated: truncatedCount + videoSkipped,
+        error: result.error,
+        message: videoSkipped > 0 ? 'Videos were skipped (Twitter multi-image tweets only support images)' : undefined,
+        publishedAt: result.publishedAt,
+      }
+    }
+
+    if (validItems.length === 0) {
+      return {
+        platform: this.platform,
+        success: false,
+        error: 'No valid images for Twitter multi-image tweet (videos are not supported)',
+        itemsPublished: 0,
+        itemsTruncated: items.length,
+      }
+    }
+
+    const accessToken = await this.getAccessToken(userId)
+
+    try {
+      // Step 1: Upload each image and collect media IDs
+      console.log(`[TwitterPublisher] Uploading ${validItems.length} images`)
+      const mediaIds: string[] = []
+
+      for (const item of validItems) {
+        const mediaId = await this.uploadMedia(accessToken, {
+          mediaUrl: item.mediaUrl,
+          mediaType: 'image',
+          mimeType: item.mimeType,
+          fileSize: item.fileSize,
+        })
+        mediaIds.push(mediaId)
+      }
+
+      // Step 2: Create tweet with all media IDs
+      console.log('[TwitterPublisher] Creating tweet with', mediaIds.length, 'images')
+      const tweet = await this.createTweetWithMultipleMedia(accessToken, content, mediaIds)
+
+      console.log('[TwitterPublisher] Multi-image tweet created:', tweet.id)
+
+      return {
+        platform: this.platform,
+        success: true,
+        postId: tweet.id,
+        postUrl: `https://twitter.com/i/status/${tweet.id}`,
+        itemIds: mediaIds,
+        itemsPublished: mediaIds.length,
+        itemsTruncated: truncatedCount + videoSkipped,
+        message: videoSkipped > 0 ? 'Videos were skipped (Twitter multi-image tweets only support images)' : undefined,
+        publishedAt: new Date(),
+      }
+    } catch (error) {
+      console.error('[TwitterPublisher] Multi-image tweet failed:', error)
+      return {
+        platform: this.platform,
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to publish multi-image tweet',
+        itemsPublished: 0,
+        itemsTruncated: truncatedCount + videoSkipped,
+      }
+    }
+  }
+
+  /**
+   * Create a tweet with multiple media attachments
+   */
+  private async createTweetWithMultipleMedia(
+    accessToken: string,
+    content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> | object },
+    mediaIds: string[]
+  ): Promise<{ id: string }> {
+    const text = this.formatCaption(content)
+    const settings = (content.settings || {}) as Record<string, unknown>
+
+    const tweetData: Record<string, unknown> = {
+      text: text.substring(0, 280), // Twitter character limit
+      media: {
+        media_ids: mediaIds, // Array of media IDs
+      },
+    }
+
+    if (settings.replySettings) {
+      tweetData.reply_settings = settings.replySettings
+    }
+
+    const response = await this.makeApiRequest<{
+      data: { id: string }
+    }>(
+      '/tweets',
+      {
+        method: 'POST',
+        body: JSON.stringify(tweetData),
+      },
+      accessToken
+    )
+
+    return response.data
   }
 
   // ============================================

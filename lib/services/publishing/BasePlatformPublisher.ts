@@ -3,7 +3,12 @@ import type {
   PlatformContent,
   PublishResult,
   PostAnalytics,
+  CarouselItem,
+  CarouselPublishOptions,
+  PlatformCarouselResult,
+  CarouselConstraints,
 } from '../../types/social'
+import { CAROUSEL_CONSTRAINTS } from '../../types/social'
 import { tokenManager } from '../oauth/TokenManager'
 import { API_BASE_URLS, CONTENT_LIMITS } from '../../config/oauth'
 
@@ -40,6 +45,124 @@ export abstract class BasePlatformPublisher {
   abstract publishContent(options: PublishOptions): Promise<PublishResult>
   abstract getPostAnalytics(postId: string, userId: string): Promise<PostAnalytics>
   abstract deletePost(postId: string, userId: string): Promise<boolean>
+
+  // ============================================
+  // CAROUSEL METHODS
+  // ============================================
+
+  /**
+   * Publish a carousel/multi-image post to the platform.
+   * Default implementation falls back to publishing first item only.
+   * Override in platform-specific publishers for true carousel support.
+   */
+  async publishCarousel(options: CarouselPublishOptions): Promise<PlatformCarouselResult> {
+    const { userId, items, content, contentType } = options
+
+    // Default implementation: publish first item only
+    if (items.length === 0) {
+      return {
+        platform: this.platform,
+        success: false,
+        error: 'No items provided for carousel',
+        itemsPublished: 0,
+        itemsTruncated: 0,
+      }
+    }
+
+    // Validate and truncate items for this platform
+    const { validItems, truncatedCount, hasUnsupportedMedia } = this.prepareCarouselItems(items)
+
+    if (validItems.length === 0) {
+      return {
+        platform: this.platform,
+        success: false,
+        error: hasUnsupportedMedia
+          ? `${this.platform} does not support videos in carousels`
+          : 'No valid items for carousel after filtering',
+        itemsPublished: 0,
+        itemsTruncated: truncatedCount,
+      }
+    }
+
+    // For platforms without carousel support, publish first item
+    const firstItem = validItems[0]
+    const result = await this.publishContent({
+      userId,
+      content,
+      media: {
+        mediaUrl: firstItem.mediaUrl,
+        mediaType: firstItem.mimeType.startsWith('video/') ? 'video' : 'image',
+        mimeType: firstItem.mimeType,
+        fileSize: firstItem.fileSize,
+        duration: firstItem.duration,
+      },
+      contentType,
+    })
+
+    return {
+      platform: this.platform,
+      success: result.success,
+      postId: result.platformPostId,
+      postUrl: result.platformUrl,
+      itemIds: result.platformPostId ? [result.platformPostId] : undefined,
+      itemsPublished: result.success ? 1 : 0,
+      itemsTruncated: items.length - 1,
+      error: result.error,
+      message: items.length > 1
+        ? `${this.platform} does not support carousels - only first item was posted`
+        : undefined,
+      publishedAt: result.publishedAt,
+    }
+  }
+
+  /**
+   * Get carousel constraints for this platform
+   */
+  protected getCarouselConstraints(): CarouselConstraints {
+    return CAROUSEL_CONSTRAINTS[this.platform] || {
+      minItems: 1,
+      maxItems: 1,
+      allowVideo: true,
+      allowMixed: false,
+    }
+  }
+
+  /**
+   * Prepare and validate carousel items for this platform
+   */
+  protected prepareCarouselItems(items: CarouselItem[]): {
+    validItems: CarouselItem[]
+    truncatedCount: number
+    hasUnsupportedMedia: boolean
+  } {
+    const constraints = this.getCarouselConstraints()
+    let validItems = [...items]
+    let hasUnsupportedMedia = false
+
+    // Filter out videos if platform doesn't support them in carousels
+    if (!constraints.allowVideo) {
+      const beforeFilter = validItems.length
+      validItems = validItems.filter(item => !item.mimeType.startsWith('video/'))
+      hasUnsupportedMedia = validItems.length < beforeFilter
+    }
+
+    // Sort by order
+    validItems.sort((a, b) => a.order - b.order)
+
+    // Truncate to max items
+    const truncatedCount = Math.max(0, validItems.length - constraints.maxItems)
+    validItems = validItems.slice(0, constraints.maxItems)
+
+    return { validItems, truncatedCount, hasUnsupportedMedia }
+  }
+
+  /**
+   * Check if this platform supports carousels
+   */
+  supportsCarousel(): boolean {
+    const constraints = this.getCarouselConstraints()
+    return constraints.maxItems > 1
+  }
 
   // ============================================
   // SHARED UTILITIES

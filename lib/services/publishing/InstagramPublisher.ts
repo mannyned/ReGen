@@ -1,5 +1,12 @@
 import { BasePlatformPublisher, ContentPayload, PublishOptions } from './BasePlatformPublisher'
-import type { SocialPlatform, PublishResult, PostAnalytics } from '../../types/social'
+import type {
+  SocialPlatform,
+  PublishResult,
+  PostAnalytics,
+  CarouselPublishOptions,
+  PlatformCarouselResult,
+  CarouselItem,
+} from '../../types/social'
 import { API_BASE_URLS } from '../../config/oauth'
 
 // ============================================
@@ -135,6 +142,188 @@ export class InstagramPublisher extends BasePlatformPublisher {
     } catch {
       return false
     }
+  }
+
+  // ============================================
+  // INSTAGRAM CAROUSEL SUPPORT
+  // ============================================
+
+  /**
+   * Publish a carousel post to Instagram (up to 10 items)
+   * Uses the Graph API's CAROUSEL media type
+   */
+  async publishCarousel(options: CarouselPublishOptions): Promise<PlatformCarouselResult> {
+    const { userId, items, content } = options
+
+    if (items.length === 0) {
+      return {
+        platform: this.platform,
+        success: false,
+        error: 'No items provided for carousel',
+        itemsPublished: 0,
+        itemsTruncated: 0,
+      }
+    }
+
+    // Prepare items (validate, filter, truncate to max 10)
+    const { validItems, truncatedCount } = this.prepareCarouselItems(items)
+
+    // If only 1 item, use regular post instead of carousel
+    if (validItems.length === 1) {
+      const result = await this.publishContent({
+        userId,
+        content,
+        media: {
+          mediaUrl: validItems[0].mediaUrl,
+          mediaType: validItems[0].mimeType.startsWith('video/') ? 'video' : 'image',
+          mimeType: validItems[0].mimeType,
+          fileSize: validItems[0].fileSize,
+          duration: validItems[0].duration,
+        },
+      })
+
+      return {
+        platform: this.platform,
+        success: result.success,
+        postId: result.platformPostId,
+        postUrl: result.platformUrl,
+        itemIds: result.platformPostId ? [result.platformPostId] : undefined,
+        itemsPublished: result.success ? 1 : 0,
+        itemsTruncated: truncatedCount,
+        error: result.error,
+        publishedAt: result.publishedAt,
+      }
+    }
+
+    const accessToken = await this.getAccessToken(userId)
+
+    try {
+      // Step 1: Get Instagram Business Account ID
+      const accountId = await this.getInstagramAccountId(accessToken)
+
+      // Step 2: Create container for EACH carousel item
+      console.log(`[InstagramPublisher] Creating ${validItems.length} carousel item containers`)
+      const childContainerIds: string[] = []
+
+      for (const item of validItems) {
+        const containerId = await this.createCarouselItemContainer(
+          accountId,
+          item,
+          accessToken
+        )
+        childContainerIds.push(containerId)
+
+        // Wait for each item to process before continuing
+        await this.waitForContainerReady(containerId, accessToken, item.mimeType.startsWith('video/') ? 60 : 10)
+      }
+
+      // Step 3: Create CAROUSEL container referencing all children
+      console.log('[InstagramPublisher] Creating carousel container with children:', childContainerIds)
+      const carouselContainerId = await this.createCarouselContainer(
+        accountId,
+        childContainerIds,
+        content,
+        accessToken
+      )
+
+      // Step 4: Wait for carousel container to be ready
+      await this.waitForContainerReady(carouselContainerId, accessToken, 30)
+
+      // Step 5: Publish the carousel container
+      const result = await this.publishContainer(accountId, carouselContainerId, accessToken)
+
+      console.log('[InstagramPublisher] Carousel published successfully:', result.id)
+
+      return {
+        platform: this.platform,
+        success: true,
+        postId: result.id,
+        postUrl: `https://www.instagram.com/p/${result.id}`,
+        itemIds: childContainerIds,
+        itemsPublished: validItems.length,
+        itemsTruncated: truncatedCount,
+        publishedAt: new Date(),
+      }
+    } catch (error) {
+      console.error('[InstagramPublisher] Carousel publish failed:', error)
+      return {
+        platform: this.platform,
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to publish carousel to Instagram',
+        itemsPublished: 0,
+        itemsTruncated: truncatedCount,
+      }
+    }
+  }
+
+  /**
+   * Create a container for a single carousel item
+   */
+  private async createCarouselItemContainer(
+    accountId: string,
+    item: CarouselItem,
+    accessToken: string
+  ): Promise<string> {
+    const params: Record<string, string> = {
+      access_token: accessToken,
+      is_carousel_item: 'true',  // Key flag that marks this as a carousel child
+    }
+
+    if (item.mimeType.startsWith('video/')) {
+      params.media_type = 'VIDEO'
+      params.video_url = item.mediaUrl
+    } else {
+      params.image_url = item.mediaUrl
+    }
+
+    const response = await fetch(
+      `${this.baseUrl}/${accountId}/media?${new URLSearchParams(params)}`,
+      { method: 'POST' }
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('[InstagramPublisher] Failed to create carousel item container:', error)
+      throw new Error(`Failed to create carousel item container: ${error}`)
+    }
+
+    const data = await response.json()
+    console.log(`[InstagramPublisher] Created carousel item container: ${data.id}`)
+    return data.id
+  }
+
+  /**
+   * Create the parent carousel container that references all child containers
+   */
+  private async createCarouselContainer(
+    accountId: string,
+    childContainerIds: string[],
+    content: { caption: string; hashtags: string[] },
+    accessToken: string
+  ): Promise<string> {
+    const caption = this.formatCaption(content)
+
+    const params: Record<string, string> = {
+      access_token: accessToken,
+      media_type: 'CAROUSEL',
+      caption,
+      children: childContainerIds.join(','),  // Comma-separated container IDs
+    }
+
+    const response = await fetch(
+      `${this.baseUrl}/${accountId}/media?${new URLSearchParams(params)}`,
+      { method: 'POST' }
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('[InstagramPublisher] Failed to create carousel container:', error)
+      throw new Error(`Failed to create carousel container: ${error}`)
+    }
+
+    const data = await response.json()
+    console.log(`[InstagramPublisher] Created carousel container: ${data.id}`)
+    return data.id
   }
 
   // ============================================

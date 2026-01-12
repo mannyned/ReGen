@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type { SocialPlatform, PlatformContent, PublishResult } from '@/lib/types/social'
+import type {
+  SocialPlatform,
+  PlatformContent,
+  PublishResult,
+  CarouselItem,
+  PlatformCarouselResult,
+} from '@/lib/types/social'
 import { publishingService } from '@/lib/services/publishing'
 import { validatePlatformParam, validatePublishContent, validationErrorResponse } from '@/lib/middleware/validation'
 import { createRateLimitMiddleware } from '@/lib/middleware/rateLimit'
@@ -40,21 +46,27 @@ export async function POST(request: NextRequest) {
         platformContent,
         scheduleAt,
         contentType,
+        carouselItems,  // New: array of carousel items for multi-image posts
       } = body as {
         userId: string
         platforms: SocialPlatform[]
         content: PlatformContent
-        media: {
+        media?: {
           mediaUrl: string
           mediaType: 'image' | 'video' | 'carousel'
           mimeType: string
           fileSize: number
           duration?: number
+          additionalMediaUrls?: string[]
         }
         platformContent?: Record<SocialPlatform, PlatformContent>
         scheduleAt?: string
         contentType?: 'post' | 'story'
+        carouselItems?: CarouselItem[]  // New: for carousel/multi-image posts
       }
+
+      // Determine if this is a carousel post
+      const isCarouselPost = carouselItems && carouselItems.length > 1
 
       // Log for debugging
       console.log('[Publish API] Received request with contentType:', contentType)
@@ -123,48 +135,99 @@ export async function POST(request: NextRequest) {
       }
 
       // Immediate publishing
-      const results = await publishingService.publishToMultiple(platforms, {
-        userId,
-        content,
-        media,
-        platformContent,
-        contentType,
-      })
-
-      // Convert Map to object for JSON response and record successful posts
       const resultsObject: Record<string, unknown> = {}
       let successCount = 0
       let failCount = 0
 
-      for (const [platform, result] of results) {
-        resultsObject[platform] = result
-        if (result.success) {
-          successCount++
+      if (isCarouselPost) {
+        // Carousel publishing
+        console.log(`[Publish API] Publishing carousel with ${carouselItems!.length} items to ${platforms.length} platforms`)
 
-          // Record successful post to database
-          try {
-            await prisma.outboundPost.create({
-              data: {
-                profileId: userId,
-                provider: platform,
-                status: 'POSTED',
-                externalPostId: (result as PublishResult).platformPostId || null,
-                postedAt: new Date(),
-                metadata: {
-                  caption: content.caption?.substring(0, 500),
-                  platformUrl: (result as PublishResult).platformUrl,
-                  mediaType: media?.mediaType,
-                  mediaUrl: media?.mediaUrl,
-                  mimeType: media?.mimeType,
+        const carouselResults = await publishingService.publishCarouselToMultiple(platforms, {
+          userId,
+          items: carouselItems!,
+          content,
+          platformContent,
+          contentType,
+        })
+
+        // Process carousel results
+        for (const [platform, result] of carouselResults) {
+          resultsObject[platform] = result
+          if (result.success) {
+            successCount++
+
+            // Record successful carousel post to database
+            try {
+              await prisma.outboundPost.create({
+                data: {
+                  profileId: userId,
+                  provider: platform,
+                  status: 'POSTED',
+                  externalPostId: result.postId || null,
+                  postedAt: new Date(),
+                  metadata: {
+                    caption: content.caption?.substring(0, 500),
+                    platformUrl: result.postUrl,
+                    mediaType: 'carousel',
+                    itemCount: result.itemsPublished,
+                    itemsTruncated: result.itemsTruncated,
+                    itemIds: result.itemIds,
+                    carouselItems: carouselItems!.slice(0, result.itemsPublished).map(item => ({
+                      mediaUrl: item.mediaUrl,
+                      mimeType: item.mimeType,
+                      order: item.order,
+                    })),
+                  },
                 },
-              },
-            })
-          } catch (recordError) {
-            console.warn(`[Publish] Failed to record ${platform} post:`, recordError)
-            // Don't fail the response if recording fails
+              })
+            } catch (recordError) {
+              console.warn(`[Publish] Failed to record ${platform} carousel post:`, recordError)
+            }
+          } else {
+            failCount++
           }
-        } else {
-          failCount++
+        }
+      } else {
+        // Single-item publishing (existing logic)
+        const results = await publishingService.publishToMultiple(platforms, {
+          userId,
+          content,
+          media,
+          platformContent,
+          contentType,
+        })
+
+        // Process single-item results
+        for (const [platform, result] of results) {
+          resultsObject[platform] = result
+          if (result.success) {
+            successCount++
+
+            // Record successful post to database
+            try {
+              await prisma.outboundPost.create({
+                data: {
+                  profileId: userId,
+                  provider: platform,
+                  status: 'POSTED',
+                  externalPostId: (result as PublishResult).platformPostId || null,
+                  postedAt: new Date(),
+                  metadata: {
+                    caption: content.caption?.substring(0, 500),
+                    platformUrl: (result as PublishResult).platformUrl,
+                    mediaType: media?.mediaType,
+                    mediaUrl: media?.mediaUrl,
+                    mimeType: media?.mimeType,
+                  },
+                },
+              })
+            } catch (recordError) {
+              console.warn(`[Publish] Failed to record ${platform} post:`, recordError)
+            }
+          } else {
+            failCount++
+          }
         }
       }
 
@@ -177,6 +240,7 @@ export async function POST(request: NextRequest) {
           succeeded: successCount,
           failed: failCount,
         },
+        isCarousel: isCarouselPost,
       })
 
     } catch (error: unknown) {
