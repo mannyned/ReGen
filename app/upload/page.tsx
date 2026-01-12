@@ -9,7 +9,7 @@ import { CarouselComposer } from '../components/CarouselComposer'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import type { SocialPlatform } from '@/lib/types/social'
 
-type UploadType = 'video' | 'image' | 'text'
+type UploadType = 'video' | 'image' | 'media' | 'text'
 type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'snapchat' | 'pinterest' | 'discord'
 
 // Map Platform type to SocialPlatform for logo component
@@ -251,11 +251,23 @@ export default function UploadPage() {
     const validFiles: UploadedFileData[] = []
 
     for (const file of filesToProcess) {
-      const isVideo = uploadType === 'video' && file.type.startsWith('video/')
-      const isImage = uploadType === 'image' && file.type.startsWith('image/')
+      const isVideo = file.type.startsWith('video/')
+      const isImage = file.type.startsWith('image/')
 
-      if (!isVideo && !isImage) {
-        alert(`File "${file.name}" is not a valid ${uploadType} file`)
+      // Validate based on upload type
+      let isValid = false
+      if (uploadType === 'media') {
+        // Mixed media mode: accept both images and videos
+        isValid = isVideo || isImage
+      } else if (uploadType === 'video') {
+        isValid = isVideo
+      } else if (uploadType === 'image') {
+        isValid = isImage
+      }
+
+      if (!isValid) {
+        const expectedType = uploadType === 'media' ? 'image or video' : uploadType
+        alert(`File "${file.name}" is not a valid ${expectedType} file`)
         continue
       }
 
@@ -555,26 +567,32 @@ export default function UploadPage() {
             </div>
 
             {/* Upload Type Selection */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
-                { type: 'video' as UploadType, icon: '🎬', title: 'Upload Video', desc: 'MP4, MOV, AVI up to 500MB' },
-                { type: 'image' as UploadType, icon: '🖼️', title: 'Upload Image', desc: 'JPG, PNG, GIF up to 10MB' },
+                { type: 'media' as UploadType, icon: '📸', title: 'Mixed Media', desc: 'Images & videos for carousels', badge: 'Carousel' },
+                { type: 'video' as UploadType, icon: '🎬', title: 'Video Only', desc: 'MP4, MOV, AVI up to 500MB' },
+                { type: 'image' as UploadType, icon: '🖼️', title: 'Images Only', desc: 'JPG, PNG, GIF up to 10MB' },
                 { type: 'text' as UploadType, icon: '📝', title: 'Paste Text/URL', desc: 'Or import from link' },
               ].map((option) => (
                 <button
                   key={option.type}
                   onClick={() => setUploadType(option.type)}
-                  className={`group p-5 rounded-2xl border-2 transition-all text-left ${
+                  className={`group p-4 md:p-5 rounded-2xl border-2 transition-all text-left relative ${
                     uploadType === option.type
                       ? 'border-primary bg-primary/5 shadow-lg'
                       : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="text-4xl mb-3 transition-transform group-hover:scale-110">{option.icon}</div>
-                  <h3 className={`font-bold mb-1 ${uploadType === option.type ? 'text-primary' : 'text-text-primary'}`}>
+                  {'badge' in option && option.badge && (
+                    <span className="absolute top-2 right-2 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full">
+                      {option.badge}
+                    </span>
+                  )}
+                  <div className="text-3xl md:text-4xl mb-2 md:mb-3 transition-transform group-hover:scale-110">{option.icon}</div>
+                  <h3 className={`font-bold mb-1 text-sm md:text-base ${uploadType === option.type ? 'text-primary' : 'text-text-primary'}`}>
                     {option.title}
                   </h3>
-                  <p className="text-sm text-text-secondary">{option.desc}</p>
+                  <p className="text-xs md:text-sm text-text-secondary">{option.desc}</p>
                 </button>
               ))}
             </div>
@@ -645,12 +663,22 @@ export default function UploadPage() {
                           : 'border-gray-300 hover:border-primary/50'
                       }`}
                     >
-                      <div className="text-6xl mb-4">{uploadType === 'video' ? '🎬' : '🖼️'}</div>
+                      <div className="text-6xl mb-4">
+                        {uploadType === 'video' ? '🎬' : uploadType === 'media' ? '📸' : '🖼️'}
+                      </div>
                       <h3 className="text-xl font-semibold text-text-primary mb-2">
-                        Drop your {uploadType}s here
+                        {uploadType === 'media'
+                          ? 'Drop your images & videos here'
+                          : `Drop your ${uploadType}s here`
+                        }
                       </h3>
                       <p className="text-text-secondary mb-6">
                         or click to browse from your computer
+                        {uploadType === 'media' && (
+                          <span className="block text-xs mt-1 text-purple-600">
+                            Mix images and videos for Instagram carousels
+                          </span>
+                        )}
                         {maxUploadLimit > 1 && (
                           <span className="block text-sm mt-2 text-primary font-medium">
                             {uploadedFiles.length}/{maxUploadLimit} files uploaded
@@ -659,7 +687,11 @@ export default function UploadPage() {
                       </p>
                       <input
                         type="file"
-                        accept={uploadType === 'video' ? 'video/*' : 'image/*'}
+                        accept={
+                          uploadType === 'video' ? 'video/*' :
+                          uploadType === 'media' ? 'image/*,video/*' :
+                          'image/*'
+                        }
                         onChange={handleFileSelect}
                         multiple={maxUploadLimit > 1}
                         className="hidden"
@@ -687,7 +719,11 @@ export default function UploadPage() {
                             + Add More
                             <input
                               type="file"
-                              accept={uploadType === 'video' ? 'video/*' : 'image/*'}
+                              accept={
+                                uploadType === 'video' ? 'video/*' :
+                                uploadType === 'media' ? 'image/*,video/*' :
+                                'image/*'
+                              }
                               onChange={handleFileSelect}
                               multiple={maxUploadLimit > 1}
                               className="hidden"
@@ -713,7 +749,7 @@ export default function UploadPage() {
                         <div className="border-2 border-primary/30 rounded-xl p-4 bg-primary/5">
                           <div className="flex items-start gap-4">
                             <div className="w-24 h-24 rounded-lg overflow-hidden bg-black flex-shrink-0">
-                              {uploadType === 'video' ? (
+                              {uploadedFiles[0].file.type.startsWith('video/') ? (
                                 <video src={uploadedFiles[0].previewUrl} className="w-full h-full object-cover" muted />
                               ) : (
                                 <img src={uploadedFiles[0].previewUrl} alt="Preview" className="w-full h-full object-cover" />
@@ -723,6 +759,7 @@ export default function UploadPage() {
                               <p className="font-medium text-text-primary truncate">{uploadedFiles[0].file.name}</p>
                               <p className="text-sm text-text-secondary">
                                 {(uploadedFiles[0].file.size / 1024 / 1024).toFixed(2)} MB
+                                {uploadedFiles[0].file.type.startsWith('video/') ? ' • Video' : ' • Image'}
                               </p>
                               <Badge variant="primary" className="mt-2">Ready to publish</Badge>
                             </div>

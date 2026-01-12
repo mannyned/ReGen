@@ -29,7 +29,7 @@ interface CarouselComposerProps {
   platformConstraints: Record<Platform, CarouselConstraints>
   onReorder: (files: UploadedFileData[]) => void
   onRemove: (index: number) => void
-  uploadType: 'video' | 'image'
+  uploadType: 'video' | 'image' | 'media'
   contentType: 'post' | 'story'
 }
 
