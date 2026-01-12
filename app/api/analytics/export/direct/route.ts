@@ -30,8 +30,36 @@ function getProviderDisplayName(provider: string): string {
     'twitter': 'Twitter/X',
     'x': 'Twitter/X',
     'snapchat': 'Snapchat',
+    'pinterest': 'Pinterest',
+    'discord': 'Discord',
   }
   return names[provider.toLowerCase()] || provider
+}
+
+// Map display/filter names to database provider names
+function getProviderFilters(platforms: string[]): string[] {
+  const mapping: Record<string, string[]> = {
+    'instagram': ['instagram', 'meta'],
+    'youtube': ['youtube', 'google'],
+    'facebook': ['facebook'],
+    'tiktok': ['tiktok'],
+    'linkedin': ['linkedin'],
+    'twitter': ['twitter', 'x'],
+    'snapchat': ['snapchat'],
+    'pinterest': ['pinterest'],
+    'discord': ['discord'],
+  }
+
+  const filters: string[] = []
+  for (const platform of platforms) {
+    const mappedProviders = mapping[platform.toLowerCase()]
+    if (mappedProviders) {
+      filters.push(...mappedProviders)
+    } else {
+      filters.push(platform.toLowerCase())
+    }
+  }
+  return [...new Set(filters)] // Remove duplicates
 }
 
 export async function GET(request: NextRequest) {
@@ -55,6 +83,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const format = searchParams.get('format') || 'csv'
     const days = parseInt(searchParams.get('days') || '30')
+    const platformsParam = searchParams.get('platforms') || ''
 
     // White-label options for PDF
     const whiteLabel = searchParams.get('whiteLabel') === 'true'
@@ -67,7 +96,11 @@ export async function GET(request: NextRequest) {
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
 
-    console.log(`[Direct Export] Fetching data for user ${profileId}, last ${days} days`)
+    // Parse platforms filter
+    const selectedPlatforms = platformsParam ? platformsParam.split(',').filter(Boolean) : []
+    const providerFilters = selectedPlatforms.length > 0 ? getProviderFilters(selectedPlatforms) : []
+
+    console.log(`[Direct Export] Fetching data for user ${profileId}, last ${days} days, platforms: ${selectedPlatforms.join(', ') || 'all'}`)
 
     // Fetch posts with analytics - same query as working stats API
     const posts = await prisma.outboundPost.findMany({
@@ -75,6 +108,7 @@ export async function GET(request: NextRequest) {
         profileId,
         status: 'POSTED',
         postedAt: { gte: startDate },
+        ...(providerFilters.length > 0 && { provider: { in: providerFilters } }),
       },
       select: {
         id: true,

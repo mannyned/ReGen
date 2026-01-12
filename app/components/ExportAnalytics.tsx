@@ -58,6 +58,8 @@ const DEFAULT_PLATFORMS: { id: SocialPlatform; name: string }[] = [
   { id: 'linkedin', name: 'LinkedIn' },
   { id: 'facebook', name: 'Facebook' },
   { id: 'snapchat', name: 'Snapchat' },
+  { id: 'pinterest', name: 'Pinterest' },
+  { id: 'discord', name: 'Discord' },
 ]
 
 // Modal Portal Component - renders modal at document body level
@@ -167,7 +169,16 @@ export function ExportAnalytics({
         setStatus('processing')
         setCurrentJob({ id: 'direct', status: 'processing', progress: 50 })
 
-        const response = await fetch(`/api/analytics/export/direct?format=csv&days=${days}`)
+        // Build query params including platforms filter
+        const csvParams = new URLSearchParams({
+          format: 'csv',
+          days: days.toString(),
+        })
+        if (options.platforms.length > 0) {
+          csvParams.set('platforms', options.platforms.join(','))
+        }
+
+        const response = await fetch(`/api/analytics/export/direct?${csvParams.toString()}`)
 
         if (!response.ok) {
           const contentType = response.headers.get('content-type')
@@ -206,11 +217,16 @@ export function ExportAnalytics({
         setStatus('processing')
         setCurrentJob({ id: 'direct', status: 'processing', progress: 50 })
 
-        // Build URL with white-label options
+        // Build URL with platforms and white-label options
         const params = new URLSearchParams({
           format: 'pdf',
           days: days.toString(),
         })
+
+        // Add platforms filter if selected
+        if (options.platforms.length > 0) {
+          params.set('platforms', options.platforms.join(','))
+        }
 
         // Add white-label options if enabled
         if (options.whiteLabel?.enabled) {
