@@ -275,29 +275,46 @@ export async function GET(request: NextRequest) {
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .page-break { page-break-before: always; }
     }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 40px; color: #1f2937; }
-    .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
-    .header h1 { margin: 0 0 8px 0; font-size: 28px; color: ${brandColor}; }
-    .header .company { font-size: 14px; color: ${accentColor}; margin-bottom: 8px; font-weight: 600; }
-    .header p { margin: 0; color: #6b7280; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 40px; color: #1f2937; background: #ffffff; line-height: 1.5; }
+    .header { display: flex; flex-direction: column; align-items: center; margin-bottom: 48px; padding-bottom: 32px; border-bottom: 3px solid ${brandColor}; position: relative; }
+    .header-brand { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 16px; }
+    .header-logo { width: 56px; height: 56px; object-fit: contain; border-radius: 12px; }
+    .header-title-group { text-align: center; }
+    .header h1 { margin: 0; font-size: 32px; font-weight: 700; color: ${brandColor}; letter-spacing: -0.5px; }
+    .header .company { font-size: 13px; color: ${accentColor}; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+    .header .date-range { margin: 0; color: #6b7280; font-size: 14px; background: #f3f4f6; padding: 8px 20px; border-radius: 20px; margin-top: 12px; }
+    .header .date-range strong { color: #374151; }
     .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-    .stat-card { background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); padding: 16px; border-radius: 12px; text-align: center; }
-    .stat-card.highlight { background: linear-gradient(135deg, ${brandColor}15 0%, ${accentColor}15 100%); }
-    .stat-card .value { font-size: 24px; font-weight: 700; color: #1f2937; }
-    .stat-card .label { font-size: 12px; color: #6b7280; margin-top: 4px; }
-    .section { margin-bottom: 32px; }
-    .section h2 { font-size: 18px; margin: 0 0 16px 0; color: #374151; }
-    table { width: 100%; border-collapse: collapse; }
-    th { background: #f9fafb; padding: 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; }
+    .stat-card { background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f4 100%); padding: 20px 16px; border-radius: 16px; text-align: center; border: 1px solid #e5e7eb; transition: transform 0.2s; }
+    .stat-card.highlight { background: linear-gradient(135deg, ${brandColor}08 0%, ${accentColor}12 100%); border-color: ${brandColor}30; }
+    .stat-card .value { font-size: 28px; font-weight: 800; color: #1f2937; letter-spacing: -0.5px; }
+    .stat-card .label { font-size: 11px; color: #6b7280; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
+    .section { margin-bottom: 36px; }
+    .section h2 { font-size: 18px; margin: 0 0 16px 0; color: #374151; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .section h2::before { content: ''; width: 4px; height: 20px; background: ${brandColor}; border-radius: 2px; }
+    table { width: 100%; border-collapse: collapse; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    th { background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); padding: 14px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
     th:not(:first-child) { text-align: right; }
-    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #9ca3af; font-size: 12px; }
+    td { background: #ffffff; }
+    tr:hover td { background: #f9fafb; }
+    .footer { margin-top: 48px; padding-top: 24px; border-top: 2px solid #e5e7eb; text-align: center; }
+    .footer p { margin: 0; color: #9ca3af; font-size: 12px; }
+    .footer .powered-by { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+    .footer .powered-by img { width: 20px; height: 20px; border-radius: 4px; }
+    .footer .powered-by span { color: #6b7280; font-weight: 500; }
   </style>
 </head>
 <body>
   <div class="header">
-    ${whiteLabel && companyName ? `<div class="company">${companyName}</div>` : ''}
-    <h1>${whiteLabel && companyName ? 'Analytics Report' : 'Analytics Report'}</h1>
-    <p>Generated on ${dateStr} | Last ${days} days</p>
+    <div class="header-brand">
+      ${!hideBranding ? `<img src="/brand/regenr-icon-clean-1024.png" alt="ReGenr" class="header-logo" />` : ''}
+      <div class="header-title-group">
+        ${whiteLabel && companyName ? `<div class="company">${companyName}</div>` : ''}
+        <h1>Analytics Report</h1>
+      </div>
+    </div>
+    <p class="date-range">Generated on <strong>${dateStr}</strong> | Last <strong>${days} days</strong></p>
   </div>
 
   <div class="summary">
@@ -415,8 +432,15 @@ export async function GET(request: NextRequest) {
   </div>
 
   <div class="footer">
-    <p>${hideBranding ? `Generated on ${new Date().toISOString()}` : `Generated by ReGenr Analytics | ${new Date().toISOString()}`}</p>
-    ${whiteLabel && companyName && !hideBranding ? `<p style="margin-top: 4px;">Prepared for ${companyName}</p>` : ''}
+    ${hideBranding ? `
+      <p>Generated on ${new Date().toISOString().split('T')[0]}</p>
+    ` : `
+      <div class="powered-by">
+        <img src="/brand/regenr-icon-clean-1024.png" alt="ReGenr" />
+        <span>Powered by ReGenr Analytics</span>
+      </div>
+      <p style="margin-top: 12px;">Generated on ${new Date().toISOString().split('T')[0]}${whiteLabel && companyName ? ` | Prepared for ${companyName}` : ''}</p>
+    `}
   </div>
 
   <script>window.onload = function() { window.print(); }</script>
