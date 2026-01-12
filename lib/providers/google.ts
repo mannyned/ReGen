@@ -82,8 +82,9 @@ const config: ProviderConfig = {
   identityUrl: GOOGLE_USERINFO_URL,
   tokenVerificationUrl: GOOGLE_TOKENINFO_URL,
 
-  // Scopes for YouTube access
+  // Scopes for YouTube and Google Sheets access
   // See: https://developers.google.com/youtube/v3/guides/auth/server-side-web-apps#identify-access-scopes
+  // See: https://developers.google.com/sheets/api/guides/authorizing
   scopes: [
     'openid',                                                   // OpenID Connect
     'email',                                                    // User's email
@@ -91,6 +92,8 @@ const config: ProviderConfig = {
     'https://www.googleapis.com/auth/youtube.readonly',         // View YouTube data
     'https://www.googleapis.com/auth/youtube.upload',           // Upload videos
     'https://www.googleapis.com/auth/yt-analytics.readonly',    // View YouTube analytics
+    'https://www.googleapis.com/auth/spreadsheets',             // Create/edit Google Sheets
+    'https://www.googleapis.com/auth/drive.file',               // Access files created by the app
   ],
 
   capabilities: {

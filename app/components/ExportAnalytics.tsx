@@ -288,49 +288,55 @@ export function ExportAnalytics({
         return
       }
 
-      // For other formats (google_sheets), use the job-based system
-      const endpoint = `/api/analytics/export/${options.format}`
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId,
-          'x-user-plan': userPlan,
-        },
-        body: JSON.stringify({
-          platforms: options.platforms.length > 0 ? options.platforms : undefined,
-          dateFrom: options.dateFrom,
-          dateTo: options.dateTo,
-          includeCharts: options.includeCharts,
-          includeLocationData: options.includeLocationData,
-          includeRetention: options.includeRetention,
-        }),
-      })
+      // For Google Sheets, use the dedicated endpoint
+      if (options.format === 'google_sheets') {
+        setStatus('processing')
+        setCurrentJob({ id: 'google_sheets', status: 'processing', progress: 50 })
 
-      // Check if response is valid JSON
-      const contentType = response.headers.get('content-type')
-      if (!contentType?.includes('application/json')) {
-        throw new Error('Google Sheets export is not available. Please try CSV or Excel instead.')
+        const response = await fetch('/api/analytics/export/google_sheets', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            days,
+            platforms: options.platforms.length > 0 ? options.platforms : undefined,
+          }),
+        })
+
+        const data = await response.json()
+
+        if (!data.success) {
+          // Handle Google not connected
+          if (data.code === 'GOOGLE_NOT_CONNECTED' || data.code === 'TOKEN_EXPIRED' || data.code === 'INSUFFICIENT_SCOPE') {
+            setError(data.message || 'Please connect your Google account to export to Google Sheets.')
+            setStatus('failed')
+            // Store the connect URL for the retry button
+            setCurrentJob({ id: 'google_connect', status: 'failed', progress: 0, error: data.connectUrl })
+            return
+          }
+          throw new Error(data.error || data.message || 'Failed to create Google Spreadsheet')
+        }
+
+        // Success! Open the spreadsheet in a new tab
+        if (data.spreadsheetUrl) {
+          window.open(data.spreadsheetUrl, '_blank')
+        }
+
+        setStatus('completed')
+        setCurrentJob({ id: 'google_sheets', status: 'completed', progress: 100 })
+        onExportComplete?.('google_sheets', 'google_sheets')
+
+        // Auto close after success
+        setTimeout(() => {
+          setIsOpen(false)
+          resetState()
+        }, 2000)
+        return
       }
 
-      const text = await response.text()
-      if (!text || text.trim() === '') {
-        throw new Error('Empty response from server. Please try again.')
-      }
-
-      let data
-      try {
-        data = JSON.parse(text)
-      } catch {
-        throw new Error('Invalid response from server. Please try CSV or Excel instead.')
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to start export')
-      }
-
-      setCurrentJob({ id: data.jobId, status: 'pending', progress: 0 })
-      setStatus('processing')
+      // For other formats, show not implemented message
+      throw new Error('This export format is not yet available. Please try CSV, Excel, or PDF.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Export failed')
       setStatus('failed')
@@ -522,16 +528,45 @@ export function ExportAnalytics({
             {status === 'failed' && (
               <div className="text-center py-8">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-3xl">❌</span>
+                  <span className="text-3xl">{currentJob?.id === 'google_connect' ? '🔗' : '❌'}</span>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Export Failed</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {currentJob?.id === 'google_connect' ? 'Google Account Required' : 'Export Failed'}
+                </h3>
                 <p className="text-red-600 mb-6">{error || 'An error occurred during export'}</p>
-                <button
-                  onClick={resetState}
-                  className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-                >
-                  Try Again
-                </button>
+                <div className="space-y-3">
+                  {currentJob?.id === 'google_connect' && currentJob?.error && (
+                    <button
+                      onClick={() => {
+                        // Open Google OAuth in popup
+                        const width = 500
+                        const height = 600
+                        const left = window.screenX + (window.outerWidth - width) / 2
+                        const top = window.screenY + (window.outerHeight - height) / 2
+                        window.open(
+                          currentJob.error,
+                          'google-connect',
+                          `width=${width},height=${height},left=${left},top=${top}`
+                        )
+                      }}
+                      className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      </svg>
+                      Connect Google Account
+                    </button>
+                  )}
+                  <button
+                    onClick={resetState}
+                    className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                  >
+                    {currentJob?.id === 'google_connect' ? 'Try Again After Connecting' : 'Try Again'}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -770,12 +805,14 @@ export function ExportAnalytics({
                 {options.format === 'google_sheets' && (
                   <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                     <div className="flex items-start gap-3">
-                      <span className="text-xl">🔗</span>
+                      <svg className="w-6 h-6 text-blue-600 mt-0.5" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M19.385 2H4.615A2.615 2.615 0 0 0 2 4.615v14.77A2.615 2.615 0 0 0 4.615 22h14.77A2.615 2.615 0 0 0 22 19.385V4.615A2.615 2.615 0 0 0 19.385 2zM7 17v-2h4v2H7zm0-4v-2h6v2H7zm0-4V7h10v2H7zm10 8h-4v-6h4v6z"/>
+                      </svg>
                       <div>
                         <p className="text-sm font-medium text-blue-900">Google Sheets Export</p>
                         <p className="text-xs text-blue-700 mt-1">
-                          This will create a new Google Spreadsheet with your analytics data.
-                          You'll need to connect your Google account if not already connected.
+                          Creates a formatted Google Spreadsheet in your Google Drive with analytics data and summary.
+                          Requires a connected Google account.
                         </p>
                       </div>
                     </div>
