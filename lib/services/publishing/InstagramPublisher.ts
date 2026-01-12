@@ -60,38 +60,28 @@ export class InstagramPublisher extends BasePlatformPublisher {
         isStoryOrReel
       )
 
-      // Step 3: Wait for container to be ready (skip for Stories - they auto-publish)
-      // Stories are published immediately when container is created
-      // Reels and regular posts need to wait for processing
-      if (!isStory) {
-        await this.waitForContainerReady(
-          containerId,
-          accessToken,
-          media.mediaType === 'video' ? 60 : 10 // Videos need more time (60 attempts = 2 min), images less (10 attempts = 20 sec)
-        )
-      }
+      // Step 3: Wait for container to be ready
+      // All content types need processing time before publishing
+      const maxAttempts = media.mediaType === 'video' ? 60 : 10 // Videos need more time
+      await this.waitForContainerReady(containerId, accessToken, maxAttempts)
 
-      // Step 4: Publish the container (skip for Stories - they auto-publish)
-      // Instagram Stories are automatically published when the container is created
-      let resultId = containerId
-      if (!isStory) {
-        const result = await this.publishContainer(accountId, containerId, accessToken)
-        resultId = result.id
-      }
+      // Step 4: Publish the container
+      // All content types (posts, stories, reels) need the media_publish step
+      const result = await this.publishContainer(accountId, containerId, accessToken)
 
       // Build the appropriate URL based on content type
-      let platformUrl = `https://www.instagram.com/p/${resultId}`
+      let platformUrl = `https://www.instagram.com/p/${result.id}`
       if (isStory) {
-        // Stories don't have a permanent URL, but we can link to the profile
+        // Stories have a different URL format
         platformUrl = `https://www.instagram.com/stories/`
       } else if (isReel) {
-        platformUrl = `https://www.instagram.com/reel/${resultId}`
+        platformUrl = `https://www.instagram.com/reel/${result.id}`
       }
 
       return {
         success: true,
         platform: this.platform,
-        platformPostId: resultId,
+        platformPostId: result.id,
         platformUrl,
         publishedAt: new Date(),
       }
