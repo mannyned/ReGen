@@ -419,26 +419,41 @@ export default function UploadPage() {
                       <p className="font-semibold text-purple-900 mb-2">What to expect with Story / Reel:</p>
                       <ul className="space-y-1.5 text-purple-800">
                         <li className="flex items-start gap-2">
-                          <span className="font-medium">Instagram:</span>
-                          <span>Images → Story (disappears in 24h, no caption) | Videos → Reel (permanent, with caption)</span>
+                          <span className="font-medium min-w-[80px]">Instagram:</span>
+                          <span>Images → Story (24h, no caption) | Videos → Reel (permanent, with caption)</span>
                         </li>
                         <li className="flex items-start gap-2">
-                          <span className="font-medium">Facebook:</span>
-                          <span>Images → Story (disappears in 24h) | Videos → Reel</span>
+                          <span className="font-medium min-w-[80px]">Facebook:</span>
+                          <span>Images → Story (24h) | Videos → Reel</span>
                         </li>
                         <li className="flex items-start gap-2">
-                          <span className="font-medium">TikTok:</span>
+                          <span className="font-medium min-w-[80px]">TikTok:</span>
                           <span>All videos are permanent (like Reels)</span>
                         </li>
                         <li className="flex items-start gap-2">
-                          <span className="font-medium">YouTube:</span>
+                          <span className="font-medium min-w-[80px]">YouTube:</span>
                           <span>Videos publish as Shorts</span>
                         </li>
                         <li className="flex items-start gap-2">
-                          <span className="font-medium text-purple-600">X, LinkedIn:</span>
-                          <span className="text-purple-600">Don't support Stories — content posts to feed instead</span>
+                          <span className="font-medium min-w-[80px] text-purple-600">X, LinkedIn:</span>
+                          <span className="text-purple-600">Don't support Stories — posts to feed instead</span>
                         </li>
                       </ul>
+
+                      {/* Video Duration Limits */}
+                      <div className="mt-3 pt-3 border-t border-purple-200">
+                        <p className="font-semibold text-purple-900 mb-2">Video duration limits:</p>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-purple-800">
+                          <span><span className="font-medium">Instagram Reel:</span> up to 90 sec</span>
+                          <span><span className="font-medium">Instagram Story:</span> up to 60 sec</span>
+                          <span><span className="font-medium">Facebook Reel:</span> up to 90 sec</span>
+                          <span><span className="font-medium">TikTok:</span> up to 10 min</span>
+                          <span><span className="font-medium">YouTube Shorts:</span> up to 60 sec</span>
+                          <span><span className="font-medium">Snapchat:</span> up to 60 sec</span>
+                          <span><span className="font-medium">X (Twitter):</span> up to 2 min 20 sec</span>
+                          <span><span className="font-medium">LinkedIn:</span> up to 10 min</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
