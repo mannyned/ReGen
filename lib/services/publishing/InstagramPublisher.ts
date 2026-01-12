@@ -168,8 +168,14 @@ export class InstagramPublisher extends BasePlatformPublisher {
     const caption = this.formatCaption(content)
 
     const params: Record<string, string> = {
-      caption,
       access_token: accessToken,
+    }
+
+    // Instagram Stories do NOT support captions - only add caption for Posts and Reels
+    // Adding caption to Stories causes API to reject or fall back to regular post
+    const isStory = isStoryOrReel && media.mediaType !== 'video'
+    if (!isStory) {
+      params.caption = caption
     }
 
     if (media.mediaType === 'video') {
@@ -197,6 +203,8 @@ export class InstagramPublisher extends BasePlatformPublisher {
       accountId,
       media_type: params.media_type,
       isStoryOrReel,
+      isStory,
+      hasCaption: !!params.caption,
       hasImageUrl: !!params.image_url,
       hasVideoUrl: !!params.video_url,
     })
