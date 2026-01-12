@@ -597,6 +597,85 @@ export default function UploadPage() {
               ))}
             </div>
 
+            {/* Mixed Media / Carousel Platform Info */}
+            {uploadType === 'media' && (
+              <div className="mb-6 p-4 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-sm">📸</span>
+                  </div>
+                  <div className="text-sm flex-1">
+                    <p className="font-semibold text-purple-900 mb-2">Mixed Media Carousel Support:</p>
+
+                    {/* Platform Support Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-purple-800 mb-3">
+                      <div className="flex items-start gap-2">
+                        <span className="text-green-600 mt-0.5">✓</span>
+                        <span><span className="font-medium">Instagram:</span> Up to 10 items (images + videos)</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-amber-600 mt-0.5">⚠</span>
+                        <span><span className="font-medium">Facebook:</span> Up to 10 images (videos skipped)</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-green-600 mt-0.5">✓</span>
+                        <span><span className="font-medium">Snapchat:</span> Up to 10 items (posted as sequence)</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-amber-600 mt-0.5">⚠</span>
+                        <span><span className="font-medium">X (Twitter):</span> Up to 4 images only</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-green-600 mt-0.5">✓</span>
+                        <span><span className="font-medium">Discord:</span> Up to 10 attachments</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-amber-600 mt-0.5">⚠</span>
+                        <span><span className="font-medium">LinkedIn:</span> Up to 20 images only</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-amber-600 mt-0.5">⚠</span>
+                        <span><span className="font-medium">Pinterest:</span> 2-5 images only</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-red-500 mt-0.5">✗</span>
+                        <span><span className="font-medium">TikTok, YouTube:</span> Single video only</span>
+                      </div>
+                    </div>
+
+                    {/* Video Duration Limits */}
+                    <div className="pt-3 border-t border-purple-200">
+                      <p className="font-semibold text-purple-900 mb-2">Video duration limits in carousels:</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-purple-800">
+                        <span><span className="font-medium">Instagram:</span> 60 sec/video</span>
+                        <span><span className="font-medium">Snapchat:</span> 60 sec/snap</span>
+                        <span><span className="font-medium">Discord:</span> 500MB max</span>
+                      </div>
+                    </div>
+
+                    {/* Important Notes */}
+                    <div className="mt-3 pt-3 border-t border-purple-200">
+                      <p className="font-semibold text-purple-900 mb-1">Good to know:</p>
+                      <ul className="space-y-1 text-purple-700 text-xs">
+                        <li className="flex items-start gap-1.5">
+                          <span className="text-purple-500">•</span>
+                          <span>First item becomes the cover image</span>
+                        </li>
+                        <li className="flex items-start gap-1.5">
+                          <span className="text-purple-500">•</span>
+                          <span>Drag to reorder items after uploading</span>
+                        </li>
+                        <li className="flex items-start gap-1.5">
+                          <span className="text-purple-500">•</span>
+                          <span>Videos will be automatically skipped on image-only platforms</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Upload Limit Info */}
             {selectedPlatforms.length > 0 && uploadType !== 'text' && (
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
