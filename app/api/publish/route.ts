@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
         media,
         platformContent,
         scheduleAt,
+        contentType,
       } = body as {
         userId: string
         platforms: SocialPlatform[]
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
         }
         platformContent?: Record<SocialPlatform, PlatformContent>
         scheduleAt?: string
+        contentType?: 'post' | 'story'
       }
 
       // Validate required fields
@@ -105,7 +107,7 @@ export async function POST(request: NextRequest) {
         const scheduledPost = await publishingService.schedulePost(
           `scheduled-${Date.now()}`,
           platforms,
-          { userId, content, media, platformContent },
+          { userId, content, media, platformContent, contentType },
           scheduledTime
         )
 
@@ -123,6 +125,7 @@ export async function POST(request: NextRequest) {
         content,
         media,
         platformContent,
+        contentType,
       })
 
       // Convert Map to object for JSON response and record successful posts

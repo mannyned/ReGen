@@ -12,7 +12,7 @@ export class InstagramPublisher extends BasePlatformPublisher {
   protected baseUrl = API_BASE_URLS.instagram
 
   async publishContent(options: PublishOptions): Promise<PublishResult> {
-    const { userId, content, media } = options
+    const { userId, content, media, contentType = 'post' } = options
 
     // Instagram requires media - text-only posts not supported
     if (!media) {
@@ -31,12 +31,16 @@ export class InstagramPublisher extends BasePlatformPublisher {
       // Step 1: Get Instagram Business Account ID
       const accountId = await this.getInstagramAccountId(accessToken)
 
-      // Step 2: Create media container
+      // Determine if this is a story/reel or regular post
+      const isStoryOrReel = contentType === 'story'
+
+      // Step 2: Create media container with appropriate type
       const containerId = await this.createMediaContainer(
         accountId,
         media,
         content,
-        accessToken
+        accessToken,
+        isStoryOrReel
       )
 
       // Step 3: Wait for container to be ready
@@ -50,11 +54,17 @@ export class InstagramPublisher extends BasePlatformPublisher {
       // Step 4: Publish the container
       const result = await this.publishContainer(accountId, containerId, accessToken)
 
+      // Build the appropriate URL based on content type
+      let platformUrl = `https://www.instagram.com/p/${result.id}`
+      if (isStoryOrReel && media.mediaType === 'video') {
+        platformUrl = `https://www.instagram.com/reel/${result.id}`
+      }
+
       return {
         success: true,
         platform: this.platform,
         platformPostId: result.id,
-        platformUrl: `https://www.instagram.com/p/${result.id}`,
+        platformUrl,
         publishedAt: new Date(),
       }
     } catch (error) {
@@ -134,7 +144,8 @@ export class InstagramPublisher extends BasePlatformPublisher {
     accountId: string,
     media: ContentPayload,
     content: { caption: string; hashtags: string[] },
-    accessToken: string
+    accessToken: string,
+    isStoryOrReel: boolean = false
   ): Promise<string> {
     const caption = this.formatCaption(content)
 
@@ -144,10 +155,24 @@ export class InstagramPublisher extends BasePlatformPublisher {
     }
 
     if (media.mediaType === 'video') {
-      params.media_type = 'VIDEO'
-      params.video_url = media.mediaUrl
+      // For videos: use REELS when contentType is 'story', otherwise regular VIDEO
+      if (isStoryOrReel) {
+        params.media_type = 'REELS'
+        params.video_url = media.mediaUrl
+        // Reels can optionally share to feed
+        params.share_to_feed = 'true'
+      } else {
+        params.media_type = 'VIDEO'
+        params.video_url = media.mediaUrl
+      }
     } else {
-      params.image_url = media.mediaUrl
+      // For images: use STORIES when contentType is 'story', otherwise regular image post
+      if (isStoryOrReel) {
+        params.media_type = 'STORIES'
+        params.image_url = media.mediaUrl
+      } else {
+        params.image_url = media.mediaUrl
+      }
     }
 
     const response = await fetch(

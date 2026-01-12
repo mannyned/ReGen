@@ -53,6 +53,7 @@ function SchedulePageContent() {
   const [testMode, setTestMode] = useState(true) // Default to test mode for safety
   const [accountsLoading, setAccountsLoading] = useState(true)
   const [contentId, setContentId] = useState<string | null>(null)
+  const [contentType, setContentType] = useState<'post' | 'story'>('post')
   const [isPublishing, setIsPublishing] = useState(false)
   const [publishingStatus, setPublishingStatus] = useState('')
   const [upcomingPosts, setUpcomingPosts] = useState<Array<{
@@ -162,6 +163,10 @@ function SchedulePageContent() {
             if (previewsFromDb.length > 0) {
               setSelectedPreviews(previewsFromDb)
               setSelectedPlatforms(previewsFromDb.map(p => p.platform))
+              // Set contentType from database
+              if (processedData.contentType) {
+                setContentType(processedData.contentType)
+              }
               return
             }
           }
@@ -378,6 +383,7 @@ function SchedulePageContent() {
           hashtags,
         },
         media: mediaData,
+        contentType, // Pass content type (post vs story/reel)
       }
 
       const response = await fetch('/api/publish', {
@@ -474,6 +480,7 @@ function SchedulePageContent() {
           scheduledAt: scheduledAt.toISOString(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           platformContent,
+          contentType, // Pass content type (post vs story/reel)
         }),
       })
 

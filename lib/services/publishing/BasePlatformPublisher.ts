@@ -26,6 +26,7 @@ export interface PublishOptions {
   content: PlatformContent
   media?: ContentPayload  // Optional for text-only posts
   scheduledAt?: Date
+  contentType?: 'post' | 'story'  // Post to feed or story/reel
 }
 
 export abstract class BasePlatformPublisher {
