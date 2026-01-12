@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { usePlan } from '../context/PlanContext'
 import { getRemainingUploads } from '../config/plans'
 import { AppHeader, Card, StatCard, GradientBanner, Badge, PlatformLogo } from '../components/ui'
+import { useBetaStatus } from '../components/BetaProBadge'
 import type { SocialPlatform } from '@/lib/types/social'
 
 // Map display names to platform IDs
@@ -63,6 +64,7 @@ interface AnalyticsStats {
 
 export default function DashboardPage() {
   const { currentPlan, planFeatures, usedUploads } = usePlan()
+  const { isBetaPro, daysRemaining, isLoading: betaLoading } = useBetaStatus()
   const [mounted, setMounted] = useState(false)
   const [recentPosts, setRecentPosts] = useState<RecentPost[]>([])
   const [loadingPosts, setLoadingPosts] = useState(true)
@@ -247,6 +249,62 @@ export default function DashboardPage() {
               </div>
               <Link href="/settings" className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity shadow-lg">
                 Upgrade to Pro
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Beta Pro Trial Banner */}
+        {!betaLoading && isBetaPro && daysRemaining !== null && (
+          <div className={`rounded-2xl p-5 mb-6 animate-fade-in ${
+            daysRemaining <= 7
+              ? 'bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200'
+              : 'bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200'
+          }`}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  daysRemaining <= 7 ? 'bg-orange-100' : 'bg-violet-100'
+                }`}>
+                  <span className="text-xl">{daysRemaining <= 7 ? '⏰' : '🧪'}</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className={`font-bold ${daysRemaining <= 7 ? 'text-orange-900' : 'text-violet-900'}`}>
+                      Beta Pro Access
+                    </h3>
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+                      daysRemaining <= 7
+                        ? 'bg-orange-100 text-orange-700'
+                        : 'bg-violet-100 text-violet-700'
+                    }`}>
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                          daysRemaining <= 7 ? 'bg-orange-400' : 'bg-violet-400'
+                        }`} />
+                        <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+                          daysRemaining <= 7 ? 'bg-orange-500' : 'bg-violet-500'
+                        }`} />
+                      </span>
+                      {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} left
+                    </span>
+                  </div>
+                  <p className={`text-sm ${daysRemaining <= 7 ? 'text-orange-700' : 'text-violet-700'}`}>
+                    {daysRemaining <= 7
+                      ? 'Your beta trial is ending soon. Upgrade to keep Pro features!'
+                      : 'Enjoy full Pro features during your beta trial period.'}
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/settings"
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-opacity shadow-lg whitespace-nowrap ${
+                  daysRemaining <= 7
+                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:opacity-90'
+                    : 'bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:opacity-90'
+                }`}
+              >
+                View Plans
               </Link>
             </div>
           </div>
