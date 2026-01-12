@@ -407,6 +407,42 @@ export default function UploadPage() {
                   Story / Reel
                 </button>
               </div>
+
+              {/* Story/Reel Platform Info */}
+              {contentType === 'story' && (
+                <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-lg">💡</span>
+                    </div>
+                    <div className="text-sm">
+                      <p className="font-semibold text-purple-900 mb-2">What to expect with Story / Reel:</p>
+                      <ul className="space-y-1.5 text-purple-800">
+                        <li className="flex items-start gap-2">
+                          <span className="font-medium">Instagram:</span>
+                          <span>Images → Story (disappears in 24h, no caption) | Videos → Reel (permanent, with caption)</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="font-medium">Facebook:</span>
+                          <span>Images → Story (disappears in 24h) | Videos → Reel</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="font-medium">TikTok:</span>
+                          <span>All videos are permanent (like Reels)</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="font-medium">YouTube:</span>
+                          <span>Videos publish as Shorts</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="font-medium text-purple-600">X, LinkedIn:</span>
+                          <span className="text-purple-600">Don't support Stories — content posts to feed instead</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Upload Type Selection */}
