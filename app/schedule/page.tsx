@@ -182,6 +182,12 @@ function SchedulePageContent() {
         try {
           const previews: PreviewData[] = JSON.parse(previewsData)
 
+          // Load contentType from localStorage if available
+          const storedContentType = localStorage.getItem('contentType') as 'post' | 'story' | null
+          if (storedContentType) {
+            setContentType(storedContentType)
+          }
+
           // Check if files already have base64Data (from database flow)
           const hasDbUrls = previews.some(p => p.files.some(f => f.base64Data?.startsWith('http')))
 

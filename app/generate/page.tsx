@@ -590,6 +590,10 @@ function GeneratePageContent() {
           }))
         }))
         localStorage.setItem('selectedPreviews', JSON.stringify(selectedDataForStorage))
+        // Also save contentType for localStorage flow
+        if (uploadData?.contentType) {
+          localStorage.setItem('contentType', uploadData.contentType)
+        }
         router.push('/schedule')
       }
     } catch (error) {
@@ -610,6 +614,10 @@ function GeneratePageContent() {
           }))
         }))
         localStorage.setItem('selectedPreviews', JSON.stringify(minimalData))
+        // Also save contentType for localStorage flow
+        if (uploadData?.contentType) {
+          localStorage.setItem('contentType', uploadData.contentType)
+        }
         router.push('/schedule')
       } catch (fallbackError) {
         alert('Unable to save selection. Please try again.')

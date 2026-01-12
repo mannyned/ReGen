@@ -33,6 +33,8 @@ export class InstagramPublisher extends BasePlatformPublisher {
 
       // Determine if this is a story/reel or regular post
       const isStoryOrReel = contentType === 'story'
+      const isStory = isStoryOrReel && media.mediaType !== 'video' // Stories are for images
+      const isReel = isStoryOrReel && media.mediaType === 'video'  // Reels are for videos
 
       // Step 2: Create media container with appropriate type
       const containerId = await this.createMediaContainer(
@@ -43,21 +45,32 @@ export class InstagramPublisher extends BasePlatformPublisher {
         isStoryOrReel
       )
 
-      // Step 3: Wait for container to be ready
-      // Both images and videos need processing time before publishing
-      await this.waitForContainerReady(
-        containerId,
-        accessToken,
-        media.mediaType === 'video' ? 60 : 10 // Videos need more time (60 attempts = 2 min), images less (10 attempts = 20 sec)
-      )
+      // Step 3: Wait for container to be ready (skip for Stories - they auto-publish)
+      // Stories are published immediately when container is created
+      // Reels and regular posts need to wait for processing
+      if (!isStory) {
+        await this.waitForContainerReady(
+          containerId,
+          accessToken,
+          media.mediaType === 'video' ? 60 : 10 // Videos need more time (60 attempts = 2 min), images less (10 attempts = 20 sec)
+        )
+      }
 
-      // Step 4: Publish the container
-      const result = await this.publishContainer(accountId, containerId, accessToken)
+      // Step 4: Publish the container (skip for Stories - they auto-publish)
+      // Instagram Stories are automatically published when the container is created
+      let resultId = containerId
+      if (!isStory) {
+        const result = await this.publishContainer(accountId, containerId, accessToken)
+        resultId = result.id
+      }
 
       // Build the appropriate URL based on content type
-      let platformUrl = `https://www.instagram.com/p/${result.id}`
-      if (isStoryOrReel && media.mediaType === 'video') {
-        platformUrl = `https://www.instagram.com/reel/${result.id}`
+      let platformUrl = `https://www.instagram.com/p/${resultId}`
+      if (isStory) {
+        // Stories don't have a permanent URL, but we can link to the profile
+        platformUrl = `https://www.instagram.com/stories/`
+      } else if (isReel) {
+        platformUrl = `https://www.instagram.com/reel/${resultId}`
       }
 
       return {
