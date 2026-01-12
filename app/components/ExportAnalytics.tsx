@@ -109,9 +109,15 @@ export function ExportAnalytics({
   // Check if user can export
   const canExport = userPlan === 'pro'
 
-  // Poll for job status
+  // Poll for job status (only for job-based exports, not direct exports)
   useEffect(() => {
     if (!currentJob || currentJob.status === 'completed' || currentJob.status === 'failed') {
+      return
+    }
+
+    // Skip polling for direct exports (they don't use job system)
+    const directExportIds = ['direct', 'google_sheets', 'google_connect']
+    if (directExportIds.includes(currentJob.id)) {
       return
     }
 
