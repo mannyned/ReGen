@@ -76,7 +76,7 @@ export class InstagramPublisher extends BasePlatformPublisher {
       return {
         success: true,
         platform: this.platform,
-        platformPostId: result.id,
+        platformPostId: resultId,
         platformUrl,
         publishedAt: new Date(),
       }
