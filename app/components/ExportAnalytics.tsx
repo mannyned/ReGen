@@ -164,8 +164,12 @@ export function ExportAnalytics({
         const response = await fetch(`/api/analytics/export/direct?format=csv&days=${days}`)
 
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Export failed')
+          const contentType = response.headers.get('content-type')
+          if (contentType?.includes('application/json')) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || 'Export failed')
+          }
+          throw new Error(`Export failed: ${response.statusText}`)
         }
 
         // Download the CSV directly
@@ -303,7 +307,23 @@ export function ExportAnalytics({
         }),
       })
 
-      const data = await response.json()
+      // Check if response is valid JSON
+      const contentType = response.headers.get('content-type')
+      if (!contentType?.includes('application/json')) {
+        throw new Error('Google Sheets export is not available. Please try CSV or Excel instead.')
+      }
+
+      const text = await response.text()
+      if (!text || text.trim() === '') {
+        throw new Error('Empty response from server. Please try again.')
+      }
+
+      let data
+      try {
+        data = JSON.parse(text)
+      } catch {
+        throw new Error('Invalid response from server. Please try CSV or Excel instead.')
+      }
 
       if (!data.success) {
         throw new Error(data.error || 'Failed to start export')
