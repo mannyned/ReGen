@@ -310,7 +310,24 @@ export function ExportAnalytics({
           }),
         })
 
-        const data = await response.json()
+        // Handle non-JSON responses
+        const contentType = response.headers.get('content-type')
+        if (!contentType?.includes('application/json')) {
+          throw new Error('Server error. Please try again.')
+        }
+
+        const text = await response.text()
+        if (!text || text.trim() === '') {
+          throw new Error('Empty response from server. Please try again.')
+        }
+
+        let data
+        try {
+          data = JSON.parse(text)
+        } catch {
+          console.error('Failed to parse response:', text.substring(0, 200))
+          throw new Error('Invalid response from server. Please try again.')
+        }
 
         if (!data.success) {
           // Handle Google not connected
