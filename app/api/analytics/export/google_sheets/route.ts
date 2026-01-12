@@ -186,6 +186,10 @@ export async function POST(request: NextRequest) {
     const spreadsheetId = spreadsheet.data.spreadsheetId!
     const spreadsheetUrl = spreadsheet.data.spreadsheetUrl!
 
+    // Get actual sheet IDs from the created spreadsheet
+    const analyticsSheetId = spreadsheet.data.sheets?.[0]?.properties?.sheetId ?? 0
+    const summarySheetId = spreadsheet.data.sheets?.[1]?.properties?.sheetId ?? 1
+
     // Prepare data for Analytics Data sheet
     const headers = [
       'Platform', 'Title', 'Published', 'Views', 'Likes', 'Comments',
@@ -263,7 +267,7 @@ export async function POST(request: NextRequest) {
           {
             repeatCell: {
               range: {
-                sheetId: 0,
+                sheetId: analyticsSheetId,
                 startRowIndex: 0,
                 endRowIndex: 1,
               },
@@ -283,7 +287,7 @@ export async function POST(request: NextRequest) {
           {
             repeatCell: {
               range: {
-                sheetId: 1,
+                sheetId: summarySheetId,
                 startRowIndex: 0,
                 endRowIndex: 1,
               },
@@ -302,7 +306,7 @@ export async function POST(request: NextRequest) {
           {
             autoResizeDimensions: {
               dimensions: {
-                sheetId: 0,
+                sheetId: analyticsSheetId,
                 dimension: 'COLUMNS',
                 startIndex: 0,
                 endIndex: 12,
