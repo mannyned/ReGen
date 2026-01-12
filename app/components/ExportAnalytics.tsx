@@ -196,8 +196,31 @@ export function ExportAnalytics({
         setStatus('processing')
         setCurrentJob({ id: 'direct', status: 'processing', progress: 50 })
 
+        // Build URL with white-label options
+        const params = new URLSearchParams({
+          format: 'pdf',
+          days: days.toString(),
+        })
+
+        // Add white-label options if enabled
+        if (options.whiteLabel?.enabled) {
+          params.set('whiteLabel', 'true')
+          if (options.whiteLabel.companyName) {
+            params.set('companyName', options.whiteLabel.companyName)
+          }
+          if (options.whiteLabel.primaryColor) {
+            params.set('primaryColor', options.whiteLabel.primaryColor)
+          }
+          if (options.whiteLabel.secondaryColor) {
+            params.set('secondaryColor', options.whiteLabel.secondaryColor)
+          }
+          if (options.whiteLabel.hideReGenrBranding) {
+            params.set('hideBranding', 'true')
+          }
+        }
+
         // Open PDF report in new window for printing
-        window.open(`/api/analytics/export/direct?format=pdf&days=${days}`, '_blank')
+        window.open(`/api/analytics/export/direct?${params.toString()}`, '_blank')
 
         setStatus('completed')
         setCurrentJob({ id: 'direct', status: 'completed', progress: 100 })
