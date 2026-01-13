@@ -178,6 +178,37 @@ export async function GET(request: NextRequest) {
       views: number
     }> = {}
 
+    // Helper to normalize provider names for display
+    // Note: 'meta' can be either Instagram or Facebook depending on context
+    // We keep 'facebook' separate from 'instagram' for proper filtering
+    const normalizeProvider = (provider: string): string => {
+      // 'google' is always YouTube
+      if (provider === 'google') return 'youtube'
+      // 'meta' is Instagram (Facebook has its own 'facebook' provider)
+      if (provider === 'meta') return 'instagram'
+      return provider
+    }
+
+    // First, initialize platformEngagement from all posts (even those without analytics)
+    // This ensures platforms appear even if no analytics have been synced yet
+    for (const post of postsWithAnalytics) {
+      const provider = normalizeProvider(post.provider)
+      if (!platformEngagement[provider]) {
+        platformEngagement[provider] = {
+          posts: 0,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          reach: 0,
+          impressions: 0,
+          saves: 0,
+          views: 0,
+        }
+      }
+      platformEngagement[provider].posts++
+    }
+
+    // Now aggregate analytics data for posts that have been synced
     for (const post of postsWithAnalytics) {
       const metadata = post.metadata as Record<string, unknown> | null
       const analytics = metadata?.analytics as Record<string, number> | null
@@ -193,24 +224,7 @@ export async function GET(request: NextRequest) {
         totalViews += analytics.views || 0
 
         // Per-platform aggregation
-        // Normalize provider names for display
-        let provider = post.provider
-        if (provider === 'meta') provider = 'instagram'
-        if (provider === 'google') provider = 'youtube'
-
-        if (!platformEngagement[provider]) {
-          platformEngagement[provider] = {
-            posts: 0,
-            likes: 0,
-            comments: 0,
-            shares: 0,
-            reach: 0,
-            impressions: 0,
-            saves: 0,
-            views: 0,
-          }
-        }
-        platformEngagement[provider].posts++
+        const provider = normalizeProvider(post.provider)
         platformEngagement[provider].likes += analytics.likes || 0
         platformEngagement[provider].comments += analytics.comments || 0
         platformEngagement[provider].shares += analytics.shares || 0
@@ -609,9 +623,8 @@ export async function GET(request: NextRequest) {
         prevTotalViews += analytics.views || 0
         prevTotalImpressions += analytics.impressions || 0
 
-        let provider = post.provider
-        if (provider === 'meta') provider = 'instagram'
-        if (provider === 'google') provider = 'youtube'
+        // Use the same normalization helper as the current period
+        const provider = normalizeProvider(post.provider)
 
         if (!prevPlatformEngagement[provider]) {
           prevPlatformEngagement[provider] = { posts: 0, reach: 0, likes: 0, comments: 0, shares: 0, saves: 0 }

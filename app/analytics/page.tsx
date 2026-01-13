@@ -190,6 +190,9 @@ export default function AnalyticsPage() {
     reach: number
     growth: number
     bestTime: string
+    totalEngagement?: number
+    likes?: number
+    comments?: number
   }> | null>(null)
   const [recentActivity, setRecentActivity] = useState<Array<{
     id: string
@@ -447,6 +450,10 @@ export default function AnalyticsPage() {
           reach: engagementData?.reach || 0,
           growth: 0, // Would need historical data to calculate
           bestTime: '—', // Would need time-based analysis
+          // Include total engagement count for display when reach is unavailable
+          totalEngagement,
+          likes: engagementData?.likes || 0,
+          comments: engagementData?.comments || 0,
         }
       })
       setPlatformData(data)
@@ -465,6 +472,10 @@ export default function AnalyticsPage() {
           reach: engData.reach,
           growth: 0,
           bestTime: '—',
+          // Include total engagement count for display when reach is unavailable
+          totalEngagement,
+          likes: engData.likes,
+          comments: engData.comments,
         }
       })
       setPlatformData(data)
@@ -538,13 +549,15 @@ export default function AnalyticsPage() {
     }
 
     // Map display names to platform keys for filtering
+    // Note: 'meta' is used for Instagram, 'facebook' is used for Facebook
+    // Include both in case of legacy data stored with different provider names
     const platformKeyMap: Record<string, string[]> = {
       instagram: ['instagram', 'meta'],
       youtube: ['youtube', 'google'],
       tiktok: ['tiktok'],
       twitter: ['twitter'],
       linkedin: ['linkedin'],
-      facebook: ['facebook'],
+      facebook: ['facebook', 'meta'], // Include 'meta' as fallback for legacy data
       snapchat: ['snapchat'],
     }
 
@@ -575,10 +588,28 @@ export default function AnalyticsPage() {
       ? ((totalEngagement / filteredEngagement.reach) * 100).toFixed(1)
       : null
 
+    // Show reach if available, otherwise show total engagement count
+    // This ensures users see their data even when reach isn't available (e.g., Facebook without insights permission)
+    let reachDisplay = '—'
+    if (filteredEngagement.reach > 0) {
+      reachDisplay = filteredEngagement.reach.toLocaleString()
+    } else if (totalEngagement > 0) {
+      // Show engagement count with indicator when reach is unavailable
+      reachDisplay = `${totalEngagement.toLocaleString()} interactions`
+    }
+
+    // Show engagement rate if available, otherwise show engagement count
+    let engagementDisplay = '—'
+    if (engagementRate) {
+      engagementDisplay = engagementRate + '%'
+    } else if (totalEngagement > 0) {
+      engagementDisplay = totalEngagement.toLocaleString()
+    }
+
     return {
       totalPosts: filteredPostCount.toString(),
-      totalReach: filteredEngagement.reach > 0 ? filteredEngagement.reach.toLocaleString() : '—',
-      avgEngagement: engagementRate ? engagementRate + '%' : '—',
+      totalReach: reachDisplay,
+      avgEngagement: engagementDisplay,
       aiGenerated: '—' // AI generated count is not platform-specific in current data
     }
   })()
@@ -1849,22 +1880,49 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="grid grid-cols-3 gap-4 mb-2">
                         <div>
-                          <p className="text-xs text-text-secondary mb-1">Engagement Rate</p>
-                          <p className="text-lg font-bold text-primary">{platform.engagement}%</p>
+                          <p className="text-xs text-text-secondary mb-1">
+                            {platform.reach > 0 ? 'Engagement Rate' : 'Engagement'}
+                          </p>
+                          <p className="text-lg font-bold text-primary">
+                            {platform.reach > 0
+                              ? `${platform.engagement}%`
+                              : platform.totalEngagement > 0
+                                ? platform.totalEngagement.toLocaleString()
+                                : '—'
+                            }
+                          </p>
                         </div>
                         <div>
-                          <p className="text-xs text-text-secondary mb-1">Reach</p>
-                          <p className="text-lg font-bold text-text-primary">{platform.reach.toLocaleString()}</p>
+                          <p className="text-xs text-text-secondary mb-1">
+                            {platform.reach > 0 ? 'Reach' : 'Likes'}
+                          </p>
+                          <p className="text-lg font-bold text-text-primary">
+                            {platform.reach > 0
+                              ? platform.reach.toLocaleString()
+                              : platform.likes?.toLocaleString() || '—'
+                            }
+                          </p>
                         </div>
                         <div>
-                          <p className="text-xs text-text-secondary mb-1">Avg per Post</p>
-                          <p className="text-lg font-bold text-text-primary">{Math.round(platform.reach / platform.posts)}</p>
+                          <p className="text-xs text-text-secondary mb-1">
+                            {platform.reach > 0 ? 'Avg per Post' : 'Comments'}
+                          </p>
+                          <p className="text-lg font-bold text-text-primary">
+                            {platform.reach > 0
+                              ? Math.round(platform.reach / platform.posts)
+                              : platform.comments?.toLocaleString() || '—'
+                            }
+                          </p>
                         </div>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                         <div
                           className="bg-gradient-primary h-3 rounded-full transition-all duration-500"
-                          style={{ width: `${platform.engagement * 5}%` }}
+                          style={{
+                            width: platform.reach > 0
+                              ? `${Math.min(platform.engagement * 5, 100)}%`
+                              : `${Math.min((platform.totalEngagement || 0) * 2, 100)}%`
+                          }}
                         />
                       </div>
                     </div>
