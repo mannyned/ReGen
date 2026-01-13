@@ -80,17 +80,58 @@ Track your latest actions including:
 |------|---------|----------|
 | Video | MP4, MOV, AVI, WebM | 500 MB |
 | Image | JPG, PNG, GIF, WebP | 50 MB |
-| Text | Plain text input | - |
+| Mixed Media | Images + Videos | 500 MB |
+| Text/URL | Plain text or URL | - |
 
 ### Upload Process
 
 1. **Go to Upload** - Click "Upload" in the navigation
-2. **Choose Content Type** - Select Video, Image, or Text
+2. **Choose Content Type** - Select Video, Image, Mixed Media, or Text/URL
 3. **Drag & Drop** - Drop files into the upload zone, or click to browse
 4. **Select Platforms** - Choose which platforms to publish to
 5. **Add Description** - Describe your content for AI caption generation
 6. **Add Hashtags** - Enter custom hashtags (optional)
 7. **Continue** - Proceed to caption generation
+
+### Mixed Media Upload (Carousels)
+
+Upload a combination of images and videos for carousel posts:
+
+| Platform | Max Items | Video Support | Notes |
+|----------|-----------|---------------|-------|
+| Instagram | 10 | Yes | True carousel via Graph API |
+| Facebook | 10 | Yes | Multi-photo post |
+| Twitter/X | 4 | No (images only) | No mixed media |
+| LinkedIn | 20 | No (images only) | Carousel document |
+| Snapchat | 10 | Yes | Sequential stories |
+| Discord | 10 | Yes | Multi-attachment |
+| Pinterest | 5 | No (images only) | Carousel pin |
+
+**Tips for Mixed Media:**
+- The first image becomes your cover image
+- Drag to reorder items before publishing
+- Platforms that don't support all items will show a truncation warning
+- Videos have platform-specific duration limits (e.g., Instagram: 60s per video)
+
+### Text/URL Upload
+
+For bloggers, news publishers, and content sharers:
+
+1. Select **Text/URL** mode
+2. Enter your text content OR paste a URL
+3. **Optional:** Add images or videos to accompany your text/URL
+4. The AI will analyze your URL content to generate relevant captions
+
+**URL Content Analysis:**
+When you paste a URL, ReGenr will:
+- Fetch and read the webpage content
+- Extract the title, description, and article text
+- Use this context to generate accurate, relevant captions
+
+**Example:** Paste a news article URL, and the AI generates:
+> "Breaking: Scientists achieve major breakthrough in renewable energy! New solar technology could revolutionize how we power homes. Read more about this game-changing discovery."
+
+Instead of a generic caption, the AI understands and references the actual article content.
 
 ### Multi-File Upload
 - Upload multiple images for carousel posts
@@ -114,10 +155,36 @@ Choose your caption style:
 - **Engaging** - Fun, attention-grabbing with emojis
 - **Casual** - Friendly, relaxed conversational tone
 
+#### What the AI Analyzes
+
+The AI considers multiple content sources when generating captions:
+
+| Content Type | How AI Uses It |
+|--------------|----------------|
+| **Images/Videos** | Visually analyzes the content using GPT-4 Vision |
+| **URL Content** | Fetches and reads the webpage to understand the linked article |
+| **Text Content** | Uses your written text as context |
+| **Description** | Incorporates your content description |
+
+#### URL Content Analysis
+
+When you include a URL in Text/URL mode, the AI:
+1. Fetches the webpage content
+2. Extracts: Title, description, author, and article text
+3. Generates captions that reference the actual content
+
+This is especially useful for:
+- Sharing news articles with accurate summaries
+- Promoting blog posts with relevant hooks
+- Creating engaging captions for shared links
+
+> **Note:** URLs are automatically appended to your caption as plain text on all platforms.
+
 #### Regenerating Captions
 1. Click **Regenerate** on any platform preview
 2. Select your preferred tone
 3. AI generates a new caption optimized for that platform
+4. If a URL was provided, the AI re-analyzes the link content
 
 ### Brand Voice AI (Pro)
 
@@ -311,10 +378,23 @@ Platform-specific recommendations:
 - Completion rate tracking
 
 ### Export Analytics (Pro)
-- Export to CSV, Excel, or PDF
+
+Export your analytics data in multiple formats:
+
+**Export Options:**
+- **CSV** - Spreadsheet-compatible data
+- **PDF** - Formatted report with charts
+- **Google Sheets** - Direct integration (requires Google account)
+
+**Platform Filtering:**
+- Select specific platforms to include in your export
+- Choose from: Instagram, TikTok, YouTube, Twitter/X, LinkedIn, Facebook, Snapchat, Pinterest, Discord
+- Leave empty to export all platforms
+
+**Export Features:**
 - Schedule automated reports
 - Create shareable links
-- Google Sheets integration
+- Custom date ranges
 
 ---
 
@@ -458,6 +538,37 @@ Stay updated with new features:
 - Check the Dashboard for announcements
 - Follow our blog for detailed release notes
 - Subscribe to email updates in Settings
+
+### Recent Updates (January 2026)
+
+#### URL Content Analysis for AI Captions
+- AI now fetches and analyzes webpage content when you paste a URL
+- Extracts title, description, author, and article text
+- Generates more relevant, contextual captions based on the actual content
+- Perfect for news articles, blog posts, and shared links
+
+#### Mixed Media Upload (Carousels)
+- New "Mixed Media" upload option combines images and videos
+- Create carousel posts with both media types on Instagram and Facebook
+- Drag-and-drop reordering of carousel items
+- Platform-specific item limits and truncation warnings
+- Info box shows which platforms support mixed media
+
+#### Text/URL with Media
+- Text/URL mode now supports optional image/video uploads
+- Perfect for bloggers and news publishers
+- Combine article links with featured images
+- AI considers both URL content and visual media
+
+#### Export Analytics Improvements
+- Added Discord and Pinterest to platform selection
+- Platform filtering now works correctly for all export types
+- CSV, PDF, and Google Sheets exports include selected platforms only
+
+#### URL Appending to Captions
+- URLs from Text/URL uploads are now always included in captions
+- Automatically appended as plain text at the end of each caption
+- Works across all platforms (Instagram, Facebook, LinkedIn, etc.)
 
 ---
 
