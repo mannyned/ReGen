@@ -5,6 +5,11 @@
       "main": true
     }
   },
+  "build": {
+    "env": {
+      "NODE_OPTIONS": "--max-old-space-size=4096"
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/subscription-reminders",
