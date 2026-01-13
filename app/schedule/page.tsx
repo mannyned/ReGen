@@ -54,6 +54,7 @@ function SchedulePageContent() {
   const [accountsLoading, setAccountsLoading] = useState(true)
   const [contentId, setContentId] = useState<string | null>(null)
   const [contentType, setContentType] = useState<'post' | 'story'>('post')
+  const [urlContent, setUrlContent] = useState<string | null>(null)
   const [isPublishing, setIsPublishing] = useState(false)
   const [publishingStatus, setPublishingStatus] = useState('')
   const [upcomingPosts, setUpcomingPosts] = useState<Array<{
@@ -133,9 +134,16 @@ function SchedulePageContent() {
                 fileSize: number
                 mimeType: string
               }>
-              uploadType: 'video' | 'image' | 'text'
+              uploadType: 'video' | 'image' | 'media' | 'text'
               contentType: 'post' | 'story'
               selectedPlatforms: Platform[]
+              textContent?: string
+              urlContent?: string
+            }
+
+            // Store URL content for appending to captions
+            if (processedData.urlContent) {
+              setUrlContent(processedData.urlContent)
             }
 
             const generatedCaptions = content.generatedCaptions as Record<string, {
@@ -267,8 +275,13 @@ function SchedulePageContent() {
 
     try {
       const preview = selectedPreviews[0]
-      const caption = preview?.caption || 'Test post from ReGenr'
+      let caption = preview?.caption || 'Test post from ReGenr'
       const hashtags = preview?.hashtags || ['#ReGenr', '#TestMode']
+
+      // Ensure URL is appended to caption if it exists and isn't already included
+      if (urlContent && !caption.includes(urlContent)) {
+        caption = caption ? `${caption}\n\n${urlContent}` : urlContent
+      }
 
       // For test mode, use simplified data format
       if (testMode) {
@@ -470,8 +483,13 @@ function SchedulePageContent() {
       // Build platform content from previews
       const platformContent: Record<string, any> = {}
       selectedPreviews.forEach((preview) => {
+        let caption = preview.caption
+        // Ensure URL is appended to caption if it exists and isn't already included
+        if (urlContent && !caption.includes(urlContent)) {
+          caption = caption ? `${caption}\n\n${urlContent}` : urlContent
+        }
         platformContent[preview.platform] = {
-          caption: preview.caption,
+          caption,
           hashtags: preview.hashtags,
         }
       })

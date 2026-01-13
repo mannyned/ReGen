@@ -21,7 +21,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserId } from '@/lib/auth/getUser';
-import { linkedinService } from '@/lib/services/linkedin';
 import type {
   CreateLinkedInPostRequest,
   CreateLinkedInPostResponse,
@@ -29,6 +28,7 @@ import type {
 } from '@/lib/types/linkedin';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // Valid visibility values
 const VALID_VISIBILITY: LinkedInVisibility[] = ['PUBLIC', 'CONNECTIONS', 'LOGGED_IN'];
@@ -75,6 +75,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Dynamic import to avoid bundling issues with OAuth circular dependencies
+    const { linkedinService } = await import('@/lib/services/linkedin');
 
     // Check LinkedIn connection
     const connectionStatus = await linkedinService.getConnectionStatus(profileId);
