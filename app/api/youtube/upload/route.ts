@@ -26,7 +26,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserId } from '@/lib/auth/getUser';
-import { youtubeService } from '@/lib/services/youtube';
 import type {
   UploadYouTubeVideoRequest,
   UploadYouTubeVideoResponse,
@@ -34,12 +33,16 @@ import type {
 } from '@/lib/types/youtube';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // Valid privacy values
 const VALID_PRIVACY: YouTubePrivacyStatus[] = ['public', 'private', 'unlisted'];
 
 export async function POST(request: NextRequest) {
   try {
+    // Dynamic import to avoid circular dependency
+    const { youtubeService } = await import('@/lib/services/youtube');
+
     // Get authenticated user
     const profileId = await getUserId(request);
 

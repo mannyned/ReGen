@@ -383,16 +383,17 @@ export class AnalyticsService {
     accessToken: string,
     dateRange: { start: Date; end: Date }
   ): Promise<AccountAnalytics> {
-    const response = await fetch(
-      `${API_BASE_URLS.facebook}/me/accounts?fields=id,name,fan_count&access_token=${accessToken}`
+    // Step 1: Get page info with access token
+    const pagesResponse = await fetch(
+      `${API_BASE_URLS.facebook}/me/accounts?fields=id,name,fan_count,access_token&access_token=${accessToken}`
     )
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch Facebook account analytics')
+    if (!pagesResponse.ok) {
+      throw new Error('Failed to fetch Facebook pages')
     }
 
-    const data = await response.json()
-    const page = data.data?.[0]
+    const pagesData = await pagesResponse.json()
+    const page = pagesData.data?.[0]
 
     if (!page) {
       return {
@@ -407,15 +408,100 @@ export class AnalyticsService {
       }
     }
 
+    const pageAccessToken = page.access_token
+    const pageId = page.id
+
+    // Step 2: Get page insights using pages_read_engagement
+    // Metrics: page_impressions, page_engaged_users, page_post_engagements, page_fans
+    const since = Math.floor(dateRange.start.getTime() / 1000)
+    const until = Math.floor(dateRange.end.getTime() / 1000)
+
+    let pageInsights = {
+      impressions: 0,
+      reach: 0,
+      engagedUsers: 0,
+      postEngagements: 0,
+    }
+
+    try {
+      const insightsResponse = await fetch(
+        `${API_BASE_URLS.facebook}/${pageId}/insights?metric=page_impressions,page_impressions_unique,page_engaged_users,page_post_engagements&period=day&since=${since}&until=${until}&access_token=${pageAccessToken}`
+      )
+
+      if (insightsResponse.ok) {
+        const insightsData = await insightsResponse.json()
+
+        for (const metric of insightsData.data || []) {
+          const totalValue = metric.values?.reduce((sum: number, v: { value: number }) => sum + (v.value || 0), 0) || 0
+          switch (metric.name) {
+            case 'page_impressions':
+              pageInsights.impressions = totalValue
+              break
+            case 'page_impressions_unique':
+              pageInsights.reach = totalValue
+              break
+            case 'page_engaged_users':
+              pageInsights.engagedUsers = totalValue
+              break
+            case 'page_post_engagements':
+              pageInsights.postEngagements = totalValue
+              break
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[Facebook Analytics] Failed to fetch page insights:', error)
+    }
+
+    // Step 3: Get recent posts for engagement calculation
+    let totalPosts = 0
+    let totalEngagement = 0
+    const topPosts: Array<{ postId: string; engagement: number }> = []
+
+    try {
+      const postsResponse = await fetch(
+        `${API_BASE_URLS.facebook}/${pageId}/posts?fields=id,message,created_time,shares,reactions.summary(true),comments.summary(true)&limit=25&access_token=${pageAccessToken}`
+      )
+
+      if (postsResponse.ok) {
+        const postsData = await postsResponse.json()
+
+        for (const post of postsData.data || []) {
+          const reactions = post.reactions?.summary?.total_count || 0
+          const comments = post.comments?.summary?.total_count || 0
+          const shares = post.shares?.count || 0
+          const engagement = reactions + comments + shares
+
+          totalPosts++
+          totalEngagement += engagement
+
+          topPosts.push({
+            postId: post.id,
+            engagement,
+          })
+        }
+
+        // Sort by engagement descending
+        topPosts.sort((a, b) => b.engagement - a.engagement)
+      }
+    } catch (error) {
+      console.error('[Facebook Analytics] Failed to fetch posts:', error)
+    }
+
+    // Calculate average engagement rate
+    const avgEngagementRate = page.fan_count > 0 && totalPosts > 0
+      ? ((totalEngagement / totalPosts) / page.fan_count) * 100
+      : 0
+
     return {
       followers: page.fan_count || 0,
-      following: 0,
-      totalPosts: 0,
-      avgEngagementRate: 0,
-      avgReach: 0,
-      avgImpressions: 0,
-      followerGrowth: 0,
-      topPosts: [],
+      following: 0, // Facebook pages don't have following
+      totalPosts,
+      avgEngagementRate,
+      avgReach: pageInsights.reach,
+      avgImpressions: pageInsights.impressions,
+      followerGrowth: 0, // Would need historical data
+      topPosts: topPosts.slice(0, 5),
     }
   }
 
@@ -536,24 +622,55 @@ export class AnalyticsService {
   }
 
   private async getFacebookLocationData(accessToken: string): Promise<LocationData[]> {
+    // Step 1: Get page access token
+    const pagesResponse = await fetch(
+      `${API_BASE_URLS.facebook}/me/accounts?fields=id,access_token&access_token=${accessToken}`
+    )
+
+    if (!pagesResponse.ok) {
+      console.error('[Facebook Analytics] Failed to fetch pages for location data')
+      return []
+    }
+
+    const pagesData = await pagesResponse.json()
+    const page = pagesData.data?.[0]
+
+    if (!page) {
+      console.log('[Facebook Analytics] No page found for location data')
+      return []
+    }
+
+    // Step 2: Fetch location insights using page access token (pages_read_engagement)
     const response = await fetch(
-      `${API_BASE_URLS.facebook}/me/insights?metric=page_fans_country&period=lifetime&access_token=${accessToken}`
+      `${API_BASE_URLS.facebook}/${page.id}/insights?metric=page_fans_country&period=lifetime&access_token=${page.access_token}`
     )
 
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error('[Facebook Analytics] Location insights error:', errorText)
       return []
     }
 
     const data = await response.json()
     const countryData = data.data?.[0]?.values?.[0]?.value || {}
 
+    if (Object.keys(countryData).length === 0) {
+      console.log('[Facebook Analytics] No country data available')
+      return []
+    }
+
     const total = Object.values(countryData).reduce((sum: number, val) => sum + (val as number), 0)
 
-    return Object.entries(countryData).map(([country, count]) => ({
-      country,
-      percentage: total > 0 ? ((count as number) / total) * 100 : 0,
-      engagement: count as number,
-    }))
+    const locationData = Object.entries(countryData)
+      .map(([country, count]) => ({
+        country,
+        percentage: total > 0 ? ((count as number) / total) * 100 : 0,
+        engagement: count as number,
+      }))
+      .sort((a, b) => b.engagement - a.engagement) // Sort by engagement descending
+
+    console.log(`[Facebook Analytics] Found location data for ${locationData.length} countries`)
+    return locationData
   }
 
   // ============================================
