@@ -77,8 +77,10 @@ interface CaptionWorkflowProps {
   initialHashtags?: string[]
   contentDescription?: string
   imageData?: string
-  mediaType?: 'video' | 'image' | 'text'
+  mediaType?: 'video' | 'image' | 'text' | 'media'
   tone?: 'professional' | 'engaging' | 'casual'
+  urlContent?: string
+  textContent?: string
   onComplete: (data: {
     primaryCaption: PrimaryCaption
     platformInstances: Record<SocialPlatform, PlatformCaptionInstance>
@@ -101,6 +103,8 @@ export function CaptionWorkflow({
   imageData,
   mediaType = 'image',
   tone = 'engaging',
+  urlContent,
+  textContent,
   onComplete,
   onCancel,
 }: CaptionWorkflowProps) {
@@ -197,6 +201,8 @@ export function CaptionWorkflow({
           tone,
           description: contentDescription,
           imageData: safeImageData,
+          urlContent,
+          textContent,
         }),
       })
 

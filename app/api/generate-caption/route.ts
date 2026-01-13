@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { extractUrlContent, formatUrlContentForAI } from '@/lib/utils/urlExtractor'
 
 // For App Router - extend timeout for AI generation
 export const maxDuration = 60 // 60 seconds timeout
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { platform, tone, description, hashtags, imageData } = body
+    const { platform, tone, description, hashtags, imageData, urlContent, textContent } = body
 
     // Check if API key is configured
     if (!process.env.OPENAI_API_KEY) {
@@ -31,11 +32,42 @@ export async function POST(request: NextRequest) {
       apiKey: process.env.OPENAI_API_KEY,
     })
 
+    // If URL is provided, fetch and extract its content
+    let extractedUrlData = null
+    if (urlContent && urlContent.startsWith('http')) {
+      console.log('[Generate Caption] Extracting content from URL:', urlContent)
+      extractedUrlData = await extractUrlContent(urlContent)
+      if (extractedUrlData.error) {
+        console.warn('[Generate Caption] URL extraction error:', extractedUrlData.error)
+      } else {
+        console.log('[Generate Caption] Extracted URL content:', {
+          title: extractedUrlData.title,
+          description: extractedUrlData.description?.substring(0, 100),
+          hasContent: !!extractedUrlData.content,
+        })
+      }
+    }
+
     // Build the prompt based on inputs
     let prompt = `Generate a ${tone} social media caption for ${platform}.`
 
+    // Add text content if provided
+    if (textContent) {
+      prompt += `\n\nUser's Text Content:\n${textContent}`
+    }
+
+    // Add URL content analysis if extracted
+    if (extractedUrlData && !extractedUrlData.error) {
+      const formattedUrlContent = formatUrlContentForAI(extractedUrlData)
+      prompt += `\n\nLinked Article/Page Content:\n${formattedUrlContent}`
+      prompt += `\n\nIMPORTANT: Create a caption that accurately reflects the linked article content. Reference key points, findings, or stories from the article.`
+    } else if (urlContent) {
+      // URL provided but couldn't be extracted
+      prompt += `\n\nNote: A link will be shared (${urlContent}) but content could not be extracted. Create an engaging caption based on other provided context.`
+    }
+
     if (description) {
-      prompt += `\n\nContent Description: ${description}`
+      prompt += `\n\nAdditional Description: ${description}`
     }
 
     if (hashtags) {
@@ -63,14 +95,18 @@ export async function POST(request: NextRequest) {
 
     prompt += `\n\nTone Guidelines: ${toneGuidelines[tone] || 'Match the selected tone.'}`
 
-    prompt += '\n\nAnalyze the uploaded image/video and create a caption that accurately reflects what you see in the visual content.'
-    prompt += '\n\nGenerate only the caption text, no explanations or metadata.'
+    // Add image analysis instruction if image is provided
+    if (imageData) {
+      prompt += '\n\nAnalyze the uploaded image/video and create a caption that accurately reflects what you see in the visual content.'
+    }
+
+    prompt += '\n\nGenerate only the caption text, no explanations or metadata. Do NOT include the URL in the caption - it will be added automatically.'
 
     // Prepare messages for OpenAI API
     const messages: any[] = [
       {
         role: 'system',
-        content: 'You are an expert social media content creator who writes compelling captions that drive engagement. You analyze images and videos to create captions that accurately reflect the visual content.'
+        content: 'You are an expert social media content creator who writes compelling captions that drive engagement. You analyze images, videos, and linked article content to create captions that accurately reflect the content being shared. When article content is provided, reference key points and create engaging hooks that make people want to read more.'
       }
     ]
 

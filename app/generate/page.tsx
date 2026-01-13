@@ -445,6 +445,8 @@ function GeneratePageContent() {
             description: uploadData.contentDescription,
             hashtags: uploadData.customHashtags,
             imageData,
+            urlContent: uploadData?.urlContent,
+            textContent: uploadData?.textContent,
           }
 
       const response = await fetch(apiEndpoint, {
@@ -715,6 +717,8 @@ function GeneratePageContent() {
             imageData={uploadData.files[0]?.base64Data}
             mediaType={uploadData.uploadType}
             tone={selectedTone}
+            urlContent={uploadData.urlContent}
+            textContent={uploadData.textContent}
             onComplete={handleCaptionWorkflowComplete}
             onCancel={() => setShowCaptionWorkflow(false)}
           />
