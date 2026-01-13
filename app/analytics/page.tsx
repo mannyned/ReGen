@@ -588,15 +588,10 @@ export default function AnalyticsPage() {
       ? ((totalEngagement / filteredEngagement.reach) * 100).toFixed(1)
       : null
 
-    // Show reach if available, otherwise show total engagement count
-    // This ensures users see their data even when reach isn't available (e.g., Facebook without insights permission)
-    let reachDisplay = '—'
-    if (filteredEngagement.reach > 0) {
-      reachDisplay = filteredEngagement.reach.toLocaleString()
-    } else if (totalEngagement > 0) {
-      // Show engagement count with indicator when reach is unavailable
-      reachDisplay = `${totalEngagement.toLocaleString()} interactions`
-    }
+    // Show reach if available, otherwise show —
+    const reachDisplay = filteredEngagement.reach > 0
+      ? filteredEngagement.reach.toLocaleString()
+      : '—'
 
     // Show engagement rate if available, otherwise show engagement count
     let engagementDisplay = '—'
