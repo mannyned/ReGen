@@ -21,13 +21,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserId } from '@/lib/auth/getUser';
-import { youtubeService } from '@/lib/services/youtube';
 import type { GetYouTubeMetricsResponse } from '@/lib/types/youtube';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    // Dynamic import to avoid circular dependency
+    const { youtubeService } = await import('@/lib/services/youtube');
+
     // Get authenticated user
     const profileId = await getUserId(request);
 

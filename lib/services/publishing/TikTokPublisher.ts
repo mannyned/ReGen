@@ -5,7 +5,15 @@ import { API_BASE_URLS } from '../../config/oauth'
 // ============================================
 // TIKTOK PUBLISHER
 // Uses TikTok Content Posting API v2
+// Now with video.publish scope for direct publishing
 // ============================================
+
+// TikTok privacy levels for direct publishing
+type TikTokPrivacyLevel =
+  | 'PUBLIC_TO_EVERYONE'      // Visible to everyone
+  | 'MUTUAL_FOLLOW_FRIENDS'   // Visible to mutual followers
+  | 'FOLLOWER_OF_CREATOR'     // Visible to followers only
+  | 'SELF_ONLY'               // Private/draft
 
 export class TikTokPublisher extends BasePlatformPublisher {
   protected platform: SocialPlatform = 'tiktok'
@@ -28,11 +36,9 @@ export class TikTokPublisher extends BasePlatformPublisher {
     const accessToken = await this.getAccessToken(userId)
 
     try {
-      // Using video.upload scope - video goes to user's TikTok inbox
-      // User will need to open TikTok app to review and publish
+      // Using video.publish scope - direct publish to TikTok
       const caption = this.formatCaption(content)
 
-      // Always use FILE_UPLOAD method (PULL_FROM_URL requires domain verification)
       // First fetch the video to get the actual size
       console.log('[TikTok] Fetching video from:', media.mediaUrl)
       const videoResponse = await fetch(media.mediaUrl)
@@ -43,20 +49,30 @@ export class TikTokPublisher extends BasePlatformPublisher {
       const videoSize = videoBuffer.byteLength
       console.log('[TikTok] Video fetched, size:', videoSize)
 
-      // Initialize inbox upload with actual file size
-      const uploadInfo = await this.initializeInboxUpload(accessToken, videoSize, caption)
+      // Initialize direct publish upload with actual file size
+      const uploadInfo = await this.initializeDirectPublish(accessToken, videoSize, caption)
 
       // Upload the video to TikTok
       await this.uploadVideoBuffer(uploadInfo, videoBuffer, media.mimeType)
 
-      // With video.upload scope, video goes to inbox - no separate publish step
-      // User opens TikTok to review and publish
+      // Check publish status - video.publish allows direct publishing
+      const publishStatus = await this.checkPublishStatus(accessToken, uploadInfo.publish_id)
+
+      if (publishStatus.status === 'FAILED') {
+        throw new Error(publishStatus.fail_reason || 'TikTok publish failed')
+      }
+
       return {
         success: true,
         platform: this.platform,
         platformPostId: uploadInfo.publish_id,
         publishedAt: new Date(),
-        message: 'Video sent to your TikTok inbox. Open TikTok app to review and publish.',
+        platformUrl: publishStatus.video_id
+          ? `https://www.tiktok.com/@user/video/${publishStatus.video_id}`
+          : undefined,
+        message: publishStatus.status === 'PUBLISH_COMPLETE'
+          ? 'Video published to TikTok successfully!'
+          : 'Video is being processed and will be published shortly.',
       }
     } catch (error) {
       return {
@@ -109,22 +125,30 @@ export class TikTokPublisher extends BasePlatformPublisher {
   // TIKTOK-SPECIFIC HELPERS
   // ============================================
 
-  private async initializeInboxUpload(
+  /**
+   * Initialize direct publish upload
+   * Uses video.publish scope for direct publishing to TikTok
+   */
+  private async initializeDirectPublish(
     accessToken: string,
     videoSize: number,
-    caption: string
+    caption: string,
+    privacyLevel: TikTokPrivacyLevel = 'PUBLIC_TO_EVERYONE'
   ): Promise<{
     publish_id: string
     upload_url: string
   }> {
-    // Always use FILE_UPLOAD - PULL_FROM_URL requires domain verification
     const chunkSize = Math.min(videoSize, 10 * 1024 * 1024) // 10MB max chunk size
     const totalChunks = Math.ceil(videoSize / chunkSize)
 
     const requestBody = {
       post_info: {
         title: caption.substring(0, 150), // TikTok title limit
-        description: caption,
+        privacy_level: privacyLevel,
+        disable_duet: false,
+        disable_comment: false,
+        disable_stitch: false,
+        video_cover_timestamp_ms: 1000, // Use frame at 1 second as cover
       },
       source_info: {
         source: 'FILE_UPLOAD',
@@ -134,15 +158,16 @@ export class TikTokPublisher extends BasePlatformPublisher {
       },
     }
 
-    console.log('[TikTok] Initializing inbox upload:', JSON.stringify(requestBody))
+    console.log('[TikTok] Initializing direct publish:', JSON.stringify(requestBody))
 
+    // Use direct publish endpoint (requires video.publish scope)
     const response = await this.makeApiRequest<{
       data: {
         publish_id: string
         upload_url: string
       }
     }>(
-      '/post/publish/inbox/video/init/',
+      '/post/publish/video/init/',
       {
         method: 'POST',
         body: JSON.stringify(requestBody),
@@ -150,13 +175,72 @@ export class TikTokPublisher extends BasePlatformPublisher {
       accessToken
     )
 
-    console.log('[TikTok] Inbox upload initialized:', JSON.stringify(response.data))
+    console.log('[TikTok] Direct publish initialized:', JSON.stringify(response.data))
 
     if (!response.data.upload_url) {
       throw new Error('TikTok did not return an upload URL')
     }
 
     return response.data
+  }
+
+  /**
+   * Check publish status after upload
+   * Returns the status and video ID once published
+   */
+  private async checkPublishStatus(
+    accessToken: string,
+    publishId: string,
+    maxAttempts: number = 10
+  ): Promise<{
+    status: 'PROCESSING_UPLOAD' | 'PROCESSING_DOWNLOAD' | 'SEND_TO_USER_INBOX' | 'PUBLISH_COMPLETE' | 'FAILED'
+    video_id?: string
+    fail_reason?: string
+  }> {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      console.log(`[TikTok] Checking publish status (attempt ${attempt + 1}/${maxAttempts})`)
+
+      const response = await this.makeApiRequest<{
+        data: {
+          status: 'PROCESSING_UPLOAD' | 'PROCESSING_DOWNLOAD' | 'SEND_TO_USER_INBOX' | 'PUBLISH_COMPLETE' | 'FAILED'
+          publicaly_available_post_id?: string[]
+          fail_reason?: string
+        }
+      }>(
+        '/post/publish/status/fetch/',
+        {
+          method: 'POST',
+          body: JSON.stringify({ publish_id: publishId }),
+        },
+        accessToken
+      )
+
+      const status = response.data.status
+      console.log('[TikTok] Publish status:', status)
+
+      // If complete or failed, return immediately
+      if (status === 'PUBLISH_COMPLETE') {
+        return {
+          status,
+          video_id: response.data.publicaly_available_post_id?.[0],
+        }
+      }
+
+      if (status === 'FAILED') {
+        return {
+          status,
+          fail_reason: response.data.fail_reason,
+        }
+      }
+
+      // Still processing, wait before next check
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds
+    }
+
+    // If we've exhausted attempts, return the last known status
+    return {
+      status: 'PROCESSING_UPLOAD',
+    }
   }
 
   private async uploadVideoBuffer(

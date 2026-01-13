@@ -394,8 +394,8 @@ export class TikTokService {
   }
 
   /**
-   * Post using PULL_FROM_URL method via Inbox Upload
-   * Uses video.upload scope - video goes to user's inbox for review
+   * Post using PULL_FROM_URL method via Direct Publish
+   * Uses video.publish scope - video is published directly to TikTok
    * TikTok pulls the video from your server
    */
   private async postFromUrl(
@@ -411,10 +411,10 @@ export class TikTokService {
       data: { status: 'UPLOADING' },
     })
 
-    // Use inbox upload endpoint (video.upload scope)
-    // Video will appear in user's TikTok inbox for them to review and publish
+    // Use direct publish endpoint (video.publish scope)
+    // Video will be published directly to user's TikTok profile
     const response = await fetch(
-      `${TIKTOK_API_BASE}/post/publish/inbox/video/init/`,
+      `${TIKTOK_API_BASE}/post/publish/video/init/`,
       {
         method: 'POST',
         headers: {
@@ -425,19 +425,21 @@ export class TikTokService {
           source_info: {
             source: 'PULL_FROM_URL',
             video_url: options.videoUrl,
-            // Include title/description for the inbox notification
-            video_size: 0, // Will be determined by TikTok when pulling
           },
           post_info: {
-            title: options.caption.substring(0, 150), // Will show in editing flow
-            description: options.caption,
+            title: options.caption.substring(0, 150),
+            privacy_level: options.privacyLevel || 'PUBLIC_TO_EVERYONE',
+            disable_duet: options.disableDuet || false,
+            disable_comment: options.disableComments || false,
+            disable_stitch: options.disableStitch || false,
+            video_cover_timestamp_ms: 1000,
           },
         }),
       }
     )
 
     const responseText = await response.text()
-    console.log('[TikTok] Inbox upload response:', response.status, responseText)
+    console.log('[TikTok] Direct publish response:', response.status, responseText)
 
     if (!response.ok) {
       let errorMessage = response.statusText
@@ -445,32 +447,41 @@ export class TikTokService {
         const errorData = JSON.parse(responseText)
         errorMessage = errorData.error?.message || errorData.error?.code || errorMessage
       } catch {}
-      throw new Error(`TikTok inbox upload error: ${errorMessage}`)
+      throw new Error(`TikTok direct publish error: ${errorMessage}`)
     }
 
     const data = JSON.parse(responseText)
+    const publishId = data.data?.publish_id
+
+    // Check publish status
+    const publishStatus = await this.checkPublishStatus(accessToken, publishId)
 
     // Update post record
     await prisma.tikTokPost.update({
       where: { id: postId },
       data: {
-        status: 'PROCESSING', // Video is in user's inbox
-        publishId: data.data?.publish_id,
+        status: publishStatus.status === 'PUBLISH_COMPLETE' ? 'POSTED' : 'PROCESSING',
+        publishId,
+        tiktokVideoId: publishStatus.video_id,
+        postedAt: publishStatus.status === 'PUBLISH_COMPLETE' ? new Date() : undefined,
       },
     })
 
     return {
       success: true,
       postId,
-      status: 'processing',
-      publishId: data.data?.publish_id,
-      message: 'Video sent to your TikTok inbox. Open TikTok to review and publish.',
+      status: publishStatus.status === 'PUBLISH_COMPLETE' ? 'published' : 'processing',
+      publishId,
+      tiktokVideoId: publishStatus.video_id,
+      message: publishStatus.status === 'PUBLISH_COMPLETE'
+        ? 'Video published to TikTok successfully!'
+        : 'Video is being processed and will be published shortly.',
     }
   }
 
   /**
-   * Post using FILE_UPLOAD method
-   * Upload video file directly to TikTok
+   * Post using FILE_UPLOAD method via Direct Publish
+   * Uses video.publish scope - video is published directly to TikTok
    */
   private async postViaUpload(
     profileId: string,
@@ -515,12 +526,12 @@ export class TikTokService {
       data: { status: 'UPLOADING' },
     })
 
-    // Step 1: Initialize upload
+    // Step 1: Initialize direct publish upload
     const chunkSize = Math.min(videoSize, 10 * 1024 * 1024) // 10MB max
     const totalChunks = Math.ceil(videoSize / chunkSize)
 
     const initResponse = await fetch(
-      `${TIKTOK_API_BASE}/post/publish/inbox/video/init/`,
+      `${TIKTOK_API_BASE}/post/publish/video/init/`,
       {
         method: 'POST',
         headers: {
@@ -533,6 +544,14 @@ export class TikTokService {
             video_size: videoSize,
             chunk_size: chunkSize,
             total_chunk_count: totalChunks,
+          },
+          post_info: {
+            title: options.caption.substring(0, 150),
+            privacy_level: options.privacyLevel || 'PUBLIC_TO_EVERYONE',
+            disable_duet: options.disableDuet || false,
+            disable_comment: options.disableComments || false,
+            disable_stitch: options.disableStitch || false,
+            video_cover_timestamp_ms: 1000,
           },
         }),
       }
@@ -569,24 +588,92 @@ export class TikTokService {
       }
     }
 
-    // For inbox upload, video is automatically processed after all chunks are uploaded
-    // No separate finalize call needed - video appears in user's TikTok inbox
+    // Step 3: Check publish status - video.publish allows direct publishing
+    const publishStatus = await this.checkPublishStatus(accessToken, publishId)
 
     // Update post record
     await prisma.tikTokPost.update({
       where: { id: postId },
       data: {
-        status: 'PROCESSING', // Video is being processed and will appear in inbox
+        status: publishStatus.status === 'PUBLISH_COMPLETE' ? 'POSTED' : 'PROCESSING',
         publishId,
+        tiktokVideoId: publishStatus.video_id,
+        postedAt: publishStatus.status === 'PUBLISH_COMPLETE' ? new Date() : undefined,
       },
     })
 
     return {
       success: true,
       postId,
-      status: 'processing',
+      status: publishStatus.status === 'PUBLISH_COMPLETE' ? 'published' : 'processing',
       publishId,
-      message: 'Video sent to your TikTok inbox. Open TikTok to review and publish.',
+      tiktokVideoId: publishStatus.video_id,
+      message: publishStatus.status === 'PUBLISH_COMPLETE'
+        ? 'Video published to TikTok successfully!'
+        : 'Video is being processed and will be published shortly.',
+    }
+  }
+
+  /**
+   * Check publish status after upload
+   * Returns the status and video ID once published
+   */
+  private async checkPublishStatus(
+    accessToken: string,
+    publishId: string,
+    maxAttempts: number = 10
+  ): Promise<{
+    status: 'PROCESSING_UPLOAD' | 'PROCESSING_DOWNLOAD' | 'SEND_TO_USER_INBOX' | 'PUBLISH_COMPLETE' | 'FAILED'
+    video_id?: string
+    fail_reason?: string
+  }> {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      console.log(`[TikTok] Checking publish status (attempt ${attempt + 1}/${maxAttempts})`)
+
+      const response = await fetch(
+        `${TIKTOK_API_BASE}/post/publish/status/fetch/`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ publish_id: publishId }),
+        }
+      )
+
+      if (!response.ok) {
+        console.warn('[TikTok] Status check failed:', response.status)
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        continue
+      }
+
+      const data = await response.json()
+      const status = data.data?.status
+      console.log('[TikTok] Publish status:', status)
+
+      // If complete or failed, return immediately
+      if (status === 'PUBLISH_COMPLETE') {
+        return {
+          status,
+          video_id: data.data?.publicaly_available_post_id?.[0],
+        }
+      }
+
+      if (status === 'FAILED') {
+        return {
+          status,
+          fail_reason: data.data?.fail_reason,
+        }
+      }
+
+      // Still processing, wait before next check
+      await new Promise(resolve => setTimeout(resolve, 2000))
+    }
+
+    // If we've exhausted attempts, return processing status
+    return {
+      status: 'PROCESSING_UPLOAD',
     }
   }
 
