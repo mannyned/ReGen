@@ -80,6 +80,8 @@ export class GoogleSheetsExportService {
 
   /**
    * Generate Google Sheets authorization URL
+   * Note: We use drive.file scope which allows creating and editing Google Sheets
+   * files created by the app, without requiring sensitive scope verification
    */
   getAuthorizationUrl(state: string): string {
     const oauth2Client = new google.auth.OAuth2(
@@ -88,8 +90,8 @@ export class GoogleSheetsExportService {
       this.credentials.redirectUri
     )
 
+    // drive.file scope allows creating/editing files created by this app (including Sheets)
     const scopes = [
-      'https://www.googleapis.com/auth/spreadsheets',
       'https://www.googleapis.com/auth/drive.file',
     ]
 
