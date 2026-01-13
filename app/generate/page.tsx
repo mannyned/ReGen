@@ -88,7 +88,7 @@ interface UploadedFile {
 }
 
 interface UploadData {
-  uploadType: 'video' | 'image' | 'text'
+  uploadType: 'video' | 'image' | 'media' | 'text'
   contentType: ContentType
   selectedPlatforms: Platform[]
   contentDescription: string
@@ -180,7 +180,7 @@ function GeneratePageContent() {
               fileSize: number
               mimeType: string
             }>
-            uploadType: 'video' | 'image' | 'text'
+            uploadType: 'video' | 'image' | 'media' | 'text'
             contentType: ContentType
             selectedPlatforms: Platform[]
             contentDescription: string
