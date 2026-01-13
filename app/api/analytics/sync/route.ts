@@ -126,7 +126,12 @@ async function fetchInstagramInsights(
 
 /**
  * Fetch Facebook post insights
- * Note: Facebook Page posts require Page access token and insights permission
+ * Note: Facebook Page posts require Page access token and pages_read_engagement permission
+ *
+ * Strategy:
+ * 1. First try to get insights (reach/impressions) - requires pages_read_engagement
+ * 2. Then get engagement data (likes/comments/shares) from post object
+ * 3. Combine both into final result
  */
 async function fetchFacebookInsights(
   postId: string,
@@ -145,29 +150,105 @@ async function fetchFacebookInsights(
     facebookDebug.apiErrors = []
   }
 
+  const result = {
+    impressions: 0,
+    reach: 0,
+    engaged_users: 0,
+    clicks: 0,
+    likes: 0,
+    comments: 0,
+    shares: 0,
+  }
+
   try {
-    // Approach 0: Check if we already have this post's engagement from page listing
+    // ========================================
+    // STEP 1: Try to get insights (reach/impressions)
+    // This requires pages_read_engagement permission
+    // ========================================
+    const insightsMetrics = 'post_impressions,post_impressions_unique,post_engaged_users,post_clicks'
+    const insightsUrl = `${META_GRAPH_API}/${postId}/insights?metric=${insightsMetrics}&access_token=${accessToken}`
+    console.log(`[Facebook] Fetching insights for ${postId}`)
+
+    const insightsResponse = await fetch(insightsUrl)
+
+    if (insightsResponse.ok) {
+      const insightsData: PostInsightsResponse = await insightsResponse.json()
+      console.log(`[Facebook Insights] Success for ${postId}:`, JSON.stringify(insightsData).slice(0, 500))
+
+      for (const insight of insightsData.data || []) {
+        const value = insight.values?.[0]?.value || 0
+        switch (insight.name) {
+          case 'post_impressions':
+            result.impressions = value
+            break
+          case 'post_impressions_unique':
+            result.reach = value
+            break
+          case 'post_engaged_users':
+            result.engaged_users = value
+            break
+          case 'post_clicks':
+            result.clicks = value
+            break
+        }
+      }
+      console.log(`[Facebook Insights] Parsed: impressions=${result.impressions}, reach=${result.reach}, engaged=${result.engaged_users}`)
+    } else {
+      const errorText = await insightsResponse.text()
+      console.log(`[Facebook Insights] Failed for ${postId} (${insightsResponse.status}): ${errorText.slice(0, 200)}`)
+      facebookDebug?.apiErrors?.push({
+        postId,
+        endpoint: 'insights',
+        status: insightsResponse.status,
+        error: errorText.slice(0, 300),
+      })
+      // Continue to get engagement data even if insights fail
+    }
+
+    // ========================================
+    // STEP 2: Get engagement data (likes/comments/shares)
+    // Try multiple approaches in order of reliability
+    // ========================================
+
+    // Check cached engagement from page listing first
     const cachedPost = pagePostsWithEngagement.find(p => p.id === postId)
     if (cachedPost && (cachedPost.likes !== undefined || cachedPost.comments !== undefined)) {
       console.log(`[Facebook] Using cached engagement for ${postId}: likes=${cachedPost.likes}, comments=${cachedPost.comments}`)
-      return {
-        impressions: 0,
-        reach: 0,
-        engaged_users: (cachedPost.likes || 0) + (cachedPost.comments || 0),
-        clicks: 0,
-        likes: cachedPost.likes || 0,
-        comments: cachedPost.comments || 0,
-        shares: 0,
+      result.likes = cachedPost.likes || 0
+      result.comments = cachedPost.comments || 0
+      // Update engaged_users if we didn't get it from insights
+      if (result.engaged_users === 0) {
+        result.engaged_users = result.likes + result.comments
       }
+      return result
     }
 
-    // For photo posts, try reading from the photo object directly
-    // Photo posts may have format {page_id}_{photo_id} OR just {photo_id}
+    // Try reactions endpoint (most reliable for engagement)
+    const reactionsUrl = `${META_GRAPH_API}/${postId}?fields=reactions.summary(total_count),comments.summary(total_count),shares&access_token=${accessToken}`
+    console.log(`[Facebook] Fetching engagement for ${postId}`)
+    const reactionsResponse = await fetch(reactionsUrl)
+
+    if (reactionsResponse.ok) {
+      const reactionsData = await reactionsResponse.json()
+      console.log(`[Facebook Reactions] Success for ${postId}:`, JSON.stringify(reactionsData).slice(0, 300))
+
+      result.likes = reactionsData.reactions?.summary?.total_count || 0
+      result.comments = reactionsData.comments?.summary?.total_count || 0
+      result.shares = reactionsData.shares?.count || 0
+
+      // Update engaged_users if we didn't get it from insights
+      if (result.engaged_users === 0) {
+        result.engaged_users = result.likes + result.comments + result.shares
+      }
+      return result
+    } else {
+      const errorText = await reactionsResponse.text()
+      console.log(`[Facebook Reactions] Failed for ${postId}: ${errorText.slice(0, 200)}`)
+    }
+
+    // Try photo endpoint for photo posts
     const postIdParts = postId.split('_')
     const photoId = postIdParts.length === 2 ? postIdParts[1] : postId
-    console.log(`[Facebook] Trying photo endpoint for ${photoId}`)
-
-    // Try getting engagement from the photo object
     const photoUrl = `${META_GRAPH_API}/${photoId}?fields=likes.summary(true),comments.summary(true)&access_token=${accessToken}`
     const photoResponse = await fetch(photoUrl)
 
@@ -175,18 +256,13 @@ async function fetchFacebookInsights(
       const photoData = await photoResponse.json()
       console.log(`[Facebook Photo] Success for ${photoId}:`, JSON.stringify(photoData).slice(0, 300))
 
-      const likes = photoData.likes?.summary?.total_count || 0
-      const comments = photoData.comments?.summary?.total_count || 0
+      result.likes = photoData.likes?.summary?.total_count || 0
+      result.comments = photoData.comments?.summary?.total_count || 0
 
-      return {
-        impressions: 0,
-        reach: 0,
-        engaged_users: likes + comments,
-        clicks: 0,
-        likes,
-        comments,
-        shares: 0,
+      if (result.engaged_users === 0) {
+        result.engaged_users = result.likes + result.comments
       }
+      return result
     } else {
       const photoError = await photoResponse.text()
       console.log(`[Facebook Photo] Failed for ${photoId}: ${photoError.slice(0, 200)}`)
@@ -198,82 +274,25 @@ async function fetchFacebookInsights(
       })
     }
 
-    // Try multiple approaches to get engagement data
-
-    // Approach 1: Try reactions.summary instead of likes.summary (more permissive)
-    const reactionsUrl = `${META_GRAPH_API}/${postId}?fields=reactions.summary(total_count),comments.summary(total_count),shares&access_token=${accessToken}`
-    console.log(`[Facebook] Trying reactions endpoint for ${postId}`)
-    const reactionsResponse = await fetch(reactionsUrl)
-
-    if (reactionsResponse.ok) {
-      const reactionsData = await reactionsResponse.json()
-      console.log(`[Facebook Reactions] Success for ${postId}:`, JSON.stringify(reactionsData).slice(0, 300))
-
-      const likes = reactionsData.reactions?.summary?.total_count || 0
-      const comments = reactionsData.comments?.summary?.total_count || 0
-      const shares = reactionsData.shares?.count || 0
-
-      if (likes > 0 || comments > 0 || shares > 0) {
-        return {
-          impressions: 0,
-          reach: 0,
-          engaged_users: likes + comments + shares,
-          clicks: 0,
-          likes,
-          comments,
-          shares,
-        }
-      }
-    } else {
-      const errorText = await reactionsResponse.text()
-      console.log(`[Facebook Reactions] Failed for ${postId}: ${errorText.slice(0, 200)}`)
-    }
-
-    // Approach 2: Try basic fields without summary (might have different permissions)
-    const simpleUrl = `${META_GRAPH_API}/${postId}?fields=id,message,created_time&access_token=${accessToken}`
-    console.log(`[Facebook] Trying simple fields for ${postId}`)
-    const simpleResponse = await fetch(simpleUrl)
-
-    if (simpleResponse.ok) {
-      const simpleData = await simpleResponse.json()
-      console.log(`[Facebook Simple] Can access post: ${postId}, created: ${simpleData.created_time}`)
-      // Post is accessible, but we can't get engagement - return zeros
-    } else {
-      const errorText = await simpleResponse.text()
-      console.error(`[Facebook Simple] Failed for ${postId}:`, errorText.slice(0, 200))
-      facebookDebug?.apiErrors?.push({
-        postId,
-        endpoint: 'simple',
-        status: simpleResponse.status,
-        error: errorText.slice(0, 300),
-      })
-    }
-
-    // Approach 3: Original likes.summary approach
+    // Try basic likes.summary approach
     const basicUrl = `${META_GRAPH_API}/${postId}?fields=likes.summary(true),comments.summary(true),shares&access_token=${accessToken}`
-    console.log(`[Facebook] Trying likes.summary for ${postId}`)
     const basicResponse = await fetch(basicUrl)
 
     if (basicResponse.ok) {
       const basicData = await basicResponse.json()
       console.log(`[Facebook Basic] Success for ${postId}:`, JSON.stringify(basicData).slice(0, 200))
 
-      const likes = basicData.likes?.summary?.total_count || 0
-      const comments = basicData.comments?.summary?.total_count || 0
-      const shares = basicData.shares?.count || 0
+      result.likes = basicData.likes?.summary?.total_count || 0
+      result.comments = basicData.comments?.summary?.total_count || 0
+      result.shares = basicData.shares?.count || 0
 
-      return {
-        impressions: 0,
-        reach: 0,
-        engaged_users: likes + comments + shares,
-        clicks: 0,
-        likes,
-        comments,
-        shares,
+      if (result.engaged_users === 0) {
+        result.engaged_users = result.likes + result.comments + result.shares
       }
+      return result
     } else {
       const errorText = await basicResponse.text()
-      console.error(`[Facebook Basic] Failed for ${postId} (${basicResponse.status}):`, errorText)
+      console.error(`[Facebook Basic] Failed for ${postId} (${basicResponse.status}):`, errorText.slice(0, 200))
       facebookDebug?.apiErrors?.push({
         postId,
         endpoint: 'basic',
@@ -282,58 +301,12 @@ async function fetchFacebookInsights(
       })
     }
 
-    // Approach 4: Try insights endpoint with different metrics
-    // Use post_reactions_by_type_total which might have different permission requirements
-    const metrics = 'post_impressions,post_engaged_users'
-    const url = `${META_GRAPH_API}/${postId}/insights?metric=${metrics}&access_token=${accessToken}`
-    console.log(`[Facebook] Trying insights for ${postId}`)
-
-    const response = await fetch(url)
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`[Facebook Insights] Failed for ${postId} (${response.status}):`, errorText)
-      facebookDebug?.apiErrors?.push({
-        postId,
-        endpoint: 'insights',
-        status: response.status,
-        error: errorText.slice(0, 300),
-      })
-      return null
+    // Return whatever we have (might have insights even if engagement failed)
+    if (result.impressions > 0 || result.reach > 0 || result.engaged_users > 0) {
+      return result
     }
 
-    const data: PostInsightsResponse = await response.json()
-    console.log(`[Facebook Insights] Success for ${postId}:`, JSON.stringify(data).slice(0, 300))
-
-    const result = {
-      impressions: 0,
-      reach: 0,
-      engaged_users: 0,
-      clicks: 0,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-    }
-
-    for (const insight of data.data || []) {
-      const value = insight.values?.[0]?.value || 0
-      switch (insight.name) {
-        case 'post_impressions':
-          result.impressions = value
-          break
-        case 'post_impressions_unique':
-          result.reach = value
-          break
-        case 'post_engaged_users':
-          result.engaged_users = value
-          break
-        case 'post_clicks':
-          result.clicks = value
-          break
-      }
-    }
-
-    return result
+    return null
   } catch (error) {
     console.error(`[Facebook Insights] Error for ${postId}:`, error)
     return null
