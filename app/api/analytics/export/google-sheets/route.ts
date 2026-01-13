@@ -13,12 +13,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { google } from 'googleapis'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/auth/getUser'
-import { OAuthEngine } from '@/lib/oauth/engine'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 // Validate UUID format
 function isValidUUID(str: string): boolean {
@@ -62,7 +61,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user has connected Google account
+    // Check if user has connected Google account (dynamic import to avoid bundling issues)
+    const { OAuthEngine } = await import('@/lib/oauth/engine')
     let accessToken: string
     try {
       accessToken = await OAuthEngine.getAccessToken('google', profileId)
@@ -149,7 +149,8 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Create Google Sheets client
+    // Create Google Sheets client (dynamic import to avoid bundling issues)
+    const { google } = await import('googleapis')
     const auth = new google.auth.OAuth2()
     auth.setCredentials({ access_token: accessToken })
 

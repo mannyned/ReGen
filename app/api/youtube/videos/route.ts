@@ -17,9 +17,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserId } from '@/lib/auth/getUser';
-import { youtubeService } from '@/lib/services/youtube';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,6 +45,9 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Dynamic import to avoid bundling issues with OAuth circular dependencies
+    const { youtubeService } = await import('@/lib/services/youtube');
 
     // Check YouTube connection
     const connectionStatus = await youtubeService.getConnectionStatus(profileId);
