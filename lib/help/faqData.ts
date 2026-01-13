@@ -36,12 +36,146 @@ Whether you're a solo creator or part of a team, ReGenr saves you hours of work 
         question: 'How does "regeneration" work?',
         answer: `Regeneration is our core feature that transforms your content into platform-ready posts:
 
-1. **Upload** your original content (text, images, or import from content feeds)
+1. **Upload** your original content (text, images, videos, or import from content feeds)
 2. **Generate** AI-powered variations optimized for each platform
 3. **Review & Edit** the generated content to match your style
 4. **Schedule or Publish** directly to your connected accounts
 
 Our AI analyzes your content's tone, key messages, and structure to create engaging posts that feel authentic to your brand.`,
+      },
+    ],
+  },
+  {
+    id: 'content-creation',
+    title: 'Content Creation',
+    icon: '📝',
+    items: [
+      {
+        id: 'upload-types',
+        question: 'What types of content can I upload?',
+        answer: `ReGenr supports multiple content types:
+
+**Video**
+- Formats: MP4, MOV, AVI, WebM
+- Max size: 500 MB
+
+**Image**
+- Formats: JPG, PNG, GIF, WebP
+- Max size: 50 MB
+
+**Mixed Media (Carousels)**
+- Combine images and videos
+- Max size: 500 MB total
+
+**Text/URL**
+- Plain text content
+- URLs to articles or webpages
+- Optional: Add images or videos to accompany your text/URL`,
+      },
+      {
+        id: 'mixed-media-carousel',
+        question: 'What is Mixed Media upload?',
+        answer: `Mixed Media lets you upload a combination of images and videos to create carousel posts.
+
+**Platform Support:**
+| Platform | Max Items | Video Support |
+|----------|-----------|---------------|
+| Instagram | 10 | Yes |
+| Facebook | 10 | Yes |
+| Twitter/X | 4 | Images only |
+| LinkedIn | 20 | Images only |
+| Snapchat | 10 | Yes |
+| Discord | 10 | Yes |
+| Pinterest | 5 | Images only |
+
+**Tips:**
+- The first image becomes your cover image
+- Drag to reorder items before publishing
+- Platforms that don't support all items will show a truncation warning
+- Videos have platform-specific duration limits`,
+      },
+      {
+        id: 'text-url-upload',
+        question: 'How does Text/URL upload work?',
+        answer: `Text/URL mode is perfect for bloggers, news publishers, and content sharers:
+
+1. Select **Text/URL** mode in the upload section
+2. Enter your text content OR paste a URL
+3. **Optional:** Add images or videos to accompany your text/URL
+4. The AI will analyze your content to generate relevant captions
+
+**URL Content Analysis:**
+When you paste a URL, ReGenr will:
+- Fetch and read the webpage content
+- Extract the title, description, and article text
+- Use this context to generate accurate, relevant captions
+
+**Note:** URLs are automatically appended to your captions when publishing, so your audience can click through to the original content.`,
+      },
+      {
+        id: 'ai-url-analysis',
+        question: 'How does AI analyze URLs for captions?',
+        answer: `When you include a URL in your upload, our AI does more than just include the link - it actually reads and understands the content.
+
+**What the AI extracts:**
+- Page title
+- Meta description
+- Author name
+- Article content
+
+**How it helps:**
+Instead of generic captions, you get contextually relevant ones. For example, if you paste a news article URL about a tech breakthrough, the AI generates:
+
+*"Breaking: Scientists achieve major breakthrough in renewable energy! New solar technology could revolutionize how we power homes. Read more about this game-changing discovery."*
+
+The AI references actual content from the article, not just the URL.
+
+**Regenerating captions:**
+When you click "Regenerate" on any platform preview, the AI re-analyzes the URL content to generate fresh variations.`,
+      },
+      {
+        id: 'caption-workflow',
+        question: 'What is the Caption Workflow?',
+        answer: `The Caption Workflow lets you create one primary caption and adapt it across platforms.
+
+**How it works:**
+1. Click "Start Workflow" on the Generate page
+2. Select your source platform
+3. Generate with AI or write manually
+4. Adapt for other platforms using our tools
+
+**Usage Modes:**
+- **Identical** (Green) - Same as primary caption
+- **Adapted** (Purple) - Rule-based modifications applied
+- **Edited** (Blue) - Manual changes made
+- **Rewritten** (Orange) - Full AI regeneration
+
+**Available Adaptations:**
+- Shorten to fit character limits
+- Remove or reduce hashtags
+- Remove or reduce emojis
+- Add/remove line breaks
+- Add call-to-action
+- Adjust tone (Professional/Casual)`,
+      },
+      {
+        id: 'ai-image-analysis',
+        question: 'Does the AI analyze my images?',
+        answer: `Yes! When you upload images or videos, our AI uses GPT-4 Vision to analyze the visual content.
+
+**What the AI looks at:**
+- Objects and subjects in the image
+- Scene and setting
+- Colors and mood
+- Text visible in the image
+- Actions or activities shown
+
+**How it helps:**
+The AI creates captions that accurately describe and reference what's actually in your visual content, making your posts more relevant and engaging.
+
+**Example:**
+Upload a photo of a sunset at the beach, and the AI might generate:
+*"Golden hour magic at its finest. Nothing beats watching the sun dip below the horizon while the waves keep their eternal rhythm."*`,
       },
     ],
   },
@@ -488,7 +622,7 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
   },
   {
     id: 'analytics-permissions',
-    title: 'Analytics Permissions',
+    title: 'Analytics & Export',
     icon: '📊',
     items: [
       {
@@ -544,6 +678,59 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
 **To unlock:**
 - Upgrade your plan, or
 - Request access from your team admin`,
+      },
+      {
+        id: 'export-analytics',
+        question: 'How do I export my analytics data?',
+        answer: `Pro plan users can export analytics data in multiple formats:
+
+**Export Options:**
+- **CSV** - Spreadsheet-compatible data
+- **PDF** - Formatted report with charts
+- **Google Sheets** - Direct integration (requires Google account)
+
+**To export:**
+1. Go to Analytics
+2. Click "Export" in the top right
+3. Select your preferred format
+4. Choose platforms to include
+5. Download or connect to Google Sheets
+
+**Platform Filtering:**
+Select specific platforms to include in your export:
+- Instagram, TikTok, YouTube, Twitter/X
+- LinkedIn, Facebook, Snapchat
+- Pinterest, Discord
+
+Leave empty to export all connected platforms.`,
+      },
+      {
+        id: 'caption-usage-analytics',
+        question: 'What are Caption Usage Analytics?',
+        answer: `Pro plan users can track how different caption strategies perform:
+
+**Usage Distribution:**
+See the breakdown of how you use captions:
+- Identical - Used exactly as primary
+- Adapted - Rule-based modifications
+- Edited - Manual changes made
+- Rewritten - Full AI rewrites
+
+**Performance Comparison:**
+Compare engagement rates by caption mode:
+- Average engagement by mode
+- Reach comparison
+- Likes and comments breakdown
+
+**Top Performing Adaptations:**
+See which adaptations boost engagement:
+- Shorten (+18% avg)
+- Add CTA (+15% avg)
+- Add Line Breaks (+12% avg)
+- Professional Tone (+9% avg)
+
+**Platform Insights:**
+Get platform-specific recommendations based on your data.`,
       },
     ],
   },
