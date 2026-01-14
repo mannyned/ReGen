@@ -124,10 +124,7 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Count AI-generated captions (posts with captions in metadata)
-    // Since we can't easily filter on JSON in Prisma, count all posts
-    // In practice, most posts from ReGenr have AI-generated captions
-    const aiGenerated = totalPosts
+    // AI-generated count is calculated later using aiCaptionPosts.count
 
     // Transform platform stats
     const platformStats: Record<string, number> = {}
@@ -537,9 +534,17 @@ export async function GET(request: NextRequest) {
     let aiCaptionPosts = { count: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0 }
     let manualCaptionPosts = { count: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0 }
 
+    // Helper to check if generatedCaptions has AI content
+    // generatedCaptions is an object with platform keys: { instagram: {...}, facebook: {...} }
+    const hasAiGeneratedCaptions = (captions: unknown): boolean => {
+      if (!captions || typeof captions !== 'object' || Array.isArray(captions)) return false
+      const keys = Object.keys(captions as Record<string, unknown>)
+      return keys.length > 0
+    }
+
     for (const post of postsWithAnalytics) {
-      const generatedCaptions = post.contentUpload?.generatedCaptions as unknown[] | null
-      const hasAiCaption = generatedCaptions && generatedCaptions.length > 0
+      const generatedCaptions = post.contentUpload?.generatedCaptions
+      const hasAiCaption = hasAiGeneratedCaptions(generatedCaptions)
 
       const metadata = post.metadata as Record<string, unknown> | null
       const analytics = metadata?.analytics as Record<string, number> | null
@@ -583,17 +588,25 @@ export async function GET(request: NextRequest) {
     const captionModeStats: Record<string, { count: number; likes: number; comments: number; shares: number; saves: number; reach: number }> = {}
 
     for (const post of postsWithAnalytics) {
-      const generatedCaptions = post.contentUpload?.generatedCaptions as Array<{ mode?: string }> | null
+      const generatedCaptions = post.contentUpload?.generatedCaptions as Record<string, { caption?: string; usageMode?: string }> | null
 
       // Determine caption mode used
+      // generatedCaptions structure: { instagram: { caption, hashtags, usageMode }, facebook: {...} }
       let mode = 'Manual'
-      if (generatedCaptions && generatedCaptions.length > 0) {
-        // Try to get the mode from the first caption
-        const firstCaption = generatedCaptions[0]
-        if (firstCaption?.mode) {
-          mode = firstCaption.mode
-        } else {
-          mode = 'AI Generated'
+      if (generatedCaptions && typeof generatedCaptions === 'object' && !Array.isArray(generatedCaptions)) {
+        const platforms = Object.keys(generatedCaptions)
+        if (platforms.length > 0) {
+          // Get the usageMode from the post's platform or first available
+          const platformCaption = generatedCaptions[post.provider] || generatedCaptions[platforms[0]]
+          if (platformCaption?.usageMode) {
+            // Format the usageMode for display (e.g., "full_rewrite" -> "Full Rewrite")
+            mode = platformCaption.usageMode
+              .split('_')
+              .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(' ')
+          } else {
+            mode = 'AI Generated'
+          }
         }
       }
 
@@ -952,7 +965,7 @@ export async function GET(request: NextRequest) {
       deletedPosts,
       queuedPosts,
       failedPosts,
-      aiGenerated,
+      aiGenerated: aiCaptionPosts.count, // Use actual AI caption count
       platformStats,
       timeRange: days,
       // Engagement metrics
