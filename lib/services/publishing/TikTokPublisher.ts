@@ -128,6 +128,10 @@ export class TikTokPublisher extends BasePlatformPublisher {
   /**
    * Initialize direct publish upload
    * Uses video.publish scope for direct publishing to TikTok
+   *
+   * TikTok API requirements:
+   * - For videos < 64MB: upload as single chunk (chunk_size = video_size, total_chunk_count = 1)
+   * - For videos >= 64MB: use chunked upload (chunk_size between 5MB-64MB)
    */
   private async initializeDirectPublish(
     accessToken: string,
@@ -138,8 +142,28 @@ export class TikTokPublisher extends BasePlatformPublisher {
     publish_id: string
     upload_url: string
   }> {
-    const chunkSize = Math.min(videoSize, 10 * 1024 * 1024) // 10MB max chunk size
-    const totalChunks = Math.ceil(videoSize / chunkSize)
+    // Validate video size
+    if (!videoSize || videoSize <= 0) {
+      throw new Error('Invalid video size: ' + videoSize)
+    }
+
+    const MAX_SINGLE_UPLOAD_SIZE = 64 * 1024 * 1024 // 64MB
+    const CHUNK_SIZE = 10 * 1024 * 1024 // 10MB per chunk for large files
+
+    // For videos under 64MB, upload as single chunk
+    // For larger videos, use chunked upload
+    let chunkSize: number
+    let totalChunks: number
+
+    if (videoSize <= MAX_SINGLE_UPLOAD_SIZE) {
+      // Single chunk upload - chunk_size equals video_size
+      chunkSize = videoSize
+      totalChunks = 1
+    } else {
+      // Chunked upload for large files
+      chunkSize = CHUNK_SIZE
+      totalChunks = Math.ceil(videoSize / chunkSize)
+    }
 
     const requestBody = {
       post_info: {
@@ -159,6 +183,7 @@ export class TikTokPublisher extends BasePlatformPublisher {
     }
 
     console.log('[TikTok] Initializing direct publish:', JSON.stringify(requestBody))
+    console.log(`[TikTok] Video size: ${videoSize} bytes, Chunk size: ${chunkSize}, Total chunks: ${totalChunks}`)
 
     // Use direct publish endpoint (requires video.publish scope)
     const response = await this.makeApiRequest<{
