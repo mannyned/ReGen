@@ -29,16 +29,42 @@ export async function GET(request: NextRequest) {
 
     // For drafts filter, fetch content uploads that haven't been scheduled or published
     if (filter === 'drafts') {
+      // First, get all thumbnail URLs and media URLs from published posts
+      // This helps us exclude content that was published but not properly linked
+      const publishedPosts = await prisma.outboundPost.findMany({
+        where: {
+          profileId,
+          status: { in: ['POSTED', 'QUEUED', 'PROCESSING'] },
+        },
+        select: {
+          contentUploadId: true,
+          metadata: true,
+        },
+      })
+
+      // Extract contentUploadIds that are linked AND media URLs from metadata
+      const linkedContentUploadIds = publishedPosts
+        .filter(p => p.contentUploadId)
+        .map(p => p.contentUploadId as string)
+
+      const publishedMediaUrls = publishedPosts
+        .map(p => (p.metadata as Record<string, unknown> | null)?.mediaUrl as string | undefined)
+        .filter((url): url is string => !!url)
+
       // Find content uploads that don't have any associated scheduled or outbound posts
       const draftUploads = await prisma.contentUpload.findMany({
         where: {
           profileId,
           status: 'READY', // Only show processed/ready content
+          // Exclude uploads that are linked to outbound posts
+          id: {
+            notIn: linkedContentUploadIds.length > 0 ? linkedContentUploadIds : ['__none__'],
+          },
           // Exclude uploads that have scheduled posts
           scheduledPosts: {
             none: {},
           },
-          // Exclude uploads that have outbound posts
+          // Exclude uploads that have outbound posts (relation check)
           outboundPosts: {
             none: {},
           },
@@ -62,7 +88,14 @@ export async function GET(request: NextRequest) {
         },
       })
 
-      const draftPosts = draftUploads.map((upload) => {
+      // Further filter: exclude uploads whose thumbnailUrl appears in published posts' mediaUrls
+      const filteredDraftUploads = draftUploads.filter(upload => {
+        if (!upload.thumbnailUrl) return true
+        // If this upload's thumbnail was used as media in a published post, it's not a draft
+        return !publishedMediaUrls.includes(upload.thumbnailUrl)
+      })
+
+      const draftPosts = filteredDraftUploads.map((upload) => {
         const processedUrls = upload.processedUrls as { files?: Array<{ publicUrl: string }> } | null
         const captions = upload.generatedCaptions as Record<string, unknown> | null
 
@@ -93,20 +126,13 @@ export async function GET(request: NextRequest) {
         }
       })
 
-      const totalDrafts = await prisma.contentUpload.count({
-        where: {
-          profileId,
-          status: 'READY',
-          scheduledPosts: { none: {} },
-          outboundPosts: { none: {} },
-          tiktokPosts: { none: {} },
-        },
-      })
-
+      // Use the filtered count for accuracy
+      // Note: For totalCount, we use the filtered list length since the additional
+      // URL-based filtering can't easily be done in the DB count query
       return NextResponse.json({
         posts: draftPosts,
         count: draftPosts.length,
-        totalCount: totalDrafts,
+        totalCount: filteredDraftUploads.length,
       })
     }
 

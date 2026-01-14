@@ -710,18 +710,21 @@ export default function SaveRateAnalyticsPage() {
       }
       setByPlatform(platformList);
 
-      // Generate trend data from historical data (simplified)
-      // For now, create a flat trend since we don't have daily data
+      // Generate trend data from actual totals
+      // Distribute the totals across the time period
       const trendPoints: SaveRateTrendPoint[] = [];
       const daysToShow = Math.min(days, 30);
+      const dailySaves = totalSaves > 0 ? Math.round(totalSaves / daysToShow) : 0;
+      const dailyImpressions = totalReach > 0 ? Math.round(totalReach / daysToShow) : 0;
+
       for (let i = daysToShow; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
         trendPoints.push({
           date: date.toISOString().split('T')[0],
-          saveRate: overallSaveRate + (Math.random() - 0.5) * 0.5, // Small variation
-          saves: Math.round(totalSaves / daysToShow),
-          impressions: Math.round(totalReach / daysToShow)
+          saveRate: overallSaveRate, // Show actual save rate
+          saves: dailySaves,
+          impressions: dailyImpressions
         });
       }
       setTrends(trendPoints);
