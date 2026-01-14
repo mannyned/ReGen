@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import type { SocialPlatform } from '@/lib/types/social'
 
 // ============================================
@@ -637,8 +638,8 @@ export function Tooltip({
         )}
       </button>
 
-      {/* Tooltip */}
-      {isVisible && (
+      {/* Tooltip - rendered via Portal to escape parent transform stacking contexts */}
+      {isVisible && typeof document !== 'undefined' && createPortal(
         <div
           ref={tooltipRef}
           id={tooltipId}
@@ -731,7 +732,8 @@ export function Tooltip({
               </p>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </span>
   )

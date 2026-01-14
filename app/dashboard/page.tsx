@@ -185,14 +185,24 @@ export default function DashboardPage() {
   const totalEngagementValue = engagement
     ? engagement.totalLikes + engagement.totalComments + engagement.totalShares + engagement.totalSaves
     : 0
+
+  // Calculate average reach per post, fall back to total reach if no average available
+  const totalReachValue = engagement?.totalReach || 0
   const averageReachValue = engagement && engagement.postsWithMetrics > 0
     ? Math.round(engagement.totalReach / engagement.postsWithMetrics)
     : 0
 
+  // Display average reach if available, otherwise show total reach
+  const reachDisplay = averageReachValue > 0
+    ? averageReachValue.toLocaleString()
+    : totalReachValue > 0
+      ? totalReachValue.toLocaleString()
+      : '—'
+
   const stats = {
     repurposesDone: analyticsStats?.totalPosts ?? totalPosts,
     totalEngagement: totalEngagementValue > 0 ? totalEngagementValue.toLocaleString() : '—',
-    averageReach: averageReachValue > 0 ? averageReachValue.toLocaleString() : '—',
+    averageReach: reachDisplay,
     postsThisWeek: analyticsStats?.postsThisWeek ?? 0,
     deletedPosts: analyticsStats?.deletedPosts ?? 0,
     queuedPosts: analyticsStats?.queuedPosts ?? 0,
@@ -394,8 +404,8 @@ export default function DashboardPage() {
               label="Average Reach"
               value={stats.averageReach}
               icon="👥"
-              subtitle="Per post"
-              tooltip="The average number of unique accounts that saw your posts. Calculated as total reach divided by the number of posts with analytics data."
+              subtitle={averageReachValue > 0 ? "Per post" : totalReachValue > 0 ? "Total reach" : undefined}
+              tooltip="The average number of unique accounts that saw your posts. Shows average per post when available, or total reach otherwise. Sync analytics from the Analytics page to update."
             />
             <Card className="p-6">
               <div className="flex items-center justify-between mb-3">
