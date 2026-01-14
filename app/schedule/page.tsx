@@ -324,11 +324,18 @@ function SchedulePageContent() {
 
       // Real publish mode - use uploaded file URL or show error for large files
       let mediaData = null
+      let carouselItems: Array<{
+        mediaUrl: string
+        mimeType: string
+        fileSize: number
+        order: number
+      }> | null = null
 
       if (preview?.files && preview.files.length > 0) {
         const files = preview.files.filter(f => f.base64Data) // Only files with data
-        const isVideo = files[0]?.type?.startsWith('video')
-        const isCarousel = files.length > 1 && !isVideo
+        const firstFileIsVideo = files[0]?.type?.startsWith('video')
+        // Carousel = multiple files (regardless of whether first is video or image)
+        const isCarousel = files.length > 1
 
         // Helper function to get URL for a file (upload if needed)
         const getFileUrl = async (file: typeof files[0]): Promise<string> => {
@@ -367,34 +374,48 @@ function SchedulePageContent() {
           return uploadResult.file.publicUrl
         }
 
-        // Upload first file
-        const firstFile = files[0]
-        setPublishingStatus(isVideo ? 'Uploading video...' : 'Uploading image...')
-        const firstUrl = await getFileUrl(firstFile)
-
-        // For carousel posts, upload additional images
-        let additionalUrls: string[] = []
         if (isCarousel) {
-          for (let i = 1; i < files.length; i++) {
-            setPublishingStatus(`Uploading image ${i + 1} of ${files.length}...`)
-            const url = await getFileUrl(files[i])
-            additionalUrls.push(url)
+          // Carousel mode: upload all files and build carouselItems array
+          carouselItems = []
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i]
+            setPublishingStatus(`Uploading ${file.type?.startsWith('video') ? 'video' : 'image'} ${i + 1} of ${files.length}...`)
+            const url = await getFileUrl(file)
+            carouselItems.push({
+              mediaUrl: url,
+              mimeType: file.type || 'image/jpeg',
+              fileSize: file.size || 0,
+              order: i,
+            })
           }
-        }
 
-        mediaData = {
-          mediaUrl: firstUrl,
-          mediaType: isVideo ? 'video' as const : (isCarousel ? 'carousel' as const : 'image' as const),
-          mimeType: firstFile.type,
-          fileSize: firstFile.size,
-          ...(additionalUrls.length > 0 && { additionalMediaUrls: additionalUrls }),
+          // Also set mediaData for backwards compatibility
+          mediaData = {
+            mediaUrl: carouselItems[0].mediaUrl,
+            mediaType: 'carousel' as const,
+            mimeType: carouselItems[0].mimeType,
+            fileSize: carouselItems[0].fileSize,
+            additionalMediaUrls: carouselItems.slice(1).map(item => item.mediaUrl),
+          }
+        } else {
+          // Single file mode
+          const firstFile = files[0]
+          setPublishingStatus(firstFileIsVideo ? 'Uploading video...' : 'Uploading image...')
+          const firstUrl = await getFileUrl(firstFile)
+
+          mediaData = {
+            mediaUrl: firstUrl,
+            mediaType: firstFileIsVideo ? 'video' as const : 'image' as const,
+            mimeType: firstFile.type,
+            fileSize: firstFile.size,
+          }
         }
       }
 
       setPublishingStatus('Publishing to ' + selectedPlatforms.join(', ') + '...')
 
       // Build publish request with correct format
-      const publishData = {
+      const publishData: Record<string, unknown> = {
         userId: user?.id,
         platforms: selectedPlatforms.map(p => PLATFORM_ID_MAP[p] || p),
         content: {
@@ -405,7 +426,12 @@ function SchedulePageContent() {
         contentType, // Pass content type (post vs story/reel)
       }
 
-      console.log('[Schedule Page] Publishing with contentType:', contentType, 'mediaType:', mediaData?.mediaType)
+      // Add carouselItems for multi-file posts
+      if (carouselItems && carouselItems.length > 1) {
+        publishData.carouselItems = carouselItems
+      }
+
+      console.log('[Schedule Page] Publishing with contentType:', contentType, 'mediaType:', mediaData?.mediaType, 'carouselItems:', carouselItems?.length || 0)
 
       const response = await fetch('/api/publish', {
         method: 'POST',
