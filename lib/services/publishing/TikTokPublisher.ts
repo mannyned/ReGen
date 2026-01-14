@@ -6,14 +6,18 @@ import { API_BASE_URLS } from '../../config/oauth'
 // TIKTOK PUBLISHER
 // Uses TikTok Content Posting API v2
 // Now with video.publish scope for direct publishing
+//
+// NOTE: Unaudited apps can only post as SELF_ONLY (private).
+// To enable public posting, the app must pass TikTok's audit.
+// See: https://developers.tiktok.com/doc/content-sharing-guidelines/
 // ============================================
 
 // TikTok privacy levels for direct publishing
 type TikTokPrivacyLevel =
-  | 'PUBLIC_TO_EVERYONE'      // Visible to everyone
-  | 'MUTUAL_FOLLOW_FRIENDS'   // Visible to mutual followers
-  | 'FOLLOWER_OF_CREATOR'     // Visible to followers only
-  | 'SELF_ONLY'               // Private/draft
+  | 'PUBLIC_TO_EVERYONE'      // Visible to everyone (requires audited app)
+  | 'MUTUAL_FOLLOW_FRIENDS'   // Visible to mutual followers (requires audited app)
+  | 'FOLLOWER_OF_CREATOR'     // Visible to followers only (requires audited app)
+  | 'SELF_ONLY'               // Private/draft (works with unaudited apps)
 
 export class TikTokPublisher extends BasePlatformPublisher {
   protected platform: SocialPlatform = 'tiktok'
@@ -70,9 +74,10 @@ export class TikTokPublisher extends BasePlatformPublisher {
         platformUrl: publishStatus.video_id
           ? `https://www.tiktok.com/@user/video/${publishStatus.video_id}`
           : undefined,
+        // Note: Unaudited apps post as private/draft - user must publish manually from TikTok
         message: publishStatus.status === 'PUBLISH_COMPLETE'
-          ? 'Video published to TikTok successfully!'
-          : 'Video is being processed and will be published shortly.',
+          ? 'Video uploaded to TikTok as a private draft. Open TikTok to review and publish it publicly.'
+          : 'Video is being processed. Check your TikTok drafts to publish it.',
       }
     } catch (error) {
       return {
@@ -137,7 +142,7 @@ export class TikTokPublisher extends BasePlatformPublisher {
     accessToken: string,
     videoSize: number,
     caption: string,
-    privacyLevel: TikTokPrivacyLevel = 'PUBLIC_TO_EVERYONE'
+    privacyLevel: TikTokPrivacyLevel = 'SELF_ONLY' // Use SELF_ONLY for unaudited apps
   ): Promise<{
     publish_id: string
     upload_url: string
