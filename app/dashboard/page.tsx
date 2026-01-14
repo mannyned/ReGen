@@ -61,6 +61,17 @@ interface AnalyticsStats {
   queuedPosts: number
   failedPosts: number
   platformStats: Record<string, number>
+  engagement?: {
+    totalLikes: number
+    totalComments: number
+    totalShares: number
+    totalSaves: number
+    totalViews: number
+    totalReach: number
+    totalImpressions: number
+    avgEngagementRate: string | null
+    postsWithMetrics: number
+  }
 }
 
 export default function DashboardPage() {
@@ -170,10 +181,18 @@ export default function DashboardPage() {
   }
 
   // Stats from API (real-time database counts)
+  const engagement = analyticsStats?.engagement
+  const totalEngagementValue = engagement
+    ? engagement.totalLikes + engagement.totalComments + engagement.totalShares + engagement.totalSaves
+    : 0
+  const averageReachValue = engagement && engagement.postsWithMetrics > 0
+    ? Math.round(engagement.totalReach / engagement.postsWithMetrics)
+    : 0
+
   const stats = {
     repurposesDone: analyticsStats?.totalPosts ?? totalPosts,
-    totalEngagement: '—',
-    averageReach: '—',
+    totalEngagement: totalEngagementValue > 0 ? totalEngagementValue.toLocaleString() : '—',
+    averageReach: averageReachValue > 0 ? averageReachValue.toLocaleString() : '—',
     postsThisWeek: analyticsStats?.postsThisWeek ?? 0,
     deletedPosts: analyticsStats?.deletedPosts ?? 0,
     queuedPosts: analyticsStats?.queuedPosts ?? 0,
