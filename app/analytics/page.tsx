@@ -548,8 +548,10 @@ export default function AnalyticsPage() {
     : null
 
   let globalEngagementDisplay = '—'
+  let globalEngagementIsRate = false
   if (globalEngagementRate !== null && globalEngagementRate <= 50) {
     globalEngagementDisplay = globalEngagementRate.toFixed(1) + '%'
+    globalEngagementIsRate = true
   } else if (globalTotalEngagement > 0) {
     globalEngagementDisplay = globalTotalEngagement.toLocaleString()
   }
@@ -558,6 +560,7 @@ export default function AnalyticsPage() {
     totalPosts: realStats?.totalPosts?.toString() || '0',
     totalReach: realStats?.engagement?.totalReach ? realStats.engagement.totalReach.toLocaleString() : '—',
     avgEngagement: globalEngagementDisplay,
+    engagementIsRate: globalEngagementIsRate,
     aiGenerated: realStats?.aiGenerated?.toString() || '0'
   }
 
@@ -615,8 +618,10 @@ export default function AnalyticsPage() {
     // Show engagement rate only if it's realistic (under 50%)
     // Rates above 50% indicate insufficient reach data - show raw count instead
     let engagementDisplay = '—'
+    let engagementIsRate = false
     if (engagementRateRaw !== null && engagementRateRaw <= 50) {
       engagementDisplay = engagementRateRaw.toFixed(1) + '%'
+      engagementIsRate = true
     } else if (totalEngagement > 0) {
       // Show raw engagement count when rate is unrealistic or reach is missing
       engagementDisplay = totalEngagement.toLocaleString()
@@ -626,6 +631,7 @@ export default function AnalyticsPage() {
       totalPosts: filteredPostCount.toString(),
       totalReach: reachDisplay,
       avgEngagement: engagementDisplay,
+      engagementIsRate,
       aiGenerated: '—' // AI generated count is not platform-specific in current data
     }
   })()
@@ -1135,7 +1141,17 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard label="Total Posts" value={filteredStats.totalPosts} icon="📊" trend={isProduction ? undefined : { value: 12, positive: true }} tooltip="The total number of posts published to this platform. Use the platform filter above to see platform-specific counts." />
               <StatCard label="Total Reach" value={filteredStats.totalReach} icon="👥" trend={isProduction ? undefined : { value: 24, positive: true }} tooltip="The total number of unique accounts that saw your posts. Sync analytics for each platform to update this metric." />
-              <StatCard label="Avg Engagement" value={filteredStats.avgEngagement} icon="❤️" trend={isProduction ? undefined : { value: 5.2, positive: true }} tooltip="Shows engagement rate (%) when reach data is available, or total engagement count otherwise. A rate of 3-6% is considered good. If showing a number instead of %, sync analytics to get reach data." />
+              <StatCard
+                label={filteredStats.engagementIsRate ? "Eng. Rate" : "Total Engagement"}
+                value={filteredStats.avgEngagement}
+                icon="❤️"
+                trend={isProduction ? undefined : { value: 5.2, positive: true }}
+                subtitle={filteredStats.engagementIsRate ? "Of reach" : "Sync for rate"}
+                tooltip={filteredStats.engagementIsRate
+                  ? "Engagement rate = (likes + comments + shares + saves) ÷ reach × 100. A rate of 3-6% is considered good."
+                  : "Total interactions (likes + comments + shares + saves). Sync analytics to see engagement rate percentage."
+                }
+              />
               <StatCard label="AI Generated" value={filteredStats.aiGenerated} icon="✨" subtitle={isProduction ? undefined : "60% of total posts"} tooltip="The number of posts that used AI-generated captions. This helps track how AI assistance impacts your content strategy." />
             </div>
 
