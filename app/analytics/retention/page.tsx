@@ -299,6 +299,9 @@ interface RetentionCurveChartProps {
 }
 
 function RetentionCurveChart({ data, dropOffs, duration, isLoading }: RetentionCurveChartProps) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
   if (isLoading) {
     return (
       <div className="h-80 bg-gray-100 rounded-xl flex items-center justify-center animate-pulse">
@@ -323,9 +326,45 @@ function RetentionCurveChart({ data, dropOffs, duration, isLoading }: RetentionC
 
   const maxRetention = 100;
 
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const svgWidth = rect.width;
+
+    // Calculate which data point we're closest to
+    const chartStart = (60 / 800) * svgWidth;
+    const chartEnd = (780 / 800) * svgWidth;
+    const chartWidth = chartEnd - chartStart;
+
+    if (x >= chartStart && x <= chartEnd) {
+      const relativeX = (x - chartStart) / chartWidth;
+      const index = Math.round(relativeX * (data.length - 1));
+      const clampedIndex = Math.max(0, Math.min(data.length - 1, index));
+      setHoveredIndex(clampedIndex);
+
+      // Calculate tooltip position
+      const pointX = 60 + (clampedIndex / (data.length - 1)) * 720;
+      const pointY = 260 - ((data[clampedIndex].retention / maxRetention) * 220);
+      setTooltipPosition({
+        x: (pointX / 800) * svgWidth,
+        y: (pointY / 300) * rect.height
+      });
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredIndex(null);
+  };
+
   return (
     <div className="relative">
-      <svg viewBox="0 0 800 300" className="w-full h-80">
+      <svg
+        viewBox="0 0 800 300"
+        className="w-full h-80"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
         {/* Grid lines */}
         {[0, 25, 50, 75, 100].map((pct) => (
           <g key={pct}>
@@ -430,7 +469,55 @@ function RetentionCurveChart({ data, dropOffs, duration, isLoading }: RetentionC
             </g>
           );
         })}
+
+        {/* Hover indicator - vertical line and point */}
+        {hoveredIndex !== null && data[hoveredIndex] && (
+          <>
+            <line
+              x1={60 + (hoveredIndex / (data.length - 1)) * 720}
+              y1={260 - ((data[hoveredIndex].retention / maxRetention) * 220)}
+              x2={60 + (hoveredIndex / (data.length - 1)) * 720}
+              y2={260}
+              stroke="#F97316"
+              strokeWidth="1"
+              strokeDasharray="4"
+              opacity="0.6"
+            />
+            <circle
+              cx={60 + (hoveredIndex / (data.length - 1)) * 720}
+              cy={260 - ((data[hoveredIndex].retention / maxRetention) * 220)}
+              r="7"
+              fill="#EA580C"
+              stroke="white"
+              strokeWidth="3"
+            />
+          </>
+        )}
       </svg>
+
+      {/* Tooltip */}
+      {hoveredIndex !== null && data[hoveredIndex] && (
+        <div
+          className="absolute pointer-events-none bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg text-sm z-10 transform -translate-x-1/2 -translate-y-full"
+          style={{
+            left: tooltipPosition.x,
+            top: tooltipPosition.y - 10
+          }}
+        >
+          <div className="font-medium mb-1">
+            {formatDuration(data[hoveredIndex].second)}
+          </div>
+          <div className="flex flex-col gap-0.5 text-xs">
+            <span className="text-orange-400 font-semibold">
+              Retention: {data[hoveredIndex].retention.toFixed(1)}%
+            </span>
+            <span className="text-gray-300">
+              Viewers: {data[hoveredIndex].viewers.toLocaleString()}
+            </span>
+          </div>
+          <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900"></div>
+        </div>
+      )}
 
       {/* Legend */}
       <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow text-xs">
