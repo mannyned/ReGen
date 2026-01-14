@@ -148,6 +148,7 @@ export async function GET(request: NextRequest) {
         provider: true,
         metadata: true,
         postedAt: true,
+        hashtags: true,
         contentUpload: {
           select: {
             mimeType: true,
@@ -284,11 +285,84 @@ export async function GET(request: NextRequest) {
       crossPlatformSynergy = 50
     }
 
-    // 4. Hashtag Performance - Placeholder (would need hashtag tracking)
-    // For now, estimate based on reach per post
+    // 4. Hashtag Performance - Based on actual hashtag usage and engagement
+    // Calculate metrics for posts with and without hashtags
+    let postsWithHashtags = 0
+    let postsWithoutHashtags = 0
+    let hashtagPostEngagement = 0
+    let hashtagPostReach = 0
+    let noHashtagPostEngagement = 0
+    let noHashtagPostReach = 0
+    let totalHashtagCount = 0
+
+    for (const post of postsWithAnalytics) {
+      const hasHashtags = post.hashtags && post.hashtags.length > 0
+      const metadata = post.metadata as Record<string, unknown> | null
+      const analytics = metadata?.analytics as Record<string, number> | null
+
+      const postEngagement = analytics
+        ? (analytics.likes || 0) + (analytics.comments || 0) + (analytics.shares || 0) + (analytics.saved || analytics.saves || 0)
+        : 0
+      const postReach = analytics?.reach || 0
+
+      if (hasHashtags) {
+        postsWithHashtags++
+        totalHashtagCount += post.hashtags!.length
+        hashtagPostEngagement += postEngagement
+        hashtagPostReach += postReach
+      } else {
+        postsWithoutHashtags++
+        noHashtagPostEngagement += postEngagement
+        noHashtagPostReach += postReach
+      }
+    }
+
+    // Calculate hashtag performance score (0-100)
+    let hashtagPerformance = 0
     const avgReachPerPost = postsWithMetrics > 0 ? totalReach / postsWithMetrics : 0
-    // Score based on reach benchmarks (1000 reach per post = 50%, 5000+ = 100%)
-    const hashtagPerformance = Math.min(100, Math.round((avgReachPerPost / 5000) * 100))
+
+    if (postsWithHashtags > 0) {
+      // Base score: percentage of posts using hashtags (up to 40 points)
+      const hashtagUsageRate = postsWithAnalytics.length > 0
+        ? (postsWithHashtags / postsWithAnalytics.length) * 40
+        : 0
+
+      // Hashtag count score: optimal is 3-10 hashtags (up to 30 points)
+      const avgHashtagsPerPost = postsWithHashtags > 0 ? totalHashtagCount / postsWithHashtags : 0
+      let hashtagCountScore = 0
+      if (avgHashtagsPerPost >= 3 && avgHashtagsPerPost <= 10) {
+        hashtagCountScore = 30 // Optimal range
+      } else if (avgHashtagsPerPost > 0 && avgHashtagsPerPost < 3) {
+        hashtagCountScore = avgHashtagsPerPost * 10 // 1-2 hashtags: 10-20 points
+      } else if (avgHashtagsPerPost > 10) {
+        hashtagCountScore = Math.max(10, 30 - (avgHashtagsPerPost - 10) * 2) // Decreasing score for too many
+      }
+
+      // Engagement boost from hashtags (up to 30 points)
+      let engagementBoostScore = 0
+      if (postsWithHashtags > 0 && postsWithoutHashtags > 0) {
+        // Compare engagement rates
+        const hashtagEngRate = hashtagPostReach > 0 ? hashtagPostEngagement / hashtagPostReach : 0
+        const noHashtagEngRate = noHashtagPostReach > 0 ? noHashtagPostEngagement / noHashtagPostReach : 0
+
+        if (noHashtagEngRate > 0 && hashtagEngRate > noHashtagEngRate) {
+          // Hashtags are helping - score based on improvement
+          const improvement = (hashtagEngRate - noHashtagEngRate) / noHashtagEngRate
+          engagementBoostScore = Math.min(30, improvement * 100)
+        } else if (hashtagEngRate > 0) {
+          // Can't compare, but posts with hashtags have engagement
+          engagementBoostScore = 15 // Baseline
+        }
+      } else if (postsWithHashtags > 0 && hashtagPostEngagement > 0) {
+        // All posts have hashtags and have engagement
+        engagementBoostScore = 20 // Good baseline
+      }
+
+      hashtagPerformance = Math.min(100, Math.round(hashtagUsageRate + hashtagCountScore + engagementBoostScore))
+    } else if (avgReachPerPost > 0) {
+      // Fallback: no hashtag data, use reach-based estimate
+      hashtagPerformance = Math.min(100, Math.round((avgReachPerPost / 5000) * 100))
+    }
 
     // 5. Sentiment Score - Based on engagement quality signals
     // Higher likes/saves ratio vs comments indicates positive sentiment
@@ -594,6 +668,7 @@ export async function GET(request: NextRequest) {
       select: {
         provider: true,
         metadata: true,
+        hashtags: true,
       },
     })
 
@@ -693,9 +768,50 @@ export async function GET(request: NextRequest) {
       prevCrossPlatformSynergy = 50
     }
 
-    // Previous Hashtag Performance
+    // Previous Hashtag Performance - Using same logic as current period
+    let prevPostsWithHashtags = 0
+    let prevTotalHashtagCount = 0
+    let prevHashtagPostEngagement = 0
+
+    for (const post of previousPeriodPosts) {
+      const hasHashtags = post.hashtags && post.hashtags.length > 0
+      const metadata = post.metadata as Record<string, unknown> | null
+      const analytics = metadata?.analytics as Record<string, number> | null
+
+      if (hasHashtags) {
+        prevPostsWithHashtags++
+        prevTotalHashtagCount += post.hashtags!.length
+        if (analytics) {
+          prevHashtagPostEngagement += (analytics.likes || 0) + (analytics.comments || 0) +
+            (analytics.shares || 0) + (analytics.saved || analytics.saves || 0)
+        }
+      }
+    }
+
+    let prevHashtagPerformance = 0
     const prevAvgReachPerPost = prevPostsWithMetrics > 0 ? prevTotalReach / prevPostsWithMetrics : 0
-    const prevHashtagPerformance = Math.min(100, Math.round((prevAvgReachPerPost / 5000) * 100))
+
+    if (prevPostsWithHashtags > 0) {
+      const prevHashtagUsageRate = previousPeriodPosts.length > 0
+        ? (prevPostsWithHashtags / previousPeriodPosts.length) * 40
+        : 0
+
+      const prevAvgHashtagsPerPost = prevPostsWithHashtags > 0 ? prevTotalHashtagCount / prevPostsWithHashtags : 0
+      let prevHashtagCountScore = 0
+      if (prevAvgHashtagsPerPost >= 3 && prevAvgHashtagsPerPost <= 10) {
+        prevHashtagCountScore = 30
+      } else if (prevAvgHashtagsPerPost > 0 && prevAvgHashtagsPerPost < 3) {
+        prevHashtagCountScore = prevAvgHashtagsPerPost * 10
+      } else if (prevAvgHashtagsPerPost > 10) {
+        prevHashtagCountScore = Math.max(10, 30 - (prevAvgHashtagsPerPost - 10) * 2)
+      }
+
+      const prevEngagementBoostScore = prevHashtagPostEngagement > 0 ? 20 : 0
+
+      prevHashtagPerformance = Math.min(100, Math.round(prevHashtagUsageRate + prevHashtagCountScore + prevEngagementBoostScore))
+    } else if (prevAvgReachPerPost > 0) {
+      prevHashtagPerformance = Math.min(100, Math.round((prevAvgReachPerPost / 5000) * 100))
+    }
 
     // ============================================
     // CALCULATE TRENDS (current vs previous)

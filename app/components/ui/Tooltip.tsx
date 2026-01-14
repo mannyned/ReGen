@@ -207,7 +207,7 @@ export const MetricTooltips: Record<string, MetricTooltipConfig> = {
     },
     proInsight: 'Your top-performing hashtag drives 23% of your discovery traffic.',
     actionHints: {
-      low: 'Research trending hashtags in your niche using the Explore features',
+      low: 'Research trending hashtags in your niche to improve discoverability',
       medium: 'Good mix! Test removing underperforming hashtags to find winners',
       high: 'Your hashtag strategy is working! Document your best performers'
     },
