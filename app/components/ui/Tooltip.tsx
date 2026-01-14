@@ -644,7 +644,7 @@ export function Tooltip({
           id={tooltipId}
           role="tooltip"
           className={`
-            fixed z-[100] w-72 max-w-[90vw]
+            fixed z-[9999] w-72 max-w-[90vw]
             bg-gray-800 text-white rounded-xl
             shadow-2xl shadow-black/20
             transform transition-all duration-200 ease-out
