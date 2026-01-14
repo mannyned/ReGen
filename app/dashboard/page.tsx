@@ -34,6 +34,7 @@ const PLATFORM_DISPLAY_NAME: Record<string, string> = {
   snapchat: 'Snapchat',
   pinterest: 'Pinterest',
   discord: 'Discord',
+  draft: 'Draft',
 }
 
 interface RecentPost {
