@@ -388,12 +388,14 @@ export default function DashboardPage() {
                 value: currentPlan === 'pro' ? '+52% vs last week' : '+24% vs last week',
                 positive: true
               }}
+              tooltip="The sum of all likes, comments, shares, and saves across your published posts. Sync your analytics from the Analytics page to update this metric."
             />
             <StatCard
               label="Average Reach"
               value={stats.averageReach}
               icon="👥"
               subtitle="Per post"
+              tooltip="The average number of unique accounts that saw your posts. Calculated as total reach divided by the number of posts with analytics data."
             />
             <Card className="p-6">
               <div className="flex items-center justify-between mb-3">

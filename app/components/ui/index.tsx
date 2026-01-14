@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { SignOutButton } from '@/components/auth'
+import { Tooltip } from './Tooltip'
 
 // ==========================================
 // PLATFORM LOGO COMPONENT (RE-EXPORT)
@@ -544,13 +545,21 @@ interface StatCardProps {
     positive?: boolean
   }
   subtitle?: string
+  tooltip?: string
 }
 
-export function StatCard({ label, value, icon, trend, subtitle }: StatCardProps) {
+export function StatCard({ label, value, icon, trend, subtitle, tooltip }: StatCardProps) {
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-text-secondary text-sm font-medium">{label}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-text-secondary text-sm font-medium">{label}</span>
+          {tooltip && (
+            <Tooltip content={tooltip} title={label} position="top">
+              <span className="sr-only">Info</span>
+            </Tooltip>
+          )}
+        </div>
         <span className="text-2xl">{icon}</span>
       </div>
       <p className="text-3xl font-bold text-text-primary mb-1">{value}</p>
