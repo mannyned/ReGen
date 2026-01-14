@@ -535,10 +535,29 @@ export default function AnalyticsPage() {
   })()
 
   // Stats using real data from API
+  // Calculate total engagement for fallback display
+  const globalTotalEngagement = realStats?.engagement
+    ? (realStats.engagement.totalLikes || 0) + (realStats.engagement.totalComments || 0) +
+      (realStats.engagement.totalShares || 0) + (realStats.engagement.totalSaves || 0)
+    : 0
+
+  // Only show engagement rate if it's realistic (under 50%)
+  // Rates above 50% indicate insufficient reach data - show raw count instead
+  const globalEngagementRate = realStats?.engagement?.avgEngagementRate
+    ? parseFloat(realStats.engagement.avgEngagementRate)
+    : null
+
+  let globalEngagementDisplay = '—'
+  if (globalEngagementRate !== null && globalEngagementRate <= 50) {
+    globalEngagementDisplay = globalEngagementRate.toFixed(1) + '%'
+  } else if (globalTotalEngagement > 0) {
+    globalEngagementDisplay = globalTotalEngagement.toLocaleString()
+  }
+
   const stats = {
     totalPosts: realStats?.totalPosts?.toString() || '0',
     totalReach: realStats?.engagement?.totalReach ? realStats.engagement.totalReach.toLocaleString() : '—',
-    avgEngagement: realStats?.engagement?.avgEngagementRate ? realStats.engagement.avgEngagementRate + '%' : '—',
+    avgEngagement: globalEngagementDisplay,
     aiGenerated: realStats?.aiGenerated?.toString() || '0'
   }
 
@@ -584,8 +603,8 @@ export default function AnalyticsPage() {
     }, { reach: 0, likes: 0, comments: 0, shares: 0, saves: 0 })
 
     const totalEngagement = filteredEngagement.likes + filteredEngagement.comments + filteredEngagement.shares + filteredEngagement.saves
-    const engagementRate = filteredEngagement.reach > 0
-      ? ((totalEngagement / filteredEngagement.reach) * 100).toFixed(1)
+    const engagementRateRaw = filteredEngagement.reach > 0
+      ? (totalEngagement / filteredEngagement.reach) * 100
       : null
 
     // Show reach if available, otherwise show —
@@ -593,11 +612,13 @@ export default function AnalyticsPage() {
       ? filteredEngagement.reach.toLocaleString()
       : '—'
 
-    // Show engagement rate if available, otherwise show engagement count
+    // Show engagement rate only if it's realistic (under 50%)
+    // Rates above 50% indicate insufficient reach data - show raw count instead
     let engagementDisplay = '—'
-    if (engagementRate) {
-      engagementDisplay = engagementRate + '%'
+    if (engagementRateRaw !== null && engagementRateRaw <= 50) {
+      engagementDisplay = engagementRateRaw.toFixed(1) + '%'
     } else if (totalEngagement > 0) {
+      // Show raw engagement count when rate is unrealistic or reach is missing
       engagementDisplay = totalEngagement.toLocaleString()
     }
 
@@ -1114,7 +1135,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard label="Total Posts" value={filteredStats.totalPosts} icon="📊" trend={isProduction ? undefined : { value: 12, positive: true }} tooltip="The total number of posts published to this platform. Use the platform filter above to see platform-specific counts." />
               <StatCard label="Total Reach" value={filteredStats.totalReach} icon="👥" trend={isProduction ? undefined : { value: 24, positive: true }} tooltip="The total number of unique accounts that saw your posts. Sync analytics for each platform to update this metric." />
-              <StatCard label="Avg Engagement" value={filteredStats.avgEngagement} icon="❤️" trend={isProduction ? undefined : { value: 5.2, positive: true }} tooltip="Engagement rate = (likes + comments + shares + saves) ÷ reach × 100. A rate above 3-6% is considered good. High percentages may indicate reach data needs syncing." />
+              <StatCard label="Avg Engagement" value={filteredStats.avgEngagement} icon="❤️" trend={isProduction ? undefined : { value: 5.2, positive: true }} tooltip="Shows engagement rate (%) when reach data is available, or total engagement count otherwise. A rate of 3-6% is considered good. If showing a number instead of %, sync analytics to get reach data." />
               <StatCard label="AI Generated" value={filteredStats.aiGenerated} icon="✨" subtitle={isProduction ? undefined : "60% of total posts"} tooltip="The number of posts that used AI-generated captions. This helps track how AI assistance impacts your content strategy." />
             </div>
 
