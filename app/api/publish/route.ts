@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
         scheduleAt,
         contentType,
         carouselItems,  // New: array of carousel items for multi-image posts
+        contentId,      // Link to ContentUpload (draft) record
       } = body as {
         userId: string
         platforms: SocialPlatform[]
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
         scheduleAt?: string
         contentType?: 'post' | 'story'
         carouselItems?: CarouselItem[]  // New: for carousel/multi-image posts
+        contentId?: string              // Link to ContentUpload (draft) record
       }
 
       // Determine if this is a carousel post
@@ -162,6 +164,7 @@ export async function POST(request: NextRequest) {
               await prisma.outboundPost.create({
                 data: {
                   profileId: userId,
+                  contentUploadId: contentId || null,  // Link to draft
                   provider: platform,
                   status: 'POSTED',
                   externalPostId: result.postId || null,
@@ -209,6 +212,7 @@ export async function POST(request: NextRequest) {
               await prisma.outboundPost.create({
                 data: {
                   profileId: userId,
+                  contentUploadId: contentId || null,  // Link to draft
                   provider: platform,
                   status: 'POSTED',
                   externalPostId: (result as PublishResult).platformPostId || null,

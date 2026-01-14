@@ -424,6 +424,7 @@ function SchedulePageContent() {
         },
         media: mediaData,
         contentType, // Pass content type (post vs story/reel)
+        contentId,   // Link to ContentUpload (draft) - removes from drafts when published
       }
 
       // Add carouselItems for multi-file posts
