@@ -690,7 +690,7 @@ export default function DashboardPage() {
                           </Link>
                         ) : post.status === 'INITIATED' ? (
                           <Link
-                            href="/upload"
+                            href={`/upload?draft=${post.id}`}
                             onClick={(e) => e.stopPropagation()}
                             className="text-primary hover:text-primary-hover text-sm font-medium transition-colors"
                           >

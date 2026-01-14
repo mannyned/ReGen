@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { fileStorage, fileToBase64, generateFileId } from '../utils/fileStorage'
 import { AppHeader, Card, Badge, PlatformLogo } from '../components/ui'
 import { CarouselComposer } from '../components/CarouselComposer'
@@ -75,8 +75,10 @@ const platforms = [
   { id: 'discord' as Platform, name: 'Discord', icon: '💬', color: 'bg-gradient-to-br from-indigo-600 to-indigo-500' },
 ]
 
-export default function UploadPage() {
+// Inner component that uses useSearchParams
+function UploadPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
   const [uploadType, setUploadType] = useState<UploadType>('video')
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(['instagram', 'tiktok'])
@@ -89,6 +91,30 @@ export default function UploadPage() {
   const [contentDescription, setContentDescription] = useState('')
   const [customHashtags, setCustomHashtags] = useState('')
   const [mounted, setMounted] = useState(false)
+  const [isRedirectingDraft, setIsRedirectingDraft] = useState(false)
+
+  // Check for draft parameter and redirect to generate page - runs first
+  const draftId = searchParams.get('draft')
+
+  useEffect(() => {
+    if (draftId) {
+      setIsRedirectingDraft(true)
+      // Redirect to generate page with the draft's contentId
+      router.replace(`/generate?contentId=${draftId}`)
+    }
+  }, [draftId, router])
+
+  // If we're redirecting to a draft, show loading state
+  if (draftId || isRedirectingDraft) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-text-secondary">Loading your draft...</p>
+        </div>
+      </div>
+    )
+  }
 
   const getMaxUploadLimit = () => {
     if (selectedPlatforms.length === 0) return 1
@@ -1165,5 +1191,18 @@ export default function UploadPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+// Main export with Suspense boundary for useSearchParams
+export default function UploadPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    }>
+      <UploadPageContent />
+    </Suspense>
   )
 }

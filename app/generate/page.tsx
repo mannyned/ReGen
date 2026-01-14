@@ -211,16 +211,25 @@ function GeneratePageContent() {
 
           setUploadData(uploadDataFromDb)
 
+          // Check if we have previously generated captions (for drafts)
+          const savedCaptions = content.generatedCaptions as Record<string, string> | null
+
           // Generate initial previews based on selected platforms
           const initialPreviews = processedData.selectedPlatforms.map((platform, index) => {
             const filesForPlatform = getFilesForPlatform(platform, filesWithUrls, processedData.contentType)
+
+            // Use saved caption if available, otherwise generate default
+            const savedCaption = savedCaptions?.[platform] || savedCaptions?.default
+            const caption = typeof savedCaption === 'string' && savedCaption.trim()
+              ? savedCaption
+              : generateDefaultCaption(platform, processedData.contentType, processedData.textContent, processedData.urlContent)
 
             return {
               id: index + 1,
               platform,
               icon: PLATFORM_CONFIG[platform].icon,
               format: PLATFORM_CONFIG[platform].formats[processedData.contentType],
-              caption: generateDefaultCaption(platform, processedData.contentType, processedData.textContent, processedData.urlContent),
+              caption,
               hashtags: generateDefaultHashtags(platform, processedData.customHashtags),
               files: filesForPlatform,
               currentFileIndex: 0
