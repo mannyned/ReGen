@@ -522,7 +522,7 @@ function PlatformBreakdown({ data, isLoading }: PlatformBreakdownProps) {
 // ============================================
 // Main Page Component
 // ============================================
-type PlatformFilter = 'all' | 'instagram' | 'youtube' | 'facebook' | 'tiktok' | 'linkedin';
+type PlatformFilter = 'all' | 'instagram' | 'youtube' | 'facebook' | 'tiktok' | 'linkedin' | 'twitter' | 'snapchat';
 
 export default function SaveRateAnalyticsPage() {
   const [period, setPeriod] = useState<Period>('30d');
@@ -729,20 +729,22 @@ export default function SaveRateAnalyticsPage() {
 
               <div className="flex items-center gap-4">
                 {/* Platform Selector */}
-                <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
-                  {(['all', 'instagram', 'youtube', 'facebook', 'tiktok'] as PlatformFilter[]).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setSelectedPlatform(p)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        selectedPlatform === p
-                          ? 'bg-emerald-600 text-white shadow-md'
-                          : 'text-text-secondary hover:bg-gray-200'
-                      }`}
-                    >
-                      {p === 'all' ? 'All' : p === 'instagram' ? '📸' : p === 'youtube' ? '▶️' : p === 'facebook' ? '👤' : '🎵'}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-2 bg-white rounded-xl shadow-sm px-3 py-1.5">
+                  <span className="text-xs text-text-secondary font-medium">Platform:</span>
+                  <select
+                    value={selectedPlatform}
+                    onChange={(e) => setSelectedPlatform(e.target.value as PlatformFilter)}
+                    className="text-sm px-2 py-1.5 border-0 bg-transparent text-text-primary font-medium focus:outline-none focus:ring-0 cursor-pointer"
+                  >
+                    <option value="all">All Platforms</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="youtube">YouTube</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="twitter">Twitter</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="snapchat">Snapchat</option>
+                  </select>
                 </div>
 
                 {/* Period Selector */}
