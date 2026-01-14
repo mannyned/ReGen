@@ -435,15 +435,37 @@ export async function GET(request: NextRequest) {
     const formatStats: Record<string, { count: number; likes: number; comments: number; shares: number; saves: number; reach: number }> = {}
 
     for (const post of postsWithAnalytics) {
-      const mimeType = post.contentUpload?.mimeType || 'unknown'
-      // Categorize by format type
-      let formatType = 'Other'
+      const mimeType = post.contentUpload?.mimeType || ''
+      const metadata = post.metadata as Record<string, unknown> | null
+
+      // Categorize by format type with specific labels
+      let formatType = 'Text'
+
       if (mimeType.startsWith('video/')) {
-        formatType = 'Video'
+        // Check if it's a short-form video (Reel, Short, TikTok)
+        const isShortForm = metadata?.mediaType === 'REELS' ||
+                           metadata?.mediaType === 'SHORT' ||
+                           metadata?.isReel === true ||
+                           metadata?.isShort === true
+        formatType = isShortForm ? 'Reel/Short' : 'Video'
+      } else if (mimeType.startsWith('image/gif')) {
+        formatType = 'GIF'
       } else if (mimeType.startsWith('image/')) {
-        formatType = 'Image'
+        // Check if it's a carousel (multiple images)
+        const isCarousel = metadata?.mediaType === 'CAROUSEL_ALBUM' ||
+                          metadata?.isCarousel === true ||
+                          (metadata?.children && Array.isArray(metadata.children) && metadata.children.length > 1)
+        formatType = isCarousel ? 'Carousel' : 'Image'
       } else if (mimeType.startsWith('audio/')) {
         formatType = 'Audio'
+      } else if (mimeType.startsWith('application/pdf')) {
+        formatType = 'Document'
+      } else if (mimeType === '' || mimeType === 'unknown') {
+        // No media attachment - text-only post
+        formatType = 'Text'
+      } else {
+        // For any other mime type, show a cleaner name
+        formatType = mimeType.split('/')[0].charAt(0).toUpperCase() + mimeType.split('/')[0].slice(1)
       }
 
       if (!formatStats[formatType]) {
@@ -452,7 +474,6 @@ export async function GET(request: NextRequest) {
 
       formatStats[formatType].count++
 
-      const metadata = post.metadata as Record<string, unknown> | null
       const analytics = metadata?.analytics as Record<string, number> | null
       if (analytics) {
         formatStats[formatType].likes += analytics.likes || 0
