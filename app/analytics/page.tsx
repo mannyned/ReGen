@@ -632,7 +632,7 @@ export default function AnalyticsPage() {
       totalReach: reachDisplay,
       avgEngagement: engagementDisplay,
       engagementIsRate,
-      aiGenerated: '—' // AI generated count is not platform-specific in current data
+      aiGenerated: realStats?.aiGenerated?.toString() || '0'
     }
   })()
 
