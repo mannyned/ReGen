@@ -205,11 +205,11 @@ export const MetricTooltips: Record<string, MetricTooltipConfig> = {
         facebook: 'Facebook: Hashtags have minimal impact. Use 1-2 or none at all.',
       }
     },
-    proInsight: 'Your top-performing hashtag drives 23% of your discovery traffic.',
+    proInsight: 'Posts with 3-10 relevant hashtags typically see 30% more reach than those without.',
     actionHints: {
       low: 'Research trending hashtags in your niche to improve discoverability',
-      medium: 'Good mix! Test removing underperforming hashtags to find winners',
-      high: 'Your hashtag strategy is working! Document your best performers'
+      medium: 'Good mix! Try varying your hashtag count (3-10 is optimal) across posts',
+      high: 'Your hashtag strategy is working! Keep using a consistent mix of niche and popular tags'
     },
     thresholds: { low: 40, high: 70 }
   },
