@@ -488,8 +488,11 @@ export const PlatformLogo = memo(function PlatformLogo({
 
   const sizeConfig = SIZES[size]
   const brandColor = BRAND_COLORS[platform]
-  const platformName = PLATFORM_NAMES[platform]
+  const platformName = PLATFORM_NAMES[platform] || platform
   const LogoComponent = LOGO_COMPONENTS[platform]
+
+  // Handle unknown platforms gracefully
+  const isUnknownPlatform = !LogoComponent
 
   const label = ariaLabel || `${platformName} logo`
 
@@ -502,7 +505,7 @@ export const PlatformLogo = memo(function PlatformLogo({
     justifyContent: 'center',
   }
 
-  const backgroundStyle: React.CSSProperties = showBackground ? {
+  const backgroundStyle: React.CSSProperties = showBackground && brandColor ? {
     background: brandColor.background,
     borderRadius: platform === 'snapchat' ? '50%' : '8px',
     padding: size === 'xs' ? '4px' : size === 'sm' ? '6px' : '8px',
@@ -527,7 +530,7 @@ export const PlatformLogo = memo(function PlatformLogo({
         }
       } : undefined}
     >
-      {hasError ? (
+      {hasError || isUnknownPlatform ? (
         <FallbackIcon
           width={sizeConfig.width}
           height={sizeConfig.height}
