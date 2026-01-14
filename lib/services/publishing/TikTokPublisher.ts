@@ -5,19 +5,24 @@ import { API_BASE_URLS } from '../../config/oauth'
 // ============================================
 // TIKTOK PUBLISHER
 // Uses TikTok Content Posting API v2
-// Now with video.publish scope for direct publishing
 //
-// NOTE: Unaudited apps can only post as SELF_ONLY (private).
-// To enable public posting, the app must pass TikTok's audit.
+// For UNAUDITED apps: Uses "Post to Inbox" flow
+// - Video is sent to user's TikTok inbox/notifications
+// - User opens TikTok app to review and publish
+// - Endpoint: /post/publish/inbox/video/init/
+//
+// For AUDITED apps: Can use direct publish flow
+// - Video publishes directly to user's profile
+// - Endpoint: /post/publish/video/init/
+//
 // See: https://developers.tiktok.com/doc/content-sharing-guidelines/
 // ============================================
 
-// TikTok privacy levels for direct publishing
-type TikTokPrivacyLevel =
-  | 'PUBLIC_TO_EVERYONE'      // Visible to everyone (requires audited app)
-  | 'MUTUAL_FOLLOW_FRIENDS'   // Visible to mutual followers (requires audited app)
-  | 'FOLLOWER_OF_CREATOR'     // Visible to followers only (requires audited app)
-  | 'SELF_ONLY'               // Private/draft (works with unaudited apps)
+// TikTok privacy levels (for reference - used when user publishes from TikTok app)
+// - PUBLIC_TO_EVERYONE: Visible to everyone
+// - MUTUAL_FOLLOW_FRIENDS: Visible to mutual followers
+// - FOLLOWER_OF_CREATOR: Visible to followers only
+// - SELF_ONLY: Private/draft
 
 export class TikTokPublisher extends BasePlatformPublisher {
   protected platform: SocialPlatform = 'tiktok'
@@ -74,10 +79,10 @@ export class TikTokPublisher extends BasePlatformPublisher {
         platformUrl: publishStatus.video_id
           ? `https://www.tiktok.com/@user/video/${publishStatus.video_id}`
           : undefined,
-        // Note: Unaudited apps post as private/draft - user must publish manually from TikTok
-        message: publishStatus.status === 'PUBLISH_COMPLETE'
-          ? 'Video uploaded to TikTok as a private draft. Open TikTok to review and publish it publicly.'
-          : 'Video is being processed. Check your TikTok drafts to publish it.',
+        // Inbox flow: video is sent to user's TikTok notifications
+        message: publishStatus.status === 'PUBLISH_COMPLETE' || publishStatus.status === 'SEND_TO_USER_INBOX'
+          ? 'Video sent to your TikTok inbox! Open TikTok app → check notifications to review and publish.'
+          : 'Video is being processed. Check your TikTok notifications shortly.',
       }
     } catch (error) {
       return {
@@ -131,8 +136,9 @@ export class TikTokPublisher extends BasePlatformPublisher {
   // ============================================
 
   /**
-   * Initialize direct publish upload
-   * Uses video.publish scope for direct publishing to TikTok
+   * Initialize inbox publish upload (for unaudited apps)
+   * Uses "Post to Inbox" flow - video is sent to user's TikTok notifications
+   * User then opens TikTok app to review and publish
    *
    * TikTok API requirements:
    * - For videos < 64MB: upload as single chunk (chunk_size = video_size, total_chunk_count = 1)
@@ -141,8 +147,7 @@ export class TikTokPublisher extends BasePlatformPublisher {
   private async initializeDirectPublish(
     accessToken: string,
     videoSize: number,
-    caption: string,
-    privacyLevel: TikTokPrivacyLevel = 'SELF_ONLY' // Use SELF_ONLY for unaudited apps
+    caption: string
   ): Promise<{
     publish_id: string
     upload_url: string
@@ -170,13 +175,11 @@ export class TikTokPublisher extends BasePlatformPublisher {
       totalChunks = Math.ceil(videoSize / chunkSize)
     }
 
+    // Inbox flow request body - simpler than direct publish
+    // User sets privacy/duet/stitch when they publish from TikTok app
     const requestBody = {
       post_info: {
         title: caption.substring(0, 150), // TikTok title limit
-        privacy_level: privacyLevel,
-        disable_duet: false,
-        disable_comment: false,
-        disable_stitch: false,
         video_cover_timestamp_ms: 1000, // Use frame at 1 second as cover
       },
       source_info: {
@@ -187,17 +190,17 @@ export class TikTokPublisher extends BasePlatformPublisher {
       },
     }
 
-    console.log('[TikTok] Initializing direct publish:', JSON.stringify(requestBody))
+    console.log('[TikTok] Initializing inbox publish:', JSON.stringify(requestBody))
     console.log(`[TikTok] Video size: ${videoSize} bytes, Chunk size: ${chunkSize}, Total chunks: ${totalChunks}`)
 
-    // Use direct publish endpoint (requires video.publish scope)
+    // Use INBOX endpoint for unaudited apps (sends to user's TikTok notifications)
     const response = await this.makeApiRequest<{
       data: {
         publish_id: string
         upload_url: string
       }
     }>(
-      '/post/publish/video/init/',
+      '/post/publish/inbox/video/init/',
       {
         method: 'POST',
         body: JSON.stringify(requestBody),
@@ -205,7 +208,7 @@ export class TikTokPublisher extends BasePlatformPublisher {
       accessToken
     )
 
-    console.log('[TikTok] Direct publish initialized:', JSON.stringify(response.data))
+    console.log('[TikTok] Inbox publish initialized:', JSON.stringify(response.data))
 
     if (!response.data.upload_url) {
       throw new Error('TikTok did not return an upload URL')
