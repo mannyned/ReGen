@@ -321,7 +321,9 @@ export default function AnalyticsPage() {
   const fetchAnalyticsStats = async (days: string, platform: string = 'all') => {
     try {
       const platformParam = platform !== 'all' ? `&platform=${platform}` : ''
-      const response = await fetch(`/api/analytics/stats?days=${days}${platformParam}`)
+      const response = await fetch(`/api/analytics/stats?days=${days}${platformParam}`, {
+        cache: 'no-store'
+      })
       if (response.ok) {
         const data = await response.json()
         setRealStats(data)
