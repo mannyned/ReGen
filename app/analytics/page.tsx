@@ -1427,7 +1427,14 @@ export default function AnalyticsPage() {
               {/* Top Performing Formats */}
               <Card className="p-6 lg:p-8" hover={false}>
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-text-primary">Top Formats</h2>
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-2xl font-bold text-text-primary">Top Formats</h2>
+                    {selectedPlatform !== 'all' && (
+                      <span className="text-xs text-text-secondary bg-primary/10 px-2 py-1 rounded-full">
+                        {selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}
+                      </span>
+                    )}
+                  </div>
                   {userPlan === 'creator' && (
                     <Badge variant="primary" className="bg-purple-100 text-purple-700">
                       🔒 Pro: See trends
@@ -1472,7 +1479,14 @@ export default function AnalyticsPage() {
 
               {/* AI Impact */}
               <Card className="p-6 lg:p-8" hover={false}>
-                <h2 className="text-2xl font-bold text-text-primary mb-6">AI Impact</h2>
+                <div className="flex items-center gap-3 mb-6">
+                  <h2 className="text-2xl font-bold text-text-primary">AI Impact</h2>
+                  {selectedPlatform !== 'all' && (
+                    <span className="text-xs text-text-secondary bg-primary/10 px-2 py-1 rounded-full">
+                      {selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}
+                    </span>
+                  )}
+                </div>
                 {(() => {
                   const aiData = realStats?.aiImpact
                   const hasData = aiData && (aiData.aiCaptions.count > 0 || aiData.manualCaptions.count > 0)
@@ -1631,7 +1645,14 @@ export default function AnalyticsPage() {
               <Card className="p-6 lg:p-8 mt-8" hover={false}>
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="text-2xl font-bold text-text-primary">📝 Caption Usage Analytics</h2>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-2xl font-bold text-text-primary">📝 Caption Usage Analytics</h2>
+                      {selectedPlatform !== 'all' && (
+                        <span className="text-xs text-text-secondary bg-primary/10 px-2 py-1 rounded-full">
+                          {selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-text-secondary mt-1">Compare performance of different caption modes</p>
                   </div>
                   <Badge variant="primary" className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
@@ -1718,23 +1739,30 @@ export default function AnalyticsPage() {
                       </div>
 
                       {/* Best Performing Mode */}
-                      {displayData.length > 0 && (
-                        <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl p-5 mb-6">
-                          <div className="flex items-start gap-4">
-                            <div className="text-4xl">🏆</div>
-                            <div>
-                              <h4 className="font-bold text-lg mb-1">Best Performing Mode</h4>
-                              <p className="text-white/90 text-sm">
-                                <strong>{displayData[0].mode}</strong> captions have the highest engagement rate at{' '}
-                                <strong>{displayData[0].engagementRate}%</strong>.
-                                {displayData.length > 1 && (
-                                  <> That's {((displayData[0].engagementRate / displayData[displayData.length - 1].engagementRate - 1) * 100).toFixed(0)}% better than {displayData[displayData.length - 1].mode}.</>
-                                )}
-                              </p>
+                      {displayData.length > 0 && (() => {
+                        // Find the actual best performer by engagement rate
+                        const sortedByEngagement = [...displayData].sort((a, b) => b.engagementRate - a.engagementRate)
+                        const bestMode = sortedByEngagement[0]
+                        const worstMode = sortedByEngagement[sortedByEngagement.length - 1]
+
+                        return (
+                          <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl p-5 mb-6">
+                            <div className="flex items-start gap-4">
+                              <div className="text-4xl">🏆</div>
+                              <div>
+                                <h4 className="font-bold text-lg mb-1">Best Performing Mode</h4>
+                                <p className="text-white/90 text-sm">
+                                  <strong>{bestMode.mode}</strong> captions have the highest engagement rate at{' '}
+                                  <strong>{bestMode.engagementRate}%</strong>.
+                                  {sortedByEngagement.length > 1 && worstMode.engagementRate > 0 && (
+                                    <> That&apos;s {((bestMode.engagementRate / worstMode.engagementRate - 1) * 100).toFixed(0)}% better than {worstMode.mode}.</>
+                                  )}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )}
+                        )
+                      })()}
                     </>
                   )
                 })()}
@@ -1744,7 +1772,14 @@ export default function AnalyticsPage() {
             {/* Content Calendar Insights - Pro Plan Only */}
             {userPlan === 'pro' && (
               <Card className="p-6 lg:p-8 mt-8" hover={false}>
-                <h2 className="text-2xl font-bold text-text-primary mb-6">📅 Content Calendar Insights</h2>
+                <div className="flex items-center gap-3 mb-6">
+                  <h2 className="text-2xl font-bold text-text-primary">📅 Content Calendar Insights</h2>
+                  {selectedPlatform !== 'all' && (
+                    <span className="text-xs text-text-secondary bg-primary/10 px-2 py-1 rounded-full">
+                      {selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}
+                    </span>
+                  )}
+                </div>
                 {(() => {
                   const calendarData = realStats?.calendarInsights
                   const hasData = calendarData && calendarData.totalPostsAnalyzed > 0
