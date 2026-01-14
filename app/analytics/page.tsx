@@ -496,14 +496,15 @@ export default function AnalyticsPage() {
       return realStats.topFormats.map(f => ({
         type: f.format,
         count: f.count,
-        avgEngagement: f.engagementRate,
+        percentage: f.percentage, // Percentage of total posts
+        engagementRate: f.engagementRate, // Engagement rate (when reach data available)
         trend: 'stable' as const // Would need historical data for trends
       }))
     }
     return isProduction ? [] : [
-      { type: 'Video', count: 42, avgEngagement: 14.2, trend: 'up' as const },
-      { type: 'Image', count: 38, avgEngagement: 11.5, trend: 'stable' as const },
-      { type: 'Text', count: 27, avgEngagement: 8.9, trend: 'down' as const }
+      { type: 'Video', count: 42, percentage: 39, engagementRate: 14.2, trend: 'up' as const },
+      { type: 'Image', count: 38, percentage: 35, engagementRate: 11.5, trend: 'stable' as const },
+      { type: 'Text', count: 27, percentage: 26, engagementRate: 8.9, trend: 'down' as const }
     ]
   })()
 
@@ -1448,28 +1449,26 @@ export default function AnalyticsPage() {
                     <p className="text-sm text-text-secondary/70">Upload content to see which formats perform best.</p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
+                  <div className="space-y-5">
                     {topFormats.map((format, index) => (
                       <div key={format.type} className="flex items-center gap-4">
-                        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary font-bold text-lg">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary font-bold text-sm">
                           #{index + 1}
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center justify-between mb-1">
                             <span className="font-semibold text-text-primary">{format.type}</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-primary">{format.avgEngagement}%</span>
-                              {userPlan === 'pro' && (
-                                <span className={`text-xs ${
-                                  format.trend === 'up' ? 'text-green-600' :
-                                  format.trend === 'down' ? 'text-red-600' : 'text-text-secondary'
-                                }`}>
-                                  {format.trend === 'up' ? '↑' : format.trend === 'down' ? '↓' : '→'}
-                                </span>
-                              )}
-                            </div>
+                            <span className="text-sm font-medium text-primary">{format.percentage}%</span>
                           </div>
-                          <p className="text-sm text-text-secondary">{format.count} posts</p>
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary rounded-full transition-all"
+                                style={{ width: `${format.percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-text-secondary w-16">{format.count} posts</span>
+                          </div>
                         </div>
                       </div>
                     ))}
