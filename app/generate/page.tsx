@@ -212,17 +212,29 @@ function GeneratePageContent() {
           setUploadData(uploadDataFromDb)
 
           // Check if we have previously generated captions (for drafts)
-          const savedCaptions = content.generatedCaptions as Record<string, string> | null
+          // Format: { platform: { caption: string, hashtags: string[], ... } }
+          const savedCaptions = content.generatedCaptions as Record<string, {
+            caption?: string
+            hashtags?: string[]
+            usageMode?: string
+            appliedAdaptations?: string[]
+          }> | null
 
           // Generate initial previews based on selected platforms
           const initialPreviews = processedData.selectedPlatforms.map((platform, index) => {
             const filesForPlatform = getFilesForPlatform(platform, filesWithUrls, processedData.contentType)
 
             // Use saved caption if available, otherwise generate default
-            const savedCaption = savedCaptions?.[platform] || savedCaptions?.default
+            const savedPlatformData = savedCaptions?.[platform] || savedCaptions?.default
+            const savedCaption = savedPlatformData?.caption
             const caption = typeof savedCaption === 'string' && savedCaption.trim()
               ? savedCaption
               : generateDefaultCaption(platform, processedData.contentType, processedData.textContent, processedData.urlContent)
+
+            // Use saved hashtags if available, otherwise generate defaults
+            const hashtags = savedPlatformData?.hashtags && savedPlatformData.hashtags.length > 0
+              ? savedPlatformData.hashtags
+              : generateDefaultHashtags(platform, processedData.customHashtags)
 
             return {
               id: index + 1,
@@ -230,9 +242,11 @@ function GeneratePageContent() {
               icon: PLATFORM_CONFIG[platform].icon,
               format: PLATFORM_CONFIG[platform].formats[processedData.contentType],
               caption,
-              hashtags: generateDefaultHashtags(platform, processedData.customHashtags),
+              hashtags,
               files: filesForPlatform,
-              currentFileIndex: 0
+              currentFileIndex: 0,
+              usageMode: savedPlatformData?.usageMode,
+              appliedAdaptations: savedPlatformData?.appliedAdaptations,
             }
           })
 
