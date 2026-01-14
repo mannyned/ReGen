@@ -64,14 +64,21 @@ export async function GET(request: NextRequest) {
 
       const draftPosts = draftUploads.map((upload) => {
         const processedUrls = upload.processedUrls as { files?: Array<{ publicUrl: string }> } | null
-        const captions = upload.generatedCaptions as Record<string, string> | null
+        const captions = upload.generatedCaptions as Record<string, unknown> | null
+
+        // Extract caption - ensure it's a string
+        let captionText: string | undefined
+        if (captions) {
+          const rawCaption = captions.default || captions.instagram || Object.values(captions)[0]
+          captionText = typeof rawCaption === 'string' ? rawCaption : undefined
+        }
 
         return {
           id: upload.id,
           platform: 'draft',
           platformPostId: null,
           platformUrl: undefined as string | undefined,
-          caption: captions?.default || captions?.instagram || Object.values(captions || {})[0] || undefined,
+          caption: captionText,
           postedAt: upload.createdAt.toISOString(),
           status: 'INITIATED', // Use INITIATED to represent drafts in the UI
           deletedAt: undefined as string | undefined,
