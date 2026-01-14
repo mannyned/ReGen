@@ -443,21 +443,25 @@ export async function GET(request: NextRequest) {
       const uploadType = processedUrls?.uploadType as string | undefined
       const contentType = processedUrls?.contentType as string | undefined
 
-      // Map uploadType to display names matching Upload page
-      // 'media' → "Mixed Media", 'video' → "Video", 'image' → "Image", 'text' → "Text"
-      let formatType = 'Text'
+      // Get mediaType from metadata (set when publishing)
+      const metadataMediaType = metadata?.mediaType as string | undefined
+
+      // Determine format type with priority:
+      // 1. processedUrls.uploadType (from Upload page flow)
+      // 2. metadata.mediaType (from publish API)
+      // 3. contentUpload.mimeType (fallback)
+      let formatType = 'Image' // Default to Image as most common
 
       if (uploadType) {
+        // From Upload page flow
         switch (uploadType) {
           case 'media':
             formatType = 'Mixed Media'
             break
           case 'video':
-            // Check if it's a Story
             formatType = contentType === 'story' ? 'Video Story' : 'Video'
             break
           case 'image':
-            // Check if it's a Story
             formatType = contentType === 'story' ? 'Image Story' : 'Image'
             break
           case 'text':
@@ -466,8 +470,23 @@ export async function GET(request: NextRequest) {
           default:
             formatType = uploadType.charAt(0).toUpperCase() + uploadType.slice(1)
         }
+      } else if (metadataMediaType) {
+        // From publish API metadata
+        switch (metadataMediaType) {
+          case 'carousel':
+            formatType = 'Mixed Media'
+            break
+          case 'video':
+            formatType = 'Video'
+            break
+          case 'image':
+            formatType = 'Image'
+            break
+          default:
+            formatType = metadataMediaType.charAt(0).toUpperCase() + metadataMediaType.slice(1)
+        }
       } else {
-        // Fallback: infer from mimeType if processedUrls not available
+        // Fallback: infer from mimeType
         const mimeType = post.contentUpload?.mimeType || ''
         if (mimeType.startsWith('video/')) {
           formatType = 'Video'
@@ -475,9 +494,10 @@ export async function GET(request: NextRequest) {
           formatType = 'Image'
         } else if (mimeType.startsWith('audio/')) {
           formatType = 'Audio'
-        } else if (mimeType === 'text/plain' || mimeType === '') {
+        } else if (mimeType === 'text/plain') {
           formatType = 'Text'
         }
+        // If no mimeType and no metadata, leave as default 'Image'
       }
 
       if (!formatStats[formatType]) {
