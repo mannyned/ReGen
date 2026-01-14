@@ -148,7 +148,6 @@ export async function GET(request: NextRequest) {
         provider: true,
         metadata: true,
         postedAt: true,
-        hashtags: true,
         contentUpload: {
           select: {
             mimeType: true,
@@ -285,8 +284,14 @@ export async function GET(request: NextRequest) {
       crossPlatformSynergy = 50
     }
 
-    // 4. Hashtag Performance - Based on actual hashtag usage and engagement
-    // Calculate metrics for posts with and without hashtags
+    // 4. Hashtag Performance - Based on hashtags extracted from captions
+    // Extract hashtags from post captions stored in metadata
+    const extractHashtags = (text: string | null | undefined): string[] => {
+      if (!text) return []
+      const matches = text.match(/#[\w\u0080-\uFFFF]+/g)
+      return matches || []
+    }
+
     let postsWithHashtags = 0
     let postsWithoutHashtags = 0
     let hashtagPostEngagement = 0
@@ -296,9 +301,15 @@ export async function GET(request: NextRequest) {
     let totalHashtagCount = 0
 
     for (const post of postsWithAnalytics) {
-      const hasHashtags = post.hashtags && post.hashtags.length > 0
       const metadata = post.metadata as Record<string, unknown> | null
       const analytics = metadata?.analytics as Record<string, number> | null
+
+      // Try to get caption from metadata
+      const caption = metadata?.caption as string | undefined
+
+      // Extract hashtags from caption
+      const hashtags = extractHashtags(caption)
+      const hasHashtags = hashtags.length > 0
 
       const postEngagement = analytics
         ? (analytics.likes || 0) + (analytics.comments || 0) + (analytics.shares || 0) + (analytics.saved || analytics.saves || 0)
@@ -307,7 +318,7 @@ export async function GET(request: NextRequest) {
 
       if (hasHashtags) {
         postsWithHashtags++
-        totalHashtagCount += post.hashtags!.length
+        totalHashtagCount += hashtags.length
         hashtagPostEngagement += postEngagement
         hashtagPostReach += postReach
       } else {
@@ -668,7 +679,6 @@ export async function GET(request: NextRequest) {
       select: {
         provider: true,
         metadata: true,
-        hashtags: true,
       },
     })
 
@@ -774,13 +784,15 @@ export async function GET(request: NextRequest) {
     let prevHashtagPostEngagement = 0
 
     for (const post of previousPeriodPosts) {
-      const hasHashtags = post.hashtags && post.hashtags.length > 0
       const metadata = post.metadata as Record<string, unknown> | null
       const analytics = metadata?.analytics as Record<string, number> | null
+      const caption = metadata?.caption as string | undefined
+      const hashtags = extractHashtags(caption)
+      const hasHashtags = hashtags.length > 0
 
       if (hasHashtags) {
         prevPostsWithHashtags++
-        prevTotalHashtagCount += post.hashtags!.length
+        prevTotalHashtagCount += hashtags.length
         if (analytics) {
           prevHashtagPostEngagement += (analytics.likes || 0) + (analytics.comments || 0) +
             (analytics.shares || 0) + (analytics.saved || analytics.saves || 0)
