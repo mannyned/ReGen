@@ -152,6 +152,7 @@ export async function GET(request: NextRequest) {
           select: {
             mimeType: true,
             generatedCaptions: true,
+            processedUrls: true,
           },
         },
       },
@@ -435,37 +436,48 @@ export async function GET(request: NextRequest) {
     const formatStats: Record<string, { count: number; likes: number; comments: number; shares: number; saves: number; reach: number }> = {}
 
     for (const post of postsWithAnalytics) {
-      const mimeType = post.contentUpload?.mimeType || ''
       const metadata = post.metadata as Record<string, unknown> | null
+      const processedUrls = post.contentUpload?.processedUrls as Record<string, unknown> | null
 
-      // Categorize by format type with specific labels
+      // Get uploadType and contentType from processedUrls (matches Upload page)
+      const uploadType = processedUrls?.uploadType as string | undefined
+      const contentType = processedUrls?.contentType as string | undefined
+
+      // Map uploadType to display names matching Upload page
+      // 'media' → "Mixed Media", 'video' → "Video", 'image' → "Image", 'text' → "Text"
       let formatType = 'Text'
 
-      if (mimeType.startsWith('video/')) {
-        // Check if it's a short-form video (Reel, Short, TikTok)
-        const isShortForm = metadata?.mediaType === 'REELS' ||
-                           metadata?.mediaType === 'SHORT' ||
-                           metadata?.isReel === true ||
-                           metadata?.isShort === true
-        formatType = isShortForm ? 'Reel/Short' : 'Video'
-      } else if (mimeType.startsWith('image/gif')) {
-        formatType = 'GIF'
-      } else if (mimeType.startsWith('image/')) {
-        // Check if it's a carousel (multiple images)
-        const isCarousel = metadata?.mediaType === 'CAROUSEL_ALBUM' ||
-                          metadata?.isCarousel === true ||
-                          (metadata?.children && Array.isArray(metadata.children) && metadata.children.length > 1)
-        formatType = isCarousel ? 'Carousel' : 'Image'
-      } else if (mimeType.startsWith('audio/')) {
-        formatType = 'Audio'
-      } else if (mimeType.startsWith('application/pdf')) {
-        formatType = 'Document'
-      } else if (mimeType === '' || mimeType === 'unknown') {
-        // No media attachment - text-only post
-        formatType = 'Text'
+      if (uploadType) {
+        switch (uploadType) {
+          case 'media':
+            formatType = 'Mixed Media'
+            break
+          case 'video':
+            // Check if it's a Story
+            formatType = contentType === 'story' ? 'Video Story' : 'Video'
+            break
+          case 'image':
+            // Check if it's a Story
+            formatType = contentType === 'story' ? 'Image Story' : 'Image'
+            break
+          case 'text':
+            formatType = 'Text'
+            break
+          default:
+            formatType = uploadType.charAt(0).toUpperCase() + uploadType.slice(1)
+        }
       } else {
-        // For any other mime type, show a cleaner name
-        formatType = mimeType.split('/')[0].charAt(0).toUpperCase() + mimeType.split('/')[0].slice(1)
+        // Fallback: infer from mimeType if processedUrls not available
+        const mimeType = post.contentUpload?.mimeType || ''
+        if (mimeType.startsWith('video/')) {
+          formatType = 'Video'
+        } else if (mimeType.startsWith('image/')) {
+          formatType = 'Image'
+        } else if (mimeType.startsWith('audio/')) {
+          formatType = 'Audio'
+        } else if (mimeType === 'text/plain' || mimeType === '') {
+          formatType = 'Text'
+        }
       }
 
       if (!formatStats[formatType]) {
