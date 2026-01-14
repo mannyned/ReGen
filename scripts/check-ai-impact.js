@@ -21,73 +21,70 @@ async function checkAiImpact() {
   console.log('Total POSTED posts:', posts.length);
   console.log('');
 
-  let withContentUpload = 0;
-  let withGeneratedCaptions = 0;
-  let withoutContentUpload = 0;
-
+  let aiCount = 0;
+  let manualCount = 0;
   const aiPosts = [];
   const manualPosts = [];
 
   for (const post of posts) {
-    if (post.contentUpload) {
-      withContentUpload++;
-      const generatedCaptions = post.contentUpload.generatedCaptions;
+    const generatedCaptions = post.contentUpload?.generatedCaptions;
+    const metadata = post.metadata;
 
-      // generatedCaptions is an object with platform keys: { instagram: {...}, facebook: {...} }
-      const hasAi = generatedCaptions && typeof generatedCaptions === 'object' && !Array.isArray(generatedCaptions) && Object.keys(generatedCaptions).length > 0;
+    // Check if post has AI-generated captions:
+    // 1. contentUpload with generatedCaptions object (went through Upload flow)
+    // 2. OR has caption in metadata (published via generate-caption API without Upload flow)
+    const hasContentUploadAi = generatedCaptions && typeof generatedCaptions === 'object' && !Array.isArray(generatedCaptions) && Object.keys(generatedCaptions).length > 0;
+    const hasMetadataCaption = metadata && metadata.caption;
+    const hasAiCaption = hasContentUploadAi || hasMetadataCaption;
 
-      if (hasAi) {
-        withGeneratedCaptions++;
+    if (hasAiCaption) {
+      aiCount++;
+      let source = 'unknown';
+      let usageMode = null;
+
+      if (hasContentUploadAi) {
+        source = 'contentUpload';
         const platforms = Object.keys(generatedCaptions);
         const platformCaption = generatedCaptions[post.provider] || generatedCaptions[platforms[0]];
-        aiPosts.push({
-          id: post.id,
-          provider: post.provider,
-          platforms: platforms,
-          usageMode: platformCaption?.usageMode || 'unknown',
-        });
-      } else {
-        manualPosts.push({
-          id: post.id,
-          provider: post.provider,
-          hasContentUpload: true,
-          generatedCaptions: generatedCaptions,
-        });
+        usageMode = platformCaption?.usageMode;
+      } else if (hasMetadataCaption) {
+        source = 'metadata';
       }
+
+      aiPosts.push({
+        id: post.id,
+        provider: post.provider,
+        source,
+        usageMode,
+      });
     } else {
-      withoutContentUpload++;
+      manualCount++;
       manualPosts.push({
         id: post.id,
         provider: post.provider,
-        hasContentUpload: false,
       });
     }
   }
 
-  console.log('=== CONTENT UPLOAD STATS ===');
-  console.log('Posts with contentUpload:', withContentUpload);
-  console.log('Posts with generatedCaptions:', withGeneratedCaptions);
-  console.log('Posts without contentUpload:', withoutContentUpload);
+  console.log('=== UPDATED AI IMPACT COUNTS ===');
+  console.log('AI Captions:', aiCount);
+  console.log('Manual Captions:', manualCount);
   console.log('');
 
-  console.log('=== AI CAPTION POSTS ===');
-  console.log('Count:', aiPosts.length);
+  console.log('=== AI POSTS BREAKDOWN ===');
+  const fromContentUpload = aiPosts.filter(p => p.source === 'contentUpload').length;
+  const fromMetadata = aiPosts.filter(p => p.source === 'metadata').length;
+  console.log('From contentUpload (Upload flow):', fromContentUpload);
+  console.log('From metadata caption (Direct publish):', fromMetadata);
+  console.log('');
+
   if (aiPosts.length > 0) {
-    console.log('Sample:', JSON.stringify(aiPosts.slice(0, 5), null, 2));
+    console.log('Sample AI posts:', JSON.stringify(aiPosts.slice(0, 5), null, 2));
   }
-  console.log('');
 
-  console.log('=== MANUAL/NO-AI POSTS ===');
-  console.log('Count:', manualPosts.length);
-  console.log('- With contentUpload but no AI captions:', manualPosts.filter(p => p.hasContentUpload).length);
-  console.log('- Without contentUpload:', manualPosts.filter(p => !p.hasContentUpload).length);
-
-  // Check what's in generatedCaptions for posts that have contentUpload but no AI captions
-  const withContentUploadNoAi = manualPosts.filter(p => p.hasContentUpload);
-  if (withContentUploadNoAi.length > 0) {
+  if (manualPosts.length > 0) {
     console.log('');
-    console.log('Sample posts with contentUpload but no AI captions:');
-    console.log(JSON.stringify(withContentUploadNoAi.slice(0, 3), null, 2));
+    console.log('Manual posts:', JSON.stringify(manualPosts, null, 2));
   }
 
   await prisma.$disconnect();

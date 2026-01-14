@@ -544,10 +544,16 @@ export async function GET(request: NextRequest) {
 
     for (const post of postsWithAnalytics) {
       const generatedCaptions = post.contentUpload?.generatedCaptions
-      const hasAiCaption = hasAiGeneratedCaptions(generatedCaptions)
-
       const metadata = post.metadata as Record<string, unknown> | null
       const analytics = metadata?.analytics as Record<string, number> | null
+
+      // Check if post has AI-generated captions:
+      // 1. contentUpload with generatedCaptions object (went through Upload flow)
+      // 2. OR has caption in metadata (published via generate-caption API without Upload flow)
+      // Posts without any caption are considered manual
+      const hasContentUploadAi = hasAiGeneratedCaptions(generatedCaptions)
+      const hasMetadataCaption = !!metadata?.caption
+      const hasAiCaption = hasContentUploadAi || hasMetadataCaption
 
       const target = hasAiCaption ? aiCaptionPosts : manualCaptionPosts
       target.count++
@@ -589,6 +595,7 @@ export async function GET(request: NextRequest) {
 
     for (const post of postsWithAnalytics) {
       const generatedCaptions = post.contentUpload?.generatedCaptions as Record<string, { caption?: string; usageMode?: string }> | null
+      const metadata = post.metadata as Record<string, unknown> | null
 
       // Determine caption mode used
       // generatedCaptions structure: { instagram: { caption, hashtags, usageMode }, facebook: {...} }
@@ -608,6 +615,9 @@ export async function GET(request: NextRequest) {
             mode = 'AI Generated'
           }
         }
+      } else if (metadata?.caption) {
+        // Post has caption in metadata but no contentUpload - likely used generate-caption API
+        mode = 'AI Generated'
       }
 
       if (!captionModeStats[mode]) {
@@ -616,7 +626,6 @@ export async function GET(request: NextRequest) {
 
       captionModeStats[mode].count++
 
-      const metadata = post.metadata as Record<string, unknown> | null
       const analytics = metadata?.analytics as Record<string, number> | null
       if (analytics) {
         captionModeStats[mode].likes += analytics.likes || 0
