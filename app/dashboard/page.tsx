@@ -634,8 +634,8 @@ export default function DashboardPage() {
                   <div className="p-5">
                     <div className="flex items-start justify-between mb-3">
                       <h3 className="font-semibold text-text-primary text-lg group-hover:text-primary transition-colors line-clamp-1">
-                        {post.caption?.substring(0, 40) || post.fileName || 'Untitled Post'}
-                        {post.caption && post.caption.length > 40 ? '...' : ''}
+                        {(typeof post.caption === 'string' ? post.caption.substring(0, 40) : null) || post.fileName || 'Untitled Post'}
+                        {typeof post.caption === 'string' && post.caption.length > 40 ? '...' : ''}
                       </h3>
                       <Badge variant={
                         post.status === 'DELETED' ? 'error' :
