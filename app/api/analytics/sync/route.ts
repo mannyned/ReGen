@@ -12,7 +12,7 @@ import { tokenManager } from '@/lib/services/oauth/TokenManager'
 
 export const runtime = 'nodejs'
 
-const META_GRAPH_API = 'https://graph.facebook.com/v19.0'
+const META_GRAPH_API = 'https://graph.facebook.com/v21.0'
 const YOUTUBE_API = 'https://www.googleapis.com/youtube/v3'
 
 interface InsightValue {

@@ -11,17 +11,17 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
   instagram: {
     clientId: process.env.META_CLIENT_ID || process.env.INSTAGRAM_CLIENT_ID || '',
     clientSecret: process.env.META_CLIENT_SECRET || process.env.INSTAGRAM_CLIENT_SECRET || '',
-    authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
-    tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
-    refreshUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
-    revokeUrl: 'https://graph.facebook.com/v19.0/me/permissions',
+    authUrl: 'https://www.facebook.com/v21.0/dialog/oauth',
+    tokenUrl: 'https://graph.facebook.com/v21.0/oauth/access_token',
+    refreshUrl: 'https://graph.facebook.com/v21.0/oauth/access_token',
+    revokeUrl: 'https://graph.facebook.com/v21.0/me/permissions',
     scopes: [
       // Core approved scopes
       'instagram_basic',
       'instagram_content_publish',
+      'instagram_manage_insights',
       'pages_read_engagement',
       'pages_show_list',
-      // Note: instagram_manage_insights requires additional Meta approval
     ],
     responseType: 'code',
     grantType: 'authorization_code',
@@ -125,10 +125,10 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
   facebook: {
     clientId: process.env.FACEBOOK_CLIENT_ID || process.env.META_CLIENT_ID || '',
     clientSecret: process.env.FACEBOOK_CLIENT_SECRET || process.env.META_CLIENT_SECRET || '',
-    authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
-    tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
-    refreshUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
-    revokeUrl: 'https://graph.facebook.com/v19.0/me/permissions',
+    authUrl: 'https://www.facebook.com/v21.0/dialog/oauth',
+    tokenUrl: 'https://graph.facebook.com/v21.0/oauth/access_token',
+    refreshUrl: 'https://graph.facebook.com/v21.0/oauth/access_token',
+    revokeUrl: 'https://graph.facebook.com/v21.0/me/permissions',
     scopes: [
       'pages_manage_posts',
       'pages_read_engagement',
@@ -205,18 +205,18 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
   meta: {
     clientId: process.env.META_CLIENT_ID || '',
     clientSecret: process.env.META_CLIENT_SECRET || '',
-    authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
-    tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
-    refreshUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
-    revokeUrl: 'https://graph.facebook.com/v19.0/me/permissions',
+    authUrl: 'https://www.facebook.com/v21.0/dialog/oauth',
+    tokenUrl: 'https://graph.facebook.com/v21.0/oauth/access_token',
+    refreshUrl: 'https://graph.facebook.com/v21.0/oauth/access_token',
+    revokeUrl: 'https://graph.facebook.com/v21.0/me/permissions',
     scopes: [
       // Core approved scopes for Instagram/Facebook publishing
       'instagram_basic',
       'instagram_content_publish',
+      'instagram_manage_insights',
       'pages_manage_posts',
       'pages_read_engagement',
       'pages_show_list',
-      // Note: instagram_manage_insights requires additional Meta approval
     ],
     responseType: 'code',
     grantType: 'authorization_code',
@@ -228,13 +228,13 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
 // ============================================
 
 export const API_BASE_URLS: Record<SocialPlatform, string> = {
-  instagram: 'https://graph.facebook.com/v19.0',
+  instagram: 'https://graph.facebook.com/v21.0',
   tiktok: 'https://open.tiktokapis.com/v2',
   youtube: 'https://www.googleapis.com/youtube/v3',
   twitter: 'https://api.twitter.com/2',
   linkedin: 'https://api.linkedin.com/v2',
-  facebook: 'https://graph.facebook.com/v19.0',
-  meta: 'https://graph.facebook.com/v19.0',
+  facebook: 'https://graph.facebook.com/v21.0',
+  meta: 'https://graph.facebook.com/v21.0',
   snapchat: 'https://adsapi.snapchat.com/v1',
   pinterest: 'https://api.pinterest.com/v5',
   discord: 'https://discord.com/api/v10',
