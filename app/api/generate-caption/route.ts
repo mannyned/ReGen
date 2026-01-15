@@ -20,6 +20,19 @@ export async function POST(request: NextRequest) {
 
     const { platform, tone, description, hashtags, imageData, urlContent, textContent } = body
 
+    // Debug logging to trace content description
+    console.log('[Generate Caption] Received inputs:', {
+      platform,
+      tone,
+      hasDescription: !!description,
+      description: description?.substring(0, 100),
+      hasHashtags: !!hashtags,
+      hashtags: hashtags?.substring(0, 50),
+      hasImageData: !!imageData,
+      hasUrlContent: !!urlContent,
+      hasTextContent: !!textContent,
+    })
+
     // Check if API key is configured
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(

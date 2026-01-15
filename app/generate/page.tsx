@@ -209,6 +209,14 @@ function GeneratePageContent() {
             urlContent: processedData.urlContent,
           }
 
+          // Debug logging to trace content description from DB
+          console.log('[Generate Page] Loaded from DB:', {
+            contentId: urlContentId,
+            hasContentDescription: !!processedData.contentDescription,
+            contentDescription: processedData.contentDescription?.substring(0, 50),
+            hasCustomHashtags: !!processedData.customHashtags,
+          })
+
           setUploadData(uploadDataFromDb)
 
           // Check if we have previously generated captions (for drafts)
@@ -471,6 +479,15 @@ function GeneratePageContent() {
             urlContent: uploadData?.urlContent,
             textContent: uploadData?.textContent,
           }
+
+      // Debug logging
+      console.log('[Generate Page] Sending to API:', {
+        endpoint: apiEndpoint,
+        platform: preview.platform,
+        hasDescription: !!uploadData.contentDescription,
+        description: uploadData.contentDescription?.substring(0, 50),
+        hasHashtags: !!uploadData.customHashtags,
+      })
 
       const response = await fetch(apiEndpoint, {
         method: 'POST',
