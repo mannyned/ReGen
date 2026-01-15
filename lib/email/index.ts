@@ -70,6 +70,10 @@ export enum EmailTemplates {
 
   // Team events
   TEAM_INVITE = 'team_invite',
+
+  // Scheduled post events
+  SCHEDULED_POST_PUBLISHED = 'scheduled_post_published',
+  SCHEDULED_POST_FAILED = 'scheduled_post_failed',
 }
 
 // ============================================
@@ -241,6 +245,8 @@ function getTemplates(): Record<EmailTemplates, (data: Record<string, unknown>) 
     [EmailTemplates.EMAIL_VERIFICATION]: renderEmailVerification,
     [EmailTemplates.BETA_INVITE]: renderBetaInvite,
     [EmailTemplates.TEAM_INVITE]: renderTeamInvite,
+    [EmailTemplates.SCHEDULED_POST_PUBLISHED]: renderScheduledPostPublished,
+    [EmailTemplates.SCHEDULED_POST_FAILED]: renderScheduledPostFailed,
   };
 }
 
@@ -782,6 +788,242 @@ This invitation expires in ${expiresIn}. If you don't want to join, you can safe
 `;
 
   return { html, text };
+}
+
+// ============================================
+// SCHEDULED POST TEMPLATES
+// ============================================
+
+function renderScheduledPostPublished(data: Record<string, unknown>): RenderedEmail {
+  const name = (data.name as string) || 'there';
+  const platforms = (data.platforms as string[]) || ['your platforms'];
+  const postCount = (data.postCount as number) || 1;
+  const caption = (data.caption as string) || '';
+  const thumbnailUrl = (data.thumbnailUrl as string) || '';
+  const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://regenr.app'}/dashboard`;
+
+  const platformList = platforms.join(', ');
+  const truncatedCaption = caption.length > 100 ? caption.substring(0, 100) + '...' : caption;
+
+  const html = baseTemplate(`
+    <h1 style="margin: 0 0 16px; font-size: 24px; font-weight: 700; color: #10b981;">
+      Your Scheduled Post is Live! 🎉
+    </h1>
+    <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #4b5563;">
+      Hey ${name}, great news! Your scheduled post has been successfully published to <strong>${platformList}</strong>.
+    </p>
+    ${thumbnailUrl ? `
+    <div style="margin: 0 0 24px; text-align: center;">
+      <img src="${thumbnailUrl}" alt="Post thumbnail" style="max-width: 100%; max-height: 200px; border-radius: 12px; object-fit: cover;">
+    </div>
+    ` : ''}
+    ${truncatedCaption ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f9fafb; border-radius: 12px; margin-bottom: 24px;">
+      <tr>
+        <td style="padding: 16px;">
+          <p style="margin: 0; font-size: 14px; color: #6b7280; font-style: italic;">
+            "${truncatedCaption}"
+          </p>
+        </td>
+      </tr>
+    </table>
+    ` : ''}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f0fdf4; border-radius: 12px; margin-bottom: 24px; border: 1px solid #bbf7d0;">
+      <tr>
+        <td style="padding: 20px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <td style="font-size: 14px; color: #166534;">Platforms</td>
+              <td align="right" style="font-size: 16px; font-weight: 600; color: #166534;">${platformList}</td>
+            </tr>
+            <tr>
+              <td style="font-size: 14px; color: #166534; padding-top: 8px;">Status</td>
+              <td align="right" style="font-size: 16px; font-weight: 600; color: #166534;">Published ✓</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    ${button('View Dashboard', dashboardUrl)}
+    <p style="margin: 24px 0 0; font-size: 14px; color: #6b7280;">
+      Check your analytics to see how your post is performing!
+    </p>
+  `, `Your scheduled post is now live on ${platformList}!`);
+
+  const text = `
+Your Scheduled Post is Live!
+
+Hey ${name}, great news! Your scheduled post has been successfully published to ${platformList}.
+
+${truncatedCaption ? `Caption: "${truncatedCaption}"` : ''}
+
+Platforms: ${platformList}
+Status: Published
+
+View Dashboard: ${dashboardUrl}
+
+Check your analytics to see how your post is performing!
+`;
+
+  return { html, text };
+}
+
+function renderScheduledPostFailed(data: Record<string, unknown>): RenderedEmail {
+  const name = (data.name as string) || 'there';
+  const platforms = (data.platforms as string[]) || ['your platforms'];
+  const failedPlatforms = (data.failedPlatforms as string[]) || platforms;
+  const successPlatforms = (data.successPlatforms as string[]) || [];
+  const errorMessage = (data.errorMessage as string) || 'An error occurred while publishing';
+  const caption = (data.caption as string) || '';
+  const scheduleUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://regenr.app'}/schedule`;
+
+  const failedList = failedPlatforms.join(', ');
+  const successList = successPlatforms.join(', ');
+  const truncatedCaption = caption.length > 100 ? caption.substring(0, 100) + '...' : caption;
+  const isPartialFailure = successPlatforms.length > 0;
+
+  const html = baseTemplate(`
+    <h1 style="margin: 0 0 16px; font-size: 24px; font-weight: 700; color: ${isPartialFailure ? '#f59e0b' : '#dc2626'};">
+      ${isPartialFailure ? 'Scheduled Post Partially Published' : 'Scheduled Post Failed'}
+    </h1>
+    <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #4b5563;">
+      Hey ${name}, ${isPartialFailure
+        ? `your scheduled post was published to some platforms but failed on others.`
+        : `we encountered an issue publishing your scheduled post.`}
+    </p>
+    ${truncatedCaption ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f9fafb; border-radius: 12px; margin-bottom: 24px;">
+      <tr>
+        <td style="padding: 16px;">
+          <p style="margin: 0; font-size: 14px; color: #6b7280; font-style: italic;">
+            "${truncatedCaption}"
+          </p>
+        </td>
+      </tr>
+    </table>
+    ` : ''}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #fef2f2; border-radius: 12px; margin-bottom: 24px; border: 1px solid #fecaca;">
+      <tr>
+        <td style="padding: 20px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <td style="font-size: 14px; color: #991b1b;">Failed Platforms</td>
+              <td align="right" style="font-size: 16px; font-weight: 600; color: #991b1b;">${failedList}</td>
+            </tr>
+            ${isPartialFailure ? `
+            <tr>
+              <td style="font-size: 14px; color: #166534; padding-top: 8px;">Succeeded Platforms</td>
+              <td align="right" style="font-size: 16px; font-weight: 600; color: #166534;">${successList}</td>
+            </tr>
+            ` : ''}
+            <tr>
+              <td colspan="2" style="padding-top: 12px;">
+                <p style="margin: 0; font-size: 13px; color: #991b1b;">
+                  <strong>Error:</strong> ${errorMessage}
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #4b5563;">
+      You can try publishing again from your schedule page. Common issues include expired tokens or platform rate limits.
+    </p>
+    ${button('Go to Schedule', scheduleUrl)}
+    <p style="margin: 24px 0 0; font-size: 14px; color: #6b7280;">
+      Need help? Contact us at support@regenr.app
+    </p>
+  `, `${isPartialFailure ? 'Partial failure' : 'Failed'}: Your scheduled post couldn't be published to ${failedList}`);
+
+  const text = `
+${isPartialFailure ? 'Scheduled Post Partially Published' : 'Scheduled Post Failed'}
+
+Hey ${name}, ${isPartialFailure
+    ? `your scheduled post was published to some platforms but failed on others.`
+    : `we encountered an issue publishing your scheduled post.`}
+
+${truncatedCaption ? `Caption: "${truncatedCaption}"` : ''}
+
+Failed Platforms: ${failedList}
+${isPartialFailure ? `Succeeded Platforms: ${successList}` : ''}
+Error: ${errorMessage}
+
+You can try publishing again from your schedule page. Common issues include expired tokens or platform rate limits.
+
+Go to Schedule: ${scheduleUrl}
+
+Need help? Contact us at support@regenr.app
+`;
+
+  return { html, text };
+}
+
+// ============================================
+// SCHEDULED POST NOTIFICATION HELPER
+// ============================================
+
+export interface ScheduledPostNotificationData {
+  email: string;
+  name?: string;
+  platforms: string[];
+  status: 'COMPLETED' | 'PARTIAL_FAILURE' | 'FAILED';
+  successPlatforms?: string[];
+  failedPlatforms?: string[];
+  errorMessage?: string;
+  caption?: string;
+  thumbnailUrl?: string;
+}
+
+/**
+ * Send notification for scheduled post result
+ */
+export async function sendScheduledPostNotification(
+  data: ScheduledPostNotificationData
+): Promise<SendEmailResult> {
+  const {
+    email,
+    name,
+    platforms,
+    status,
+    successPlatforms = [],
+    failedPlatforms = [],
+    errorMessage,
+    caption,
+    thumbnailUrl,
+  } = data;
+
+  if (status === 'COMPLETED') {
+    return sendEmail({
+      to: email,
+      subject: `Your scheduled post is live on ${platforms.join(', ')}!`,
+      template: EmailTemplates.SCHEDULED_POST_PUBLISHED,
+      data: {
+        name,
+        platforms,
+        postCount: platforms.length,
+        caption,
+        thumbnailUrl,
+      },
+    });
+  } else {
+    // PARTIAL_FAILURE or FAILED
+    return sendEmail({
+      to: email,
+      subject: status === 'PARTIAL_FAILURE'
+        ? `Scheduled post partially published`
+        : `Scheduled post failed to publish`,
+      template: EmailTemplates.SCHEDULED_POST_FAILED,
+      data: {
+        name,
+        platforms,
+        failedPlatforms: failedPlatforms.length > 0 ? failedPlatforms : platforms,
+        successPlatforms,
+        errorMessage: errorMessage || 'An unexpected error occurred',
+        caption,
+      },
+    });
+  }
 }
 
 // ============================================

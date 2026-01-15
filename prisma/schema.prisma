@@ -582,6 +582,8 @@ enum NotificationType {
   WELCOME
   PASSWORD_RESET
   EMAIL_VERIFICATION
+  SCHEDULED_POST_PUBLISHED
+  SCHEDULED_POST_FAILED
 
   @@map("notification_type")
 }

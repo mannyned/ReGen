@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { publishingService } from '@/lib/services/publishing'
+import { sendScheduledPostNotification } from '@/lib/email'
 import type { SocialPlatform } from '@/lib/types/social'
 
 // ============================================
@@ -190,6 +191,32 @@ export async function GET(request: NextRequest) {
           },
         })
 
+        // Send email notification to user
+        if (scheduledPost.profile?.email) {
+          const successPlatforms = [...publishResults.entries()]
+            .filter(([, r]) => r.success)
+            .map(([p]) => p)
+          const failedPlatforms = [...publishResults.entries()]
+            .filter(([, r]) => !r.success)
+            .map(([p]) => p)
+
+          try {
+            await sendScheduledPostNotification({
+              email: scheduledPost.profile.email,
+              platforms: platforms,
+              status: finalStatus as 'COMPLETED' | 'PARTIAL_FAILURE' | 'FAILED',
+              successPlatforms,
+              failedPlatforms,
+              errorMessage: errors.length > 0 ? errors.join('; ') : undefined,
+              caption: firstPlatformContent?.caption,
+              thumbnailUrl: contentUpload.thumbnailUrl || undefined,
+            })
+            console.log(`[Cron] Notification sent to ${scheduledPost.profile.email}`)
+          } catch (notifyError) {
+            console.warn(`[Cron] Failed to send notification:`, notifyError)
+          }
+        }
+
         results.push({
           postId: scheduledPost.id,
           success: failCount === 0,
@@ -202,21 +229,41 @@ export async function GET(request: NextRequest) {
       } catch (postError) {
         console.error(`[Cron] Error processing post ${scheduledPost.id}:`, postError)
 
+        const errorMsg = postError instanceof Error ? postError.message : 'Unknown error'
+        const platforms = scheduledPost.platforms.map(p => platformEnumToString[p] || p.toLowerCase())
+
         // Mark as failed
         await prisma.scheduledPost.update({
           where: { id: scheduledPost.id },
           data: {
             status: 'FAILED',
             processedAt: new Date(),
-            errorMessage: postError instanceof Error ? postError.message : 'Unknown error',
+            errorMessage: errorMsg,
           },
         })
+
+        // Send failure notification
+        if (scheduledPost.profile?.email) {
+          try {
+            await sendScheduledPostNotification({
+              email: scheduledPost.profile.email,
+              platforms: platforms,
+              status: 'FAILED',
+              failedPlatforms: platforms,
+              errorMessage: errorMsg,
+              thumbnailUrl: scheduledPost.contentUpload?.thumbnailUrl || undefined,
+            })
+            console.log(`[Cron] Failure notification sent to ${scheduledPost.profile.email}`)
+          } catch (notifyError) {
+            console.warn(`[Cron] Failed to send failure notification:`, notifyError)
+          }
+        }
 
         results.push({
           postId: scheduledPost.id,
           success: false,
-          platforms: scheduledPost.platforms.map(p => p.toLowerCase()),
-          error: postError instanceof Error ? postError.message : 'Unknown error',
+          platforms: platforms,
+          error: errorMsg,
         })
       }
     }
