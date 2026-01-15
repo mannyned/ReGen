@@ -795,80 +795,145 @@ function SchedulePageContent() {
                 )}
               </div>
 
-              {/* Date & Time Selection */}
-              <div className="grid grid-cols-2 gap-6 mb-8">
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-3">
-                    Date
-                  </label>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-3">
-                    Time
-                  </label>
-                  <input
-                    type="time"
-                    value={selectedTime}
-                    onChange={(e) => setSelectedTime(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus"
-                  />
+              {/* Post Mode Selection */}
+              <div className="mb-8">
+                <label className="block text-sm font-medium text-text-secondary mb-3">
+                  How would you like to publish?
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Post Now Option */}
+                  <button
+                    type="button"
+                    onClick={() => setPostMode('now')}
+                    className={`relative p-5 rounded-xl border-2 transition-all duration-200 text-left ${
+                      postMode === 'now'
+                        ? 'border-green-500 bg-green-50 shadow-md ring-2 ring-green-200'
+                        : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                    } ${postMode === 'schedule' ? 'opacity-50' : ''}`}
+                  >
+                    {postMode === 'now' && (
+                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-2xl">🚀</span>
+                      <span className={`font-semibold text-lg ${postMode === 'now' ? 'text-green-700' : 'text-text-primary'}`}>
+                        Post Now
+                      </span>
+                    </div>
+                    <p className={`text-sm ${postMode === 'now' ? 'text-green-600' : 'text-text-secondary'}`}>
+                      Publish immediately to selected platforms
+                    </p>
+                  </button>
+
+                  {/* Schedule Option */}
+                  <button
+                    type="button"
+                    onClick={() => setPostMode('schedule')}
+                    className={`relative p-5 rounded-xl border-2 transition-all duration-200 text-left ${
+                      postMode === 'schedule'
+                        ? 'border-primary bg-primary/5 shadow-md ring-2 ring-primary/20'
+                        : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                    } ${postMode === 'now' ? 'opacity-50' : ''}`}
+                  >
+                    {postMode === 'schedule' && (
+                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-2xl">📅</span>
+                      <span className={`font-semibold text-lg ${postMode === 'schedule' ? 'text-primary' : 'text-text-primary'}`}>
+                        Schedule Post
+                      </span>
+                    </div>
+                    <p className={`text-sm ${postMode === 'schedule' ? 'text-primary/80' : 'text-text-secondary'}`}>
+                      Choose a specific date and time to publish
+                    </p>
+                  </button>
                 </div>
               </div>
 
-              {/* Quick Time Buttons */}
-              <div className="mb-8">
-                <label className="block text-sm font-medium text-text-secondary mb-3">
-                  Quick Schedule
-                </label>
-                <div className="grid grid-cols-4 gap-3">
-                  <button
-                    onClick={handlePublishNow}
-                    disabled={selectedPlatforms.length === 0}
-                    className="py-2 px-4 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-sm font-medium transition-colors disabled:bg-gray-100 disabled:text-gray-400"
-                  >
-                    🚀 Now
-                  </button>
-                  <button
-                    onClick={() => {
-                      const date = new Date()
-                      date.setHours(date.getHours() + 1)
-                      setSelectedDate(date.toISOString().split('T')[0])
-                      setSelectedTime(date.toTimeString().slice(0, 5))
-                    }}
-                    className="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-lg text-sm font-medium transition-colors"
-                  >
-                    +1 Hour
-                  </button>
-                  <button
-                    onClick={() => {
-                      const date = new Date()
-                      date.setDate(date.getDate() + 1)
-                      setSelectedDate(date.toISOString().split('T')[0])
-                      setSelectedTime('09:00')
-                    }}
-                    className="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-lg text-sm font-medium transition-colors"
-                  >
-                    +1 Day
-                  </button>
-                  <button
-                    onClick={() => {
-                      const date = new Date()
-                      date.setDate(date.getDate() + 7)
-                      setSelectedDate(date.toISOString().split('T')[0])
-                      setSelectedTime('09:00')
-                    }}
-                    className="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-lg text-sm font-medium transition-colors"
-                  >
-                    +1 Week
-                  </button>
+              {/* Date & Time Selection - Only shown when Schedule mode is selected */}
+              {postMode === 'schedule' && (
+                <div className="mb-8 p-5 bg-gray-50 rounded-xl border border-gray-200 animate-fadeIn">
+                  <div className="grid grid-cols-2 gap-6 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-3">
+                        Date
+                      </label>
+                      <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-3">
+                        Time
+                      </label>
+                      <input
+                        type="time"
+                        value={selectedTime}
+                        onChange={(e) => setSelectedTime(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Quick Schedule Buttons */}
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-2 uppercase tracking-wide">
+                      Quick Select
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const date = new Date()
+                          date.setHours(date.getHours() + 1)
+                          setSelectedDate(date.toISOString().split('T')[0])
+                          setSelectedTime(date.toTimeString().slice(0, 5))
+                        }}
+                        className="py-2 px-3 bg-white hover:bg-primary/5 border border-gray-200 hover:border-primary text-text-secondary hover:text-primary rounded-lg text-sm font-medium transition-all"
+                      >
+                        +1 Hour
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const date = new Date()
+                          date.setDate(date.getDate() + 1)
+                          setSelectedDate(date.toISOString().split('T')[0])
+                          setSelectedTime('09:00')
+                        }}
+                        className="py-2 px-3 bg-white hover:bg-primary/5 border border-gray-200 hover:border-primary text-text-secondary hover:text-primary rounded-lg text-sm font-medium transition-all"
+                      >
+                        Tomorrow 9AM
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const date = new Date()
+                          date.setDate(date.getDate() + 7)
+                          setSelectedDate(date.toISOString().split('T')[0])
+                          setSelectedTime('09:00')
+                        }}
+                        className="py-2 px-3 bg-white hover:bg-primary/5 border border-gray-200 hover:border-primary text-text-secondary hover:text-primary rounded-lg text-sm font-medium transition-all"
+                      >
+                        Next Week
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Publishing Loading Overlay */}
               {isPublishing && (
@@ -931,22 +996,64 @@ function SchedulePageContent() {
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={handlePublishNow}
-                  disabled={selectedPlatforms.length === 0 || isPublishing}
-                  className="btn-primary bg-green-600 hover:bg-green-700 disabled:bg-gray-300"
-                >
-                  {isPublishing ? '⏳ Publishing...' : '🚀 Post Now'}
-                </button>
-                <button
-                  onClick={handleSchedulePost}
-                  disabled={selectedPlatforms.length === 0 || !selectedDate || !selectedTime || isPublishing}
-                  className="btn-primary"
-                >
-                  📅 Schedule Post
-                </button>
+              {/* Single Context-Aware Action Button */}
+              <div className="space-y-3">
+                {postMode === 'now' ? (
+                  <button
+                    onClick={handlePublishNow}
+                    disabled={selectedPlatforms.length === 0 || isPublishing}
+                    className="w-full py-4 px-6 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:from-gray-300 disabled:to-gray-400 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isPublishing ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        <span>Publishing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-xl">🚀</span>
+                        <span>Publish Now</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSchedulePost}
+                    disabled={selectedPlatforms.length === 0 || !selectedDate || !selectedTime || isPublishing}
+                    className="w-full py-4 px-6 bg-gradient-to-r from-primary to-accent-purple hover:from-primary-hover hover:to-accent-purple/90 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:from-gray-300 disabled:to-gray-400 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isPublishing ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        <span>Scheduling...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-xl">📅</span>
+                        <span>
+                          {selectedDate && selectedTime
+                            ? `Schedule for ${new Date(selectedDate + 'T' + selectedTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${selectedTime}`
+                            : 'Select date & time above'
+                          }
+                        </span>
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {/* Validation hint */}
+                {selectedPlatforms.length === 0 && (
+                  <p className="text-center text-sm text-orange-600 flex items-center justify-center gap-2">
+                    <span>⚠️</span>
+                    <span>Select at least one platform to continue</span>
+                  </p>
+                )}
               </div>
             </div>
           </div>
