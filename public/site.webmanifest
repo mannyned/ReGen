@@ -1,12 +1,16 @@
 {
-  "name": "ReGenr",
+  "name": "ReGenr - AI Content Repurposing",
   "short_name": "ReGenr",
-  "description": "AI-powered content repurposing for every platform",
-  "start_url": "/",
+  "description": "Transform one video into content for every platform with AI magic",
+  "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0B0F14",
+  "background_color": "#ffffff",
   "theme_color": "#B47CFF",
   "orientation": "portrait-primary",
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/brand/regenr-icon-72.png",
@@ -36,20 +40,44 @@
       "src": "/brand/regenr-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     },
     {
       "src": "/brand/regenr-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     },
     {
-      "src": "/brand/regenr-icon-1024.png",
+      "src": "/brand/regenr-icon-clean-1024.png",
       "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any"
     }
   ],
-  "categories": ["social", "productivity", "business"]
+  "categories": ["social", "productivity", "business"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Upload Content",
+      "short_name": "Upload",
+      "description": "Upload new content to repurpose",
+      "url": "/upload",
+      "icons": [{ "src": "/brand/regenr-icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Schedule Posts",
+      "short_name": "Schedule",
+      "description": "Schedule your content for posting",
+      "url": "/schedule",
+      "icons": [{ "src": "/brand/regenr-icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Analytics",
+      "short_name": "Analytics",
+      "description": "View your content performance",
+      "url": "/analytics",
+      "icons": [{ "src": "/brand/regenr-icon-96.png", "sizes": "96x96" }]
+    }
+  ]
 }
