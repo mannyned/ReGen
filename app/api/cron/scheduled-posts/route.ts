@@ -192,6 +192,11 @@ export async function GET(request: NextRequest) {
         })
 
         // Send email notification to user
+        console.log(`[Cron] Profile email check:`, {
+          hasProfile: !!scheduledPost.profile,
+          email: scheduledPost.profile?.email || 'NO_EMAIL',
+        })
+
         if (scheduledPost.profile?.email) {
           const successPlatforms = [...publishResults.entries()]
             .filter(([, r]) => r.success)
@@ -200,8 +205,14 @@ export async function GET(request: NextRequest) {
             .filter(([, r]) => !r.success)
             .map(([p]) => p)
 
+          console.log(`[Cron] Sending notification email to ${scheduledPost.profile.email}`, {
+            status: finalStatus,
+            successPlatforms,
+            failedPlatforms,
+          })
+
           try {
-            await sendScheduledPostNotification({
+            const emailResult = await sendScheduledPostNotification({
               email: scheduledPost.profile.email,
               platforms: platforms,
               status: finalStatus as 'COMPLETED' | 'PARTIAL_FAILURE' | 'FAILED',
@@ -211,10 +222,12 @@ export async function GET(request: NextRequest) {
               caption: firstPlatformContent?.caption,
               thumbnailUrl: contentUpload.thumbnailUrl || undefined,
             })
-            console.log(`[Cron] Notification sent to ${scheduledPost.profile.email}`)
+            console.log(`[Cron] Email notification result:`, emailResult)
           } catch (notifyError) {
-            console.warn(`[Cron] Failed to send notification:`, notifyError)
+            console.error(`[Cron] Failed to send notification:`, notifyError)
           }
+        } else {
+          console.warn(`[Cron] No email found for profile, skipping notification`)
         }
 
         results.push({

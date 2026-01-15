@@ -103,26 +103,23 @@ export interface SendEmailResult {
 export async function sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
   const { to, subject, html, text, template, data, from = DEFAULT_FROM, replyTo } = options;
 
-  // Skip in development if not configured
+  // Skip if not configured
   if (!process.env.RESEND_API_KEY) {
-    logger.warn('Email not sent - RESEND_API_KEY not configured', {
+    console.warn('[Email] RESEND_API_KEY not configured - skipping email', {
       to,
       subject,
       template,
     });
-
-    // In development, log the email content
-    if (process.env.NODE_ENV === 'development') {
-      logger.debug('Email content (dev mode)', {
-        to,
-        subject,
-        html: html?.substring(0, 500),
-        data,
-      });
-    }
-
-    return { success: true, id: 'dev-mode-skipped' };
+    return { success: false, error: 'RESEND_API_KEY not configured' };
   }
+
+  console.log('[Email] Preparing to send email', {
+    to,
+    subject,
+    template,
+    from,
+    hasResendKey: !!process.env.RESEND_API_KEY,
+  });
 
   try {
     const resend = getResend();
@@ -151,10 +148,13 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       ...(replyTo && { replyTo }),
     };
 
+    console.log('[Email] Calling Resend API...');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await resend.emails.send(emailOptions as any);
+    console.log('[Email] Resend API response:', JSON.stringify(result));
 
     if (result.error) {
+      console.error('[Email] Resend returned error:', result.error);
       logger.error('Failed to send email', {
         to,
         subject,
@@ -163,6 +163,11 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       return { success: false, error: result.error.message };
     }
 
+    console.log('[Email] Email sent successfully!', {
+      to,
+      subject,
+      id: result.data?.id,
+    });
     logger.info('Email sent successfully', {
       to,
       subject,
