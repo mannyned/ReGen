@@ -48,7 +48,7 @@ export default function CheckoutCancelPage() {
         <Link href="/" className="flex items-center gap-2 w-fit">
           <div className="relative w-10 h-10">
             <Image
-              src="/logo.png"
+              src="/brand/regenr-icon-clean-1024.png"
               alt="ReGenr Logo"
               fill
               className="object-contain"

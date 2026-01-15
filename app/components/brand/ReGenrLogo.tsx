@@ -34,7 +34,7 @@ export function ReGenrLogo({
         style={{ width: config.icon, height: config.icon }}
       >
         <Image
-          src="/logo.png"
+          src="/brand/regenr-icon-clean-1024.png"
           alt="ReGenr"
           fill
           className="object-contain"

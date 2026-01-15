@@ -726,7 +726,7 @@ function GeneratePageContent() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Link href="/dashboard" className="flex items-center gap-3">
-                  <Image src="/logo.png" alt="ReGenr Logo" width={168} height={168} className="object-contain" />
+                  <Image src="/brand/regenr-icon-clean-1024.png" alt="ReGenr Logo" width={40} height={40} className="object-contain" />
                   <span className="text-2xl font-bold text-primary">ReGenr</span>
                 </Link>
                 <span className="text-text-secondary text-sm">/ Caption Workflow</span>
@@ -775,7 +775,7 @@ function GeneratePageContent() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Link href="/dashboard" className="flex items-center gap-3">
-                <Image src="/logo.png" alt="ReGenr Logo" width={168} height={168} className="object-contain" />
+                <Image src="/brand/regenr-icon-clean-1024.png" alt="ReGenr Logo" width={40} height={40} className="object-contain" />
                 <span className="text-2xl font-bold text-primary">ReGenr</span>
               </Link>
               <span className="text-text-secondary text-sm">/ AI Repurpose Results</span>
