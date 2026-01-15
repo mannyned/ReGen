@@ -184,48 +184,13 @@ function SchedulePageContent() {
         }
       }
 
-      // Fallback: Load from localStorage (legacy flow)
-      const previewsData = localStorage.getItem('selectedPreviews')
-      if (previewsData) {
-        try {
-          const previews: PreviewData[] = JSON.parse(previewsData)
-
-          // Load contentType from localStorage if available
-          const storedContentType = localStorage.getItem('contentType') as 'post' | 'story' | null
-          if (storedContentType) {
-            setContentType(storedContentType)
-          }
-
-          // Check if files already have base64Data (from database flow)
-          const hasDbUrls = previews.some(p => p.files.some(f => f.base64Data?.startsWith('http')))
-
-          if (hasDbUrls) {
-            // Files already have URLs, use them directly
-            setSelectedPreviews(previews)
-            setSelectedPlatforms(previews.map(p => p.platform))
-          } else {
-            // Load file data from IndexedDB if needed
-            const storedFiles = await fileStorage.getFiles()
-
-            // Enrich previews with file data
-            const enrichedPreviews = previews.map(preview => ({
-              ...preview,
-              files: preview.files.map(file => {
-                const storedFile = storedFiles.find(sf => sf.id === file.id)
-                return {
-                  ...file,
-                  base64Data: storedFile?.base64Data
-                }
-              })
-            }))
-
-            setSelectedPreviews(enrichedPreviews)
-            setSelectedPlatforms(enrichedPreviews.map(p => p.platform))
-          }
-        } catch (error) {
-          console.error('Error loading previews:', error)
-        }
-      }
+      // No contentId provided - don't load stale data from localStorage
+      // User should navigate here from upload/generate flow with contentId
+      // Clear any stale localStorage data to prevent confusion
+      localStorage.removeItem('selectedPreviews')
+      localStorage.removeItem('contentType')
+      setSelectedPreviews([])
+      setSelectedPlatforms([])
     }
 
     loadPreviews()
@@ -457,10 +422,16 @@ function SchedulePageContent() {
           console.log(`Published to ${result.summary.succeeded}/${result.summary.total} platforms`)
         }
 
+        // Clear localStorage and state to prevent stale data
+        localStorage.removeItem('selectedPreviews')
+        localStorage.removeItem('contentType')
+
         // Hide success message after 3 seconds
         setTimeout(() => {
           setShowSuccess(false)
           setSelectedPlatforms([])
+          setSelectedPreviews([])
+          setContentId(null)
         }, 3000)
       } else {
         // Build error message from results
@@ -554,11 +525,17 @@ function SchedulePageContent() {
       setShowSuccess(true)
       setPostMode('schedule')
 
+      // Clear localStorage to prevent stale data
+      localStorage.removeItem('selectedPreviews')
+      localStorage.removeItem('contentType')
+
       // Hide success message after 3 seconds
       setTimeout(() => {
         setShowSuccess(false)
-        // Reset form
+        // Reset form and clear content
         setSelectedPlatforms([])
+        setSelectedPreviews([])
+        setContentId(null)
         setSelectedDate('')
         setSelectedTime('')
       }, 3000)
