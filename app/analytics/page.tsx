@@ -1140,6 +1140,17 @@ export default function AnalyticsPage() {
               </>
             )}
 
+            {/* Metrics Availability Info Banner */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-4 mb-6 flex items-start gap-3">
+              <span className="text-blue-500 text-lg flex-shrink-0">ℹ️</span>
+              <div className="text-sm text-blue-700 dark:text-blue-300">
+                <p className="font-medium">Metrics for recent posts may be incomplete</p>
+                <p className="mt-1 text-blue-600 dark:text-blue-400">
+                  Instagram and Facebook metrics like reach, impressions, saves, and shares can take 24-48 hours to become available via the platform APIs. Likes and comments are typically available sooner.
+                </p>
+              </div>
+            </div>
+
             {/* Key Metrics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard label="Total Posts" value={filteredStats.totalPosts} icon="📊" trend={isProduction ? undefined : { value: 12, positive: true }} tooltip="The total number of posts published to this platform. Use the platform filter above to see platform-specific counts." />
