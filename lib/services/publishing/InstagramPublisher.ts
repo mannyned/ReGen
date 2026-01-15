@@ -68,9 +68,11 @@ export class InstagramPublisher extends BasePlatformPublisher {
       )
 
       // Step 3: Wait for container to be ready
-      // All content types need processing time before publishing
-      const maxAttempts = media.mediaType === 'video' ? 60 : 10 // Videos need more time
-      await this.waitForContainerReady(containerId, accessToken, maxAttempts)
+      // Reels/videos need more processing time on Instagram's servers
+      // 90 attempts × 3 seconds = 4.5 minutes max wait for videos
+      const maxAttempts = media.mediaType === 'video' ? 90 : 15
+      const delayMs = media.mediaType === 'video' ? 3000 : 2000
+      await this.waitForContainerReady(containerId, accessToken, maxAttempts, delayMs)
 
       // Step 4: Publish the container
       // All content types (posts, stories, reels) need the media_publish step
@@ -214,7 +216,9 @@ export class InstagramPublisher extends BasePlatformPublisher {
         childContainerIds.push(containerId)
 
         // Wait for each item to process before continuing
-        await this.waitForContainerReady(containerId, accessToken, item.mimeType.startsWith('video/') ? 60 : 10)
+        // Videos in carousels also need more time
+        const isVideo = item.mimeType.startsWith('video/')
+        await this.waitForContainerReady(containerId, accessToken, isVideo ? 90 : 15, isVideo ? 3000 : 2000)
       }
 
       // Step 3: Create CAROUSEL container referencing all children
@@ -227,7 +231,7 @@ export class InstagramPublisher extends BasePlatformPublisher {
       )
 
       // Step 4: Wait for carousel container to be ready
-      await this.waitForContainerReady(carouselContainerId, accessToken, 30)
+      await this.waitForContainerReady(carouselContainerId, accessToken, 45, 2000)
 
       // Step 5: Publish the carousel container
       const result = await this.publishContainer(accountId, carouselContainerId, accessToken)
@@ -412,8 +416,11 @@ export class InstagramPublisher extends BasePlatformPublisher {
   private async waitForContainerReady(
     containerId: string,
     accessToken: string,
-    maxAttempts = 30
+    maxAttempts = 30,
+    delayMs = 2000
   ): Promise<void> {
+    console.log(`[InstagramPublisher] Waiting for container ${containerId} to be ready (max ${maxAttempts} attempts, ${delayMs}ms delay)`)
+
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const response = await fetch(
@@ -423,13 +430,19 @@ export class InstagramPublisher extends BasePlatformPublisher {
 
         if (!response.ok) {
           // If we can't check status, wait and retry
-          await new Promise(resolve => setTimeout(resolve, 2000))
+          console.log(`[InstagramPublisher] Status check failed (attempt ${i + 1}), retrying...`)
+          await new Promise(resolve => setTimeout(resolve, delayMs))
           continue
         }
 
         const data = await response.json()
 
+        if (i % 10 === 0 || data.status_code === 'FINISHED') {
+          console.log(`[InstagramPublisher] Container status (attempt ${i + 1}): ${data.status_code}`)
+        }
+
         if (data.status_code === 'FINISHED') {
+          console.log(`[InstagramPublisher] Container ready after ${i + 1} attempts`)
           return
         }
 
@@ -438,17 +451,17 @@ export class InstagramPublisher extends BasePlatformPublisher {
         }
 
         // Status is IN_PROGRESS or PUBLISHED, wait and check again
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        await new Promise(resolve => setTimeout(resolve, delayMs))
       } catch (error) {
         // On network error, wait and retry
         if (i === maxAttempts - 1) {
           throw error
         }
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        await new Promise(resolve => setTimeout(resolve, delayMs))
       }
     }
 
-    throw new Error('Container processing timed out. The media may still be processing on Instagram.')
+    throw new Error('Container processing timed out after ' + maxAttempts + ' attempts. The media may still be processing on Instagram.')
   }
 
   private async publishContainer(
