@@ -285,7 +285,7 @@ function baseTemplate(content: string, previewText: string = ''): string {
           <!-- Logo -->
           <tr>
             <td align="center" style="padding-bottom: 32px;">
-              <img src="${process.env.NEXT_PUBLIC_APP_URL || 'https://regenr.app'}/logo.png" alt="ReGenr" width="48" height="48" style="display: block;">
+              <img src="${process.env.NEXT_PUBLIC_APP_URL || 'https://regenr.app'}/brand/regenr-icon-clean-1024.png" alt="ReGenr" width="64" height="64" style="display: block; border-radius: 12px;">
             </td>
           </tr>
           <!-- Content Card -->

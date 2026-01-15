@@ -69,9 +69,11 @@ export class InstagramPublisher extends BasePlatformPublisher {
 
       // Step 3: Wait for container to be ready
       // Reels/videos need more processing time on Instagram's servers
-      // 90 attempts × 3 seconds = 4.5 minutes max wait for videos
-      const maxAttempts = media.mediaType === 'video' ? 90 : 15
+      // Videos: 90 attempts × 3 seconds = 4.5 minutes max wait
+      // Images: 30 attempts × 2 seconds = 1 minute max wait
+      const maxAttempts = media.mediaType === 'video' ? 90 : 30
       const delayMs = media.mediaType === 'video' ? 3000 : 2000
+      console.log(`[InstagramPublisher] Waiting for ${media.mediaType} container to process...`)
       await this.waitForContainerReady(containerId, accessToken, maxAttempts, delayMs)
 
       // Step 4: Publish the container
@@ -216,9 +218,9 @@ export class InstagramPublisher extends BasePlatformPublisher {
         childContainerIds.push(containerId)
 
         // Wait for each item to process before continuing
-        // Videos in carousels also need more time
+        // Videos need more time, images need about 1 minute
         const isVideo = item.mimeType.startsWith('video/')
-        await this.waitForContainerReady(containerId, accessToken, isVideo ? 90 : 15, isVideo ? 3000 : 2000)
+        await this.waitForContainerReady(containerId, accessToken, isVideo ? 90 : 30, isVideo ? 3000 : 2000)
       }
 
       // Step 3: Create CAROUSEL container referencing all children
@@ -398,18 +400,29 @@ export class InstagramPublisher extends BasePlatformPublisher {
       hasVideoUrl: !!params.video_url,
     })
 
+    console.log('[InstagramPublisher] Creating media container, mediaUrl:', media.mediaUrl?.substring(0, 100) + '...')
+
     const response = await fetch(
       `${this.baseUrl}/${accountId}/media?${new URLSearchParams(params)}`,
       { method: 'POST' }
     )
 
+    const responseText = await response.text()
+
     if (!response.ok) {
-      const error = await response.text()
-      console.error('[InstagramPublisher] Media container creation failed:', error)
-      throw new Error(`Failed to create media container: ${error}`)
+      console.error('[InstagramPublisher] Media container creation failed:', responseText)
+      throw new Error(`Failed to create media container: ${responseText}`)
     }
 
-    const data = await response.json()
+    let data
+    try {
+      data = JSON.parse(responseText)
+    } catch {
+      console.error('[InstagramPublisher] Failed to parse response:', responseText)
+      throw new Error(`Invalid response from Instagram: ${responseText}`)
+    }
+
+    console.log('[InstagramPublisher] Container created successfully, ID:', data.id)
     return data.id
   }
 
