@@ -7,6 +7,7 @@ import { usePlan } from '../context/PlanContext'
 import { getRemainingUploads } from '../config/plans'
 import { AppHeader, Card, StatCard, GradientBanner, Badge, PlatformLogo } from '../components/ui'
 import { useBetaStatus } from '../components/BetaProBadge'
+import { NotificationBell } from '../components/NotificationBell'
 import type { SocialPlatform } from '@/lib/types/social'
 
 // Map display names to platform IDs
@@ -355,27 +356,33 @@ export default function DashboardPage() {
                   : "Get started with your content journey"}
               </p>
             </div>
-            {(remainingUploads === null || remainingUploads > 0) ? (
-              <Link
-                href="/upload"
-                className="group btn-primary flex items-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span>Create New</span>
-                <svg className="w-4 h-4 opacity-0 -ml-1 group-hover:opacity-100 group-hover:ml-0 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </Link>
-            ) : (
-              <button
-                disabled
-                className="px-6 py-3 bg-gray-100 text-gray-400 rounded-xl font-medium cursor-not-allowed"
-              >
-                Upload Limit Reached
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {/* Notification Bell */}
+              <NotificationBell />
+
+              {/* Create New Button */}
+              {(remainingUploads === null || remainingUploads > 0) ? (
+                <Link
+                  href="/upload"
+                  className="group btn-primary flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Create New</span>
+                  <svg className="w-4 h-4 opacity-0 -ml-1 group-hover:opacity-100 group-hover:ml-0 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </Link>
+              ) : (
+                <button
+                  disabled
+                  className="px-6 py-3 bg-gray-100 text-gray-400 rounded-xl font-medium cursor-not-allowed"
+                >
+                  Upload Limit Reached
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Stats Cards */}
