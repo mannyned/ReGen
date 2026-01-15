@@ -24,8 +24,6 @@ export {
 
 export { Tooltip, MetricTooltips, MetricInfo } from './Tooltip'
 
-export { PermissionsBanner } from './PermissionsBanner'
-
 export {
   LockIcon,
   Skeleton,

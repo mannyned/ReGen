@@ -16,8 +16,7 @@ import {
   TrialCountdownBanner,
   PersonalizedUpgradePrompt,
   BlurredChart,
-  LockIcon,
-  PermissionsBanner
+  LockIcon
 } from '../components/ui'
 import { ExportAnalytics } from '../components/ExportAnalytics'
 import { useUpgradeIntent, LockedMetricId } from '../context/UpgradeIntentContext'
@@ -1140,9 +1139,6 @@ export default function AnalyticsPage() {
                 </Card>
               </>
             )}
-
-            {/* Permissions Banner - Show if missing analytics permissions */}
-            <PermissionsBanner className="mb-6" />
 
             {/* Key Metrics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
