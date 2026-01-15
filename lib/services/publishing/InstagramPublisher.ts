@@ -270,7 +270,8 @@ export class InstagramPublisher extends BasePlatformPublisher {
     }
 
     if (item.mimeType.startsWith('video/')) {
-      params.media_type = 'VIDEO'
+      // VIDEO is deprecated, use REELS for carousel video items
+      params.media_type = 'REELS'
       params.video_url = item.mediaUrl
     } else {
       params.image_url = item.mediaUrl
@@ -368,16 +369,11 @@ export class InstagramPublisher extends BasePlatformPublisher {
     }
 
     if (media.mediaType === 'video') {
-      // For videos: use REELS when contentType is 'story', otherwise regular VIDEO
-      if (isStoryOrReel) {
-        params.media_type = 'REELS'
-        params.video_url = media.mediaUrl
-        // Reels can optionally share to feed
-        params.share_to_feed = 'true'
-      } else {
-        params.media_type = 'VIDEO'
-        params.video_url = media.mediaUrl
-      }
+      // All videos must now be posted as REELS (VIDEO media_type is deprecated)
+      params.media_type = 'REELS'
+      params.video_url = media.mediaUrl
+      // Reels share to feed by default
+      params.share_to_feed = 'true'
     } else {
       // For images: use STORIES when contentType is 'story', otherwise regular image post
       if (isStoryOrReel) {
