@@ -64,6 +64,11 @@ export async function POST(request: NextRequest) {
     // Build the prompt based on inputs
     let prompt = `Generate a ${tone} social media caption for ${platform}.`
 
+    // Add content description FIRST - this is the user's primary guidance
+    if (description) {
+      prompt += `\n\n**USER'S CONTENT DESCRIPTION (IMPORTANT - use this as the primary focus):**\n${description}`
+    }
+
     // Add text content if provided
     if (textContent) {
       prompt += `\n\nUser's Text Content:\n${textContent}`
@@ -77,10 +82,6 @@ export async function POST(request: NextRequest) {
     } else if (urlContent) {
       // URL provided but couldn't be extracted
       prompt += `\n\nNote: A link will be shared (${urlContent}) but content could not be extracted. Create an engaging caption based on other provided context.`
-    }
-
-    if (description) {
-      prompt += `\n\nAdditional Description: ${description}`
     }
 
     if (hashtags) {
@@ -110,7 +111,11 @@ export async function POST(request: NextRequest) {
 
     // Add image analysis instruction if image is provided
     if (imageData) {
-      prompt += '\n\nAnalyze the uploaded image/video and create a caption that accurately reflects what you see in the visual content.'
+      if (description) {
+        prompt += '\n\nAn image/video is attached. Use it to enhance the caption, but prioritize the user\'s content description above for the main message and theme.'
+      } else {
+        prompt += '\n\nAnalyze the uploaded image/video and create a caption that accurately reflects what you see in the visual content.'
+      }
     }
 
     prompt += '\n\nGenerate only the caption text, no explanations or metadata. Do NOT include the URL in the caption - it will be added automatically.'
@@ -119,7 +124,7 @@ export async function POST(request: NextRequest) {
     const messages: any[] = [
       {
         role: 'system',
-        content: 'You are an expert social media content creator who writes compelling captions that drive engagement. You analyze images, videos, and linked article content to create captions that accurately reflect the content being shared. When article content is provided, reference key points and create engaging hooks that make people want to read more.'
+        content: 'You are an expert social media content creator who writes compelling captions that drive engagement. IMPORTANT: When a user provides a content description, you MUST incorporate it as the primary theme and message of the caption. The user\'s description tells you what they want the caption to be about. You can analyze images, videos, and linked article content to enhance the caption, but the user\'s content description takes priority. When article content is provided, reference key points and create engaging hooks that make people want to read more.'
       }
     ]
 
