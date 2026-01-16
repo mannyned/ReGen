@@ -882,16 +882,16 @@ export default function AnalyticsPage() {
                   <div className="flex-1">
                     <h3 className="font-semibold text-amber-800 mb-1">LinkedIn Analytics Limitations</h3>
                     <p className="text-sm text-amber-700 mb-2">
-                      LinkedIn provides limited analytics access through their API. Here's what you should know:
+                      LinkedIn restricts engagement data access through their API:
                     </p>
                     <ul className="text-sm text-amber-600 space-y-1 list-disc list-inside">
-                      <li><strong>Personal profiles:</strong> Only basic engagement data (likes, comments) is available</li>
-                      <li><strong>Company/Organization pages:</strong> Full analytics including impressions, reach, and clicks require admin access</li>
-                      <li><strong>Historical data:</strong> Limited to a 12-month rolling window</li>
-                      <li><strong>Real-time:</strong> Analytics may be delayed by up to 48 hours</li>
+                      <li><strong>Personal profiles:</strong> LinkedIn requires partner approval for the <code className="bg-amber-100 px-1 rounded">r_member_social</code> scope to read likes/comments - this is currently unavailable</li>
+                      <li><strong>Company pages:</strong> Full analytics require admin access and <code className="bg-amber-100 px-1 rounded">rw_organization_admin</code> scope</li>
+                      <li><strong>What we can show:</strong> Post count, publishing status, and post URLs</li>
+                      <li><strong>Historical data:</strong> Limited to 12-month rolling window when available</li>
                     </ul>
                     <p className="text-xs text-amber-500 mt-2">
-                      For the most accurate analytics, view your performance directly on LinkedIn's native analytics dashboard.
+                      To view engagement metrics, visit your posts directly on LinkedIn or use LinkedIn's native analytics dashboard.
                     </p>
                   </div>
                 </div>

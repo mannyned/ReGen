@@ -138,14 +138,39 @@ export class LinkedInPublisher extends BasePlatformPublisher {
     shareUrn: string
   ): Promise<{ likeCount: number; commentCount: number }> {
     try {
-      // Get reactions count
-      const reactionsResponse = await fetch(
-        `${this.baseUrl}/reactions/(entity:${encodeURIComponent(shareUrn)})?count=true`,
+      // First, try the socialActions summary endpoint (v2 API)
+      // This provides aggregate counts for likes, comments, shares
+      const socialActionsResponse = await fetch(
+        `${this.baseUrl}/socialActions/${encodeURIComponent(shareUrn)}`,
         {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'LinkedIn-Version': '202401',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        }
+      )
+
+      if (socialActionsResponse.ok) {
+        const data = await socialActionsResponse.json()
+        console.log('[LinkedIn] Social actions response:', JSON.stringify(data))
+        return {
+          likeCount: data.likesSummary?.totalLikes || data.likesCount || 0,
+          commentCount: data.commentsSummary?.totalFirstLevelComments || data.commentsCount || 0,
+        }
+      }
+
+      console.log('[LinkedIn] socialActions endpoint failed:', socialActionsResponse.status)
+
+      // Fallback: Try reactions endpoint with proper encoding
+      // The share URN needs to be URL-encoded within the parentheses
+      const encodedUrn = encodeURIComponent(shareUrn)
+      const reactionsResponse = await fetch(
+        `${this.baseUrl}/reactions?q=entity&entity=${encodedUrn}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
             'X-Restli-Protocol-Version': '2.0.0',
           },
         }
@@ -154,17 +179,19 @@ export class LinkedInPublisher extends BasePlatformPublisher {
       let likeCount = 0
       if (reactionsResponse.ok) {
         const reactionsData = await reactionsResponse.json()
-        likeCount = reactionsData.paging?.total || 0
+        console.log('[LinkedIn] Reactions response:', JSON.stringify(reactionsData))
+        likeCount = reactionsData.paging?.total || reactionsData.elements?.length || 0
+      } else {
+        console.log('[LinkedIn] reactions endpoint failed:', reactionsResponse.status)
       }
 
-      // Get comments count
+      // Try comments endpoint
       const commentsResponse = await fetch(
-        `${this.baseUrl}/socialActions/${encodeURIComponent(shareUrn)}/comments?count=0`,
+        `${this.baseUrl}/socialActions/${encodedUrn}/comments`,
         {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'LinkedIn-Version': '202401',
             'X-Restli-Protocol-Version': '2.0.0',
           },
         }
@@ -173,7 +200,10 @@ export class LinkedInPublisher extends BasePlatformPublisher {
       let commentCount = 0
       if (commentsResponse.ok) {
         const commentsData = await commentsResponse.json()
-        commentCount = commentsData.paging?.total || 0
+        console.log('[LinkedIn] Comments response:', JSON.stringify(commentsData))
+        commentCount = commentsData.paging?.total || commentsData.elements?.length || 0
+      } else {
+        console.log('[LinkedIn] comments endpoint failed:', commentsResponse.status)
       }
 
       return { likeCount, commentCount }
