@@ -80,16 +80,19 @@ const config: ProviderConfig = {
   tokenUrl: LINKEDIN_TOKEN_URL,
   identityUrl: LINKEDIN_USERINFO_URL,
 
-  // Scopes for Sign In with LinkedIn and Organization Management
+  // Scopes for Sign In with LinkedIn
+  // Note: Organization scopes (w_organization_social, r_organization_social, rw_organization_admin)
+  // require LinkedIn Marketing API Partner approval - not available by default
   // See: https://learn.microsoft.com/en-us/linkedin/shared/authentication/getting-access
   scopes: [
     'openid',              // OpenID Connect
     'profile',             // Basic profile
     'email',               // Email address
     'w_member_social',     // Post on user's behalf (personal profile)
-    'w_organization_social', // Post on behalf of organization (company page)
-    'r_organization_social', // Read organization posts/comments/reactions
-    'rw_organization_admin', // Manage organization pages and retrieve reporting data
+    // Organization scopes - uncomment after LinkedIn Partner approval:
+    // 'w_organization_social', // Post on behalf of organization (company page)
+    // 'r_organization_social', // Read organization posts/comments/reactions
+    // 'rw_organization_admin', // Manage organization pages and retrieve reporting data
   ],
 
   capabilities: {

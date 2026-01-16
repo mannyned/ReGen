@@ -822,8 +822,9 @@ function SchedulePageContent() {
                 )}
               </div>
 
-              {/* LinkedIn Organization Selection */}
-              {selectedPlatforms.includes('linkedin') && (
+              {/* LinkedIn Organization Selection - Hidden until LinkedIn Partner approval for org scopes */}
+              {/* TODO: Uncomment after LinkedIn approves w_organization_social, r_organization_social, rw_organization_admin */}
+              {false && selectedPlatforms.includes('linkedin') && (
                 <div className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                   <label className="block text-sm font-medium text-blue-800 mb-3 flex items-center gap-2">
                     <PlatformLogo platform="linkedin" size="sm" />
