@@ -72,6 +72,17 @@ function SchedulePageContent() {
   }>>([])
   const [upcomingPostsLoading, setUpcomingPostsLoading] = useState(true)
 
+  // LinkedIn organization state
+  const [linkedInOrganizations, setLinkedInOrganizations] = useState<Array<{
+    organizationUrn: string
+    organizationId: string
+    name: string
+    vanityName?: string
+    logoUrl?: string
+  }>>([])
+  const [selectedLinkedInOrg, setSelectedLinkedInOrg] = useState<string>('personal') // 'personal' or organization URN
+  const [linkedInOrgsLoading, setLinkedInOrgsLoading] = useState(false)
+
   const platforms: { name: Platform; label: string; icon: string }[] = [
     { name: 'tiktok', label: 'TikTok', icon: '🎵' },
     { name: 'instagram', label: 'Instagram', icon: '📷' },
@@ -216,6 +227,40 @@ function SchedulePageContent() {
 
     fetchUpcomingPosts()
   }, [user, authLoading, searchParams])
+
+  // Fetch LinkedIn organizations when LinkedIn is selected
+  useEffect(() => {
+    const fetchLinkedInOrganizations = async () => {
+      if (!selectedPlatforms.includes('linkedin') || !user?.id) {
+        return
+      }
+
+      // Only fetch if we haven't already
+      if (linkedInOrganizations.length > 0) {
+        return
+      }
+
+      setLinkedInOrgsLoading(true)
+      try {
+        const response = await fetch('/api/linkedin/organizations')
+        const data = await response.json()
+
+        if (data.success && data.organizations) {
+          setLinkedInOrganizations(data.organizations)
+          // If user has organizations, default to first one for better analytics
+          if (data.organizations.length > 0) {
+            setSelectedLinkedInOrg(data.organizations[0].organizationUrn)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch LinkedIn organizations:', error)
+      } finally {
+        setLinkedInOrgsLoading(false)
+      }
+    }
+
+    fetchLinkedInOrganizations()
+  }, [selectedPlatforms, user?.id, linkedInOrganizations.length])
 
   const togglePlatform = (platform: Platform) => {
     setSelectedPlatforms(prev =>
@@ -390,6 +435,11 @@ function SchedulePageContent() {
         media: mediaData,
         contentType, // Pass content type (post vs story/reel)
         contentId,   // Link to ContentUpload (draft) - removes from drafts when published
+      }
+
+      // If LinkedIn is selected and an organization is chosen, include it
+      if (selectedPlatforms.includes('linkedin') && selectedLinkedInOrg && selectedLinkedInOrg !== 'personal') {
+        publishData.linkedInOrganizationUrn = selectedLinkedInOrg
       }
 
       // Add carouselItems for multi-file posts
@@ -771,6 +821,96 @@ function SchedulePageContent() {
                   </div>
                 )}
               </div>
+
+              {/* LinkedIn Organization Selection */}
+              {selectedPlatforms.includes('linkedin') && (
+                <div className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                  <label className="block text-sm font-medium text-blue-800 mb-3 flex items-center gap-2">
+                    <PlatformLogo platform="linkedin" size="sm" />
+                    LinkedIn Posting Options
+                  </label>
+
+                  {linkedInOrgsLoading ? (
+                    <div className="flex items-center gap-2 text-blue-600">
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <span className="text-sm">Loading your LinkedIn pages...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        {/* Personal Profile Option */}
+                        <label
+                          className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                            selectedLinkedInOrg === 'personal'
+                              ? 'bg-blue-100 border-2 border-blue-500'
+                              : 'bg-white border border-blue-200 hover:border-blue-300'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="linkedinOrg"
+                            value="personal"
+                            checked={selectedLinkedInOrg === 'personal'}
+                            onChange={(e) => setSelectedLinkedInOrg(e.target.value)}
+                            className="w-4 h-4 text-blue-600"
+                          />
+                          <div className="flex-1">
+                            <span className="font-medium text-text-primary">Personal Profile</span>
+                            <p className="text-xs text-text-secondary">Post to your personal LinkedIn feed</p>
+                          </div>
+                          <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">Limited Analytics</span>
+                        </label>
+
+                        {/* Organization Options */}
+                        {linkedInOrganizations.map((org) => (
+                          <label
+                            key={org.organizationUrn}
+                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                              selectedLinkedInOrg === org.organizationUrn
+                                ? 'bg-blue-100 border-2 border-blue-500'
+                                : 'bg-white border border-blue-200 hover:border-blue-300'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="linkedinOrg"
+                              value={org.organizationUrn}
+                              checked={selectedLinkedInOrg === org.organizationUrn}
+                              onChange={(e) => setSelectedLinkedInOrg(e.target.value)}
+                              className="w-4 h-4 text-blue-600"
+                            />
+                            <div className="flex-1">
+                              <span className="font-medium text-text-primary">{org.name}</span>
+                              {org.vanityName && (
+                                <p className="text-xs text-text-secondary">linkedin.com/company/{org.vanityName}</p>
+                              )}
+                            </div>
+                            <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">Full Analytics</span>
+                          </label>
+                        ))}
+                      </div>
+
+                      {linkedInOrganizations.length === 0 && (
+                        <p className="text-xs text-blue-600 mt-3">
+                          No Company Pages found. To get full analytics, create a LinkedIn Company Page and make yourself an admin.
+                        </p>
+                      )}
+
+                      {linkedInOrganizations.length > 0 && selectedLinkedInOrg !== 'personal' && (
+                        <p className="text-xs text-green-600 mt-3 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Posting to a Company Page enables full engagement analytics (likes, comments, impressions, reach)
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* Post Mode Selection */}
               <div className="mb-8">

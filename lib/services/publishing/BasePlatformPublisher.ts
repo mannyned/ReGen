@@ -32,6 +32,7 @@ export interface PublishOptions {
   media?: ContentPayload  // Optional for text-only posts
   scheduledAt?: Date
   contentType?: 'post' | 'story'  // Post to feed or story/reel
+  linkedInOrganizationUrn?: string  // For LinkedIn organization/company page posts
 }
 
 export abstract class BasePlatformPublisher {

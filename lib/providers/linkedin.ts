@@ -1,5 +1,5 @@
 /**
- * LinkedIn OAuth Provider - SCAFFOLD
+ * LinkedIn OAuth Provider
  *
  * LinkedIn uses OAuth 2.0 for their Marketing API and Sign In.
  *
@@ -13,15 +13,15 @@
  * - openid: OpenID Connect
  * - profile: Basic profile (first name, last name, etc.)
  * - email: Email address
- * - w_member_social: Post on behalf of user
+ * - w_member_social: Post on behalf of user (personal profile)
+ * - w_organization_social: Post on behalf of organization (company page)
+ * - r_organization_social: Read organization posts/comments/reactions
+ * - rw_organization_admin: Manage organization pages and retrieve reporting data
  *
- * Note: LinkedIn's API access varies by product tier.
- * Marketing API requires partner approval.
+ * Note: Organization scopes require the user to be an ADMINISTRATOR of the company page.
  *
  * @see https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow
- * @see https://learn.microsoft.com/en-us/linkedin/marketing/getting-started
- *
- * TODO: Complete implementation when LinkedIn credentials are configured
+ * @see https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api
  */
 
 import type {
@@ -80,14 +80,16 @@ const config: ProviderConfig = {
   tokenUrl: LINKEDIN_TOKEN_URL,
   identityUrl: LINKEDIN_USERINFO_URL,
 
-  // Basic scopes for Sign In with LinkedIn
-  // Additional scopes require partner approval
-  // See: https://learn.microsoft.com/en-us/linkedin/shared/references/v2/profile/lite-profile
+  // Scopes for Sign In with LinkedIn and Organization Management
+  // See: https://learn.microsoft.com/en-us/linkedin/shared/authentication/getting-access
   scopes: [
-    'openid',           // OpenID Connect
-    'profile',          // Basic profile
-    'email',            // Email address
-    'w_member_social',  // Post on user's behalf
+    'openid',              // OpenID Connect
+    'profile',             // Basic profile
+    'email',               // Email address
+    'w_member_social',     // Post on user's behalf (personal profile)
+    'w_organization_social', // Post on behalf of organization (company page)
+    'r_organization_social', // Read organization posts/comments/reactions
+    'rw_organization_admin', // Manage organization pages and retrieve reporting data
   ],
 
   capabilities: {

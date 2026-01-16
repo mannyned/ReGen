@@ -30,13 +30,19 @@ export class LinkedInPublisher extends BasePlatformPublisher {
   }
 
   async publishContent(options: PublishOptions): Promise<PublishResult> {
-    const { userId, content, media } = options
+    const { userId, content, media, linkedInOrganizationUrn } = options
     this.validateContent(content, media)
+
+    // If organization URN is provided, use organization publishing
+    if (linkedInOrganizationUrn) {
+      console.log('[LinkedIn] Publishing to organization:', linkedInOrganizationUrn)
+      return this.publishToOrganization({ ...options, organizationUrn: linkedInOrganizationUrn })
+    }
 
     const accessToken = await this.getAccessToken(userId)
 
     try {
-      // Step 1: Get user URN
+      // Step 1: Get user URN (personal profile)
       const userUrn = await this.getUserUrn(accessToken)
 
       // Step 2: Determine post type and prepare media
@@ -294,6 +300,372 @@ export class LinkedInPublisher extends BasePlatformPublisher {
     )
 
     return `urn:li:person:${response.sub}`
+  }
+
+  /**
+   * Get organizations where the user is an administrator
+   * Returns list of organization URNs and names
+   */
+  async getAdministeredOrganizations(userId: string): Promise<Array<{
+    organizationUrn: string
+    organizationId: string
+    name: string
+    vanityName?: string
+    logoUrl?: string
+  }>> {
+    const accessToken = await this.getAccessToken(userId)
+
+    try {
+      // Fetch organizations where user has admin role
+      const response = await fetch(
+        `${this.baseUrl}/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'X-Restli-Protocol-Version': '2.0.0',
+            'LinkedIn-Version': '202401',
+          },
+        }
+      )
+
+      if (!response.ok) {
+        console.log('[LinkedIn] Failed to fetch organizations:', response.status)
+        return []
+      }
+
+      const data = await response.json()
+      const organizations: Array<{
+        organizationUrn: string
+        organizationId: string
+        name: string
+        vanityName?: string
+        logoUrl?: string
+      }> = []
+
+      // Fetch details for each organization
+      for (const element of data.elements || []) {
+        const orgUrn = element.organization
+        if (!orgUrn) continue
+
+        // Extract organization ID from URN
+        const orgId = orgUrn.replace('urn:li:organization:', '')
+
+        try {
+          // Fetch organization details
+          const orgResponse = await fetch(
+            `${this.baseUrl}/organizations/${orgId}`,
+            {
+              method: 'GET',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'X-Restli-Protocol-Version': '2.0.0',
+                'LinkedIn-Version': '202401',
+              },
+            }
+          )
+
+          if (orgResponse.ok) {
+            const orgData = await orgResponse.json()
+            organizations.push({
+              organizationUrn: orgUrn,
+              organizationId: orgId,
+              name: orgData.localizedName || orgData.name || `Organization ${orgId}`,
+              vanityName: orgData.vanityName,
+              logoUrl: orgData.logoV2?.original || orgData.logoV2?.['cropped~']?.elements?.[0]?.identifiers?.[0]?.identifier,
+            })
+          } else {
+            // If we can't fetch details, still include the org with basic info
+            organizations.push({
+              organizationUrn: orgUrn,
+              organizationId: orgId,
+              name: `Organization ${orgId}`,
+            })
+          }
+        } catch (error) {
+          console.error(`[LinkedIn] Failed to fetch org details for ${orgId}:`, error)
+          organizations.push({
+            organizationUrn: orgUrn,
+            organizationId: orgId,
+            name: `Organization ${orgId}`,
+          })
+        }
+      }
+
+      console.log('[LinkedIn] Found', organizations.length, 'administered organizations')
+      return organizations
+    } catch (error) {
+      console.error('[LinkedIn] Failed to get administered organizations:', error)
+      return []
+    }
+  }
+
+  /**
+   * Publish content to a LinkedIn organization (company page)
+   * Uses the REST Posts API for organization posting
+   */
+  async publishToOrganization(options: PublishOptions & { organizationUrn: string }): Promise<PublishResult> {
+    const { userId, content, media, organizationUrn } = options
+    this.validateContent(content, media)
+
+    const accessToken = await this.getAccessToken(userId)
+
+    try {
+      // Step 1: Upload media if present
+      let mediaContent: Record<string, unknown> | undefined
+
+      if (media?.mediaUrl) {
+        if (media.mediaType === 'video') {
+          // Upload video using the new Videos API for organizations
+          const videoUrn = await this.uploadOrganizationVideo(accessToken, organizationUrn, media)
+          mediaContent = {
+            media: {
+              id: videoUrn,
+            }
+          }
+        } else if (media.mediaType === 'carousel' && media.additionalMediaUrls?.length) {
+          // Carousels for orgs - upload as multi-image
+          const allUrls = [media.mediaUrl, ...media.additionalMediaUrls]
+          const imageUrns = await this.uploadMultipleImages(accessToken, organizationUrn, allUrls, media.mimeType)
+          mediaContent = {
+            multiImage: {
+              images: imageUrns.map(urn => ({ id: urn }))
+            }
+          }
+        } else {
+          // Single image
+          const imageUrn = await this.uploadOrganizationImage(accessToken, organizationUrn, media)
+          mediaContent = {
+            media: {
+              id: imageUrn,
+            }
+          }
+        }
+      }
+
+      // Step 2: Create the post using REST Posts API
+      const postData: Record<string, unknown> = {
+        author: organizationUrn,
+        commentary: this.formatCaption(content),
+        visibility: 'PUBLIC',
+        distribution: {
+          feedDistribution: 'MAIN_FEED',
+          targetEntities: [],
+          thirdPartyDistributionChannels: [],
+        },
+        lifecycleState: 'PUBLISHED',
+        isReshareDisabledByAuthor: false,
+      }
+
+      if (mediaContent) {
+        postData.content = mediaContent
+      }
+
+      console.log('[LinkedIn] Creating organization post:', JSON.stringify(postData))
+
+      const response = await fetch(
+        'https://api.linkedin.com/rest/posts',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'X-Restli-Protocol-Version': '2.0.0',
+            'LinkedIn-Version': '202401',
+          },
+          body: JSON.stringify(postData),
+        }
+      )
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('[LinkedIn] Organization post failed:', response.status, errorText)
+        throw new Error(`Failed to create organization post: ${response.status} - ${errorText}`)
+      }
+
+      // Get the post ID from the response header
+      const postId = response.headers.get('x-restli-id') || response.headers.get('x-linkedin-id')
+      console.log('[LinkedIn] Organization post created:', postId)
+
+      return {
+        success: true,
+        platform: this.platform,
+        platformPostId: postId || undefined,
+        platformUrl: postId ? `https://www.linkedin.com/feed/update/${postId}` : undefined,
+        publishedAt: new Date(),
+      }
+    } catch (error) {
+      console.error('[LinkedIn] Organization publish error:', error)
+      return {
+        success: false,
+        platform: this.platform,
+        error: error instanceof Error ? error.message : 'Failed to publish to LinkedIn organization',
+      }
+    }
+  }
+
+  /**
+   * Upload image for organization post using Images API
+   */
+  private async uploadOrganizationImage(
+    accessToken: string,
+    ownerUrn: string,
+    media: ContentPayload
+  ): Promise<string> {
+    console.log('[LinkedIn] Uploading organization image')
+
+    // Fetch the image
+    const mediaResponse = await fetch(media.mediaUrl)
+    if (!mediaResponse.ok) {
+      throw new Error(`Failed to fetch image: ${mediaResponse.status}`)
+    }
+    const mediaBuffer = await mediaResponse.arrayBuffer()
+
+    // Initialize upload
+    const initResponse = await fetch(
+      'https://api.linkedin.com/rest/images?action=initializeUpload',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Restli-Protocol-Version': '2.0.0',
+          'LinkedIn-Version': '202401',
+        },
+        body: JSON.stringify({
+          initializeUploadRequest: {
+            owner: ownerUrn,
+          },
+        }),
+      }
+    )
+
+    if (!initResponse.ok) {
+      const errorText = await initResponse.text()
+      throw new Error(`Failed to initialize image upload: ${initResponse.status} - ${errorText}`)
+    }
+
+    const initData = await initResponse.json()
+    const uploadUrl = initData.value?.uploadUrl
+    const imageUrn = initData.value?.image
+
+    if (!uploadUrl || !imageUrn) {
+      throw new Error('No upload URL or image URN returned')
+    }
+
+    // Upload the image
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': media.mimeType || 'image/jpeg',
+      },
+      body: mediaBuffer,
+    })
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Failed to upload image: ${uploadResponse.status}`)
+    }
+
+    console.log('[LinkedIn] Organization image uploaded:', imageUrn)
+    return imageUrn
+  }
+
+  /**
+   * Upload video for organization post using Videos API
+   */
+  private async uploadOrganizationVideo(
+    accessToken: string,
+    ownerUrn: string,
+    media: ContentPayload
+  ): Promise<string> {
+    console.log('[LinkedIn] Uploading organization video')
+
+    // Fetch the video
+    const mediaResponse = await fetch(media.mediaUrl)
+    if (!mediaResponse.ok) {
+      throw new Error(`Failed to fetch video: ${mediaResponse.status}`)
+    }
+    const mediaBuffer = await mediaResponse.arrayBuffer()
+    const fileSize = mediaBuffer.byteLength
+
+    // Initialize upload
+    const initResponse = await fetch(
+      'https://api.linkedin.com/rest/videos?action=initializeUpload',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Restli-Protocol-Version': '2.0.0',
+          'LinkedIn-Version': '202401',
+        },
+        body: JSON.stringify({
+          initializeUploadRequest: {
+            owner: ownerUrn,
+            fileSizeBytes: fileSize,
+            uploadCaptions: false,
+            uploadThumbnail: false,
+          },
+        }),
+      }
+    )
+
+    if (!initResponse.ok) {
+      const errorText = await initResponse.text()
+      throw new Error(`Failed to initialize video upload: ${initResponse.status} - ${errorText}`)
+    }
+
+    const initData = await initResponse.json()
+    const uploadUrl = initData.value?.uploadInstructions?.[0]?.uploadUrl
+    const videoUrn = initData.value?.video
+
+    if (!uploadUrl || !videoUrn) {
+      throw new Error('No upload URL or video URN returned')
+    }
+
+    // Upload the video
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': media.mimeType || 'video/mp4',
+      },
+      body: mediaBuffer,
+    })
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Failed to upload video: ${uploadResponse.status}`)
+    }
+
+    // Finalize upload
+    const finalizeResponse = await fetch(
+      'https://api.linkedin.com/rest/videos?action=finalizeUpload',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Restli-Protocol-Version': '2.0.0',
+          'LinkedIn-Version': '202401',
+        },
+        body: JSON.stringify({
+          finalizeUploadRequest: {
+            video: videoUrn,
+            uploadToken: '',
+            uploadedPartIds: [],
+          },
+        }),
+      }
+    )
+
+    if (!finalizeResponse.ok) {
+      console.log('[LinkedIn] Video finalize response:', finalizeResponse.status)
+      // Some videos don't require finalization, continue anyway
+    }
+
+    console.log('[LinkedIn] Organization video uploaded:', videoUrn)
+    return videoUrn
   }
 
   /**

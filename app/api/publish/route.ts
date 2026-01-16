@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
         contentType,
         carouselItems,  // New: array of carousel items for multi-image posts
         contentId,      // Link to ContentUpload (draft) record
+        linkedInOrganizationUrn,  // For LinkedIn organization/company page posts
       } = body as {
         userId: string
         platforms: SocialPlatform[]
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
         contentType?: 'post' | 'story'
         carouselItems?: CarouselItem[]  // New: for carousel/multi-image posts
         contentId?: string              // Link to ContentUpload (draft) record
+        linkedInOrganizationUrn?: string  // For LinkedIn organization/company page posts
       }
 
       // Determine if this is a carousel post
@@ -199,6 +201,7 @@ export async function POST(request: NextRequest) {
           media,
           platformContent,
           contentType,
+          linkedInOrganizationUrn,  // Pass LinkedIn org URN for company page posts
         })
 
         // Process single-item results
