@@ -91,34 +91,147 @@ export class LinkedInPublisher extends BasePlatformPublisher {
   async getPostAnalytics(postId: string, userId: string): Promise<PostAnalytics> {
     const accessToken = await this.getAccessToken(userId)
 
-    // LinkedIn analytics require special access
-    const response = await this.makeApiRequest<{
-      elements: Array<{
-        totalShareStatistics: {
-          impressionCount: number
-          likeCount: number
-          commentCount: number
-          shareCount: number
-          clickCount: number
-          engagement: number
+    try {
+      // Try to get social actions (likes, comments) for the post
+      // This works for both personal profiles and organization posts
+      const socialActionsResponse = await this.getSocialActions(accessToken, postId)
+
+      // Also try organization statistics if available (requires rw_organization_admin scope)
+      let orgStats = null
+      try {
+        orgStats = await this.getOrganizationShareStats(accessToken, postId)
+      } catch (error) {
+        // Organization stats may not be available for personal profiles
+        console.log('[LinkedIn] Organization stats not available:', error instanceof Error ? error.message : 'Unknown error')
+      }
+
+      return {
+        views: orgStats?.impressionCount || 0,
+        likes: socialActionsResponse.likeCount || orgStats?.likeCount || 0,
+        comments: socialActionsResponse.commentCount || orgStats?.commentCount || 0,
+        shares: orgStats?.shareCount || 0,
+        saves: 0, // LinkedIn doesn't expose saves
+        reach: orgStats?.uniqueImpressionsCount || orgStats?.impressionCount || 0,
+        impressions: orgStats?.impressionCount || 0,
+      }
+    } catch (error) {
+      console.error('[LinkedIn] Failed to get post analytics:', error)
+      // Return zeros if we can't get analytics
+      return {
+        views: 0,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        saves: 0,
+        reach: 0,
+        impressions: 0,
+      }
+    }
+  }
+
+  /**
+   * Get social actions (likes, comments) for a specific share
+   * Works for both personal profiles and organization posts
+   */
+  private async getSocialActions(
+    accessToken: string,
+    shareUrn: string
+  ): Promise<{ likeCount: number; commentCount: number }> {
+    try {
+      // Get reactions count
+      const reactionsResponse = await fetch(
+        `${this.baseUrl}/reactions/(entity:${encodeURIComponent(shareUrn)})?count=true`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'LinkedIn-Version': '202401',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
         }
-      }>
-    }>(
-      `/organizationalEntityShareStatistics?q=organizationalEntity&shares[0]=${encodeURIComponent(postId)}`,
-      { method: 'GET' },
-      accessToken
+      )
+
+      let likeCount = 0
+      if (reactionsResponse.ok) {
+        const reactionsData = await reactionsResponse.json()
+        likeCount = reactionsData.paging?.total || 0
+      }
+
+      // Get comments count
+      const commentsResponse = await fetch(
+        `${this.baseUrl}/socialActions/${encodeURIComponent(shareUrn)}/comments?count=0`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'LinkedIn-Version': '202401',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        }
+      )
+
+      let commentCount = 0
+      if (commentsResponse.ok) {
+        const commentsData = await commentsResponse.json()
+        commentCount = commentsData.paging?.total || 0
+      }
+
+      return { likeCount, commentCount }
+    } catch (error) {
+      console.error('[LinkedIn] Failed to get social actions:', error)
+      return { likeCount: 0, commentCount: 0 }
+    }
+  }
+
+  /**
+   * Get organization share statistics
+   * Only works for organization/company page posts with rw_organization_admin scope
+   */
+  private async getOrganizationShareStats(
+    accessToken: string,
+    shareUrn: string
+  ): Promise<{
+    impressionCount: number
+    uniqueImpressionsCount: number
+    likeCount: number
+    commentCount: number
+    shareCount: number
+    clickCount: number
+    engagement: number
+  } | null> {
+    // Extract organization URN from the share if possible, or use the share directly
+    const response = await fetch(
+      `${this.baseUrl}/organizationalEntityShareStatistics?q=organizationalEntity&shares=${encodeURIComponent(shareUrn)}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'LinkedIn-Version': '202401',
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      }
     )
 
-    const stats = response.elements[0]?.totalShareStatistics
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`LinkedIn organization stats failed: ${response.status} - ${errorText}`)
+    }
+
+    const data = await response.json()
+    const stats = data.elements?.[0]?.totalShareStatistics
+
+    if (!stats) {
+      return null
+    }
 
     return {
-      views: stats?.impressionCount || 0,
-      likes: stats?.likeCount || 0,
-      comments: stats?.commentCount || 0,
-      shares: stats?.shareCount || 0,
-      saves: 0, // LinkedIn doesn't expose saves
-      reach: stats?.impressionCount || 0,
-      impressions: stats?.impressionCount || 0,
+      impressionCount: stats.impressionCount || 0,
+      uniqueImpressionsCount: stats.uniqueImpressionsCount || 0,
+      likeCount: stats.likeCount || 0,
+      commentCount: stats.commentCount || 0,
+      shareCount: stats.shareCount || 0,
+      clickCount: stats.clickCount || 0,
+      engagement: stats.engagement || 0,
     }
   }
 

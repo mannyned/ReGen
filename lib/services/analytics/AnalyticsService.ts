@@ -358,24 +358,181 @@ export class AnalyticsService {
     dateRange: { start: Date; end: Date }
   ): Promise<AccountAnalytics> {
     // LinkedIn analytics are limited for personal profiles
-    const response = await fetch(
-      `${API_BASE_URLS.linkedin}/connections?q=viewer&count=0`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+    // Full analytics require organization/company page with rw_organization_admin scope
+
+    let followers = 0
+    let totalPosts = 0
+    let totalEngagement = 0
+    let totalImpressions = 0
+    const topPosts: PostAnalytics[] = []
+
+    try {
+      // Try to get organization statistics if user has admin access to an organization
+      const orgFollowers = await this.getLinkedInOrganizationFollowers(accessToken)
+      if (orgFollowers) {
+        followers = orgFollowers.followerCount
       }
-    )
+
+      // Try to get share statistics for recent posts
+      const shareStats = await this.getLinkedInShareStatistics(accessToken, dateRange)
+      if (shareStats) {
+        totalImpressions = shareStats.totalImpressions
+        totalEngagement = shareStats.totalEngagement
+        totalPosts = shareStats.postCount
+        topPosts.push(...shareStats.topPosts)
+      }
+    } catch (error) {
+      // LinkedIn analytics may not be available for personal profiles
+      console.log('[LinkedIn Analytics] Limited analytics available:', error instanceof Error ? error.message : 'Unknown error')
+    }
+
+    const avgEngagementRate = totalImpressions > 0 ? (totalEngagement / totalImpressions) * 100 : 0
 
     return {
-      followers: 0, // LinkedIn doesn't expose follower count easily
-      following: 0,
-      totalPosts: 0,
-      avgEngagementRate: 0,
-      avgReach: 0,
-      avgImpressions: 0,
-      followerGrowth: 0,
-      topPosts: [],
+      followers,
+      following: 0, // LinkedIn doesn't expose this
+      totalPosts,
+      avgEngagementRate,
+      avgReach: totalImpressions,
+      avgImpressions: totalImpressions,
+      followerGrowth: 0, // Would need historical data
+      topPosts: topPosts.slice(0, 5),
+    }
+  }
+
+  /**
+   * Get LinkedIn organization follower count
+   * Requires rw_organization_admin scope
+   */
+  private async getLinkedInOrganizationFollowers(
+    accessToken: string
+  ): Promise<{ followerCount: number; organizationUrn: string } | null> {
+    try {
+      // First, get the user's administered organizations
+      const orgsResponse = await fetch(
+        `${API_BASE_URLS.linkedin}/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organization~))`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'LinkedIn-Version': '202401',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        }
+      )
+
+      if (!orgsResponse.ok) {
+        return null
+      }
+
+      const orgsData = await orgsResponse.json()
+      const org = orgsData.elements?.[0]?.['organization~']
+
+      if (!org) {
+        return null
+      }
+
+      // Get follower statistics for the organization
+      const statsResponse = await fetch(
+        `${API_BASE_URLS.linkedin}/networkSizes/${encodeURIComponent(org.id)}?edgeType=COMPANY_FOLLOWED_BY_MEMBER`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'LinkedIn-Version': '202401',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        }
+      )
+
+      if (!statsResponse.ok) {
+        return null
+      }
+
+      const statsData = await statsResponse.json()
+
+      return {
+        followerCount: statsData.firstDegreeSize || 0,
+        organizationUrn: org.id,
+      }
+    } catch (error) {
+      console.error('[LinkedIn Analytics] Failed to get organization followers:', error)
+      return null
+    }
+  }
+
+  /**
+   * Get LinkedIn share statistics for organization posts
+   * Requires rw_organization_admin scope
+   */
+  private async getLinkedInShareStatistics(
+    accessToken: string,
+    dateRange: { start: Date; end: Date }
+  ): Promise<{
+    totalImpressions: number
+    totalEngagement: number
+    postCount: number
+    topPosts: PostAnalytics[]
+  } | null> {
+    try {
+      // This endpoint requires organization context
+      // For personal profiles, this will return limited or no data
+      const response = await fetch(
+        `${API_BASE_URLS.linkedin}/organizationalEntityShareStatistics?q=organizationalEntity&count=100`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'LinkedIn-Version': '202401',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        }
+      )
+
+      if (!response.ok) {
+        return null
+      }
+
+      const data = await response.json()
+      let totalImpressions = 0
+      let totalEngagement = 0
+      const topPosts: PostAnalytics[] = []
+
+      for (const element of data.elements || []) {
+        const stats = element.totalShareStatistics
+        if (stats) {
+          const likes = stats.likeCount || 0
+          const comments = stats.commentCount || 0
+          const shares = stats.shareCount || 0
+          const impressions = stats.impressionCount || 0
+          const engagement = likes + comments + shares
+
+          totalImpressions += impressions
+          totalEngagement += engagement
+
+          if (element.share) {
+            topPosts.push({
+              views: impressions,
+              likes,
+              comments,
+              shares,
+              saves: 0, // LinkedIn doesn't expose saves
+              reach: stats.uniqueImpressionsCount || impressions,
+              impressions,
+            })
+          }
+        }
+      }
+
+      // Sort by total engagement (likes + comments + shares) descending
+      topPosts.sort((a, b) => (b.likes + b.comments + b.shares) - (a.likes + a.comments + a.shares))
+
+      return {
+        totalImpressions,
+        totalEngagement,
+        postCount: data.elements?.length || 0,
+        topPosts,
+      }
+    } catch (error) {
+      console.error('[LinkedIn Analytics] Failed to get share statistics:', error)
+      return null
     }
   }
 
@@ -456,7 +613,7 @@ export class AnalyticsService {
     // Step 3: Get recent posts for engagement calculation
     let totalPosts = 0
     let totalEngagement = 0
-    const topPosts: Array<{ postId: string; engagement: number }> = []
+    const topPosts: PostAnalytics[] = []
 
     try {
       const postsResponse = await fetch(
@@ -476,13 +633,18 @@ export class AnalyticsService {
           totalEngagement += engagement
 
           topPosts.push({
-            postId: post.id,
-            engagement,
+            views: 0,
+            likes: reactions,
+            comments,
+            shares,
+            saves: 0,
+            reach: 0,
+            impressions: 0,
           })
         }
 
-        // Sort by engagement descending
-        topPosts.sort((a, b) => b.engagement - a.engagement)
+        // Sort by engagement (likes + comments + shares) descending
+        topPosts.sort((a, b) => (b.likes + b.comments + b.shares) - (a.likes + a.comments + a.shares))
       }
     } catch (error) {
       console.error('[Facebook Analytics] Failed to fetch posts:', error)

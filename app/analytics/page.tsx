@@ -870,6 +870,34 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
+            {/* LinkedIn Analytics Limitations Notice */}
+            {selectedPlatform === 'linkedin' && (
+              <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 animate-fade-in">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-amber-800 mb-1">LinkedIn Analytics Limitations</h3>
+                    <p className="text-sm text-amber-700 mb-2">
+                      LinkedIn provides limited analytics access through their API. Here's what you should know:
+                    </p>
+                    <ul className="text-sm text-amber-600 space-y-1 list-disc list-inside">
+                      <li><strong>Personal profiles:</strong> Only basic engagement data (likes, comments) is available</li>
+                      <li><strong>Company/Organization pages:</strong> Full analytics including impressions, reach, and clicks require admin access</li>
+                      <li><strong>Historical data:</strong> Limited to a 12-month rolling window</li>
+                      <li><strong>Real-time:</strong> Analytics may be delayed by up to 48 hours</li>
+                    </ul>
+                    <p className="text-xs text-amber-500 mt-2">
+                      For the most accurate analytics, view your performance directly on LinkedIn's native analytics dashboard.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* AI Recommendations - Pro Plan Only */}
             {userPlan === 'pro' && (
               <GradientBanner className="mb-8 animate-slide-up">
