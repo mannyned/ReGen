@@ -8,6 +8,7 @@ export function PWAInstallPrompt() {
   const { isInstallable, isInstalled, isIOS, promptInstall, dismissInstallPrompt } = usePWA()
   const [showPrompt, setShowPrompt] = useState(false)
   const [showIOSInstructions, setShowIOSInstructions] = useState(false)
+  const [sessionDismissed, setSessionDismissed] = useState(false)
 
   useEffect(() => {
     // Don't show if already installed
@@ -16,24 +17,28 @@ export function PWAInstallPrompt() {
       return
     }
 
-    // Check if user dismissed recently (within 7 days)
-    const dismissedAt = localStorage.getItem('pwa-install-dismissed')
-    if (dismissedAt) {
-      const daysSinceDismissed = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24)
-      if (daysSinceDismissed < 7) {
-        return
-      }
+    // Don't show if dismissed this session (but will show again next session)
+    if (sessionDismissed) {
+      return
+    }
+
+    // Check if on mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+
+    // Only show on mobile devices or if installable on desktop
+    if (!isMobile && !isInstallable) {
+      return
     }
 
     // Show prompt after a delay for better UX
     const timer = setTimeout(() => {
-      if (isInstallable || isIOS) {
+      if (isInstallable || isIOS || isMobile) {
         setShowPrompt(true)
       }
     }, 3000) // Show after 3 seconds
 
     return () => clearTimeout(timer)
-  }, [isInstallable, isInstalled, isIOS])
+  }, [isInstallable, isInstalled, isIOS, sessionDismissed])
 
   const handleInstall = async () => {
     if (isIOS) {
@@ -46,7 +51,8 @@ export function PWAInstallPrompt() {
   const handleDismiss = () => {
     setShowPrompt(false)
     setShowIOSInstructions(false)
-    dismissInstallPrompt()
+    // Only dismiss for this session - will show again on next visit until installed
+    setSessionDismissed(true)
   }
 
   if (!showPrompt) return null

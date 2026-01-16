@@ -99,8 +99,7 @@ export function PWAProvider({ children }: { children: ReactNode }) {
 
   const dismissInstallPrompt = () => {
     setIsInstallable(false)
-    // Store dismissal in localStorage to not show again for a while
-    localStorage.setItem('pwa-install-dismissed', Date.now().toString())
+    // No longer storing in localStorage - prompt will show every session until installed
   }
 
   return (
