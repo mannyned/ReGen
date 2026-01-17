@@ -14,7 +14,7 @@ interface UploadedFileData {
   fileId: string
 }
 
-type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'snapchat' | 'pinterest' | 'discord'
+type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'linkedin-org' | 'snapchat' | 'pinterest' | 'discord'
 
 interface CarouselConstraints {
   minItems: number
@@ -41,6 +41,7 @@ const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
   'facebook': 'facebook',
   'x': 'twitter',
   'linkedin': 'linkedin',
+  'linkedin-org': 'linkedin-org',
   'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',

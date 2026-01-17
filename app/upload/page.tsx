@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import type { SocialPlatform } from '@/lib/types/social'
 
 type UploadType = 'video' | 'image' | 'media' | 'text'
-type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'snapchat' | 'pinterest' | 'discord'
+type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'linkedin-org' | 'snapchat' | 'pinterest' | 'discord'
 
 // Map Platform type to SocialPlatform for logo component
 const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
@@ -20,6 +20,7 @@ const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
   'facebook': 'facebook',
   'x': 'twitter',
   'linkedin': 'linkedin',
+  'linkedin-org': 'linkedin-org',
   'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
@@ -41,6 +42,7 @@ const PLATFORM_LIMITS = {
   youtube: { post: 1, story: 1 },     // No carousel support
   x: { post: 4, story: 1 },           // Up to 4 images per tweet
   linkedin: { post: 20, story: 1 },   // Multi-image: 2-20 items
+  'linkedin-org': { post: 20, story: 1 },  // Company page: same as personal
   pinterest: { post: 5, story: 1 },   // Carousel pin: 2-5 images
   discord: { post: 10, story: 1 },    // Multi-attachment: up to 10
 }
@@ -59,6 +61,7 @@ const CAROUSEL_PLATFORM_INFO: Record<Platform, {
   youtube: { minItems: 1, maxItems: 1, allowVideo: true, description: 'Single video only' },
   x: { minItems: 1, maxItems: 4, allowVideo: false, description: 'Up to 4 images (no video carousel)' },
   linkedin: { minItems: 2, maxItems: 20, allowVideo: false, description: 'Multi-image post (images only)' },
+  'linkedin-org': { minItems: 2, maxItems: 20, allowVideo: false, description: 'Company page multi-image (images only)' },
   pinterest: { minItems: 2, maxItems: 5, allowVideo: false, description: 'Carousel pin (images only)' },
   discord: { minItems: 1, maxItems: 10, allowVideo: true, description: 'Multi-attachment message' },
 }
@@ -69,7 +72,8 @@ const platforms = [
   { id: 'youtube' as Platform, name: 'YouTube', icon: '▶️', color: 'bg-gradient-to-br from-red-600 to-red-500' },
   { id: 'facebook' as Platform, name: 'Facebook', icon: '👥', color: 'bg-gradient-to-br from-blue-600 to-blue-500' },
   { id: 'x' as Platform, name: 'X (Twitter)', icon: '𝕏', color: 'bg-gradient-to-br from-gray-900 to-gray-700' },
-  { id: 'linkedin' as Platform, name: 'LinkedIn', icon: '💼', color: 'bg-gradient-to-br from-blue-700 to-blue-600' },
+  { id: 'linkedin' as Platform, name: 'LinkedIn Personal', icon: '👤', color: 'bg-gradient-to-br from-blue-700 to-blue-600' },
+  { id: 'linkedin-org' as Platform, name: 'LinkedIn Company', icon: '🏢', color: 'bg-gradient-to-br from-blue-700 to-blue-600' },
   { id: 'snapchat' as Platform, name: 'Snapchat', icon: '👻', color: 'bg-gradient-to-br from-yellow-400 to-yellow-500' },
   { id: 'pinterest' as Platform, name: 'Pinterest', icon: '📌', color: 'bg-gradient-to-br from-red-600 to-red-500' },
   { id: 'discord' as Platform, name: 'Discord', icon: '💬', color: 'bg-gradient-to-br from-indigo-600 to-indigo-500' },
@@ -1153,27 +1157,40 @@ function UploadPageContent() {
               </div>
             )}
 
-            {/* LinkedIn Analytics Info */}
-            {selectedPlatforms.includes('linkedin') && (
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            {/* LinkedIn Personal Analytics Notice */}
+            {selectedPlatforms.includes('linkedin') && !selectedPlatforms.includes('linkedin-org') && (
+              <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                 <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <span className="text-lg">💼</span>
+                  <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <span className="text-lg">👤</span>
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-medium text-blue-800 mb-1">LinkedIn Analytics</h4>
-                    <div className="text-xs text-blue-700 space-y-1">
-                      <p className="flex items-center gap-2">
-                        <span className="font-medium">👤 Personal:</span>
-                        <span>Post status only (no engagement metrics)</span>
-                      </p>
-                      <p className="flex items-center gap-2">
-                        <span className="font-medium">🏢 Company:</span>
-                        <span className="text-green-600">Full analytics available</span>
-                      </p>
-                    </div>
-                    <p className="text-xs text-blue-500 mt-2">
-                      Connect LinkedIn Company in <Link href="/settings" className="underline font-medium">Settings</Link> for full analytics.
+                    <h4 className="font-medium text-amber-800 mb-1">LinkedIn Personal Profile</h4>
+                    <p className="text-xs text-amber-700">
+                      Analytics limited to post count and status only (no engagement metrics due to LinkedIn API restrictions).
+                    </p>
+                    <p className="text-xs text-amber-500 mt-2">
+                      <strong>Tip:</strong> Select <span className="font-medium">LinkedIn Company</span> above for full analytics.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* LinkedIn Company Analytics Notice */}
+            {selectedPlatforms.includes('linkedin-org') && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <span className="text-lg">🏢</span>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-medium text-green-800 mb-1">LinkedIn Company Page</h4>
+                    <p className="text-xs text-green-700">
+                      Full analytics available: impressions, likes, comments, shares, and click-through rates.
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      ✓ You'll select your Company Page on the Schedule page
                     </p>
                   </div>
                 </div>
