@@ -689,10 +689,12 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
 - Syncs posts from the last 30 days
 - Updates engagement metrics for all platforms
 
-**Platforms Synced:**
-- **Instagram**: Likes, comments, reach, impressions, saves, shares
-- **Facebook**: Likes, comments, reach, impressions, shares
-- **YouTube**: Views, likes, comments
+**What Gets Synced:**
+All engagement data from your connected platforms, including:
+- Likes, comments, shares
+- Reach and impressions
+- Views (for video content)
+- Saves (where supported by the platform)
 
 **Manual Sync:**
 You can also manually refresh analytics anytime:
