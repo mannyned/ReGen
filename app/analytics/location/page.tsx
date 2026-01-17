@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePlan } from '@/app/context/PlanContext';
 import { hasLocationAnalytics } from '@/app/config/plans';
-import { AppHeader, Card, Badge, GradientBanner } from '@/app/components/ui';
+import { AppHeader, Card, Badge, GradientBanner, MetricInfo } from '@/app/components/ui';
+import { MetricTooltips } from '@/app/components/ui/Tooltip';
+import type { SocialPlatform } from '@/lib/types/social';
 import type {
   Period,
   KeyMetrics,
@@ -214,14 +216,27 @@ interface MetricCardProps {
   flag?: string;
   badge?: string;
   highlight?: boolean;
+  tooltipKey?: keyof typeof MetricTooltips;
+  platform?: SocialPlatform | 'all';
+  currentValue?: number;
 }
 
-function MetricCard({ icon, label, value, subValue, change, flag, badge, highlight }: MetricCardProps) {
+function MetricCard({ icon, label, value, subValue, change, flag, badge, highlight, tooltipKey, platform, currentValue }: MetricCardProps) {
+  // Convert 'all' to undefined for tooltip (no platform-specific content)
+  const tooltipPlatform = platform === 'all' ? undefined : platform;
+
   return (
     <Card className={`p-5 ${highlight ? 'border-purple-200 bg-purple-50/50' : ''}`} hover={false}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-text-secondary uppercase tracking-wide">
+        <span className="text-sm font-medium text-text-secondary uppercase tracking-wide flex items-center gap-1">
           {icon} {label}
+          {tooltipKey && (
+            <MetricInfo
+              metric={tooltipKey}
+              platform={tooltipPlatform}
+              currentValue={currentValue}
+            />
+          )}
         </span>
         {badge && (
           <Badge variant="success">{badge}</Badge>
@@ -461,7 +476,11 @@ interface InsightsCarouselProps {
   insights: LocationInsight[];
 }
 
-function InsightsCarousel({ insights }: InsightsCarouselProps) {
+interface InsightsCarouselPropsExtended extends InsightsCarouselProps {
+  selectedPlatform?: PlatformFilter;
+}
+
+function InsightsCarousel({ insights, selectedPlatform }: InsightsCarouselPropsExtended) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   if (insights.length === 0) return null;
@@ -473,7 +492,7 @@ function InsightsCarousel({ insights }: InsightsCarouselProps) {
       <div className="flex items-center gap-2 mb-3">
         <span className="text-lg">💡</span>
         <span className="text-sm font-medium uppercase tracking-wide opacity-90">
-          Location Insight
+          Location Insight {selectedPlatform && selectedPlatform !== 'all' && `for ${selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}`}
         </span>
       </div>
 
@@ -896,6 +915,15 @@ export default function LocationAnalyticsPage() {
           </div>
 
           {/* Key Metrics Row */}
+          {selectedPlatform !== 'all' && (
+            <div className="mb-4 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
+              <span className="text-blue-600">📊</span>
+              <span className="text-sm text-blue-700">
+                Showing location data for <strong className="capitalize">{selectedPlatform}</strong> only.
+                {' '}Select "All Platforms" to see combined geographic data.
+              </span>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-fade-in">
             <MetricCard
               icon="🌍"
@@ -904,6 +932,9 @@ export default function LocationAnalyticsPage() {
               subValue={`${formatNumber(metrics?.topCountry.engagement || 0)} engagement`}
               change={metrics?.topCountry.change}
               flag={getFlag(metrics?.topCountry.code || '')}
+              tooltipKey="topCountry"
+              platform={selectedPlatform as SocialPlatform | 'all'}
+              currentValue={metrics?.topCountry.engagement}
             />
             <MetricCard
               icon="🏙️"
@@ -919,6 +950,9 @@ export default function LocationAnalyticsPage() {
               subValue={`${formatNumber(metrics?.emergingRegion.previous || 0)} → ${formatNumber(metrics?.emergingRegion.current || 0)}`}
               change={metrics?.emergingRegion.growth}
               highlight
+              tooltipKey="emergingRegion"
+              platform={selectedPlatform as SocialPlatform | 'all'}
+              currentValue={metrics?.emergingRegion.growth}
             />
             <MetricCard
               icon="🌐"
@@ -926,6 +960,9 @@ export default function LocationAnalyticsPage() {
               value={`${metrics?.globalReach.countries || 0} Countries`}
               subValue={`${metrics?.globalReach.cities || 0} Cities`}
               badge={`+${metrics?.globalReach.newThisPeriod || 0} new`}
+              tooltipKey="globalReach"
+              platform={selectedPlatform as SocialPlatform | 'all'}
+              currentValue={metrics?.globalReach.countries}
             />
           </div>
 
@@ -949,14 +986,14 @@ export default function LocationAnalyticsPage() {
           {/* AI Insights */}
           {insights.length > 0 && (
             <div className="mb-8 animate-slide-up">
-              <InsightsCarousel insights={insights} />
+              <InsightsCarousel insights={insights} selectedPlatform={selectedPlatform} />
             </div>
           )}
 
           {/* Format Performance Section */}
           <Card className="p-6" hover={false}>
             <h2 className="text-lg font-semibold text-text-primary mb-4">
-              Top Performing Formats by Region
+              Top Performing Formats {selectedPlatform !== 'all' ? `on ${selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}` : 'by Region'}
             </h2>
             {isLoading ? (
               <div className="space-y-3">

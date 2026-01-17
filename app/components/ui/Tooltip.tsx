@@ -341,6 +341,69 @@ export const MetricTooltips: Record<string, MetricTooltipConfig> = {
     },
     thresholds: { low: 15, high: 45 }
   },
+  topCountry: {
+    title: 'Top Country',
+    icon: '🌍',
+    content: {
+      base: 'The country where your content receives the most engagement. Understanding geographic distribution helps tailor content to your primary audience.',
+      platforms: {
+        instagram: 'Instagram Insights shows country breakdown for Business/Creator accounts with sufficient reach.',
+        tiktok: 'TikTok provides geographic data through Creator Analytics for accounts with 100+ followers.',
+        youtube: 'YouTube Analytics offers detailed geographic data including country, region, and city breakdowns.',
+        linkedin: 'LinkedIn shows visitor demographics for company pages and profiles with enough followers.',
+        facebook: 'Facebook Page Insights provides geographic data for Pages with sufficient engagement.',
+      }
+    },
+    proInsight: 'Creators who tailor content to their top 3 countries see 40% higher engagement.',
+    actionHints: {
+      low: 'Build your audience by posting consistently—geographic data appears with more views',
+      medium: 'Good reach! Consider posting during peak hours in your top country',
+      high: 'Strong presence! Create region-specific content to deepen engagement'
+    },
+    thresholds: { low: 100, high: 1000 }
+  },
+  globalReach: {
+    title: 'Global Reach',
+    icon: '🌐',
+    content: {
+      base: 'The number of countries and cities where your content has been viewed. Wider reach indicates growing international appeal.',
+      platforms: {
+        instagram: 'Instagram shows reach across countries for accounts with Business/Creator features enabled.',
+        tiktok: 'TikTok can surface content globally through the For You page, regardless of follower count.',
+        youtube: 'YouTube provides comprehensive geographic analytics including view counts by country.',
+        linkedin: 'LinkedIn shows visitor demographics by location for professional content.',
+        facebook: 'Facebook provides geographic reach data for Pages and public content.',
+      }
+    },
+    proInsight: 'Content reaching 10+ countries typically has 3x higher viral potential.',
+    actionHints: {
+      low: 'Focus on creating universally relatable content to expand geographic reach',
+      medium: 'Good spread! Use trending sounds and hashtags to reach new markets',
+      high: 'Excellent global presence! Consider multi-language captions for top regions'
+    },
+    thresholds: { low: 3, high: 10 }
+  },
+  emergingRegion: {
+    title: 'Emerging Region',
+    icon: '🚀',
+    content: {
+      base: 'A region showing rapid growth in engagement. Emerging regions represent untapped opportunities for audience expansion.',
+      platforms: {
+        instagram: 'Instagram may show growth in regions where your content is being discovered through Explore or hashtags.',
+        tiktok: 'TikTok\'s algorithm can suddenly expose content to new regions, creating emerging markets.',
+        youtube: 'YouTube\'s suggested videos can drive traffic from new geographic regions.',
+        linkedin: 'LinkedIn content can gain traction in new professional markets through shares.',
+        facebook: 'Facebook Groups and shares can introduce content to new geographic audiences.',
+      }
+    },
+    proInsight: 'Capitalizing on emerging regions early can establish you as a leader in that market.',
+    actionHints: {
+      low: 'Keep posting—emerging regions appear as your content reaches new audiences',
+      medium: 'Good momentum! Create content that resonates with this new audience',
+      high: 'Hot market detected! Consider dedicating content specifically to this region'
+    },
+    thresholds: { low: 10, high: 50 }
+  },
 }
 
 // ============================================
