@@ -22,6 +22,10 @@
     {
       "path": "/api/cron/rss-ingestion",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/analytics-sync",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
