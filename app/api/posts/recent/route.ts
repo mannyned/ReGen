@@ -26,6 +26,25 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50)
     const filter = searchParams.get('filter') || 'all' // all, published, scheduled, drafts
+    const platform = searchParams.get('platform') // Optional platform filter
+
+    // Map platform filter to provider values in database
+    const getProviderFilter = (platformName: string | null) => {
+      if (!platformName || platformName === 'all') return undefined
+      const platformMap: Record<string, string[]> = {
+        'instagram': ['meta', 'instagram'],
+        'youtube': ['google', 'youtube'],
+        'facebook': ['facebook', 'meta'],
+        'tiktok': ['tiktok'],
+        'linkedin': ['linkedin'],
+        'twitter': ['twitter', 'x'],
+        'snapchat': ['snapchat'],
+      }
+      return platformMap[platformName.toLowerCase()] || [platformName]
+    }
+
+    const providerFilter = getProviderFilter(platform)
+    const providerWhere = providerFilter ? { provider: { in: providerFilter } } : {}
 
     // For drafts filter, fetch content uploads that haven't been scheduled or published
     if (filter === 'drafts') {
@@ -212,6 +231,7 @@ export async function GET(request: NextRequest) {
       where: {
         profileId,
         status: Array.isArray(statusFilter) ? { in: statusFilter } : statusFilter,
+        ...providerWhere,
       },
       orderBy: {
         postedAt: 'desc',
@@ -320,6 +340,7 @@ export async function GET(request: NextRequest) {
       where: {
         profileId,
         status: OutboundPostStatus.POSTED,
+        ...providerWhere,
       },
     })
 

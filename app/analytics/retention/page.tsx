@@ -873,8 +873,8 @@ export default function RetentionAnalyticsPage() {
 
       if (userId) {
         try {
-          // Fetch recent video posts to get retention data
-          const postsRes = await fetch('/api/posts/recent?limit=20');
+          // Fetch recent video posts to get retention data (with platform filter)
+          const postsRes = await fetch(`/api/posts/recent?limit=20${platformParam}`);
           if (postsRes.ok) {
             const postsData = await postsRes.json();
             const posts = postsData?.posts || postsData || [];
@@ -1188,6 +1188,15 @@ export default function RetentionAnalyticsPage() {
           </div>
 
           {/* Key Metrics Row */}
+          {selectedPlatform !== 'all' && (
+            <div className="mb-4 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
+              <span className="text-blue-600">📊</span>
+              <span className="text-sm text-blue-700">
+                Showing metrics for <strong className="capitalize">{selectedPlatform}</strong> only.
+                {' '}Select "All Platforms" to see combined data.
+              </span>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-fade-in">
             <MetricCard
               icon="🎣"
