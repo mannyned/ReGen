@@ -680,6 +680,31 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
 - Request access from your team admin`,
       },
       {
+        id: 'linkedin-analytics-difference',
+        question: 'Why are LinkedIn analytics different for Personal vs Company pages?',
+        answer: `LinkedIn has different API access levels for personal profiles and company pages:
+
+**👤 Personal Profile (Limited)**
+- Post count and publishing status
+- Post URLs and timestamps
+- **No engagement data** - LinkedIn requires special partner approval for the \`r_member_social\` scope to read likes, comments, and shares on personal posts
+
+**🏢 Company Page (Full Analytics)**
+When connected with Community Management API access:
+- ✓ Impressions & unique views
+- ✓ Likes, comments & shares
+- ✓ Click-through rates
+- ✓ Engagement metrics
+- ✓ 12-month historical data
+
+**Requirements for Company Page Analytics:**
+- You must be an **admin** of the company page
+- Connect via "LinkedIn Company" in Settings (separate from personal profile)
+- ReGenr needs Community Management API approval from LinkedIn
+
+**Tip:** For personal profile engagement metrics, use LinkedIn's native analytics in the LinkedIn app or website.`,
+      },
+      {
         id: 'export-analytics',
         question: 'How do I export my analytics data?',
         answer: `Pro plan users can export analytics data in multiple formats:

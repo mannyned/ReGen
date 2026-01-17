@@ -1179,6 +1179,18 @@ function GeneratePageContent() {
                         </>
                       )}
 
+                      {/* LinkedIn Analytics Notice */}
+                      {preview.platform === 'linkedin' && (
+                        <div className="mb-3 p-2 bg-gray-50 border border-gray-200 rounded-lg">
+                          <p className="text-xs text-gray-600 flex items-center gap-2">
+                            <span>💼</span>
+                            <span><strong>Personal:</strong> Limited analytics</span>
+                            <span className="text-gray-400">|</span>
+                            <span><strong>Company:</strong> <span className="text-green-600">Full analytics</span></span>
+                          </p>
+                        </div>
+                      )}
+
                       {editingId === preview.id ? (
                         <textarea
                           value={preview.caption}

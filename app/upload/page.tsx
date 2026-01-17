@@ -1152,6 +1152,33 @@ function UploadPageContent() {
                 </div>
               </div>
             )}
+
+            {/* LinkedIn Analytics Info */}
+            {selectedPlatforms.includes('linkedin') && (
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <span className="text-lg">💼</span>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-medium text-blue-800 mb-1">LinkedIn Analytics</h4>
+                    <div className="text-xs text-blue-700 space-y-1">
+                      <p className="flex items-center gap-2">
+                        <span className="font-medium">👤 Personal:</span>
+                        <span>Post status only (no engagement metrics)</span>
+                      </p>
+                      <p className="flex items-center gap-2">
+                        <span className="font-medium">🏢 Company:</span>
+                        <span className="text-green-600">Full analytics available</span>
+                      </p>
+                    </div>
+                    <p className="text-xs text-blue-500 mt-2">
+                      Connect LinkedIn Company in <Link href="/settings" className="underline font-medium">Settings</Link> for full analytics.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Action Buttons */}

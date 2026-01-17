@@ -880,18 +880,40 @@ export default function AnalyticsPage() {
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-amber-800 mb-1">LinkedIn Analytics Limitations</h3>
-                    <p className="text-sm text-amber-700 mb-2">
-                      LinkedIn restricts engagement data access through their API:
-                    </p>
-                    <ul className="text-sm text-amber-600 space-y-1 list-disc list-inside">
-                      <li><strong>Personal profiles:</strong> LinkedIn requires partner approval for the <code className="bg-amber-100 px-1 rounded">r_member_social</code> scope to read likes/comments - this is currently unavailable</li>
-                      <li><strong>Company pages:</strong> Full analytics require admin access and <code className="bg-amber-100 px-1 rounded">rw_organization_admin</code> scope</li>
-                      <li><strong>What we can show:</strong> Post count, publishing status, and post URLs</li>
-                      <li><strong>Historical data:</strong> Limited to 12-month rolling window when available</li>
-                    </ul>
-                    <p className="text-xs text-amber-500 mt-2">
-                      To view engagement metrics, visit your posts directly on LinkedIn or use LinkedIn's native analytics dashboard.
+                    <h3 className="font-semibold text-amber-800 mb-2">LinkedIn Analytics by Account Type</h3>
+
+                    {/* Personal Profile Section */}
+                    <div className="mb-3 pb-3 border-b border-amber-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">👤</span>
+                        <h4 className="font-medium text-amber-800">Personal Profile</h4>
+                      </div>
+                      <p className="text-sm text-amber-700 mb-1">Limited analytics due to LinkedIn API restrictions:</p>
+                      <ul className="text-sm text-amber-600 space-y-0.5 list-disc list-inside ml-1">
+                        <li>Post count and publishing status</li>
+                        <li>Post URLs and timestamps</li>
+                        <li><span className="text-amber-500">No engagement data</span> - LinkedIn requires partner approval for <code className="bg-amber-100 px-1 rounded text-xs">r_member_social</code> scope</li>
+                      </ul>
+                    </div>
+
+                    {/* Company Page Section */}
+                    <div className="mb-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">🏢</span>
+                        <h4 className="font-medium text-amber-800">Company Page</h4>
+                      </div>
+                      <p className="text-sm text-amber-700 mb-1">Full analytics available with Community Management API:</p>
+                      <ul className="text-sm text-amber-600 space-y-0.5 list-disc list-inside ml-1">
+                        <li><span className="text-green-600">✓</span> Impressions & unique views</li>
+                        <li><span className="text-green-600">✓</span> Likes, comments & shares</li>
+                        <li><span className="text-green-600">✓</span> Click-through rates</li>
+                        <li><span className="text-green-600">✓</span> Engagement metrics</li>
+                        <li><span className="text-amber-500">Requires:</span> Admin access to the company page</li>
+                      </ul>
+                    </div>
+
+                    <p className="text-xs text-amber-500 mt-3 pt-2 border-t border-amber-200">
+                      <strong>Tip:</strong> Connect your LinkedIn Company Page in Settings to access full analytics. For personal profiles, visit LinkedIn's native analytics dashboard.
                     </p>
                   </div>
                 </div>

@@ -887,6 +887,30 @@ function SchedulePageContent() {
                 </div>
               )}
 
+              {/* LinkedIn Personal Analytics Notice */}
+              {selectedPlatforms.includes('linkedin') && !selectedPlatforms.includes('linkedin-org') && (
+                <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                      <span className="text-lg">👤</span>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-amber-800 mb-1">LinkedIn Personal Profile</h4>
+                      <p className="text-sm text-amber-700 mb-2">
+                        Analytics for personal profiles are limited due to LinkedIn API restrictions:
+                      </p>
+                      <ul className="text-xs text-amber-600 space-y-0.5 list-disc list-inside">
+                        <li>Post count and publishing status available</li>
+                        <li>No engagement metrics (likes, comments, shares)</li>
+                      </ul>
+                      <p className="text-xs text-amber-500 mt-2">
+                        <strong>Tip:</strong> Use <span className="font-medium">LinkedIn Company</span> for full analytics including impressions, engagement, and click-through rates.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Post Mode Selection */}
               <div className="mb-8">
                 <label className="block text-sm font-medium text-text-secondary mb-3">
