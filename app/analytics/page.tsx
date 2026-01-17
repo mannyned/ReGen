@@ -1118,8 +1118,8 @@ export default function AnalyticsPage() {
                       sublabel="Audience mood"
                       chartType="line"
                       onUpgradeClick={() => handleOpenUpgradeModal('sentiment')}
-                      previewValue="78%"
-                      previewTrend={{ value: 8, positive: true }}
+                      previewValue={advancedMetrics.sentimentScore > 0 ? `${advancedMetrics.sentimentScore}%` : "78%"}
+                      previewTrend={realStats?.benchmarks?.sentiment?.trendValue ? { value: realStats.benchmarks.sentiment.trendValue, positive: realStats.benchmarks.sentiment.trend === 'up' } : { value: 8, positive: true }}
                       userPlan={userPlan}
                     />
                     <LockedMetricCard
@@ -1129,8 +1129,8 @@ export default function AnalyticsPage() {
                       sublabel="Avg watch"
                       chartType="area"
                       onUpgradeClick={() => handleOpenUpgradeModal('retention')}
-                      previewValue="65%"
-                      previewTrend={{ value: 12, positive: true }}
+                      previewValue={advancedMetrics.audienceRetention > 0 ? `${advancedMetrics.audienceRetention}%` : "65%"}
+                      previewTrend={realStats?.benchmarks?.retention?.trendValue ? { value: realStats.benchmarks.retention.trendValue, positive: realStats.benchmarks.retention.trend === 'up' } : { value: 12, positive: true }}
                       userPlan={userPlan}
                     />
                     <LockedMetricCard
@@ -1140,8 +1140,8 @@ export default function AnalyticsPage() {
                       sublabel="Share potential"
                       chartType="bar"
                       onUpgradeClick={() => handleOpenUpgradeModal('virality')}
-                      previewValue="42"
-                      previewTrend={{ value: 2, positive: true }}
+                      previewValue={advancedMetrics.viralityScore > 0 ? `${advancedMetrics.viralityScore}` : "42"}
+                      previewTrend={realStats?.benchmarks?.virality?.trendValue ? { value: realStats.benchmarks.virality.trendValue, positive: realStats.benchmarks.virality.trend === 'up' } : { value: 2, positive: true }}
                       userPlan={userPlan}
                     />
                     <LockedMetricCard
@@ -1151,8 +1151,8 @@ export default function AnalyticsPage() {
                       sublabel="Posts/day"
                       chartType="line"
                       onUpgradeClick={() => handleOpenUpgradeModal('velocity')}
-                      previewValue="3.2"
-                      previewTrend={{ value: 15, positive: true }}
+                      previewValue={advancedMetrics.contentVelocity > 0 ? `${advancedMetrics.contentVelocity}` : "3.2"}
+                      previewTrend={realStats?.benchmarks?.velocity?.trendValue ? { value: realStats.benchmarks.velocity.trendValue, positive: realStats.benchmarks.velocity.trend === 'up' } : { value: 15, positive: true }}
                       userPlan={userPlan}
                     />
                     <LockedMetricCard
@@ -1162,8 +1162,8 @@ export default function AnalyticsPage() {
                       sublabel="Synergy score"
                       chartType="pie"
                       onUpgradeClick={() => handleOpenUpgradeModal('crossPlatform')}
-                      previewValue="85%"
-                      previewTrend={{ value: 22, positive: true }}
+                      previewValue={advancedMetrics.crossPlatformSynergy > 0 ? `${advancedMetrics.crossPlatformSynergy}%` : "85%"}
+                      previewTrend={realStats?.benchmarks?.crossPlatform?.trendValue ? { value: realStats.benchmarks.crossPlatform.trendValue, positive: realStats.benchmarks.crossPlatform.trend === 'up' } : { value: 22, positive: true }}
                       userPlan={userPlan}
                     />
                     <LockedMetricCard
@@ -1173,8 +1173,8 @@ export default function AnalyticsPage() {
                       sublabel="Performance"
                       chartType="bar"
                       onUpgradeClick={() => handleOpenUpgradeModal('bestPostingTimes')}
-                      previewValue="72%"
-                      previewTrend={{ value: 3, positive: false }}
+                      previewValue={advancedMetrics.hashtagPerformance > 0 ? `${advancedMetrics.hashtagPerformance}%` : "72%"}
+                      previewTrend={realStats?.benchmarks?.hashtags?.trendValue ? { value: realStats.benchmarks.hashtags.trendValue, positive: realStats.benchmarks.hashtags.trend === 'up' } : { value: 3, positive: false }}
                       userPlan={userPlan}
                     />
                   </div>
@@ -1331,14 +1331,18 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {!isProduction && (
+                      {realStats?.engagement?.totalSaves !== undefined && realStats.engagement.totalSaves > 0 && (
                         <>
                           <div className="text-right hidden md:block">
-                            <p className="text-2xl font-bold">2.9%</p>
+                            <p className="text-2xl font-bold">
+                              {realStats.engagement.totalReach > 0
+                                ? `${((realStats.engagement.totalSaves / realStats.engagement.totalReach) * 100).toFixed(1)}%`
+                                : '—'}
+                            </p>
                             <p className="text-xs text-white/80">Avg Save Rate</p>
                           </div>
                           <div className="text-right hidden md:block">
-                            <p className="text-2xl font-bold">4,520</p>
+                            <p className="text-2xl font-bold">{realStats.engagement.totalSaves.toLocaleString()}</p>
                             <p className="text-xs text-white/80">Total Saves</p>
                           </div>
                         </>
@@ -1393,15 +1397,15 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {!isProduction && (
+                      {(advancedMetrics.sentimentScore > 0 || advancedMetrics.audienceRetention > 0) && (
                         <>
                           <div className="text-right hidden md:block">
-                            <p className="text-2xl font-bold">82%</p>
-                            <p className="text-xs text-white/80">Hook Score</p>
+                            <p className="text-2xl font-bold">{advancedMetrics.sentimentScore > 0 ? `${advancedMetrics.sentimentScore}%` : '—'}</p>
+                            <p className="text-xs text-white/80">Sentiment</p>
                           </div>
                           <div className="text-right hidden md:block">
-                            <p className="text-2xl font-bold">28%</p>
-                            <p className="text-xs text-white/80">Completion</p>
+                            <p className="text-2xl font-bold">{advancedMetrics.audienceRetention > 0 ? `${advancedMetrics.audienceRetention}%` : '—'}</p>
+                            <p className="text-xs text-white/80">Retention</p>
                           </div>
                         </>
                       )}
@@ -1668,7 +1672,11 @@ export default function AnalyticsPage() {
                   </div>
                   <h3 className="text-xl font-bold text-text-primary mb-2">Caption Usage Analytics</h3>
                   <p className="text-text-secondary mb-4 max-w-md text-center px-4">
-                    See how your identical vs adapted captions perform. Pro users see <span className="font-semibold text-green-600">+32% better engagement</span> with adapted captions.
+                    See how your identical vs adapted captions perform. {realStats?.aiImpact?.improvement ? (
+                      <>Your AI captions show <span className="font-semibold text-green-600">{realStats.aiImpact.improvement > 0 ? '+' : ''}{realStats.aiImpact.improvement}% engagement</span> compared to manual.</>
+                    ) : (
+                      <>Pro users see <span className="font-semibold text-green-600">better engagement</span> with AI captions.</>
+                    )}
                   </p>
                   <Link
                     href="/settings"
