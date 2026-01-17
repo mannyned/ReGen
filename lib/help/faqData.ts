@@ -177,6 +177,36 @@ The AI creates captions that accurately describe and reference what's actually i
 Upload a photo of a sunset at the beach, and the AI might generate:
 *"Golden hour magic at its finest. Nothing beats watching the sun dip below the horizon while the waves keep their eternal rhythm."*`,
       },
+      {
+        id: 'ai-brand-voice',
+        question: 'What is AI Brand Voice and how does it work?',
+        answer: `AI Brand Voice is a feature that tells the AI how to style your generated content to match your brand's personality.
+
+**How it works:**
+1. You provide a brand voice description (e.g., "professional and friendly", "edgy and casual", "corporate and formal")
+2. The AI embeds your brand voice into its content generation prompts
+3. All generated captions and descriptions follow your specified style
+
+**Default Voice:**
+If you don't specify a brand voice, ReGenr uses "professional and engaging" as the default.
+
+**Examples of Brand Voices:**
+- *"Professional and authoritative"* - For B2B and corporate content
+- *"Casual and fun with humor"* - For lifestyle brands
+- *"Inspirational and motivating"* - For fitness and coaching
+- *"Minimalist and sophisticated"* - For luxury brands
+- *"Friendly and approachable"* - For small businesses
+
+**Platform Adaptation:**
+Your brand voice is combined with platform-specific guidelines:
+- **Instagram:** Emojis, visual, aspirational tone
+- **TikTok:** Casual, trendy, Gen Z language
+- **YouTube:** Descriptive, longer format
+- **X/Twitter:** Concise, witty, under 280 chars
+- **LinkedIn:** Professional, industry-focused
+
+The AI respects both your brand voice AND platform best practices, so your content stays on-brand while optimized for each platform.`,
+      },
     ],
   },
   {
