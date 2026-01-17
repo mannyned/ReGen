@@ -8,6 +8,7 @@ import { AppHeader, Card, GradientBanner, Badge, PlatformLogo } from '../compone
 import { BetaProBadge, BetaSubscriptionCard, OverLimitWarning } from '../components/BetaProBadge'
 import type { SocialPlatform } from '@/lib/types/social'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
+import { SignOutButton } from '@/components/auth/SignOutButton'
 
 type SettingsSection = 'profile' | 'security' | 'notifications' | 'subscription' | 'team' | 'connections' | 'danger'
 
@@ -138,6 +139,16 @@ export default function SettingsPage() {
     { id: 'team', label: 'Team activity', description: 'When teammates comment or share', email: true, push: true },
     { id: 'marketing', label: 'Marketing', description: 'Tips, offers, and inspiration', email: false, push: false },
   ])
+  const [pushPermission, setPushPermission] = useState<NotificationPermission | 'unsupported'>('default')
+
+  // Check notification permission on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setPushPermission(Notification.permission)
+    } else {
+      setPushPermission('unsupported')
+    }
+  }, [])
 
   // Subscription state
   const [userPlan, setUserPlan] = useState<'free' | 'creator' | 'pro'>('creator')
@@ -398,7 +409,40 @@ export default function SettingsPage() {
   }
 
   // Handle notification toggle
-  const handleNotificationToggle = (id: string, type: 'email' | 'push') => {
+  const handleNotificationToggle = async (id: string, type: 'email' | 'push') => {
+    // For push notifications, request permission if not already granted
+    if (type === 'push') {
+      const notification = notifications.find(n => n.id === id)
+      const isEnabling = notification && !notification.push
+
+      if (isEnabling) {
+        // Check if browser supports notifications
+        if (!('Notification' in window)) {
+          alert('Push notifications are not supported in this browser')
+          return
+        }
+
+        // If permission not granted, request it
+        if (Notification.permission === 'default') {
+          try {
+            const permission = await Notification.requestPermission()
+            setPushPermission(permission)
+
+            if (permission !== 'granted') {
+              alert('Please enable notifications in your browser settings to receive push alerts')
+              return
+            }
+          } catch {
+            alert('Failed to request notification permission')
+            return
+          }
+        } else if (Notification.permission === 'denied') {
+          alert('Notifications are blocked. Please enable them in your browser settings.')
+          return
+        }
+      }
+    }
+
     setNotifications(notifications.map(n =>
       n.id === id ? { ...n, [type]: !n[type] } : n
     ))
@@ -1199,6 +1243,60 @@ export default function SettingsPage() {
               <Card className="p-6 lg:p-8" hover={false}>
                 <h2 className="text-2xl font-bold text-text-primary mb-6">Notification Preferences</h2>
 
+                {/* Push Notification Permission Status */}
+                {pushPermission === 'unsupported' && (
+                  <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-gray-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <p className="font-medium text-text-primary">Push notifications not supported</p>
+                        <p className="text-sm text-text-secondary">Your browser doesn&apos;t support push notifications.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {pushPermission === 'denied' && (
+                  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                      </svg>
+                      <div>
+                        <p className="font-medium text-red-700">Push notifications blocked</p>
+                        <p className="text-sm text-red-600">Enable notifications in your browser settings to receive push alerts.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {pushPermission === 'granted' && (
+                  <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-green-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <p className="font-medium text-green-700">Push notifications enabled</p>
+                        <p className="text-sm text-green-600">You&apos;ll receive push notifications for your selected preferences.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {pushPermission === 'default' && (
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                      </svg>
+                      <div>
+                        <p className="font-medium text-blue-700">Enable push notifications</p>
+                        <p className="text-sm text-blue-600">Toggle a push notification below to enable browser notifications.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-1">
                   {/* Header */}
                   <div className="flex items-center justify-end gap-8 pb-4 border-b border-gray-100">
@@ -1731,6 +1829,15 @@ export default function SettingsPage() {
                 </div>
               </Card>
             )}
+
+            {/* Sign Out - Always visible at bottom */}
+            <div className="mt-8 pt-8 border-t border-gray-200">
+              <SignOutButton
+                variant="ghost"
+                size="lg"
+                className="w-full justify-center text-red-600 hover:bg-red-50 border border-red-200"
+              />
+            </div>
           </div>
         </div>
       </main>

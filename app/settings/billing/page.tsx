@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { AppHeader, Card, Badge } from '../../components/ui';
 import { usePricing } from '../../hooks/usePricing';
+import { SignOutButton } from '@/components/auth/SignOutButton';
 import type { UserTier } from '@prisma/client';
 
 interface UserProfile {
@@ -595,6 +596,15 @@ export default function BillingPage() {
             </svg>
             billing@regenr.app
           </a>
+        </div>
+
+        {/* Sign Out */}
+        <div className="mt-8 pt-8 border-t border-gray-200">
+          <SignOutButton
+            variant="ghost"
+            size="lg"
+            className="w-full justify-center text-red-600 hover:bg-red-50 border border-red-200"
+          />
         </div>
       </main>
 
