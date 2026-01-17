@@ -428,6 +428,10 @@ export default function AnalyticsPage() {
       snapchat: 'Snapchat',
     }
 
+    // Get per-platform best times from calendarInsights
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const platformBestTimes = (realStats?.calendarInsights as any)?.platformBestTimes || {}
+
     // First check if we have platformStats (post counts by platform)
     if (realStats?.platformStats && Object.keys(realStats.platformStats).length > 0) {
       const data = Object.entries(realStats.platformStats).map(([provider, postCount]) => {
@@ -445,13 +449,16 @@ export default function AnalyticsPage() {
           ? ((totalEngagement / engagementData.reach) * 100)
           : 0
 
+        // Get best time for this platform from calendarInsights
+        const bestTime = platformBestTimes[normalizedProvider] || platformBestTimes[provider] || '—'
+
         return {
           platform: platformNameMap[provider] || provider,
           posts: postCount as number,
           engagement: parseFloat(engagementRate.toFixed(1)),
           reach: engagementData?.reach || 0,
           growth: 0, // Would need historical data to calculate
-          bestTime: '—', // Would need time-based analysis
+          bestTime,
           // Include total engagement count for display when reach is unavailable
           totalEngagement,
           likes: engagementData?.likes || 0,
@@ -467,13 +474,17 @@ export default function AnalyticsPage() {
       const data = Object.entries(realStats.platformEngagement).map(([platform, engData]) => {
         const totalEngagement = engData.likes + engData.comments + engData.shares + engData.saves
         const engagementRate = engData.reach > 0 ? ((totalEngagement / engData.reach) * 100) : 0
+
+        // Get best time for this platform from calendarInsights
+        const bestTime = platformBestTimes[platform] || '—'
+
         return {
           platform: platformNameMap[platform] || platform,
           posts: engData.posts,
           engagement: parseFloat(engagementRate.toFixed(1)),
           reach: engData.reach,
           growth: 0,
-          bestTime: '—',
+          bestTime,
           // Include total engagement count for display when reach is unavailable
           totalEngagement,
           likes: engData.likes,

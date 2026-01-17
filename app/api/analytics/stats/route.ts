@@ -654,6 +654,8 @@ export async function GET(request: NextRequest) {
     // ============================================
     const dayOfWeekStats: Record<number, { count: number; likes: number; comments: number; shares: number; saves: number; reach: number }> = {}
     const hourOfDayStats: Record<number, { count: number; likes: number; comments: number; shares: number; saves: number; reach: number }> = {}
+    // Per-platform hour stats for best time calculation
+    const platformHourStats: Record<string, Record<number, { count: number; likes: number; comments: number; shares: number; saves: number; reach: number }>> = {}
 
     for (const post of postsWithAnalytics) {
       if (!post.postedAt) continue
@@ -661,6 +663,7 @@ export async function GET(request: NextRequest) {
       const postedDate = new Date(post.postedAt)
       const dayOfWeek = postedDate.getDay() // 0 = Sunday, 6 = Saturday
       const hourOfDay = postedDate.getHours()
+      const provider = normalizeProvider(post.provider)
 
       // Initialize day stats
       if (!dayOfWeekStats[dayOfWeek]) {
@@ -673,6 +676,15 @@ export async function GET(request: NextRequest) {
         hourOfDayStats[hourOfDay] = { count: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0 }
       }
       hourOfDayStats[hourOfDay].count++
+
+      // Initialize per-platform hour stats
+      if (!platformHourStats[provider]) {
+        platformHourStats[provider] = {}
+      }
+      if (!platformHourStats[provider][hourOfDay]) {
+        platformHourStats[provider][hourOfDay] = { count: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0 }
+      }
+      platformHourStats[provider][hourOfDay].count++
 
       const metadata = post.metadata as Record<string, unknown> | null
       const analytics = metadata?.analytics as Record<string, number> | null
@@ -688,6 +700,13 @@ export async function GET(request: NextRequest) {
         hourOfDayStats[hourOfDay].shares += analytics.shares || 0
         hourOfDayStats[hourOfDay].saves += analytics.saved || analytics.saves || 0
         hourOfDayStats[hourOfDay].reach += analytics.reach || 0
+
+        // Per-platform hour stats
+        platformHourStats[provider][hourOfDay].likes += analytics.likes || 0
+        platformHourStats[provider][hourOfDay].comments += analytics.comments || 0
+        platformHourStats[provider][hourOfDay].shares += analytics.shares || 0
+        platformHourStats[provider][hourOfDay].saves += analytics.saved || analytics.saves || 0
+        platformHourStats[provider][hourOfDay].reach += analytics.reach || 0
       }
     }
 
@@ -723,12 +742,38 @@ export async function GET(request: NextRequest) {
       })
       .sort((a, b) => b.avgEngagement - a.avgEngagement)
 
+    // Calculate best time per platform
+    const platformBestTimes: Record<string, string> = {}
+    for (const [platform, hourStats] of Object.entries(platformHourStats)) {
+      const platformHours = Object.entries(hourStats)
+        .map(([hour, stats]) => {
+          const hourEngagement = stats.likes + stats.comments + stats.shares + stats.saves
+          const hourNum = parseInt(hour)
+          const displayHour = hourNum === 0 ? '12 AM' : hourNum < 12 ? `${hourNum} AM` : hourNum === 12 ? '12 PM' : `${hourNum - 12} PM`
+          return {
+            hour: displayHour,
+            avgEngagement: stats.count > 0 ? Math.round(hourEngagement / stats.count) : 0,
+          }
+        })
+        .sort((a, b) => b.avgEngagement - a.avgEngagement)
+
+      // Set best time for this platform (top hour with engagement, or most posted hour)
+      if (platformHours.length > 0 && platformHours[0].avgEngagement > 0) {
+        platformBestTimes[platform] = platformHours[0].hour
+      } else if (platformHours.length > 0) {
+        platformBestTimes[platform] = platformHours[0].hour
+      } else {
+        platformBestTimes[platform] = '—'
+      }
+    }
+
     const calendarInsights = {
       bestDays: bestDays.slice(0, 3), // Top 3 best days
       bestHours: bestHours.slice(0, 5), // Top 5 best hours
       allDays: bestDays.sort((a, b) => a.dayIndex - b.dayIndex), // All days in order
       allHours: bestHours.sort((a, b) => a.hourIndex - b.hourIndex), // All hours in order
       totalPostsAnalyzed: postsWithAnalytics.filter(p => p.postedAt).length,
+      platformBestTimes, // Best posting time per platform
     }
 
     // ============================================
