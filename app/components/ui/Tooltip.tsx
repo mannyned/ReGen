@@ -303,16 +303,16 @@ export const MetricTooltips: Record<string, MetricTooltipConfig> = {
     title: 'Completion Rate',
     icon: '✅',
     content: {
-      base: 'The percentage of viewers who watch your entire video. Higher completion rates boost your content in algorithms.',
+      base: 'The percentage of viewers who watch your entire video. Higher completion rates boost your content in algorithms.\n\n📊 Industry Averages:\n• Short-form (< 60s): 40-60% is average, 70%+ is excellent\n• Long-form (1-5 min): 30-50% is average, 60%+ is excellent\n• Long-form (5+ min): 20-40% is average, 50%+ is excellent',
       platforms: {
-        instagram: 'Reels: 15-30 second videos have highest completion. Keep it punchy.',
-        tiktok: 'TikTok: Shorter videos (7-15 sec) complete more but longer can work if compelling.',
-        youtube: 'YouTube: Structure content to maintain interest. Use chapters for longer videos.',
-        linkedin: 'LinkedIn: 30-90 second videos optimal. Get to the point quickly.',
-        facebook: 'Facebook: Front-load value. Most viewers drop off after 10 seconds.',
+        instagram: 'Reels: 15-30 second videos have highest completion. Keep it punchy.\n\n📊 Instagram Average: 45-55% completion for Reels under 30 seconds.',
+        tiktok: 'TikTok: Shorter videos (7-15 sec) complete more but longer can work if compelling.\n\n📊 TikTok Average: 50-70% for videos under 15 seconds, 30-40% for 60+ seconds.',
+        youtube: 'YouTube: Structure content to maintain interest. Use chapters for longer videos.\n\n📊 YouTube Average: 50-60% for Shorts, 40-50% for videos under 10 min, 30-40% for longer content.',
+        linkedin: 'LinkedIn: 30-90 second videos optimal. Get to the point quickly.\n\n📊 LinkedIn Average: 35-45% completion for professional content.',
+        facebook: 'Facebook: Front-load value. Most viewers drop off after 10 seconds.\n\n📊 Facebook Average: 30-40% completion, with most drop-off in first 10 seconds.',
       }
     },
-    proInsight: 'Videos with 70%+ completion get prioritized in recommendations.',
+    proInsight: 'Videos with 70%+ completion get prioritized in recommendations. Top 10% of creators average 65%+ completion.',
     actionHints: {
       low: 'Trim content ruthlessly. Remove anything that doesn\'t add immediate value',
       medium: 'Add visual variety every 3-5 seconds to maintain attention',
