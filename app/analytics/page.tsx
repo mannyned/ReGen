@@ -432,6 +432,17 @@ export default function AnalyticsPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const platformBestTimes = (realStats?.calendarInsights as any)?.platformBestTimes || {}
 
+    // Get previous period engagement data for growth calculation
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const prevPlatformEngagement = (realStats as any)?.prevPlatformEngagement || {}
+
+    // Helper to calculate growth percentage
+    const calculateGrowth = (current: number, previous: number): number => {
+      if (previous === 0 && current === 0) return 0
+      if (previous === 0) return 100 // New platform, treat as 100% growth
+      return Math.round(((current - previous) / previous) * 100)
+    }
+
     // First check if we have platformStats (post counts by platform)
     if (realStats?.platformStats && Object.keys(realStats.platformStats).length > 0) {
       const data = Object.entries(realStats.platformStats).map(([provider, postCount]) => {
@@ -452,12 +463,19 @@ export default function AnalyticsPage() {
         // Get best time for this platform from calendarInsights
         const bestTime = platformBestTimes[normalizedProvider] || platformBestTimes[provider] || '—'
 
+        // Calculate growth from previous period
+        const prevData = prevPlatformEngagement[normalizedProvider] || prevPlatformEngagement[provider]
+        const prevEngagement = prevData
+          ? prevData.likes + prevData.comments + prevData.shares + prevData.saves
+          : 0
+        const growth = calculateGrowth(totalEngagement, prevEngagement)
+
         return {
           platform: platformNameMap[provider] || provider,
           posts: postCount as number,
           engagement: parseFloat(engagementRate.toFixed(1)),
           reach: engagementData?.reach || 0,
-          growth: 0, // Would need historical data to calculate
+          growth,
           bestTime,
           // Include total engagement count for display when reach is unavailable
           totalEngagement,
@@ -478,12 +496,19 @@ export default function AnalyticsPage() {
         // Get best time for this platform from calendarInsights
         const bestTime = platformBestTimes[platform] || '—'
 
+        // Calculate growth from previous period
+        const prevData = prevPlatformEngagement[platform]
+        const prevEngagement = prevData
+          ? prevData.likes + prevData.comments + prevData.shares + prevData.saves
+          : 0
+        const growth = calculateGrowth(totalEngagement, prevEngagement)
+
         return {
           platform: platformNameMap[platform] || platform,
           posts: engData.posts,
           engagement: parseFloat(engagementRate.toFixed(1)),
           reach: engData.reach,
-          growth: 0,
+          growth,
           bestTime,
           // Include total engagement count for display when reach is unavailable
           totalEngagement,

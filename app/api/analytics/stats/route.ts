@@ -1035,6 +1035,7 @@ export async function GET(request: NextRequest) {
         postsWithMetrics,
       },
       platformEngagement,
+      prevPlatformEngagement, // Previous period data for growth calculation
       // Advanced metrics (Pro feature)
       advancedMetrics,
       // Benchmark data for tooltips (Pro feature)
