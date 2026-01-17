@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
+import { LandingFAQ } from './components/landing/LandingFAQ'
 
 // Icon Components for professional look
 const CheckIcon = () => (
@@ -203,6 +204,7 @@ export default function Home() {
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="nav-link">Features</a>
               <a href="#beta" className="nav-link">Beta Access</a>
+              <a href="#faq" className="nav-link">FAQ</a>
               <a href="/login" className="nav-link">Login</a>
               <a
                 href="#waitlist"
@@ -231,6 +233,7 @@ export default function Home() {
           <div className="px-4 py-4 space-y-3 bg-white">
             <a href="#features" className="block py-2 text-text-secondary hover:text-primary transition-colors">Features</a>
             <a href="#beta" className="block py-2 text-text-secondary hover:text-primary transition-colors">Beta Access</a>
+            <a href="#faq" className="block py-2 text-text-secondary hover:text-primary transition-colors">FAQ</a>
             <a href="/login" className="block py-2 text-text-secondary hover:text-primary transition-colors">Login</a>
             <a href="#waitlist" className="block btn-primary text-center mt-4">
               Get Early Access
@@ -454,6 +457,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* FAQ Section */}
+      <LandingFAQ />
 
       {/* Final CTA Section */}
       <section id="waitlist" className="py-20 lg:py-28 bg-gradient-brand text-white relative overflow-hidden">
