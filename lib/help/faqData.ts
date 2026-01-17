@@ -680,6 +680,34 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
 - Request access from your team admin`,
       },
       {
+        id: 'analytics-update-frequency',
+        question: 'How often is my analytics dashboard updated?',
+        answer: `Your analytics are automatically synced every 6 hours from your connected platforms.
+
+**Automatic Sync Schedule:**
+- Runs every 6 hours (4 times daily)
+- Syncs posts from the last 30 days
+- Updates engagement metrics for all platforms
+
+**Platforms Synced:**
+- **Instagram**: Likes, comments, reach, impressions, saves, shares
+- **Facebook**: Likes, comments, reach, impressions, shares
+- **YouTube**: Views, likes, comments
+
+**Manual Sync:**
+You can also manually refresh analytics anytime:
+1. Go to Analytics page
+2. Click "Sync Analytics" button
+3. Wait for sync to complete
+
+**Note:** LinkedIn Personal profile analytics are limited due to API restrictions. See "Why are LinkedIn analytics different?" for details.
+
+**Data Freshness:**
+- New posts may take up to 6 hours to appear in analytics
+- Engagement metrics update with each sync cycle
+- Historical data is preserved for trend analysis`,
+      },
+      {
         id: 'linkedin-analytics-difference',
         question: 'Why are LinkedIn analytics different for Personal vs Company pages?',
         answer: `LinkedIn has different API access levels for personal profiles and company pages:
