@@ -320,6 +320,27 @@ export const MetricTooltips: Record<string, MetricTooltipConfig> = {
     },
     thresholds: { low: 30, high: 60 }
   },
+  avgViewDuration: {
+    title: 'Average View Duration',
+    icon: '⏱️',
+    content: {
+      base: 'The average time viewers spend watching your videos. Longer watch time signals engaging content and boosts algorithmic distribution.',
+      platforms: {
+        instagram: 'Reels: Aim for viewers to watch 80%+ of your video. Shorter videos (15-30s) often achieve this more easily.',
+        tiktok: 'TikTok: Watch time heavily influences For You page placement. Loop-worthy content keeps viewers watching multiple times.',
+        youtube: 'YouTube: Watch time is the #1 ranking factor. Longer videos with high retention outperform short videos with low retention.',
+        linkedin: 'LinkedIn: Professional audiences prefer concise content. 30-90 seconds with clear value keeps attention.',
+        facebook: 'Facebook: Most viewers drop off quickly. Front-load value to maximize watch time in the first 10 seconds.',
+      }
+    },
+    proInsight: 'Creators with 45+ second average view duration see 2x more recommendations.',
+    actionHints: {
+      low: 'Hook viewers faster and deliver value throughout. Consider shorter, more focused videos',
+      medium: 'Good watch time! Add pattern interrupts and tease upcoming content to extend viewing',
+      high: 'Excellent watch time! Your content keeps viewers engaged—experiment with longer formats'
+    },
+    thresholds: { low: 15, high: 45 }
+  },
 }
 
 // ============================================

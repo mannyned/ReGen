@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePlan } from '@/app/context/PlanContext';
 import { hasRetentionAnalytics } from '@/app/config/plans';
-import { AppHeader, Card, Badge, GradientBanner } from '@/app/components/ui';
+import { AppHeader, Card, Badge, GradientBanner, MetricInfo } from '@/app/components/ui';
+import { MetricTooltips } from '@/app/components/ui/Tooltip';
+import type { SocialPlatform } from '@/lib/types/social';
 import type {
   Period,
   RetentionDataPoint,
@@ -551,14 +553,27 @@ interface MetricCardProps {
   subValue?: string;
   comparison?: { value: number; label: string };
   highlight?: boolean;
+  tooltipKey?: keyof typeof MetricTooltips;
+  platform?: SocialPlatform | 'all';
+  currentValue?: number;
 }
 
-function MetricCard({ icon, label, value, subValue, comparison, highlight }: MetricCardProps) {
+function MetricCard({ icon, label, value, subValue, comparison, highlight, tooltipKey, platform, currentValue }: MetricCardProps) {
+  // Convert 'all' to undefined for tooltip (no platform-specific content)
+  const tooltipPlatform = platform === 'all' ? undefined : platform;
+
   return (
     <Card className={`p-5 ${highlight ? 'border-orange-200 bg-orange-50/50' : ''}`} hover={false}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-text-secondary uppercase tracking-wide">
+        <span className="text-sm font-medium text-text-secondary uppercase tracking-wide flex items-center gap-1">
           {icon} {label}
+          {tooltipKey && (
+            <MetricInfo
+              metric={tooltipKey}
+              platform={tooltipPlatform}
+              currentValue={currentValue}
+            />
+          )}
         </span>
       </div>
       <div className="flex items-baseline gap-2">
@@ -1181,18 +1196,27 @@ export default function RetentionAnalyticsPage() {
               subValue="first 3 seconds"
               comparison={{ value: 15, label: 'vs average' }}
               highlight
+              tooltipKey="hookScore"
+              platform={selectedPlatform as SocialPlatform | 'all'}
+              currentValue={summary?.avgHookRetention}
             />
             <MetricCard
               icon="✅"
               label="Completion Rate"
               value={summary ? `${summary.avgCompletionRate.toFixed(1)}%` : '-'}
               subValue="watched to end"
+              tooltipKey="completionRate"
+              platform={selectedPlatform as SocialPlatform | 'all'}
+              currentValue={summary?.avgCompletionRate}
             />
             <MetricCard
               icon="⏱️"
               label="Avg View Duration"
               value={summary ? formatDuration(summary.avgViewDuration) : '-'}
               subValue="per video"
+              tooltipKey="avgViewDuration"
+              platform={selectedPlatform as SocialPlatform | 'all'}
+              currentValue={summary?.avgViewDuration}
             />
             <MetricCard
               icon="🎬"
@@ -1254,16 +1278,62 @@ export default function RetentionAnalyticsPage() {
             <div className="flex items-center gap-2 mb-3">
               <span className="text-lg">🎯</span>
               <span className="text-sm font-medium uppercase tracking-wide opacity-90">
-                Optimization Tip
+                Optimization Tip {selectedPlatform !== 'all' && `for ${selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}`}
               </span>
             </div>
             {(() => {
-              // Dynamic optimization tip based on actual data
+              // Dynamic optimization tip based on actual data and selected platform
               const hasVideos = (summary?.totalVideos || 0) > 0;
               const hasViews = (summary?.totalViews || 0) > 0;
               const hookRetention = summary?.avgHookRetention || 0;
               const completionRate = summary?.avgCompletionRate || 0;
               const score = hookScore?.score || 0;
+
+              // Platform-specific tips
+              const platformTips: Record<PlatformFilter, { hook: string; mid: string; completion: string }> = {
+                all: {
+                  hook: 'Start with movement, a surprising fact, or address viewers directly.',
+                  mid: 'Add pattern interrupts every 5-7 seconds to maintain attention.',
+                  completion: 'End with a strong CTA and tease future content to encourage follows.'
+                },
+                instagram: {
+                  hook: 'Use text overlays and movement in the first frame. Reels autoplay, so the hook is everything.',
+                  mid: 'Keep it under 30 seconds for best completion. Use trending audio to boost discovery.',
+                  completion: 'Add a CTA in the last second. Encourage saves with "Save this for later!"'
+                },
+                tiktok: {
+                  hook: 'The first 0.5 seconds decide everything. Start mid-action or with a bold statement.',
+                  mid: 'TikTok rewards loop-worthy content. Design videos that viewers want to watch again.',
+                  completion: 'End abruptly to encourage replays. Ask questions to drive comments.'
+                },
+                youtube: {
+                  hook: 'Skip traditional intros. Start with your best content or a compelling question.',
+                  mid: 'Use chapters for longer videos. Tease upcoming sections to prevent drop-offs.',
+                  completion: 'YouTube rewards watch time. End screens and cards boost session time.'
+                },
+                facebook: {
+                  hook: 'Assume sound-off viewing. Use captions and visual hooks from frame one.',
+                  mid: 'Front-load value—most viewers drop after 10 seconds on Facebook.',
+                  completion: 'Shorter videos (under 1 minute) have higher completion on Facebook.'
+                },
+                linkedin: {
+                  hook: 'Open with a professional insight or bold industry take. B2B audiences value expertise.',
+                  mid: 'Keep it 30-90 seconds. LinkedIn users scroll during work—respect their time.',
+                  completion: 'End with thought-provoking questions to drive professional discussions.'
+                },
+                twitter: {
+                  hook: 'Grab attention immediately—Twitter videos autoplay in timeline. First 2 seconds are critical.',
+                  mid: 'Keep videos under 45 seconds for best engagement on Twitter.',
+                  completion: 'Include a text CTA in your tweet alongside the video for better conversions.'
+                },
+                snapchat: {
+                  hook: 'Vertical, full-screen content only. Start with energy and movement.',
+                  mid: 'Keep it under 10 seconds for Stories. Snappy, fun content wins.',
+                  completion: 'Use interactive elements like polls or swipe-ups to boost engagement.'
+                }
+              };
+
+              const tips = platformTips[selectedPlatform] || platformTips.all;
 
               if (hasViews && hookRetention > 0) {
                 if (hookRetention >= 70) {
@@ -1273,8 +1343,8 @@ export default function RetentionAnalyticsPage() {
                       <p className="text-white/80 mb-4">
                         With {hookRetention.toFixed(0)}% hook retention, your opening seconds are capturing attention effectively.
                         {completionRate >= 30
-                          ? ` Your ${completionRate.toFixed(0)}% completion rate shows viewers are staying engaged throughout.`
-                          : ` Focus on maintaining momentum mid-video to improve your ${completionRate.toFixed(0)}% completion rate.`}
+                          ? ` Your ${completionRate.toFixed(0)}% completion rate shows viewers are staying engaged throughout. ${tips.completion}`
+                          : ` Focus on maintaining momentum mid-video to improve your ${completionRate.toFixed(0)}% completion rate. ${tips.mid}`}
                       </p>
                       <Link href="/generate?format=video_clip"
                         className="inline-flex items-center px-4 py-2 bg-white text-orange-600 rounded-xl font-medium hover:bg-orange-50 transition-colors">
@@ -1287,8 +1357,7 @@ export default function RetentionAnalyticsPage() {
                     <>
                       <h3 className="text-xl font-bold mb-2">Strengthen Your First 3 Seconds</h3>
                       <p className="text-white/80 mb-4">
-                        Your {hookRetention.toFixed(0)}% hook retention has room for improvement. Try starting with a bold statement,
-                        unexpected visual, or direct question. Videos that hook in the first 1.5 seconds see 30%+ higher retention.
+                        Your {hookRetention.toFixed(0)}% hook retention has room for improvement. {tips.hook}
                       </p>
                       <Link href="/generate?format=video_clip"
                         className="inline-flex items-center px-4 py-2 bg-white text-orange-600 rounded-xl font-medium hover:bg-orange-50 transition-colors">
@@ -1301,8 +1370,7 @@ export default function RetentionAnalyticsPage() {
                     <>
                       <h3 className="text-xl font-bold mb-2">Revamp Your Video Openings</h3>
                       <p className="text-white/80 mb-4">
-                        With {hookRetention.toFixed(0)}% hook retention, viewers are scrolling past quickly. Start with movement,
-                        a surprising fact, or address viewers directly. Avoid slow intros—get to the value immediately.
+                        With {hookRetention.toFixed(0)}% hook retention, viewers are scrolling past quickly. {tips.hook}
                       </p>
                       <Link href="/generate?format=video_clip"
                         className="inline-flex items-center px-4 py-2 bg-white text-orange-600 rounded-xl font-medium hover:bg-orange-50 transition-colors">
@@ -1320,6 +1388,7 @@ export default function RetentionAnalyticsPage() {
                     <p className="text-white/80 mb-4">
                       You have {summary?.totalVideos || 0} videos posted. As views come in over the next 24-48 hours,
                       we'll analyze your hook effectiveness and provide personalized optimization tips.
+                      {selectedPlatform !== 'all' && ` Pro tip for ${selectedPlatform}: ${tips.hook}`}
                     </p>
                     <Link href="/generate?format=video_clip"
                       className="inline-flex items-center px-4 py-2 bg-white text-orange-600 rounded-xl font-medium hover:bg-orange-50 transition-colors">
@@ -1331,10 +1400,16 @@ export default function RetentionAnalyticsPage() {
 
               return (
                 <>
-                  <h3 className="text-xl font-bold mb-2">Boost Your Hook with Pattern Interrupts</h3>
+                  <h3 className="text-xl font-bold mb-2">
+                    {selectedPlatform !== 'all'
+                      ? `Optimize Your ${selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)} Videos`
+                      : 'Boost Your Hook with Pattern Interrupts'}
+                  </h3>
                   <p className="text-white/80 mb-4">
-                    Videos that start with an unexpected visual or statement in the first 1.5 seconds
-                    have 34% higher hook retention. Post videos to get personalized retention insights.
+                    {selectedPlatform !== 'all'
+                      ? tips.hook
+                      : 'Videos that start with an unexpected visual or statement in the first 1.5 seconds have 34% higher hook retention.'
+                    } Post videos to get personalized retention insights.
                   </p>
                   <Link href="/generate?format=video_clip"
                     className="inline-flex items-center px-4 py-2 bg-white text-orange-600 rounded-xl font-medium hover:bg-orange-50 transition-colors">
