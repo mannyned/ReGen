@@ -22,6 +22,7 @@ export { tiktokProvider } from './tiktok';
 export { googleProvider } from './google';
 export { xProvider } from './x';
 export { linkedinProvider } from './linkedin';
+export { linkedinOrgProvider } from './linkedin-org';
 export { snapchatProvider } from './snapchat';
 
 // Re-export types for convenience
@@ -50,9 +51,14 @@ export const PROVIDER_CONFIGS = {
     features: ['Tweets', 'Threads', 'Analytics'],
   },
   linkedin: {
-    displayName: 'LinkedIn',
+    displayName: 'LinkedIn Personal',
     platforms: ['LinkedIn'],
     features: ['Posts', 'Articles'],
+  },
+  'linkedin-org': {
+    displayName: 'LinkedIn Company Page',
+    platforms: ['LinkedIn'],
+    features: ['Company Posts', 'Analytics', 'Engagement Data'],
   },
   snapchat: {
     displayName: 'Snapchat',

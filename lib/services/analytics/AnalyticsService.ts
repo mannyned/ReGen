@@ -36,6 +36,7 @@ export class AnalyticsService {
       youtube: () => this.getYouTubeAccountAnalytics(accessToken, dateRange),
       twitter: () => this.getTwitterAccountAnalytics(accessToken, dateRange),
       linkedin: () => this.getLinkedInAccountAnalytics(accessToken, dateRange),
+      'linkedin-org': () => this.getLinkedInAccountAnalytics(accessToken, dateRange), // Uses same analytics as LinkedIn
       facebook: () => this.getFacebookAccountAnalytics(accessToken, dateRange),
       meta: () => this.getInstagramAccountAnalytics(accessToken, dateRange), // Meta uses Instagram analytics
       snapchat: () => this.getSnapchatAccountAnalytics(accessToken, dateRange),
@@ -67,6 +68,7 @@ export class AnalyticsService {
       youtube: null,
       twitter: null,
       linkedin: null,
+      'linkedin-org': null,
       facebook: null,
       meta: null,
       snapchat: null,

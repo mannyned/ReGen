@@ -20,6 +20,7 @@ const PLATFORM_ID_MAP: Record<string, SocialPlatform> = {
   'twitter': 'twitter',
   'x': 'twitter',
   'linkedin': 'linkedin',
+  'linkedin-org': 'linkedin',  // Uses same logo as LinkedIn personal
   'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
@@ -33,6 +34,7 @@ const PLATFORM_TO_PROVIDER: Record<string, string> = {
   'youtube': 'google',
   'twitter': 'twitter',
   'linkedin': 'linkedin',
+  'linkedin-org': 'linkedin-org',  // Separate OAuth provider for Company Page
   'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
@@ -47,6 +49,7 @@ const PROVIDER_TO_PLATFORMS: Record<string, string[]> = {
   'tiktok': ['tiktok'],
   'twitter': ['twitter'],
   'linkedin': ['linkedin'],
+  'linkedin-org': ['linkedin-org'],  // Separate provider for Company Page
   'snapchat': ['snapchat'],
   'pinterest': ['pinterest'],
   'discord': ['discord'],
@@ -222,7 +225,8 @@ export default function SettingsPage() {
         { id: 'tiktok', name: 'TikTok', icon: '🎵', color: 'from-gray-900 to-cyan-500', connected: false },
         { id: 'youtube', name: 'YouTube', icon: '▶️', color: 'from-red-600 to-red-500', connected: false },
         { id: 'twitter', name: 'X (Twitter)', icon: '𝕏', color: 'from-gray-900 to-gray-700', connected: false },
-        { id: 'linkedin', name: 'LinkedIn', icon: '💼', color: 'from-blue-700 to-blue-600', connected: false },
+        { id: 'linkedin', name: 'LinkedIn Personal', icon: '💼', color: 'from-blue-700 to-blue-600', connected: false },
+        { id: 'linkedin-org', name: 'LinkedIn Company', icon: '🏢', color: 'from-blue-700 to-blue-600', connected: false },
         { id: 'facebook', name: 'Facebook', icon: '👥', color: 'from-blue-600 to-blue-500', connected: false },
         { id: 'snapchat', name: 'Snapchat', icon: '👻', color: 'from-yellow-400 to-yellow-500', connected: false },
         { id: 'pinterest', name: 'Pinterest', icon: '📌', color: 'from-red-600 to-red-500', connected: false },

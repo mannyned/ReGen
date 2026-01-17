@@ -8,6 +8,7 @@ export type SocialPlatform =
   | 'youtube'
   | 'twitter'
   | 'linkedin'
+  | 'linkedin-org'  // LinkedIn Company Page (Community Management API)
   | 'facebook'
   | 'snapchat'
   | 'pinterest'
@@ -225,6 +226,7 @@ export const CAROUSEL_CONSTRAINTS: Record<SocialPlatform, CarouselConstraints> =
   facebook: { minItems: 2, maxItems: 10, allowVideo: true, allowMixed: true },
   twitter: { minItems: 1, maxItems: 4, allowVideo: false, allowMixed: false },
   linkedin: { minItems: 2, maxItems: 20, allowVideo: false, allowMixed: false },
+  'linkedin-org': { minItems: 2, maxItems: 20, allowVideo: false, allowMixed: false },  // Same as linkedin
   snapchat: { minItems: 1, maxItems: 10, allowVideo: true, allowMixed: true, isSequential: true },
   discord: { minItems: 1, maxItems: 10, allowVideo: true, allowMixed: true },
   pinterest: { minItems: 2, maxItems: 5, allowVideo: false, allowMixed: false, supportsPerItemCaption: true },

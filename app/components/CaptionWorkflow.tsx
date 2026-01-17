@@ -603,6 +603,7 @@ export function CaptionWorkflow({
       youtube: 'Watch till the end for a surprise!',
       twitter: 'This is worth sharing. Thoughts?',
       linkedin: 'Excited to share this insight with my network.',
+      'linkedin-org': 'Excited to share this company update with our network.',
       facebook: 'Had to share this with you all!',
       meta: 'Check out this amazing content! What do you think?',
       snapchat: 'You have to see this!',

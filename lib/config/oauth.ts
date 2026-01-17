@@ -100,7 +100,7 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
   },
 
   // ============================================
-  // LINKEDIN
+  // LINKEDIN (Personal Profile)
   // ============================================
   linkedin: {
     clientId: process.env.LINKEDIN_CLIENT_ID || '',
@@ -114,6 +114,28 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
       'profile',
       'email',
       'w_member_social',
+    ],
+    responseType: 'code',
+    grantType: 'authorization_code',
+  },
+
+  // ============================================
+  // LINKEDIN ORGANIZATION (Company Page - Community Management API)
+  // ============================================
+  'linkedin-org': {
+    clientId: process.env.LINKEDIN_CM_CLIENT_ID || '',
+    clientSecret: process.env.LINKEDIN_CM_CLIENT_SECRET || '',
+    authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
+    tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
+    refreshUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
+    revokeUrl: 'https://www.linkedin.com/oauth/v2/revoke',
+    scopes: [
+      'openid',
+      'profile',
+      'email',
+      'w_organization_social',
+      'r_organization_social',
+      'rw_organization_admin',
     ],
     responseType: 'code',
     grantType: 'authorization_code',
@@ -233,6 +255,7 @@ export const API_BASE_URLS: Record<SocialPlatform, string> = {
   youtube: 'https://www.googleapis.com/youtube/v3',
   twitter: 'https://api.twitter.com/2',
   linkedin: 'https://api.linkedin.com/v2',
+  'linkedin-org': 'https://api.linkedin.com/v2',
   facebook: 'https://graph.facebook.com/v21.0',
   meta: 'https://graph.facebook.com/v21.0',
   snapchat: 'https://adsapi.snapchat.com/v1',
@@ -250,6 +273,7 @@ export const RATE_LIMITS: Record<SocialPlatform, { maxRequests: number; windowMs
   youtube: { maxRequests: 10000, windowMs: 24 * 60 * 60 * 1000 }, // 10000/day
   twitter: { maxRequests: 300, windowMs: 15 * 60 * 1000 }, // 300/15min
   linkedin: { maxRequests: 100, windowMs: 24 * 60 * 60 * 1000 }, // 100/day
+  'linkedin-org': { maxRequests: 100, windowMs: 24 * 60 * 60 * 1000 }, // 100/day (same as linkedin)
   facebook: { maxRequests: 200, windowMs: 60 * 60 * 1000 }, // 200/hour
   meta: { maxRequests: 200, windowMs: 60 * 60 * 1000 }, // 200/hour (same as FB)
   snapchat: { maxRequests: 100, windowMs: 60 * 1000 }, // 100/minute
@@ -297,6 +321,13 @@ export const CONTENT_LIMITS: Record<SocialPlatform, {
     supportedFormats: ['mp4', 'mov', 'jpg', 'jpeg', 'png', 'gif'],
   },
   linkedin: {
+    maxCaptionLength: 3000,
+    maxHashtags: 30,
+    maxVideoLengthSeconds: 600,
+    maxFileSizeMb: 200,
+    supportedFormats: ['mp4', 'mov', 'avi', 'jpg', 'jpeg', 'png'],
+  },
+  'linkedin-org': {
     maxCaptionLength: 3000,
     maxHashtags: 30,
     maxVideoLengthSeconds: 600,

@@ -8,7 +8,7 @@ import { AppHeader, PlatformLogo } from '../components/ui'
 import type { SocialPlatform } from '@/lib/types/social'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
 
-type Platform = 'instagram' | 'twitter' | 'linkedin' | 'facebook' | 'tiktok' | 'youtube' | 'x' | 'snapchat' | 'pinterest' | 'discord'
+type Platform = 'instagram' | 'twitter' | 'linkedin' | 'linkedin-org' | 'facebook' | 'tiktok' | 'youtube' | 'x' | 'snapchat' | 'pinterest' | 'discord'
 
 // Map Platform type to SocialPlatform for logo component
 const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
@@ -16,6 +16,7 @@ const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
   'twitter': 'twitter',
   'x': 'twitter',
   'linkedin': 'linkedin',
+  'linkedin-org': 'linkedin-org',  // LinkedIn Company Page
   'facebook': 'facebook',
   'tiktok': 'tiktok',
   'youtube': 'youtube',
@@ -89,7 +90,8 @@ function SchedulePageContent() {
     { name: 'youtube', label: 'YouTube', icon: '▶️' },
     { name: 'facebook', label: 'Facebook', icon: '👥' },
     { name: 'x', label: 'X (Twitter)', icon: '𝕏' },
-    { name: 'linkedin', label: 'LinkedIn', icon: '💼' },
+    { name: 'linkedin', label: 'LinkedIn Personal', icon: '💼' },
+    { name: 'linkedin-org', label: 'LinkedIn Company', icon: '🏢' },
     { name: 'snapchat', label: 'Snapchat', icon: '👻' },
     { name: 'pinterest', label: 'Pinterest', icon: '📌' },
     { name: 'discord', label: 'Discord', icon: '💬' },
@@ -228,10 +230,17 @@ function SchedulePageContent() {
     fetchUpcomingPosts()
   }, [user, authLoading, searchParams])
 
-  // Fetch LinkedIn organizations when LinkedIn is selected
+  // Fetch LinkedIn organizations when LinkedIn Company is selected
+  // Only available when user has connected with LinkedIn Community Management credentials
   useEffect(() => {
     const fetchLinkedInOrganizations = async () => {
-      if (!selectedPlatforms.includes('linkedin') || !user?.id) {
+      // Only fetch when linkedin-org is selected AND connected
+      if (!selectedPlatforms.includes('linkedin-org') || !user?.id) {
+        return
+      }
+
+      // Check if linkedin-org is connected
+      if (!connectedAccounts.includes('linkedin-org')) {
         return
       }
 
@@ -247,7 +256,7 @@ function SchedulePageContent() {
 
         if (data.success && data.organizations) {
           setLinkedInOrganizations(data.organizations)
-          // If user has organizations, default to first one for better analytics
+          // If user has organizations, default to first one
           if (data.organizations.length > 0) {
             setSelectedLinkedInOrg(data.organizations[0].organizationUrn)
           }
@@ -260,7 +269,7 @@ function SchedulePageContent() {
     }
 
     fetchLinkedInOrganizations()
-  }, [selectedPlatforms, user?.id, linkedInOrganizations.length])
+  }, [selectedPlatforms, user?.id, connectedAccounts, linkedInOrganizations.length])
 
   const togglePlatform = (platform: Platform) => {
     setSelectedPlatforms(prev =>
@@ -437,8 +446,8 @@ function SchedulePageContent() {
         contentId,   // Link to ContentUpload (draft) - removes from drafts when published
       }
 
-      // If LinkedIn is selected and an organization is chosen, include it
-      if (selectedPlatforms.includes('linkedin') && selectedLinkedInOrg && selectedLinkedInOrg !== 'personal') {
+      // If LinkedIn Company is selected, include the organization URN
+      if (selectedPlatforms.includes('linkedin-org') && selectedLinkedInOrg) {
         publishData.linkedInOrganizationUrn = selectedLinkedInOrg
       }
 
@@ -822,13 +831,12 @@ function SchedulePageContent() {
                 )}
               </div>
 
-              {/* LinkedIn Organization Selection - Hidden until LinkedIn Partner approval for org scopes */}
-              {/* TODO: Uncomment after LinkedIn approves w_organization_social, r_organization_social, rw_organization_admin */}
-              {false && selectedPlatforms.includes('linkedin') && (
+              {/* LinkedIn Company Page Organization Selection */}
+              {selectedPlatforms.includes('linkedin-org') && connectedAccounts.includes('linkedin-org') && (
                 <div className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                   <label className="block text-sm font-medium text-blue-800 mb-3 flex items-center gap-2">
                     <PlatformLogo platform="linkedin" size="sm" />
-                    LinkedIn Posting Options
+                    Select Company Page
                   </label>
 
                   {linkedInOrgsLoading ? (
@@ -837,15 +845,16 @@ function SchedulePageContent() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
-                      <span className="text-sm">Loading your LinkedIn pages...</span>
+                      <span className="text-sm">Loading your Company Pages...</span>
                     </div>
-                  ) : (
-                    <>
-                      <div className="space-y-2">
-                        {/* Personal Profile Option */}
+                  ) : linkedInOrganizations.length > 0 ? (
+                    <div className="space-y-2">
+                      {/* Organization Options */}
+                      {linkedInOrganizations.map((org) => (
                         <label
+                          key={org.organizationUrn}
                           className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
-                            selectedLinkedInOrg === 'personal'
+                            selectedLinkedInOrg === org.organizationUrn
                               ? 'bg-blue-100 border-2 border-blue-500'
                               : 'bg-white border border-blue-200 hover:border-blue-300'
                           }`}
@@ -853,62 +862,27 @@ function SchedulePageContent() {
                           <input
                             type="radio"
                             name="linkedinOrg"
-                            value="personal"
-                            checked={selectedLinkedInOrg === 'personal'}
+                            value={org.organizationUrn}
+                            checked={selectedLinkedInOrg === org.organizationUrn}
                             onChange={(e) => setSelectedLinkedInOrg(e.target.value)}
                             className="w-4 h-4 text-blue-600"
                           />
                           <div className="flex-1">
-                            <span className="font-medium text-text-primary">Personal Profile</span>
-                            <p className="text-xs text-text-secondary">Post to your personal LinkedIn feed</p>
+                            <span className="font-medium text-text-primary">{org.name}</span>
+                            {org.vanityName && (
+                              <p className="text-xs text-text-secondary">linkedin.com/company/{org.vanityName}</p>
+                            )}
                           </div>
-                          <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">Limited Analytics</span>
+                          <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">Full Analytics</span>
                         </label>
-
-                        {/* Organization Options */}
-                        {linkedInOrganizations.map((org) => (
-                          <label
-                            key={org.organizationUrn}
-                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
-                              selectedLinkedInOrg === org.organizationUrn
-                                ? 'bg-blue-100 border-2 border-blue-500'
-                                : 'bg-white border border-blue-200 hover:border-blue-300'
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name="linkedinOrg"
-                              value={org.organizationUrn}
-                              checked={selectedLinkedInOrg === org.organizationUrn}
-                              onChange={(e) => setSelectedLinkedInOrg(e.target.value)}
-                              className="w-4 h-4 text-blue-600"
-                            />
-                            <div className="flex-1">
-                              <span className="font-medium text-text-primary">{org.name}</span>
-                              {org.vanityName && (
-                                <p className="text-xs text-text-secondary">linkedin.com/company/{org.vanityName}</p>
-                              )}
-                            </div>
-                            <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">Full Analytics</span>
-                          </label>
-                        ))}
-                      </div>
-
-                      {linkedInOrganizations.length === 0 && (
-                        <p className="text-xs text-blue-600 mt-3">
-                          No Company Pages found. To get full analytics, create a LinkedIn Company Page and make yourself an admin.
-                        </p>
-                      )}
-
-                      {linkedInOrganizations.length > 0 && selectedLinkedInOrg !== 'personal' && (
-                        <p className="text-xs text-green-600 mt-3 flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          Posting to a Company Page enables full engagement analytics (likes, comments, impressions, reach)
-                        </p>
-                      )}
-                    </>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-800">
+                        No Company Pages found. Make sure you're an admin of at least one LinkedIn Company Page.
+                      </p>
+                    </div>
                   )}
                 </div>
               )}

@@ -78,6 +78,10 @@ const BRAND_COLORS: Record<SocialPlatform, { primary: string; secondary?: string
     primary: '#0A66C2',
     background: '#0A66C2',
   },
+  'linkedin-org': {
+    primary: '#0A66C2',
+    background: '#0A66C2',
+  },
   snapchat: {
     primary: '#FFFC00',
     background: '#FFFC00',
@@ -101,6 +105,7 @@ const PLATFORM_NAMES: Record<SocialPlatform, string> = {
   twitter: 'X (formerly Twitter)',
   youtube: 'YouTube',
   linkedin: 'LinkedIn',
+  'linkedin-org': 'LinkedIn Company',
   snapchat: 'Snapchat',
   pinterest: 'Pinterest',
   discord: 'Discord',
@@ -462,6 +467,7 @@ const LOGO_COMPONENTS: Record<SocialPlatform, React.FC<LogoSvgProps>> = {
   twitter: XLogo,
   youtube: YouTubeLogo,
   linkedin: LinkedInLogo,
+  'linkedin-org': LinkedInLogo,  // Uses same logo as LinkedIn personal
   snapchat: SnapchatLogo,
   pinterest: PinterestLogo,
   discord: DiscordLogo,
@@ -575,6 +581,7 @@ export const SUPPORTED_PLATFORMS: SocialPlatform[] = [
   'twitter',
   'youtube',
   'linkedin',
+  'linkedin-org',
   'snapchat',
   'pinterest',
   'discord',

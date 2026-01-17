@@ -15,13 +15,14 @@
  * Add new providers here as the system expands
  */
 export type OAuthProvider =
-  | 'meta'      // Facebook + Instagram (combined OAuth)
-  | 'instagram' // Instagram (stored separately)
-  | 'facebook'  // Facebook (stored separately)
+  | 'meta'        // Facebook + Instagram (combined OAuth)
+  | 'instagram'   // Instagram (stored separately)
+  | 'facebook'    // Facebook (stored separately)
   | 'tiktok'
-  | 'google'    // YouTube
-  | 'x'         // Twitter
-  | 'linkedin'
+  | 'google'      // YouTube
+  | 'x'           // Twitter
+  | 'linkedin'    // LinkedIn Personal Profile
+  | 'linkedin-org'  // LinkedIn Company Page (Community Management API)
   | 'snapchat';
 
 /**

@@ -51,6 +51,11 @@ export const BRAND_RESOURCE_URLS: Record<SocialPlatform, {
     pressKit: 'https://news.linkedin.com/media-resources',
     trademark: 'https://brand.linkedin.com/policies',
   },
+  'linkedin-org': {
+    brandGuidelines: 'https://brand.linkedin.com/',
+    pressKit: 'https://news.linkedin.com/media-resources',
+    trademark: 'https://brand.linkedin.com/policies',
+  },
   snapchat: {
     brandGuidelines: 'https://snap.com/en-US/brand-guidelines',
     pressKit: 'https://newsroom.snap.com/',
@@ -117,6 +122,12 @@ export const BRAND_COLORS: Record<SocialPlatform, {
     safeZone: '20%',
   },
   linkedin: {
+    primary: '#0A66C2',
+    background: '#0A66C2',
+    text: '#FFFFFF',
+    safeZone: '50%',
+  },
+  'linkedin-org': {
     primary: '#0A66C2',
     background: '#0A66C2',
     text: '#FFFFFF',
@@ -223,6 +234,17 @@ export const LOGO_USAGE_RULES: Record<SocialPlatform, {
     ],
     allowedBackgrounds: ['White', 'Light backgrounds', 'Dark backgrounds'],
   },
+  'linkedin-org': {
+    minSize: 21,
+    allowedVariants: ['color', 'monochrome', 'white'],
+    restrictions: [
+      'Use only the In bug or full LinkedIn logo',
+      'Do not modify the LinkedIn blue color',
+      'Do not add decorative elements',
+      'Maintain minimum clear space',
+    ],
+    allowedBackgrounds: ['White', 'Light backgrounds', 'Dark backgrounds'],
+  },
   snapchat: {
     minSize: 18,
     allowedVariants: ['color', 'white', 'dark'],
@@ -303,6 +325,11 @@ export const TRADEMARK_INFO: Record<SocialPlatform, {
     copyrightYear: 2005,
   },
   linkedin: {
+    owner: 'Microsoft Corporation',
+    registeredName: 'LinkedIn',
+    copyrightYear: 2003,
+  },
+  'linkedin-org': {
     owner: 'Microsoft Corporation',
     registeredName: 'LinkedIn',
     copyrightYear: 2003,

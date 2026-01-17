@@ -29,6 +29,16 @@ export class LinkedInPublisher extends BasePlatformPublisher {
     }
   }
 
+  // Get access token for organization/company page operations
+  // Uses linkedin-org provider which has Community Management API scopes
+  protected async getOrgAccessToken(userId: string): Promise<string> {
+    try {
+      return await getAccessToken('linkedin-org', userId)
+    } catch (error) {
+      throw new Error('No valid access token for LinkedIn Company Page. Please connect your LinkedIn Company Page account.')
+    }
+  }
+
   async publishContent(options: PublishOptions): Promise<PublishResult> {
     const { userId, content, media, linkedInOrganizationUrn } = options
     this.validateContent(content, media)
@@ -305,6 +315,7 @@ export class LinkedInPublisher extends BasePlatformPublisher {
   /**
    * Get organizations where the user is an administrator
    * Returns list of organization URNs and names
+   * NOTE: Requires linkedin-org connection (Community Management API)
    */
   async getAdministeredOrganizations(userId: string): Promise<Array<{
     organizationUrn: string
@@ -313,7 +324,8 @@ export class LinkedInPublisher extends BasePlatformPublisher {
     vanityName?: string
     logoUrl?: string
   }>> {
-    const accessToken = await this.getAccessToken(userId)
+    // Use organization token (linkedin-org) which has Community Management API scopes
+    const accessToken = await this.getOrgAccessToken(userId)
 
     try {
       // Fetch organizations where user has admin role
@@ -408,7 +420,8 @@ export class LinkedInPublisher extends BasePlatformPublisher {
     const { userId, content, media, organizationUrn } = options
     this.validateContent(content, media)
 
-    const accessToken = await this.getAccessToken(userId)
+    // Use organization token (linkedin-org) which has Community Management API scopes
+    const accessToken = await this.getOrgAccessToken(userId)
 
     try {
       // Step 1: Upload media if present

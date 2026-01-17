@@ -58,6 +58,7 @@ function toPrismaPlatform(platform: SocialPlatform): PrismaSocialPlatform {
     youtube: 'YOUTUBE',
     twitter: 'TWITTER',
     linkedin: 'LINKEDIN',
+    'linkedin-org': 'LINKEDIN',  // LinkedIn Company uses same platform type
     facebook: 'FACEBOOK',
     meta: 'META',
     snapchat: 'SNAPCHAT',

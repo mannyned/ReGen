@@ -52,6 +52,11 @@ export const PLATFORM_CHARACTER_LIMITS: Record<SocialPlatform, {
     hashtags: 3000, // Included in caption limit
     warningThreshold: 90,
   },
+  'linkedin-org': {
+    caption: 3000,
+    hashtags: 3000, // Included in caption limit
+    warningThreshold: 90,
+  },
   facebook: {
     caption: 63206,
     hashtags: 63206,
@@ -289,6 +294,11 @@ export const PLATFORM_ADAPTATION_PRESETS: Record<SocialPlatform, AdaptationOptio
     { adaptation: 'remove_line_breaks', enabled: true },
   ],
   linkedin: [
+    { adaptation: 'professional_tone', enabled: true },
+    { adaptation: 'add_line_breaks', enabled: true },
+    { adaptation: 'reduce_emojis', enabled: true },
+  ],
+  'linkedin-org': [
     { adaptation: 'professional_tone', enabled: true },
     { adaptation: 'add_line_breaks', enabled: true },
     { adaptation: 'reduce_emojis', enabled: true },

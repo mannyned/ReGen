@@ -549,6 +549,7 @@ export class ExcelExportService {
       youtube: 'YouTube',
       twitter: 'Twitter/X',
       linkedin: 'LinkedIn',
+      'linkedin-org': 'LinkedIn Company',
       facebook: 'Facebook',
       meta: 'Meta',
       snapchat: 'Snapchat',

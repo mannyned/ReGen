@@ -332,6 +332,7 @@ export class OAuthService {
       youtube: () => this.fetchYouTubeProfile(accessToken),
       twitter: () => this.fetchTwitterProfile(accessToken),
       linkedin: () => this.fetchLinkedInProfile(accessToken),
+      'linkedin-org': () => this.fetchLinkedInProfile(accessToken), // LinkedIn Company uses same profile fetch
       facebook: () => this.fetchFacebookProfile(accessToken),
       meta: () => this.fetchInstagramProfile(accessToken), // Meta uses Instagram profile
       snapchat: () => this.fetchSnapchatProfile(accessToken),

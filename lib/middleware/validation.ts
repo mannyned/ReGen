@@ -28,7 +28,7 @@ export function validatePlatformParam(platform: string): ValidationResult {
   } else if (!validatePlatform(platform)) {
     errors.push({
       field: 'platform',
-      message: `Invalid platform. Must be one of: instagram, tiktok, youtube, twitter, linkedin, facebook, snapchat`,
+      message: `Invalid platform. Must be one of: instagram, tiktok, youtube, twitter, linkedin, linkedin-org, facebook, snapchat`,
     })
   }
 
