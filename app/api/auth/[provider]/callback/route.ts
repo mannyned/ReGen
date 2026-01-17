@@ -37,9 +37,13 @@ export async function GET(
   const { provider } = await params;
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || '';
 
+  console.log('[OAuth Callback] Provider:', provider);
+  console.log('[OAuth Callback] Full URL:', request.url);
+
   try {
     // Validate provider
     if (!isProviderRegistered(provider)) {
+      console.log('[OAuth Callback] Provider not registered:', provider);
       return NextResponse.redirect(
         `${baseUrl}/auth/callback-success?provider=${provider}&error=UNKNOWN_PROVIDER`
       );
@@ -47,10 +51,12 @@ export async function GET(
 
     // Get search params from callback URL
     const searchParams = request.nextUrl.searchParams;
+    console.log('[OAuth Callback] Search params - error:', searchParams.get('error'), 'error_description:', searchParams.get('error_description'), 'code exists:', !!searchParams.get('code'));
 
     // Handle the callback through the engine
     // This handles: state validation, code exchange, token storage
     const result = await OAuthEngine.handleCallback(provider, searchParams);
+    console.log('[OAuth Callback] Result:', { success: result.success, redirectUrl: result.redirectUrl });
 
     // Redirect based on result
     return NextResponse.redirect(result.redirectUrl);
