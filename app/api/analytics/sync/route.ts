@@ -68,13 +68,14 @@ async function fetchInstagramInsights(
       console.error(`[Instagram] Failed to get media object for ${mediaId}:`, error)
     }
 
-    // Step 2: Get insights (impressions, reach, saved, shares)
+    // Step 2: Get insights (reach, saved, shares)
     // Note: Available metrics depend on media type
+    // As of API v22.0+, 'impressions' is deprecated for Instagram media
     // For Reels: plays, reach, saved, shares, total_interactions
-    // For Feed posts: impressions, reach, saved
+    // For Feed posts (IMAGE/CAROUSEL): reach, saved
     const insightMetrics = mediaType === 'VIDEO' || mediaType === 'REEL'
       ? 'reach,saved,shares,plays'
-      : 'impressions,reach,saved'
+      : 'reach,saved'
 
     const insightsUrl = `${META_GRAPH_API}/${mediaId}/insights?metric=${insightMetrics}&access_token=${accessToken}`
     const insightsResponse = await fetch(insightsUrl)
