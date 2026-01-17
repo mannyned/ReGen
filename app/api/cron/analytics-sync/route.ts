@@ -317,7 +317,6 @@ export async function GET(request: NextRequest) {
     const usersWithConnections = await prisma.oAuthConnection.findMany({
       where: {
         provider: { in: ['instagram', 'facebook', 'meta', 'youtube', 'google'] },
-        accessToken: { not: null },
       },
       select: {
         profileId: true,
