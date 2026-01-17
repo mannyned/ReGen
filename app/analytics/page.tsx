@@ -1081,8 +1081,8 @@ export default function AnalyticsPage() {
                     title="Retention Graph Analytics"
                     description="See exactly where viewers drop off and optimize your video hooks"
                     previewStats={[
-                      { label: 'Hook Score', value: '82%' },
-                      { label: 'Completion', value: '28%' }
+                      { label: 'Views', value: realStats?.engagement?.totalViews ? realStats.engagement.totalViews.toLocaleString() : '—' },
+                      { label: 'Retention', value: advancedMetrics.audienceRetention > 0 ? `${advancedMetrics.audienceRetention}%` : '—' }
                     ]}
                     gradientFrom="from-orange-500"
                     gradientTo="to-red-500"
@@ -1094,8 +1094,8 @@ export default function AnalyticsPage() {
                     title="AI-Powered Recommendations"
                     description="Get personalized insights and actionable tips to boost your performance"
                     previewStats={[
-                      { label: 'Tips', value: '12' },
-                      { label: 'Impact', value: '+32%' }
+                      { label: 'AI Posts', value: realStats?.aiGenerated ? realStats.aiGenerated.toString() : '—' },
+                      { label: 'AI Impact', value: realStats?.aiImpact?.improvement ? `${realStats.aiImpact.improvement > 0 ? '+' : ''}${realStats.aiImpact.improvement}%` : '—' }
                     ]}
                     gradientFrom="from-emerald-500"
                     gradientTo="to-teal-600"
@@ -1397,11 +1397,11 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {(advancedMetrics.sentimentScore > 0 || advancedMetrics.audienceRetention > 0) && (
+                      {(realStats?.engagement?.totalViews > 0 || advancedMetrics.audienceRetention > 0) && (
                         <>
                           <div className="text-right hidden md:block">
-                            <p className="text-2xl font-bold">{advancedMetrics.sentimentScore > 0 ? `${advancedMetrics.sentimentScore}%` : '—'}</p>
-                            <p className="text-xs text-white/80">Sentiment</p>
+                            <p className="text-2xl font-bold">{realStats?.engagement?.totalViews ? realStats.engagement.totalViews.toLocaleString() : '—'}</p>
+                            <p className="text-xs text-white/80">Total Views</p>
                           </div>
                           <div className="text-right hidden md:block">
                             <p className="text-2xl font-bold">{advancedMetrics.audienceRetention > 0 ? `${advancedMetrics.audienceRetention}%` : '—'}</p>
