@@ -798,10 +798,10 @@ export async function POST(request: NextRequest) {
           insights = {
             impressions: fullInsights.impressions,
             reach: fullInsights.reach,
-            likes: basic?.likes || 0,
-            comments: basic?.comments || 0,
-            shares: 0,
-            saves: 0,
+            likes: fullInsights.likes || basic?.likes || 0,
+            comments: fullInsights.comments || basic?.comments || 0,
+            shares: fullInsights.shares || 0,
+            saves: 0, // Facebook API doesn't provide saves
             engaged_users: fullInsights.engaged_users,
           }
           console.log(`[Analytics Sync] Facebook insights for ${post.externalPostId}:`, insights)
