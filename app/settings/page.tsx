@@ -145,24 +145,33 @@ export default function SettingsPage() {
   // Notifications state
   const [notifications, setNotifications] = useState<NotificationSetting[]>(defaultNotifications)
   const [pushPermission, setPushPermission] = useState<NotificationPermission | 'unsupported'>('default')
+  const [notificationsLoaded, setNotificationsLoaded] = useState(false)
 
-  // Load notification preferences from localStorage on mount
+  // Load notification preferences from API on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('regenr_notification_preferences')
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved)
-          // Merge saved preferences with defaults (in case new notification types were added)
-          const merged = defaultNotifications.map(defaultNotif => {
-            const savedNotif = parsed.find((n: NotificationSetting) => n.id === defaultNotif.id)
-            return savedNotif ? { ...defaultNotif, email: savedNotif.email, push: savedNotif.push } : defaultNotif
-          })
-          setNotifications(merged)
-        } catch {
-          // Invalid JSON, use defaults
+    async function loadNotificationPreferences() {
+      try {
+        const response = await fetch('/api/user/preferences')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.preferences && Array.isArray(data.preferences)) {
+            // Merge saved preferences with defaults (in case new notification types were added)
+            const merged = defaultNotifications.map(defaultNotif => {
+              const savedNotif = data.preferences.find((n: { id: string; email: boolean; push: boolean }) => n.id === defaultNotif.id)
+              return savedNotif ? { ...defaultNotif, email: savedNotif.email, push: savedNotif.push } : defaultNotif
+            })
+            setNotifications(merged)
+          }
         }
+      } catch (error) {
+        console.error('Failed to load notification preferences:', error)
+      } finally {
+        setNotificationsLoaded(true)
       }
+    }
+
+    if (typeof window !== 'undefined') {
+      loadNotificationPreferences()
 
       // Check notification permission
       if ('Notification' in window) {
@@ -471,9 +480,16 @@ export default function SettingsPage() {
     )
     setNotifications(updated)
 
-    // Save to localStorage immediately
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('regenr_notification_preferences', JSON.stringify(updated))
+    // Save to API
+    try {
+      const prefsToSave = updated.map(n => ({ id: n.id, email: n.email, push: n.push }))
+      await fetch('/api/user/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferences: prefsToSave }),
+      })
+    } catch (error) {
+      console.error('Failed to save notification preferences:', error)
     }
   }
 

@@ -42,6 +42,9 @@ model Profile {
   stripePriceId          String?   @map("stripe_price_id")
   stripeCurrentPeriodEnd DateTime? @map("stripe_current_period_end")
 
+  // User preferences
+  notificationPreferences Json? @map("notification_preferences")
+
   // Relations - Profile is the main entity for all user data
   socialConnections  SocialConnection[]
   oauthConnections   OAuthConnection[]
