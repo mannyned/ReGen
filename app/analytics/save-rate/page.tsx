@@ -711,20 +711,22 @@ export default function SaveRateAnalyticsPage() {
       setByPlatform(platformList);
 
       // Generate trend data from actual totals
-      // Distribute the totals across the time period
+      // Since we don't have daily granularity data, show totals on each point
+      // This gives users the accurate numbers when hovering
       const trendPoints: SaveRateTrendPoint[] = [];
       const daysToShow = Math.min(days, 30);
-      const dailySaves = totalSaves > 0 ? Math.round(totalSaves / daysToShow) : 0;
-      const dailyImpressions = totalReach > 0 ? Math.round(totalReach / daysToShow) : 0;
 
       for (let i = daysToShow; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
+
+        // Show actual totals on each point - the chart represents the overall period
+        // When we have per-day data in the future, this can be updated
         trendPoints.push({
           date: date.toISOString().split('T')[0],
-          saveRate: overallSaveRate, // Show actual save rate
-          saves: dailySaves,
-          impressions: dailyImpressions
+          saveRate: overallSaveRate,
+          saves: totalSaves,
+          impressions: totalReach
         });
       }
       setTrends(trendPoints);
