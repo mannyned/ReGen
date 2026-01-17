@@ -131,8 +131,8 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState('')
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
 
-  // Notifications state
-  const [notifications, setNotifications] = useState<NotificationSetting[]>([
+  // Default notification settings
+  const defaultNotifications: NotificationSetting[] = [
     { id: 'product', label: 'Product updates', description: 'News about features and improvements', email: true, push: false },
     { id: 'generation', label: 'Generation complete', description: 'When your content is ready', email: false, push: true },
     { id: 'scheduled', label: 'Post scheduled', description: 'Confirmation when a post is scheduled', email: false, push: true },
@@ -140,15 +140,36 @@ export default function SettingsPage() {
     { id: 'weekly', label: 'Weekly digest', description: 'Summary of your content performance', email: true, push: false },
     { id: 'team', label: 'Team activity', description: 'When teammates comment or share', email: true, push: true },
     { id: 'marketing', label: 'Marketing', description: 'Tips, offers, and inspiration', email: false, push: false },
-  ])
+  ]
+
+  // Notifications state
+  const [notifications, setNotifications] = useState<NotificationSetting[]>(defaultNotifications)
   const [pushPermission, setPushPermission] = useState<NotificationPermission | 'unsupported'>('default')
 
-  // Check notification permission on mount
+  // Load notification preferences from localStorage on mount
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setPushPermission(Notification.permission)
-    } else {
-      setPushPermission('unsupported')
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('regenr_notification_preferences')
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          // Merge saved preferences with defaults (in case new notification types were added)
+          const merged = defaultNotifications.map(defaultNotif => {
+            const savedNotif = parsed.find((n: NotificationSetting) => n.id === defaultNotif.id)
+            return savedNotif ? { ...defaultNotif, email: savedNotif.email, push: savedNotif.push } : defaultNotif
+          })
+          setNotifications(merged)
+        } catch {
+          // Invalid JSON, use defaults
+        }
+      }
+
+      // Check notification permission
+      if ('Notification' in window) {
+        setPushPermission(Notification.permission)
+      } else {
+        setPushPermission('unsupported')
+      }
     }
   }, [])
 
@@ -445,9 +466,15 @@ export default function SettingsPage() {
       }
     }
 
-    setNotifications(notifications.map(n =>
+    const updated = notifications.map(n =>
       n.id === id ? { ...n, [type]: !n[type] } : n
-    ))
+    )
+    setNotifications(updated)
+
+    // Save to localStorage immediately
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('regenr_notification_preferences', JSON.stringify(updated))
+    }
   }
 
   // Handle save
