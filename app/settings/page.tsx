@@ -135,6 +135,8 @@ export default function SettingsPage() {
   const [notifications, setNotifications] = useState<NotificationSetting[]>([
     { id: 'product', label: 'Product updates', description: 'News about features and improvements', email: true, push: false },
     { id: 'generation', label: 'Generation complete', description: 'When your content is ready', email: false, push: true },
+    { id: 'scheduled', label: 'Post scheduled', description: 'Confirmation when a post is scheduled', email: false, push: true },
+    { id: 'published', label: 'Post published', description: 'When your scheduled post goes live', email: true, push: true },
     { id: 'weekly', label: 'Weekly digest', description: 'Summary of your content performance', email: true, push: false },
     { id: 'team', label: 'Team activity', description: 'When teammates comment or share', email: true, push: true },
     { id: 'marketing', label: 'Marketing', description: 'Tips, offers, and inspiration', email: false, push: false },
