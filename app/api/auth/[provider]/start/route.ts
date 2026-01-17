@@ -34,9 +34,11 @@ export async function GET(
 ) {
   try {
     const { provider } = await params;
+    console.log('[OAuth Start] Starting OAuth for provider:', provider);
 
     // Step 1: Validate provider exists
     if (!isProviderRegistered(provider)) {
+      console.log('[OAuth Start] Provider not registered:', provider);
       return NextResponse.json(
         {
           error: 'Unknown provider',
@@ -64,9 +66,12 @@ export async function GET(
 
     // Get target platform from query params (for independent Instagram/Facebook connections)
     const targetPlatform = request.nextUrl.searchParams.get('targetPlatform') || undefined;
+    console.log('[OAuth Start] User authenticated, profileId:', profileId, 'targetPlatform:', targetPlatform);
 
     // Step 3 & 4: Start OAuth flow (generates state, stores in cookie)
+    console.log('[OAuth Start] Calling OAuthEngine.startOAuth...');
     const { authUrl } = await OAuthEngine.startOAuth(provider, profileId, targetPlatform);
+    console.log('[OAuth Start] Got auth URL:', authUrl);
 
     // Step 5: Redirect to provider
     // Using NextResponse.redirect for proper status code

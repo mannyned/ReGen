@@ -98,12 +98,17 @@ const config: ProviderConfig = {
  * Generate authorization URL for LinkedIn Organization
  */
 function getAuthorizationUrl(params: AuthorizationUrlParams): AuthorizationUrlResult {
+  console.log('[LinkedIn-Org] getAuthorizationUrl called');
   const { clientId } = getLinkedInOrgConfig();
+  console.log('[LinkedIn-Org] Got clientId:', clientId?.substring(0, 8) + '...');
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL;
+  console.log('[LinkedIn-Org] baseUrl:', baseUrl);
 
   const redirectUri = params.redirectUri || `${baseUrl}/api/auth/linkedin-org/callback`;
+  console.log('[LinkedIn-Org] redirectUri:', redirectUri);
 
   const allScopes = [...config.scopes, ...(params.additionalScopes || [])];
+  console.log('[LinkedIn-Org] scopes:', allScopes.join(' '));
 
   const authUrl = new URL(config.authorizationUrl);
   authUrl.searchParams.set('client_id', clientId);
@@ -111,6 +116,8 @@ function getAuthorizationUrl(params: AuthorizationUrlParams): AuthorizationUrlRe
   authUrl.searchParams.set('state', params.state);
   authUrl.searchParams.set('scope', allScopes.join(' '));
   authUrl.searchParams.set('response_type', 'code');
+
+  console.log('[LinkedIn-Org] Final auth URL:', authUrl.toString());
 
   return {
     url: authUrl.toString(),
