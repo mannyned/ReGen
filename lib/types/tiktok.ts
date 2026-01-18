@@ -79,6 +79,25 @@ export type TikTokPrivacyLevel =
   | 'SELF_ONLY'
 
 /**
+ * Commercial content type for TikTok branded content disclosure
+ */
+export type TikTokBrandContentType = 'YOUR_BRAND' | 'BRANDED_CONTENT' | null
+
+/**
+ * TikTok creator info from the API
+ */
+export interface TikTokCreatorInfo {
+  displayName: string
+  avatarUrl?: string
+  followerCount?: number
+  privacyLevelOptions: TikTokPrivacyLevel[]
+  commentDisabled: boolean
+  duetDisabled: boolean
+  stitchDisabled: boolean
+  maxVideoPostPerDay: number
+}
+
+/**
  * Post status in our system
  */
 export type TikTokPostStatus =
@@ -102,6 +121,9 @@ export interface TikTokPostOptions {
   disableDuet?: boolean
   disableStitch?: boolean
   scheduledAt?: Date
+  // Commercial content disclosure (required by TikTok guidelines)
+  brandContentToggle?: boolean  // Does this content promote a brand?
+  brandContentType?: TikTokBrandContentType  // 'YOUR_BRAND' or 'BRANDED_CONTENT'
 }
 
 /**

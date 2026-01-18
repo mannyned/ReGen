@@ -29,7 +29,16 @@ export class TikTokPublisher extends BasePlatformPublisher {
   protected baseUrl = API_BASE_URLS.tiktok
 
   async publishContent(options: PublishOptions): Promise<PublishResult> {
-    const { userId, content, media } = options
+    const { userId, content, media, tiktokSettings } = options as PublishOptions & {
+      tiktokSettings?: {
+        privacyLevel: string | null
+        disableComments: boolean
+        disableDuet: boolean
+        disableStitch: boolean
+        brandContentToggle: boolean
+        brandContentType: string | null
+      }
+    }
 
     // TikTok requires video content
     if (!media || media.mediaType !== 'video') {
@@ -58,8 +67,8 @@ export class TikTokPublisher extends BasePlatformPublisher {
       const videoSize = videoBuffer.byteLength
       console.log('[TikTok] Video fetched, size:', videoSize)
 
-      // Initialize direct publish upload with actual file size
-      const uploadInfo = await this.initializeDirectPublish(accessToken, videoSize, caption)
+      // Initialize direct publish upload with actual file size and TikTok settings
+      const uploadInfo = await this.initializeDirectPublish(accessToken, videoSize, caption, tiktokSettings)
 
       // Upload the video to TikTok
       await this.uploadVideoBuffer(uploadInfo, videoBuffer, media.mimeType)
@@ -143,11 +152,23 @@ export class TikTokPublisher extends BasePlatformPublisher {
    * TikTok API requirements:
    * - For videos < 64MB: upload as single chunk (chunk_size = video_size, total_chunk_count = 1)
    * - For videos >= 64MB: use chunked upload (chunk_size between 5MB-64MB)
+   *
+   * Content Sharing Guidelines compliance:
+   * - privacy_level, disable_duet, disable_stitch, disable_comment are passed when available
+   * - brand_content_toggle and brand_organic_toggle for commercial content disclosure
    */
   private async initializeDirectPublish(
     accessToken: string,
     videoSize: number,
-    caption: string
+    caption: string,
+    tiktokSettings?: {
+      privacyLevel: string | null
+      disableComments: boolean
+      disableDuet: boolean
+      disableStitch: boolean
+      brandContentToggle: boolean
+      brandContentType: string | null
+    }
   ): Promise<{
     publish_id: string
     upload_url: string
@@ -175,13 +196,37 @@ export class TikTokPublisher extends BasePlatformPublisher {
       totalChunks = Math.ceil(videoSize / chunkSize)
     }
 
-    // Inbox flow request body - simpler than direct publish
-    // User sets privacy/duet/stitch when they publish from TikTok app
+    // Build post_info with TikTok settings for Content Sharing Guidelines compliance
+    const postInfo: Record<string, unknown> = {
+      title: caption.substring(0, 150), // TikTok title limit
+      video_cover_timestamp_ms: 1000, // Use frame at 1 second as cover
+    }
+
+    // Add TikTok settings if provided (Content Sharing Guidelines requirements)
+    if (tiktokSettings) {
+      if (tiktokSettings.privacyLevel) {
+        postInfo.privacy_level = tiktokSettings.privacyLevel
+      }
+      postInfo.disable_comment = tiktokSettings.disableComments
+      postInfo.disable_duet = tiktokSettings.disableDuet
+      postInfo.disable_stitch = tiktokSettings.disableStitch
+
+      // Commercial content disclosure
+      if (tiktokSettings.brandContentToggle) {
+        if (tiktokSettings.brandContentType === 'YOUR_BRAND') {
+          // "Your Brand" - Promotional content label
+          postInfo.brand_organic_toggle = true
+          postInfo.brand_content_toggle = false
+        } else if (tiktokSettings.brandContentType === 'BRANDED_CONTENT') {
+          // "Branded Content" - Paid partnership label
+          postInfo.brand_content_toggle = true
+          postInfo.brand_organic_toggle = false
+        }
+      }
+    }
+
     const requestBody = {
-      post_info: {
-        title: caption.substring(0, 150), // TikTok title limit
-        video_cover_timestamp_ms: 1000, // Use frame at 1 second as cover
-      },
+      post_info: postInfo,
       source_info: {
         source: 'FILE_UPLOAD',
         video_size: videoSize,

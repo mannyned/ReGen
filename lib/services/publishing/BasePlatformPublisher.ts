@@ -33,6 +33,15 @@ export interface PublishOptions {
   scheduledAt?: Date
   contentType?: 'post' | 'story'  // Post to feed or story/reel
   linkedInOrganizationUrn?: string  // For LinkedIn organization/company page posts
+  // TikTok-specific settings for Content Sharing Guidelines compliance
+  tiktokSettings?: {
+    privacyLevel: string | null
+    disableComments: boolean
+    disableDuet: boolean
+    disableStitch: boolean
+    brandContentToggle: boolean
+    brandContentType: string | null
+  }
 }
 
 export abstract class BasePlatformPublisher {

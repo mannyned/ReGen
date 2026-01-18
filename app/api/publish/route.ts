@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
         carouselItems,  // New: array of carousel items for multi-image posts
         contentId,      // Link to ContentUpload (draft) record
         linkedInOrganizationUrn,  // For LinkedIn organization/company page posts
+        tiktokSettings, // TikTok-specific settings for Content Sharing Guidelines
       } = body as {
         userId: string
         platforms: SocialPlatform[]
@@ -67,6 +68,14 @@ export async function POST(request: NextRequest) {
         carouselItems?: CarouselItem[]  // New: for carousel/multi-image posts
         contentId?: string              // Link to ContentUpload (draft) record
         linkedInOrganizationUrn?: string  // For LinkedIn organization/company page posts
+        tiktokSettings?: {              // TikTok Content Sharing Guidelines compliance
+          privacyLevel: string | null
+          disableComments: boolean
+          disableDuet: boolean
+          disableStitch: boolean
+          brandContentToggle: boolean
+          brandContentType: string | null
+        }
       }
 
       // Determine if this is a carousel post
@@ -202,6 +211,7 @@ export async function POST(request: NextRequest) {
           platformContent,
           contentType,
           linkedInOrganizationUrn,  // Pass LinkedIn org URN for company page posts
+          tiktokSettings,           // Pass TikTok settings for Content Sharing Guidelines
         })
 
         // Process single-item results

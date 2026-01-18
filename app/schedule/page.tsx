@@ -7,6 +7,7 @@ import { fileStorage } from '../utils/fileStorage'
 import { AppHeader, PlatformLogo } from '../components/ui'
 import type { SocialPlatform } from '@/lib/types/social'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
+import { TikTokPostSettings, type TikTokPostSettingsData } from '../components/tiktok/TikTokPostSettings'
 
 type Platform = 'instagram' | 'twitter' | 'linkedin' | 'linkedin-org' | 'facebook' | 'tiktok' | 'youtube' | 'x' | 'snapchat' | 'pinterest' | 'discord'
 
@@ -83,6 +84,17 @@ function SchedulePageContent() {
   }>>([])
   const [selectedLinkedInOrg, setSelectedLinkedInOrg] = useState<string>('personal') // 'personal' or organization URN
   const [linkedInOrgsLoading, setLinkedInOrgsLoading] = useState(false)
+
+  // TikTok post settings state (for Content Sharing Guidelines compliance)
+  const [tiktokSettings, setTiktokSettings] = useState<TikTokPostSettingsData>({
+    privacyLevel: null, // No default - user must select
+    allowComments: false, // Default unchecked per TikTok guidelines
+    allowDuet: false,
+    allowStitch: false,
+    brandContentToggle: false,
+    brandContentType: null,
+    agreedToTerms: false,
+  })
 
   const platforms: { name: Platform; label: string; icon: string }[] = [
     { name: 'tiktok', label: 'TikTok', icon: '🎵' },
@@ -289,6 +301,22 @@ function SchedulePageContent() {
       }
     }
 
+    // Validate TikTok settings if TikTok is selected
+    if (selectedPlatforms.includes('tiktok') && connectedAccounts.includes('tiktok') && !testMode) {
+      if (!tiktokSettings.privacyLevel) {
+        alert('Please select a privacy level for your TikTok post')
+        return
+      }
+      if (tiktokSettings.brandContentToggle && !tiktokSettings.brandContentType) {
+        alert('Please select a branded content type for your TikTok post')
+        return
+      }
+      if (!tiktokSettings.agreedToTerms) {
+        alert('Please agree to TikTok\'s terms to publish')
+        return
+      }
+    }
+
     setIsPublishing(true)
     setPublishingStatus('Preparing content...')
 
@@ -451,6 +479,18 @@ function SchedulePageContent() {
         publishData.linkedInOrganizationUrn = selectedLinkedInOrg
       }
 
+      // If TikTok is selected, include TikTok-specific settings
+      if (selectedPlatforms.includes('tiktok')) {
+        publishData.tiktokSettings = {
+          privacyLevel: tiktokSettings.privacyLevel,
+          disableComments: !tiktokSettings.allowComments,
+          disableDuet: !tiktokSettings.allowDuet,
+          disableStitch: !tiktokSettings.allowStitch,
+          brandContentToggle: tiktokSettings.brandContentToggle,
+          brandContentType: tiktokSettings.brandContentType,
+        }
+      }
+
       // Add carouselItems for multi-file posts
       if (carouselItems && carouselItems.length > 1) {
         publishData.carouselItems = carouselItems
@@ -533,6 +573,22 @@ function SchedulePageContent() {
       return
     }
 
+    // Validate TikTok settings if TikTok is selected
+    if (selectedPlatforms.includes('tiktok') && connectedAccounts.includes('tiktok')) {
+      if (!tiktokSettings.privacyLevel) {
+        alert('Please select a privacy level for your TikTok post')
+        return
+      }
+      if (tiktokSettings.brandContentToggle && !tiktokSettings.brandContentType) {
+        alert('Please select a branded content type for your TikTok post')
+        return
+      }
+      if (!tiktokSettings.agreedToTerms) {
+        alert('Please agree to TikTok\'s terms to schedule')
+        return
+      }
+    }
+
     setIsPublishing(true)
     setPublishingStatus('Scheduling post...')
 
@@ -554,17 +610,32 @@ function SchedulePageContent() {
       // Combine date and time into ISO string
       const scheduledAt = new Date(`${selectedDate}T${selectedTime}:00`)
 
+      // Build schedule request
+      const scheduleData: Record<string, unknown> = {
+        contentUploadId: contentId,
+        platforms: selectedPlatforms.map(p => PLATFORM_ID_MAP[p] || p),
+        scheduledAt: scheduledAt.toISOString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        platformContent,
+        contentType, // Pass content type (post vs story/reel)
+      }
+
+      // If TikTok is selected, include TikTok-specific settings
+      if (selectedPlatforms.includes('tiktok')) {
+        scheduleData.tiktokSettings = {
+          privacyLevel: tiktokSettings.privacyLevel,
+          disableComments: !tiktokSettings.allowComments,
+          disableDuet: !tiktokSettings.allowDuet,
+          disableStitch: !tiktokSettings.allowStitch,
+          brandContentToggle: tiktokSettings.brandContentToggle,
+          brandContentType: tiktokSettings.brandContentType,
+        }
+      }
+
       const response = await fetch('/api/schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contentUploadId: contentId,
-          platforms: selectedPlatforms.map(p => PLATFORM_ID_MAP[p] || p),
-          scheduledAt: scheduledAt.toISOString(),
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          platformContent,
-          contentType, // Pass content type (post vs story/reel)
-        }),
+        body: JSON.stringify(scheduleData),
       })
 
       const result = await response.json()
@@ -908,6 +979,23 @@ function SchedulePageContent() {
                       </p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* TikTok Post Settings - Required for Content Sharing Guidelines compliance */}
+              {selectedPlatforms.includes('tiktok') && connectedAccounts.includes('tiktok') && (
+                <div className="mb-8">
+                  <div className="flex items-center gap-2 mb-4">
+                    <PlatformLogo platform="tiktok" size="md" variant="color" />
+                    <h3 className="font-semibold text-text-primary">TikTok Post Settings</h3>
+                    <span className="text-xs text-red-500 font-medium">Required</span>
+                  </div>
+                  <TikTokPostSettings
+                    isVideo={selectedPreviews[0]?.files?.[0]?.type?.startsWith('video/') || false}
+                    settings={tiktokSettings}
+                    onChange={setTiktokSettings}
+                    disabled={isPublishing}
+                  />
                 </div>
               )}
 
