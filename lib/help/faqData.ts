@@ -369,6 +369,135 @@ Your scheduled posts appear in the Schedule tab where you can edit, reschedule, 
     ],
   },
   {
+    id: 'tiktok-posting',
+    title: 'TikTok Posting',
+    icon: '🎵',
+    items: [
+      {
+        id: 'tiktok-content-guidelines',
+        question: 'What are TikTok\'s Content Sharing Guidelines?',
+        answer: `TikTok requires third-party apps like ReGenr to follow their Content Sharing Guidelines. These guidelines ensure users have full control over their content before it's published.
+
+**Key Requirements:**
+- You must select a privacy level before posting (no default)
+- Interaction settings (comments, duets, stitches) must be explicitly chosen
+- Commercial content must be properly disclosed
+- You must agree to TikTok's terms before each post
+
+ReGenr's TikTok posting interface is fully compliant with these guidelines.`,
+      },
+      {
+        id: 'tiktok-privacy-levels',
+        question: 'What are TikTok privacy levels?',
+        answer: `When posting to TikTok, you must choose who can view your video:
+
+**Privacy Options:**
+- **Public** - Everyone on TikTok can see your video
+- **Friends** - Only mutual followers can view
+- **Followers Only** - Only your followers can view
+- **Private (Only Me)** - Only you can see it (like a draft)
+
+**Important:** There's no default selection. You must explicitly choose a privacy level before posting. If you're posting branded content, the "Private" option is not available.`,
+      },
+      {
+        id: 'tiktok-interaction-settings',
+        question: 'What are TikTok interaction settings?',
+        answer: `TikTok lets you control how others interact with your videos:
+
+**Comment** - Allow viewers to comment on your video
+**Duet** - Let others create side-by-side videos with yours (video only)
+**Stitch** - Let others use clips from your video in their content (video only)
+
+**Defaults:** All interactions start unchecked. Enable the ones you want for each post.
+
+**Note:** These options respect your TikTok account settings. If you've disabled duets globally in TikTok, they'll appear disabled in ReGenr too.`,
+      },
+      {
+        id: 'tiktok-branded-content',
+        question: 'What is TikTok branded content disclosure?',
+        answer: `If your content promotes a brand, product, or service, TikTok requires you to disclose it:
+
+**Your Brand** - Content promoting your own brand/business
+- Video labeled as "Promotional content"
+
+**Branded Content** - Paid partnerships or sponsorships
+- Video labeled as "Paid partnership"
+
+**When to use it:**
+- Promoting your own products/services → Select "Your Brand"
+- Sponsored content or paid partnerships → Select "Branded Content"
+- Regular organic content → Leave the toggle off
+
+**Privacy restriction:** Branded content cannot be set to "Private (Only Me)".`,
+      },
+      {
+        id: 'tiktok-terms-agreement',
+        question: 'Why do I need to agree to TikTok\'s terms for each post?',
+        answer: `TikTok's Content Sharing Guidelines require explicit consent before each post. You must agree to:
+
+- **Music Usage Confirmation** - Confirms you have rights to any music in your video
+- **Branded Content Policy** (if applicable) - Required when posting branded content
+
+**This is a TikTok requirement, not a ReGenr policy.** The agreement ensures you understand and accept responsibility for the content you're publishing.
+
+You cannot publish to TikTok without checking the agreement box.`,
+      },
+      {
+        id: 'tiktok-video-only',
+        question: 'Why does TikTok only accept video content?',
+        answer: `TikTok's Content Posting API is designed for video content only. Unlike Instagram or Twitter, TikTok doesn't support:
+- Image-only posts
+- Text-only posts
+- Carousels (multiple images)
+
+**Supported formats:**
+- MP4, MOV, WebM
+- Maximum 10 minutes duration
+- Maximum file size: 500MB
+
+**Tip:** If you have images you want to share on TikTok, consider creating a slideshow video with them using video editing software before uploading.`,
+      },
+      {
+        id: 'tiktok-inbox-flow',
+        question: 'What does "Video sent to your TikTok inbox" mean?',
+        answer: `When you post through ReGenr, your video is sent to TikTok's inbox/notifications:
+
+**How it works:**
+1. Upload your video through ReGenr
+2. Configure your settings (privacy, interactions, etc.)
+3. Click "Post Now" or schedule
+4. Video is sent to your TikTok inbox
+5. Open the TikTok app to review and publish
+
+**Why this flow?**
+TikTok's API requires this for apps that haven't completed their full audit process. It's a security measure that gives you a final review before the video goes live on your profile.
+
+**Processing time:** Videos typically appear in your TikTok notifications within a few minutes.`,
+      },
+      {
+        id: 'tiktok-failed-connect',
+        question: 'Why do I see "Failed to connect to TikTok" when posting?',
+        answer: `This error can occur when ReGenr can't fetch your TikTok account information. Don't worry—you can still post!
+
+**What happens:**
+- ReGenr uses default settings so you can continue
+- All privacy and interaction options remain available
+- Your post will work normally
+
+**Common causes:**
+- Temporary TikTok API issues
+- Network connectivity problems
+- Token needs refresh (try reconnecting in Settings)
+
+**If the problem persists:**
+1. Go to Settings → Integrations
+2. Disconnect TikTok
+3. Reconnect your TikTok account
+4. Try posting again`,
+      },
+    ],
+  },
+  {
     id: 'rss',
     title: 'Content Feeds',
     icon: '📡',

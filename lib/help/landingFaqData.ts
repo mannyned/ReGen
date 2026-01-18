@@ -107,6 +107,12 @@ export const LANDING_FAQ_SECTIONS: LandingFAQSection[] = [
         answer: `Content Feeds (RSS) let you automatically import content from blogs, newsletters, and websites you follow. Use them as inspiration or quickly repurpose trending industry content. It's like having a content research assistant built in.`,
         highlight: 'Never run out of content ideas',
       },
+      {
+        id: 'tiktok-posting',
+        question: 'How does TikTok posting work?',
+        answer: `ReGenr is fully compliant with TikTok's Content Sharing Guidelines. When posting to TikTok, you control privacy settings, enable/disable comments, duets, and stitches, and disclose branded content—all from one simple interface. Your video is sent to TikTok for a final review before going live.`,
+        highlight: 'Full TikTok compliance built-in',
+      },
     ],
   },
   {
