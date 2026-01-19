@@ -190,10 +190,21 @@ export class OAuthService {
       redirect_uri: redirectUri,
     }
 
+    // Build headers
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'application/json',
+    }
+
     // Add credentials based on platform requirements
     if (platform === 'tiktok') {
       body.client_key = config.clientId
       body.client_secret = config.clientSecret
+    } else if (platform === 'twitter') {
+      // Twitter requires Basic Authentication for token exchange
+      const credentials = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64')
+      headers.Authorization = `Basic ${credentials}`
+      body.client_id = config.clientId
     } else {
       body.client_id = config.clientId
       body.client_secret = config.clientSecret
@@ -206,10 +217,7 @@ export class OAuthService {
 
     const response = await fetch(config.tokenUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Accept: 'application/json',
-      },
+      headers,
       body: new URLSearchParams(body).toString(),
     })
 
@@ -243,10 +251,21 @@ export class OAuthService {
       refresh_token: refreshToken,
     }
 
+    // Build headers
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'application/json',
+    }
+
     // Add credentials based on platform
     if (platform === 'tiktok') {
       body.client_key = config.clientId
       body.client_secret = config.clientSecret
+    } else if (platform === 'twitter') {
+      // Twitter requires Basic Authentication for token refresh
+      const credentials = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64')
+      headers.Authorization = `Basic ${credentials}`
+      body.client_id = config.clientId
     } else {
       body.client_id = config.clientId
       body.client_secret = config.clientSecret
@@ -254,10 +273,7 @@ export class OAuthService {
 
     const response = await fetch(config.refreshUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Accept: 'application/json',
-      },
+      headers,
       body: new URLSearchParams(body).toString(),
     })
 
