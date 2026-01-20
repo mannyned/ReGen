@@ -265,9 +265,8 @@ export class TwitterPublisher extends BasePlatformPublisher {
     accessToken: string,
     media: ContentPayload
   ): Promise<string> {
-    // Try v1.1 endpoint first (available on Free tier), then fall back to v2
-    // v1.1: https://upload.twitter.com/1.1/media/upload.json
-    // v2: https://api.x.com/2/media/upload
+    // Use v2 API endpoint at api.x.com/2/media/upload with FormData
+    // This supports OAuth 2.0 User Context with media.write scope
 
     if (media.mediaType === 'video') {
       return this.uploadVideoChunkedV2(accessToken, media)
@@ -292,30 +291,10 @@ export class TwitterPublisher extends BasePlatformPublisher {
 
     const base64Image = Buffer.from(imageBuffer).toString('base64')
 
-    // Try v1.1 simple upload first (works on Free tier with OAuth 2.0 Bearer token)
-    console.log('[TwitterPublisher] Trying v1.1 media upload...')
-    const v1Response = await fetch('https://upload.twitter.com/1.1/media/upload.json', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `media_data=${encodeURIComponent(base64Image)}`,
-    })
+    // Use v2 media upload endpoint with FormData
+    console.log('[TwitterPublisher] Uploading media via v2 API at api.x.com...')
 
-    const v1Text = await v1Response.text()
-    console.log('[TwitterPublisher] v1.1 response:', v1Response.status, v1Text.substring(0, 300))
-
-    if (v1Response.ok) {
-      const v1Data = JSON.parse(v1Text)
-      console.log('[TwitterPublisher] v1.1 upload successful, media_id:', v1Data.media_id_string)
-      return v1Data.media_id_string
-    }
-
-    // If v1.1 fails with 403, try v2 chunked upload
-    console.log('[TwitterPublisher] v1.1 failed, trying v2 chunked upload...')
-
-    // Step 1: INIT
+    // Step 1: INIT - Initialize the upload
     const initFormData = new FormData()
     initFormData.append('command', 'INIT')
     initFormData.append('total_bytes', imageSizeBytes.toString())
@@ -331,18 +310,17 @@ export class TwitterPublisher extends BasePlatformPublisher {
     })
 
     const initText = await initResponse.text()
-    console.log('[TwitterPublisher] v2 INIT response:', initResponse.status, initText.substring(0, 300))
+    console.log('[TwitterPublisher] INIT response:', initResponse.status, initText.substring(0, 300))
 
     if (!initResponse.ok) {
-      // Both v1.1 and v2 failed - provide helpful error
-      throw new Error(`Twitter media upload failed. v1.1: ${v1Text.substring(0, 100)}. v2: ${initText.substring(0, 100)}. You may need Twitter Basic tier ($100/month) for media uploads.`)
+      throw new Error(`Twitter INIT failed (${initResponse.status}): ${initText}`)
     }
 
     const initData = JSON.parse(initText)
     const mediaId = initData.media_id_string || initData.id
     console.log('[TwitterPublisher] Got media_id:', mediaId)
 
-    // Step 2: APPEND
+    // Step 2: APPEND - Upload the actual media data
     const appendFormData = new FormData()
     appendFormData.append('command', 'APPEND')
     appendFormData.append('media_id', mediaId)
@@ -357,12 +335,14 @@ export class TwitterPublisher extends BasePlatformPublisher {
       body: appendFormData,
     })
 
+    console.log('[TwitterPublisher] APPEND response:', appendResponse.status)
+
     if (!appendResponse.ok) {
       const appendText = await appendResponse.text()
       throw new Error(`Twitter APPEND failed (${appendResponse.status}): ${appendText}`)
     }
 
-    // Step 3: FINALIZE
+    // Step 3: FINALIZE - Complete the upload
     const finalizeFormData = new FormData()
     finalizeFormData.append('command', 'FINALIZE')
     finalizeFormData.append('media_id', mediaId)
@@ -376,6 +356,8 @@ export class TwitterPublisher extends BasePlatformPublisher {
     })
 
     const finalizeText = await finalizeResponse.text()
+    console.log('[TwitterPublisher] FINALIZE response:', finalizeResponse.status, finalizeText.substring(0, 300))
+
     if (!finalizeResponse.ok) {
       throw new Error(`Twitter FINALIZE failed (${finalizeResponse.status}): ${finalizeText}`)
     }
