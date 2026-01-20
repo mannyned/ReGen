@@ -253,8 +253,8 @@ export class TwitterPublisher extends BasePlatformPublisher {
     accessToken: string,
     media: ContentPayload
   ): Promise<string> {
-    // Twitter/X v2 media upload - uses chunked upload for all media
-    // Endpoint: https://api.x.com/2/media/upload (NOT api.twitter.com)
+    // Twitter/X v2 media upload - uses multipart/form-data (NOT JSON!)
+    // Endpoint: https://api.x.com/2/media/upload
 
     if (media.mediaType === 'video') {
       return this.uploadVideoChunkedV2(accessToken, media)
@@ -277,19 +277,20 @@ export class TwitterPublisher extends BasePlatformPublisher {
       throw new Error(`Image too large for Twitter (${imageSizeKB}KB). Maximum is 5MB.`)
     }
 
-    // Step 1: INIT - Initialize upload
+    // Step 1: INIT - Initialize upload using form-data
     console.log('[TwitterPublisher] Step 1: Initializing upload...')
-    const initResponse = await fetch('https://api.x.com/2/media/upload?command=INIT', {
+    const initFormData = new FormData()
+    initFormData.append('command', 'INIT')
+    initFormData.append('total_bytes', imageSizeBytes.toString())
+    initFormData.append('media_type', media.mimeType || 'image/jpeg')
+    initFormData.append('media_category', 'tweet_image')
+
+    const initResponse = await fetch('https://api.x.com/2/media/upload', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        total_bytes: imageSizeBytes,
-        media_type: media.mimeType || 'image/jpeg',
-        media_category: 'tweet_image',
-      }),
+      body: initFormData,
     })
 
     const initText = await initResponse.text()
@@ -300,24 +301,25 @@ export class TwitterPublisher extends BasePlatformPublisher {
     }
 
     const initData = JSON.parse(initText)
-    const mediaId = initData.media_id_string || initData.data?.media_id_string
+    const mediaId = initData.media_id_string || initData.id
     console.log('[TwitterPublisher] Got media_id:', mediaId)
 
-    // Step 2: APPEND - Upload the image data
+    // Step 2: APPEND - Upload the image data using form-data
     console.log('[TwitterPublisher] Step 2: Appending media data...')
     const base64Image = Buffer.from(imageBuffer).toString('base64')
 
-    const appendResponse = await fetch('https://api.x.com/2/media/upload?command=APPEND', {
+    const appendFormData = new FormData()
+    appendFormData.append('command', 'APPEND')
+    appendFormData.append('media_id', mediaId)
+    appendFormData.append('media_data', base64Image)
+    appendFormData.append('segment_index', '0')
+
+    const appendResponse = await fetch('https://api.x.com/2/media/upload', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        media_id: mediaId,
-        media_data: base64Image,
-        segment_index: 0,
-      }),
+      body: appendFormData,
     })
 
     const appendText = await appendResponse.text()
@@ -327,17 +329,18 @@ export class TwitterPublisher extends BasePlatformPublisher {
       throw new Error(`Twitter APPEND failed (${appendResponse.status}): ${appendText}`)
     }
 
-    // Step 3: FINALIZE - Complete the upload
+    // Step 3: FINALIZE - Complete the upload using form-data
     console.log('[TwitterPublisher] Step 3: Finalizing upload...')
-    const finalizeResponse = await fetch('https://api.x.com/2/media/upload?command=FINALIZE', {
+    const finalizeFormData = new FormData()
+    finalizeFormData.append('command', 'FINALIZE')
+    finalizeFormData.append('media_id', mediaId)
+
+    const finalizeResponse = await fetch('https://api.x.com/2/media/upload', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        media_id: mediaId,
-      }),
+      body: finalizeFormData,
     })
 
     const finalizeText = await finalizeResponse.text()
@@ -355,7 +358,7 @@ export class TwitterPublisher extends BasePlatformPublisher {
     accessToken: string,
     media: ContentPayload
   ): Promise<string> {
-    // Video upload using v2 API chunked upload
+    // Video upload using v2 API chunked upload with form-data
     console.log('[TwitterPublisher] Fetching video from URL:', media.mediaUrl)
     const videoResponse = await fetch(media.mediaUrl)
     if (!videoResponse.ok) {
@@ -366,18 +369,19 @@ export class TwitterPublisher extends BasePlatformPublisher {
     const videoSizeBytes = videoBuffer.byteLength
     console.log('[TwitterPublisher] Video fetched, size:', Math.round(videoSizeBytes / 1024 / 1024), 'MB')
 
-    // Step 1: INIT
-    const initResponse = await fetch('https://api.x.com/2/media/upload?command=INIT', {
+    // Step 1: INIT using form-data
+    const initFormData = new FormData()
+    initFormData.append('command', 'INIT')
+    initFormData.append('total_bytes', videoSizeBytes.toString())
+    initFormData.append('media_type', media.mimeType || 'video/mp4')
+    initFormData.append('media_category', 'tweet_video')
+
+    const initResponse = await fetch('https://api.x.com/2/media/upload', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        total_bytes: videoSizeBytes,
-        media_type: media.mimeType || 'video/mp4',
-        media_category: 'tweet_video',
-      }),
+      body: initFormData,
     })
 
     if (!initResponse.ok) {
@@ -386,9 +390,9 @@ export class TwitterPublisher extends BasePlatformPublisher {
     }
 
     const initData = await initResponse.json()
-    const mediaId = initData.media_id_string || initData.data?.media_id_string
+    const mediaId = initData.media_id_string || initData.id
 
-    // Step 2: APPEND in chunks (5MB max per chunk)
+    // Step 2: APPEND in chunks (5MB max per chunk) using form-data
     const chunkSize = 5 * 1024 * 1024
     const chunks = Math.ceil(videoSizeBytes / chunkSize)
 
@@ -400,17 +404,18 @@ export class TwitterPublisher extends BasePlatformPublisher {
 
       console.log(`[TwitterPublisher] Uploading chunk ${i + 1}/${chunks}...`)
 
-      const appendResponse = await fetch('https://api.x.com/2/media/upload?command=APPEND', {
+      const appendFormData = new FormData()
+      appendFormData.append('command', 'APPEND')
+      appendFormData.append('media_id', mediaId)
+      appendFormData.append('media_data', base64Chunk)
+      appendFormData.append('segment_index', i.toString())
+
+      const appendResponse = await fetch('https://api.x.com/2/media/upload', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          media_id: mediaId,
-          media_data: base64Chunk,
-          segment_index: i,
-        }),
+        body: appendFormData,
       })
 
       if (!appendResponse.ok) {
@@ -419,16 +424,17 @@ export class TwitterPublisher extends BasePlatformPublisher {
       }
     }
 
-    // Step 3: FINALIZE
-    const finalizeResponse = await fetch('https://api.x.com/2/media/upload?command=FINALIZE', {
+    // Step 3: FINALIZE using form-data
+    const finalizeFormData = new FormData()
+    finalizeFormData.append('command', 'FINALIZE')
+    finalizeFormData.append('media_id', mediaId)
+
+    const finalizeResponse = await fetch('https://api.x.com/2/media/upload', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        media_id: mediaId,
-      }),
+      body: finalizeFormData,
     })
 
     if (!finalizeResponse.ok) {
