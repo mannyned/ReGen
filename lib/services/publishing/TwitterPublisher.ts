@@ -253,8 +253,8 @@ export class TwitterPublisher extends BasePlatformPublisher {
     accessToken: string,
     media: ContentPayload
   ): Promise<string> {
-    // Twitter media upload uses v1.1 API
-    const uploadUrl = 'https://upload.twitter.com/1.1/media/upload.json'
+    // Twitter v2 media upload endpoint (supports OAuth 2.0)
+    const uploadUrl = 'https://api.twitter.com/2/media/upload'
 
     if (media.mediaType === 'video') {
       return this.uploadVideoChunked(accessToken, media)
@@ -277,15 +277,18 @@ export class TwitterPublisher extends BasePlatformPublisher {
       throw new Error(`Image too large for Twitter (${imageSizeKB}KB). Maximum is 5MB.`)
     }
 
-    // Upload using base64 media_data parameter
-    console.log('[TwitterPublisher] Uploading to Twitter...')
+    // Upload using v2 API with JSON body
+    console.log('[TwitterPublisher] Uploading to Twitter v2 API...')
     const response = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: `media_data=${encodeURIComponent(base64Image)}`,
+      body: JSON.stringify({
+        media_data: base64Image,
+        media_category: 'tweet_image',
+      }),
     })
 
     const responseText = await response.text()
@@ -310,15 +313,17 @@ export class TwitterPublisher extends BasePlatformPublisher {
 
       // Check for scope/permission issues
       if (response.status === 401 || response.status === 403) {
-        throw new Error(`Twitter auth error (${response.status}): ${errorMsg}. You may need to reconnect Twitter in Settings.`)
+        throw new Error(`Twitter auth error (${response.status}): ${errorMsg}. You may need to reconnect Twitter in Settings to get media.write permission.`)
       }
 
       throw new Error(`Twitter upload failed (${response.status}): ${errorMsg}`)
     }
 
     const data = JSON.parse(responseText)
-    console.log('[TwitterPublisher] Media uploaded, ID:', data.media_id_string)
-    return data.media_id_string
+    // v2 API returns media_id in the response
+    const mediaId = data.media_id_string || data.data?.media_id_string || data.data?.id
+    console.log('[TwitterPublisher] Media uploaded, ID:', mediaId)
+    return mediaId
   }
 
   private async uploadVideoChunked(
