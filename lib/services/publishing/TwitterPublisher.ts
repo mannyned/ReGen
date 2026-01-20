@@ -265,7 +265,8 @@ export class TwitterPublisher extends BasePlatformPublisher {
     accessToken: string,
     media: ContentPayload
   ): Promise<string> {
-    // Try multiple upload methods in order of preference
+    // X API v2 media upload using chunked upload process
+    // See: https://docs.x.com/x-api/media/quickstart/media-upload-chunked
 
     if (media.mediaType === 'video') {
       return this.uploadVideoChunkedV2(accessToken, media)
@@ -274,22 +275,17 @@ export class TwitterPublisher extends BasePlatformPublisher {
     // For images, fetch first
     const imageUrl = media.mediaUrl
     console.log('[TwitterPublisher] Fetching image from URL:', imageUrl)
-    console.log('[TwitterPublisher] URL starts with:', imageUrl?.substring(0, 50))
 
-    // Validate the URL is a proper HTTP URL (not a Next.js optimized URL)
     if (!imageUrl || !imageUrl.startsWith('http')) {
       throw new Error(`Invalid image URL format: ${imageUrl?.substring(0, 100)}. Expected full HTTP URL.`)
     }
 
     const imageResponse = await fetch(imageUrl, {
-      headers: {
-        'User-Agent': 'ReGenr/1.0',
-      },
+      headers: { 'User-Agent': 'ReGenr/1.0' },
     })
 
     if (!imageResponse.ok) {
       const errorText = await imageResponse.text().catch(() => '')
-      console.error('[TwitterPublisher] Image fetch failed:', imageResponse.status, errorText.substring(0, 200))
       throw new Error(`Failed to fetch image (${imageResponse.status}): ${errorText.substring(0, 100)}`)
     }
 
@@ -298,125 +294,21 @@ export class TwitterPublisher extends BasePlatformPublisher {
     const imageSizeKB = Math.round(imageSizeBytes / 1024)
     console.log('[TwitterPublisher] Image fetched, size:', imageSizeKB, 'KB')
 
-    // Check if image is too large (Twitter limit is 5MB for images)
     if (imageSizeBytes > 5 * 1024 * 1024) {
       throw new Error(`Image too large for Twitter (${imageSizeKB}KB). Maximum is 5MB.`)
     }
 
-    const base64Image = Buffer.from(imageBuffer).toString('base64')
+    // X API v2 uses multipart/form-data with binary file data
+    const V2_UPLOAD_URL = 'https://api.x.com/2/media/upload'
 
-    // Try Method 1: Simple v1.1 upload (works with some API tiers)
-    console.log('[TwitterPublisher] Trying simple v1.1 upload...')
-    try {
-      const simpleParams = new URLSearchParams()
-      simpleParams.append('media_data', base64Image)
-
-      const simpleResponse = await fetch('https://upload.twitter.com/1.1/media/upload.json', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: simpleParams,
-      })
-
-      const simpleText = await simpleResponse.text()
-      console.log('[TwitterPublisher] Simple upload response:', simpleResponse.status)
-
-      if (simpleResponse.ok) {
-        const simpleData = JSON.parse(simpleText)
-        const mediaId = simpleData.media_id_string
-        console.log('[TwitterPublisher] Simple upload succeeded, media_id:', mediaId)
-        return mediaId
-      }
-
-      console.log('[TwitterPublisher] Simple upload failed:', simpleText.substring(0, 200))
-    } catch (simpleError) {
-      console.log('[TwitterPublisher] Simple upload error:', simpleError)
-    }
-
-    // Try Method 2: v2 chunked upload at api.x.com
-    console.log('[TwitterPublisher] Trying v2 chunked upload at api.x.com...')
-    try {
-      // Step 1: INIT
-      const initFormData = new FormData()
-      initFormData.append('command', 'INIT')
-      initFormData.append('total_bytes', imageSizeBytes.toString())
-      initFormData.append('media_type', media.mimeType || 'image/jpeg')
-      initFormData.append('media_category', 'tweet_image')
-
-      const initResponse = await fetch('https://api.x.com/2/media/upload', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: initFormData,
-      })
-
-      const initText = await initResponse.text()
-      console.log('[TwitterPublisher] v2 INIT response:', initResponse.status)
-
-      if (!initResponse.ok) {
-        throw new Error(`v2 INIT failed (${initResponse.status}): ${initText.substring(0, 200)}`)
-      }
-
-      const initData = JSON.parse(initText)
-      const mediaId = initData.media_id_string || initData.id
-      console.log('[TwitterPublisher] Got media_id:', mediaId)
-
-      // Step 2: APPEND
-      const appendFormData = new FormData()
-      appendFormData.append('command', 'APPEND')
-      appendFormData.append('media_id', mediaId)
-      appendFormData.append('media_data', base64Image)
-      appendFormData.append('segment_index', '0')
-
-      const appendResponse = await fetch('https://api.x.com/2/media/upload', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: appendFormData,
-      })
-
-      if (!appendResponse.ok) {
-        const appendText = await appendResponse.text()
-        throw new Error(`v2 APPEND failed (${appendResponse.status}): ${appendText.substring(0, 200)}`)
-      }
-
-      // Step 3: FINALIZE
-      const finalizeFormData = new FormData()
-      finalizeFormData.append('command', 'FINALIZE')
-      finalizeFormData.append('media_id', mediaId)
-
-      const finalizeResponse = await fetch('https://api.x.com/2/media/upload', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: finalizeFormData,
-      })
-
-      if (!finalizeResponse.ok) {
-        const finalizeText = await finalizeResponse.text()
-        throw new Error(`v2 FINALIZE failed (${finalizeResponse.status}): ${finalizeText.substring(0, 200)}`)
-      }
-
-      console.log('[TwitterPublisher] v2 chunked upload succeeded, media_id:', mediaId)
-      return mediaId
-    } catch (v2Error) {
-      console.log('[TwitterPublisher] v2 chunked upload failed:', v2Error)
-    }
-
-    // Try Method 3: v2 at api.twitter.com (alternative endpoint)
-    console.log('[TwitterPublisher] Trying v2 at api.twitter.com...')
+    // Step 1: INIT - Initialize the upload
+    console.log('[TwitterPublisher] Step 1: INIT')
     const initFormData = new FormData()
-    initFormData.append('command', 'INIT')
-    initFormData.append('total_bytes', imageSizeBytes.toString())
     initFormData.append('media_type', media.mimeType || 'image/jpeg')
+    initFormData.append('total_bytes', imageSizeBytes.toString())
     initFormData.append('media_category', 'tweet_image')
 
-    const initResponse = await fetch('https://api.twitter.com/2/media/upload', {
+    const initResponse = await fetch(V2_UPLOAD_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -425,23 +317,26 @@ export class TwitterPublisher extends BasePlatformPublisher {
     })
 
     const initText = await initResponse.text()
-    console.log('[TwitterPublisher] twitter.com INIT response:', initResponse.status, initText.substring(0, 300))
+    console.log('[TwitterPublisher] INIT response:', initResponse.status, initText.substring(0, 300))
 
     if (!initResponse.ok) {
-      throw new Error(`All Twitter media upload methods failed. Last error (${initResponse.status}): ${initText.substring(0, 200)}`)
+      throw new Error(`Twitter INIT failed (${initResponse.status}): ${initText.substring(0, 200)}`)
     }
 
     const initData = JSON.parse(initText)
-    const mediaId = initData.media_id_string || initData.id
+    const mediaId = initData.id || initData.media_id_string
+    console.log('[TwitterPublisher] Got media_id:', mediaId)
 
-    // APPEND
+    // Step 2: APPEND - Upload the binary file data
+    console.log('[TwitterPublisher] Step 2: APPEND')
     const appendFormData = new FormData()
-    appendFormData.append('command', 'APPEND')
     appendFormData.append('media_id', mediaId)
-    appendFormData.append('media_data', base64Image)
     appendFormData.append('segment_index', '0')
+    // Send binary data as a Blob, not base64
+    const blob = new Blob([imageBuffer], { type: media.mimeType || 'image/jpeg' })
+    appendFormData.append('media', blob, 'image.jpg')
 
-    const appendResponse = await fetch('https://api.twitter.com/2/media/upload', {
+    const appendResponse = await fetch(V2_UPLOAD_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -449,17 +344,19 @@ export class TwitterPublisher extends BasePlatformPublisher {
       body: appendFormData,
     })
 
+    const appendText = await appendResponse.text()
+    console.log('[TwitterPublisher] APPEND response:', appendResponse.status)
+
     if (!appendResponse.ok) {
-      const appendText = await appendResponse.text()
-      throw new Error(`Twitter APPEND failed (${appendResponse.status}): ${appendText}`)
+      throw new Error(`Twitter APPEND failed (${appendResponse.status}): ${appendText.substring(0, 200)}`)
     }
 
-    // FINALIZE
+    // Step 3: FINALIZE - Complete the upload
+    console.log('[TwitterPublisher] Step 3: FINALIZE')
     const finalizeFormData = new FormData()
-    finalizeFormData.append('command', 'FINALIZE')
     finalizeFormData.append('media_id', mediaId)
 
-    const finalizeResponse = await fetch('https://api.twitter.com/2/media/upload', {
+    const finalizeResponse = await fetch(V2_UPLOAD_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -467,9 +364,11 @@ export class TwitterPublisher extends BasePlatformPublisher {
       body: finalizeFormData,
     })
 
+    const finalizeText = await finalizeResponse.text()
+    console.log('[TwitterPublisher] FINALIZE response:', finalizeResponse.status, finalizeText.substring(0, 300))
+
     if (!finalizeResponse.ok) {
-      const finalizeText = await finalizeResponse.text()
-      throw new Error(`Twitter FINALIZE failed (${finalizeResponse.status}): ${finalizeText}`)
+      throw new Error(`Twitter FINALIZE failed (${finalizeResponse.status}): ${finalizeText.substring(0, 200)}`)
     }
 
     console.log('[TwitterPublisher] Media uploaded successfully, ID:', mediaId)
