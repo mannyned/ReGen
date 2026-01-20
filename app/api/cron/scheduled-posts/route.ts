@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { publishingService } from '@/lib/services/publishing'
 import { sendScheduledPostNotification } from '@/lib/email'
+import { sendPublishedPostNotification } from '@/lib/services/push'
 import type { SocialPlatform } from '@/lib/types/social'
 
 // ============================================
@@ -224,10 +225,38 @@ export async function GET(request: NextRequest) {
             })
             console.log(`[Cron] Email notification result:`, emailResult)
           } catch (notifyError) {
-            console.error(`[Cron] Failed to send notification:`, notifyError)
+            console.error(`[Cron] Failed to send email notification:`, notifyError)
+          }
+
+          // Send push notification
+          try {
+            const pushStatus = failCount === 0 ? 'success' : (successCount > 0 ? 'partial' : 'failed')
+            const pushResult = await sendPublishedPostNotification(
+              scheduledPost.profileId,
+              platforms,
+              pushStatus,
+              failedPlatforms
+            )
+            console.log(`[Cron] Push notification result:`, pushResult)
+          } catch (pushError) {
+            console.error(`[Cron] Failed to send push notification:`, pushError)
           }
         } else {
-          console.warn(`[Cron] No email found for profile, skipping notification`)
+          console.warn(`[Cron] No email found for profile, skipping email notification`)
+
+          // Still try to send push notification even without email
+          try {
+            const pushStatus = failCount === 0 ? 'success' : (successCount > 0 ? 'partial' : 'failed')
+            const pushResult = await sendPublishedPostNotification(
+              scheduledPost.profileId,
+              platforms,
+              pushStatus,
+              [...publishResults.entries()].filter(([, r]) => !r.success).map(([p]) => p)
+            )
+            console.log(`[Cron] Push notification result (no email):`, pushResult)
+          } catch (pushError) {
+            console.error(`[Cron] Failed to send push notification:`, pushError)
+          }
         }
 
         results.push({
@@ -255,7 +284,7 @@ export async function GET(request: NextRequest) {
           },
         })
 
-        // Send failure notification
+        // Send failure notifications (email and push)
         if (scheduledPost.profile?.email) {
           try {
             await sendScheduledPostNotification({
@@ -266,10 +295,23 @@ export async function GET(request: NextRequest) {
               errorMessage: errorMsg,
               thumbnailUrl: scheduledPost.contentUpload?.thumbnailUrl || undefined,
             })
-            console.log(`[Cron] Failure notification sent to ${scheduledPost.profile.email}`)
+            console.log(`[Cron] Failure email notification sent to ${scheduledPost.profile.email}`)
           } catch (notifyError) {
-            console.warn(`[Cron] Failed to send failure notification:`, notifyError)
+            console.warn(`[Cron] Failed to send failure email notification:`, notifyError)
           }
+        }
+
+        // Send push notification for failure
+        try {
+          await sendPublishedPostNotification(
+            scheduledPost.profileId,
+            platforms,
+            'failed',
+            platforms
+          )
+          console.log(`[Cron] Failure push notification sent`)
+        } catch (pushError) {
+          console.warn(`[Cron] Failed to send failure push notification:`, pushError)
         }
 
         results.push({

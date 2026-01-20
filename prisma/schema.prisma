@@ -44,6 +44,7 @@ model Profile {
 
   // User preferences
   notificationPreferences Json? @map("notification_preferences")
+  pushSubscription        Json? @map("push_subscription") // Web Push subscription for PWA notifications
 
   // Relations - Profile is the main entity for all user data
   socialConnections  SocialConnection[]

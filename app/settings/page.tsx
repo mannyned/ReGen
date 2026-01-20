@@ -440,6 +440,65 @@ export default function SettingsPage() {
     }
   }
 
+  // Subscribe to Web Push notifications
+  const subscribeToWebPush = async () => {
+    try {
+      // Get the service worker registration
+      const registration = await navigator.serviceWorker.ready
+
+      // Get the VAPID public key from the server
+      const vapidResponse = await fetch('/api/push/subscribe')
+      const vapidData = await vapidResponse.json()
+
+      if (!vapidData.success || !vapidData.publicKey) {
+        console.error('[Push] Failed to get VAPID key:', vapidData.error)
+        return false
+      }
+
+      // Convert VAPID key to Uint8Array
+      const vapidPublicKey = vapidData.publicKey
+      const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey)
+
+      // Subscribe to push notifications
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedVapidKey,
+      })
+
+      // Send subscription to server
+      const subscribeResponse = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription: subscription.toJSON() }),
+      })
+
+      const subscribeData = await subscribeResponse.json()
+
+      if (subscribeData.success) {
+        console.log('[Push] Successfully subscribed to push notifications')
+        return true
+      } else {
+        console.error('[Push] Failed to store subscription:', subscribeData.error)
+        return false
+      }
+    } catch (error) {
+      console.error('[Push] Failed to subscribe:', error)
+      return false
+    }
+  }
+
+  // Helper function to convert VAPID key
+  const urlBase64ToUint8Array = (base64String: string) => {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+    const rawData = window.atob(base64)
+    const outputArray = new Uint8Array(rawData.length)
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i)
+    }
+    return outputArray
+  }
+
   // Handle notification toggle
   const handleNotificationToggle = async (id: string, type: 'email' | 'push') => {
     // For push notifications, request permission if not already granted
@@ -451,6 +510,12 @@ export default function SettingsPage() {
         // Check if browser supports notifications
         if (!('Notification' in window)) {
           alert('Push notifications are not supported in this browser')
+          return
+        }
+
+        // Check if service worker is supported
+        if (!('serviceWorker' in navigator)) {
+          alert('Service workers are not supported in this browser')
           return
         }
 
@@ -471,6 +536,16 @@ export default function SettingsPage() {
         } else if (Notification.permission === 'denied') {
           alert('Notifications are blocked. Please enable them in your browser settings.')
           return
+        }
+
+        // Check if this is the first push notification being enabled
+        const currentlyHasPush = notifications.some(n => n.push)
+        if (!currentlyHasPush) {
+          // Subscribe to Web Push
+          const subscribed = await subscribeToWebPush()
+          if (!subscribed) {
+            console.warn('[Push] Failed to subscribe to Web Push, but continuing with preference update')
+          }
         }
       }
     }
