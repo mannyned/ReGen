@@ -83,6 +83,8 @@ export async function POST(request: NextRequest) {
 
       // Log for debugging
       console.log('[Publish API] Received request with contentType:', contentType)
+      console.log('[Publish API] Media URL:', media?.mediaUrl?.substring(0, 100))
+      console.log('[Publish API] Media type:', media?.mediaType)
 
       // Validate required fields
       if (!userId) {

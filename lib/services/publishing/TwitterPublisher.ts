@@ -273,10 +273,25 @@ export class TwitterPublisher extends BasePlatformPublisher {
     }
 
     // For images, fetch first
-    console.log('[TwitterPublisher] Fetching image from URL:', media.mediaUrl)
-    const imageResponse = await fetch(media.mediaUrl)
+    const imageUrl = media.mediaUrl
+    console.log('[TwitterPublisher] Fetching image from URL:', imageUrl)
+    console.log('[TwitterPublisher] URL starts with:', imageUrl?.substring(0, 50))
+
+    // Validate the URL is a proper HTTP URL (not a Next.js optimized URL)
+    if (!imageUrl || !imageUrl.startsWith('http')) {
+      throw new Error(`Invalid image URL format: ${imageUrl?.substring(0, 100)}. Expected full HTTP URL.`)
+    }
+
+    const imageResponse = await fetch(imageUrl, {
+      headers: {
+        'User-Agent': 'ReGenr/1.0',
+      },
+    })
+
     if (!imageResponse.ok) {
-      throw new Error(`Failed to fetch image: ${imageResponse.status}`)
+      const errorText = await imageResponse.text().catch(() => '')
+      console.error('[TwitterPublisher] Image fetch failed:', imageResponse.status, errorText.substring(0, 200))
+      throw new Error(`Failed to fetch image (${imageResponse.status}): ${errorText.substring(0, 100)}`)
     }
 
     const imageBuffer = await imageResponse.arrayBuffer()
