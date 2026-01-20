@@ -260,24 +260,37 @@ export class TwitterPublisher extends BasePlatformPublisher {
       return this.uploadVideoChunked(accessToken, media)
     }
 
-    // For images, use simple upload
-    const formData = new FormData()
-    formData.append('media', media.mediaUrl)
+    // For images, fetch the image and convert to base64
+    console.log('[TwitterPublisher] Fetching image from URL:', media.mediaUrl)
+    const imageResponse = await fetch(media.mediaUrl)
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to fetch image: ${imageResponse.status}`)
+    }
 
+    const imageBuffer = await imageResponse.arrayBuffer()
+    const base64Image = Buffer.from(imageBuffer).toString('base64')
+    console.log('[TwitterPublisher] Image fetched, size:', imageBuffer.byteLength, 'bytes')
+
+    // Upload using base64 media_data parameter
     const response = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: formData,
+      body: new URLSearchParams({
+        media_data: base64Image,
+      }),
     })
 
     if (!response.ok) {
       const error = await response.text()
+      console.error('[TwitterPublisher] Upload failed:', error)
       throw new Error(`Failed to upload media: ${error}`)
     }
 
     const data = await response.json()
+    console.log('[TwitterPublisher] Media uploaded, ID:', data.media_id_string)
     return data.media_id_string
   }
 
