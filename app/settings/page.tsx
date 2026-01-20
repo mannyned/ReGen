@@ -33,7 +33,7 @@ const PLATFORM_TO_PROVIDER: Record<string, string> = {
   'facebook': 'meta',
   'tiktok': 'tiktok',
   'youtube': 'google',
-  'twitter': 'twitter',
+  'twitter': 'x',  // Provider is registered as 'x'
   'linkedin': 'linkedin',
   'linkedin-org': 'linkedin-org',  // Separate OAuth provider for Company Page
   'snapchat': 'snapchat',
