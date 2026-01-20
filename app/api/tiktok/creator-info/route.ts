@@ -13,7 +13,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getAccessToken } from '@/lib/oauth/engine'
+import { tokenManager } from '@/lib/services/oauth/TokenManager'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -37,10 +37,8 @@ export async function GET() {
     }
 
     // Get TikTok access token
-    let accessToken: string
-    try {
-      accessToken = await getAccessToken('tiktok', user.id)
-    } catch {
+    const accessToken = await tokenManager.getValidAccessToken(user.id, 'tiktok')
+    if (!accessToken) {
       return NextResponse.json(
         { error: 'TikTok not connected', connected: false },
         { status: 400 }
