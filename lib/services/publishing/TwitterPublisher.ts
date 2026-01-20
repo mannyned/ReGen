@@ -25,13 +25,21 @@ export class TwitterPublisher extends BasePlatformPublisher {
     const accessToken = await this.getAccessToken(userId)
 
     try {
-      // Step 1: Upload media if present
+      // Step 1: Try to upload media if present
       let mediaId: string | undefined
+      let mediaSkipped = false
+
       if (media?.mediaUrl) {
-        mediaId = await this.uploadMedia(accessToken, media)
+        try {
+          mediaId = await this.uploadMedia(accessToken, media)
+        } catch (mediaError) {
+          // Media upload failed - post without media on Free tier
+          console.warn('[TwitterPublisher] Media upload failed, posting without media:', mediaError)
+          mediaSkipped = true
+        }
       }
 
-      // Step 2: Create tweet
+      // Step 2: Create tweet (with or without media)
       const tweet = await this.createTweet(accessToken, content, mediaId)
 
       return {
@@ -40,6 +48,7 @@ export class TwitterPublisher extends BasePlatformPublisher {
         platformPostId: tweet.id,
         platformUrl: `https://twitter.com/i/status/${tweet.id}`,
         publishedAt: new Date(),
+        message: mediaSkipped ? 'Posted without image (Twitter Free tier limitation)' : undefined,
       }
     } catch (error) {
       return {
