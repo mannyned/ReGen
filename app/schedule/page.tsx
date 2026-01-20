@@ -101,7 +101,7 @@ function SchedulePageContent() {
     { name: 'instagram', label: 'Instagram', icon: '📷' },
     { name: 'youtube', label: 'YouTube', icon: '▶️' },
     { name: 'facebook', label: 'Facebook', icon: '👥' },
-    { name: 'x', label: 'X (Twitter)', icon: '𝕏' },
+    { name: 'twitter', label: 'X (Twitter)', icon: '𝕏' },
     { name: 'linkedin', label: 'LinkedIn Personal', icon: '💼' },
     { name: 'linkedin-org', label: 'LinkedIn Company', icon: '🏢' },
     { name: 'snapchat', label: 'Snapchat', icon: '👻' },
