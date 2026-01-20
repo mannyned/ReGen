@@ -49,6 +49,7 @@ const PROVIDER_TO_PLATFORMS: Record<string, string[]> = {
   'google': ['youtube'],
   'tiktok': ['tiktok'],
   'twitter': ['twitter'],
+  'x': ['twitter'],  // OAuth stores as 'x', UI uses 'twitter'
   'linkedin': ['linkedin'],
   'linkedin-org': ['linkedin-org'],  // Separate provider for Company Page
   'snapchat': ['snapchat'],
