@@ -183,14 +183,22 @@ function SchedulePageContent() {
               hashtags: string[]
             }> | null
 
+            // Normalize platform name helper
+            const normalizePlatform = (p: string): Platform => {
+              if (p === 'x') return 'twitter'
+              if (p === 'google') return 'youtube'
+              return p as Platform
+            }
+
             // Build previews from database data
             const previewsFromDb: PreviewData[] = processedData.selectedPlatforms
-              .filter(platform => generatedCaptions?.[platform])
+              .map(p => normalizePlatform(p))
+              .filter(platform => generatedCaptions?.[platform] || generatedCaptions?.['x']) // Check both 'twitter' and 'x' keys
               .map((platform, index) => ({
                 id: index + 1,
                 platform,
-                caption: generatedCaptions?.[platform]?.caption || '',
-                hashtags: generatedCaptions?.[platform]?.hashtags || [],
+                caption: generatedCaptions?.[platform]?.caption || generatedCaptions?.['x']?.caption || '',
+                hashtags: generatedCaptions?.[platform]?.hashtags || generatedCaptions?.['x']?.hashtags || [],
                 files: processedData.files.map((file, idx) => ({
                   id: `db-${idx}`,
                   name: file.fileName,
@@ -202,6 +210,7 @@ function SchedulePageContent() {
 
             if (previewsFromDb.length > 0) {
               setSelectedPreviews(previewsFromDb)
+              // Platforms are already normalized in previewsFromDb
               setSelectedPlatforms(previewsFromDb.map(p => p.platform))
               // Set contentType from database
               if (processedData.contentType) {
