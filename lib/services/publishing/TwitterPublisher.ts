@@ -269,27 +269,54 @@ export class TwitterPublisher extends BasePlatformPublisher {
 
     const imageBuffer = await imageResponse.arrayBuffer()
     const base64Image = Buffer.from(imageBuffer).toString('base64')
-    console.log('[TwitterPublisher] Image fetched, size:', imageBuffer.byteLength, 'bytes')
+    const imageSizeKB = Math.round(imageBuffer.byteLength / 1024)
+    console.log('[TwitterPublisher] Image fetched, size:', imageSizeKB, 'KB')
+
+    // Check if image is too large (Twitter limit is 5MB for images)
+    if (imageBuffer.byteLength > 5 * 1024 * 1024) {
+      throw new Error(`Image too large for Twitter (${imageSizeKB}KB). Maximum is 5MB.`)
+    }
 
     // Upload using base64 media_data parameter
+    console.log('[TwitterPublisher] Uploading to Twitter...')
     const response = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({
-        media_data: base64Image,
-      }),
+      body: `media_data=${encodeURIComponent(base64Image)}`,
     })
 
+    const responseText = await response.text()
+    console.log('[TwitterPublisher] Upload response status:', response.status)
+    console.log('[TwitterPublisher] Upload response:', responseText.substring(0, 500))
+
     if (!response.ok) {
-      const error = await response.text()
-      console.error('[TwitterPublisher] Upload failed:', error)
-      throw new Error(`Failed to upload media: ${error}`)
+      // Parse error for better message
+      let errorMsg = responseText
+      try {
+        const errorData = JSON.parse(responseText)
+        if (errorData.errors?.[0]?.message) {
+          errorMsg = errorData.errors[0].message
+        } else if (errorData.error) {
+          errorMsg = errorData.error
+        } else if (errorData.detail) {
+          errorMsg = errorData.detail
+        }
+      } catch {
+        // Keep original error text
+      }
+
+      // Check for scope/permission issues
+      if (response.status === 401 || response.status === 403) {
+        throw new Error(`Twitter auth error (${response.status}): ${errorMsg}. You may need to reconnect Twitter in Settings.`)
+      }
+
+      throw new Error(`Twitter upload failed (${response.status}): ${errorMsg}`)
     }
 
-    const data = await response.json()
+    const data = JSON.parse(responseText)
     console.log('[TwitterPublisher] Media uploaded, ID:', data.media_id_string)
     return data.media_id_string
   }
