@@ -83,7 +83,7 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
   twitter: {
     clientId: process.env.TWITTER_CLIENT_ID || '',
     clientSecret: process.env.TWITTER_CLIENT_SECRET || '',
-    authUrl: 'https://twitter.com/i/oauth2/authorize',
+    authUrl: 'https://x.com/i/oauth2/authorize',  // Updated to x.com per X API docs
     tokenUrl: 'https://api.twitter.com/2/oauth2/token',
     refreshUrl: 'https://api.twitter.com/2/oauth2/token',
     revokeUrl: 'https://api.twitter.com/2/oauth2/revoke',
@@ -92,6 +92,7 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
       'tweet.write',
       'users.read',
       'offline.access',
+      'media.write',  // REQUIRED for v2 media upload endpoint
     ],
     responseType: 'code',
     grantType: 'authorization_code',
