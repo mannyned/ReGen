@@ -521,8 +521,8 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-text-primary">Recent Posts</h2>
-            {currentPlan !== 'free' && (
-              <div className="flex gap-2">
+            {(currentPlan !== 'free' || isBetaPro) && (
+              <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => handleFilterChange('all')}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -543,7 +543,7 @@ export default function DashboardPage() {
                 >
                   Published
                 </button>
-                {planFeatures.scheduling && (
+                {(planFeatures.scheduling || isBetaPro) && (
                   <button
                     onClick={() => handleFilterChange('scheduled')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
