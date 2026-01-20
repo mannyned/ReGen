@@ -50,6 +50,7 @@ function SchedulePageContent() {
   const [showSuccess, setShowSuccess] = useState(false)
   const [connectedAccounts, setConnectedAccounts] = useState<string[]>([])
   const [showWarning, setShowWarning] = useState(false)
+  const [unconnectedPlatformsList, setUnconnectedPlatformsList] = useState<string[]>([])
   const [postMode, setPostMode] = useState<'schedule' | 'now'>('schedule')
   const [selectedPreviews, setSelectedPreviews] = useState<PreviewData[]>([])
   const [testMode, setTestMode] = useState(true) // Default to test mode for safety
@@ -126,6 +127,7 @@ function SchedulePageContent() {
           const connected = data.connectedPlatforms
             .filter((p: any) => p.isActive)
             .map((p: any) => p.platform)
+          console.log('[Schedule] Connected accounts loaded:', connected, 'Raw data:', data.connectedPlatforms)
           setConnectedAccounts(connected)
         }
       } catch (error) {
@@ -296,6 +298,8 @@ function SchedulePageContent() {
     if (!testMode) {
       const unconnectedPlatforms = selectedPlatforms.filter(p => !connectedAccounts.includes(p))
       if (unconnectedPlatforms.length > 0) {
+        console.log('[Schedule] Unconnected platforms:', unconnectedPlatforms, 'Connected:', connectedAccounts)
+        setUnconnectedPlatformsList(unconnectedPlatforms)
         setShowWarning(true)
         return
       }
@@ -559,6 +563,8 @@ function SchedulePageContent() {
     const unconnectedPlatforms = selectedPlatforms.filter(p => !connectedAccounts.includes(p))
 
     if (unconnectedPlatforms.length > 0) {
+      console.log('[Schedule] Unconnected platforms:', unconnectedPlatforms, 'Connected:', connectedAccounts)
+      setUnconnectedPlatformsList(unconnectedPlatforms)
       setShowWarning(true)
       return
     }
@@ -1161,7 +1167,10 @@ function SchedulePageContent() {
                     <div className="flex-1">
                       <p className="font-semibold text-orange-800">Cannot Schedule Post</p>
                       <p className="text-sm text-orange-600 mt-1">
-                        Some selected platforms are not connected to your account.
+                        {unconnectedPlatformsList.length > 0
+                          ? `Please connect: ${unconnectedPlatformsList.map(p => platforms.find(pl => pl.name === p)?.label || p).join(', ')}`
+                          : 'Some selected platforms are not connected to your account.'
+                        }
                       </p>
                     </div>
                   </div>
