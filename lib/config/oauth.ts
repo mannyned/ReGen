@@ -92,8 +92,6 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
       'tweet.write',
       'users.read',
       'offline.access',
-      'media.read',
-      'media.write',
     ],
     responseType: 'code',
     grantType: 'authorization_code',
