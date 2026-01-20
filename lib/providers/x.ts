@@ -15,6 +15,7 @@
  * - tweet.write: Post tweets
  * - users.read: Read user profiles
  * - offline.access: Get refresh token
+ * - media.write: Upload media (REQUIRED for /2/media/upload)
  *
  * @see https://developer.twitter.com/en/docs/authentication/oauth-2-0/authorization-code
  * @see https://developer.twitter.com/en/docs/twitter-api/users/lookup/api-reference/get-users-me
@@ -47,7 +48,7 @@ import { registerProvider } from '../oauth/engine';
 // CONFIGURATION
 // ============================================
 
-const X_AUTH_URL = 'https://twitter.com/i/oauth2/authorize';
+const X_AUTH_URL = 'https://x.com/i/oauth2/authorize';
 const X_TOKEN_URL = 'https://api.twitter.com/2/oauth2/token';
 const X_USER_URL = 'https://api.twitter.com/2/users/me';
 
@@ -85,8 +86,7 @@ const config: ProviderConfig = {
     'tweet.write',      // Post tweets
     'users.read',       // Read user profiles
     'offline.access',   // Get refresh token
-    // 'follows.read',  // Read follows (if needed)
-    // 'follows.write', // Manage follows (if needed)
+    'media.write',      // REQUIRED for /2/media/upload endpoint
   ],
 
   capabilities: {
