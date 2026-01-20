@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       let profileImageUrl = metadata?.profilePictureUrl || metadata?.avatarUrl;
 
       // Map provider names to platform names used by the UI
-      // 'google' OAuth provider is used for YouTube
+      // Some OAuth providers use different names than the platform UI expects
       let platform = connection.provider;
 
       // For Google/YouTube connections
@@ -50,6 +50,11 @@ export async function GET(request: NextRequest) {
         platform = 'youtube'; // Map 'google' to 'youtube' for UI consistency
         username = metadata?.youtubeChannel?.title || metadata?.googleName || username;
         profileImageUrl = metadata?.youtubeChannel?.thumbnailUrl || metadata?.googlePicture || profileImageUrl;
+      }
+
+      // For X/Twitter connections
+      if (connection.provider === 'x') {
+        platform = 'twitter'; // Map 'x' to 'twitter' for UI consistency
       }
 
       return {
