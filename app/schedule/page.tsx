@@ -126,7 +126,12 @@ function SchedulePageContent() {
         if (data.success && data.connectedPlatforms) {
           const connected = data.connectedPlatforms
             .filter((p: any) => p.isActive)
-            .map((p: any) => p.platform)
+            .map((p: any) => {
+              // Normalize platform names (handle 'x' -> 'twitter', 'google' -> 'youtube')
+              if (p.platform === 'x') return 'twitter'
+              if (p.platform === 'google') return 'youtube'
+              return p.platform
+            })
           console.log('[Schedule] Connected accounts loaded:', connected, 'Raw data:', data.connectedPlatforms)
           setConnectedAccounts(connected)
         }
@@ -1165,10 +1170,16 @@ function SchedulePageContent() {
                   <div className="flex items-start gap-3 mb-3">
                     <span className="text-2xl">⚠️</span>
                     <div className="flex-1">
-                      <p className="font-semibold text-orange-800">Cannot Schedule Post</p>
+                      <p className="font-semibold text-orange-800">
+                        {postMode === 'now' ? 'Cannot Post' : 'Cannot Schedule Post'}
+                      </p>
                       <p className="text-sm text-orange-600 mt-1">
                         {unconnectedPlatformsList.length > 0
-                          ? `Please connect: ${unconnectedPlatformsList.map(p => platforms.find(pl => pl.name === p)?.label || p).join(', ')}`
+                          ? `Please connect: ${unconnectedPlatformsList.map(p => {
+                              // Handle 'x' -> 'twitter' mapping for display
+                              const platformName = p === 'x' ? 'twitter' : p;
+                              return platforms.find(pl => pl.name === platformName)?.label || p.toUpperCase();
+                            }).join(', ')}`
                           : 'Some selected platforms are not connected to your account.'
                         }
                       </p>
