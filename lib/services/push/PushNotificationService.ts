@@ -1,5 +1,6 @@
 import webpush from 'web-push'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 
 // ============================================
 // WEB PUSH NOTIFICATION SERVICE
@@ -154,7 +155,7 @@ export async function sendPushToUser(
     if (!result.success && result.error?.includes('expired')) {
       await prisma.profile.update({
         where: { id: profileId },
-        data: { pushSubscription: null },
+        data: { pushSubscription: Prisma.DbNull },
       })
       console.log(`[Push] Removed expired subscription for user ${profileId}`)
     }
@@ -252,7 +253,7 @@ export async function removePushSubscription(
   try {
     await prisma.profile.update({
       where: { id: profileId },
-      data: { pushSubscription: null },
+      data: { pushSubscription: Prisma.DbNull },
     })
     console.log(`[Push] Removed subscription for user ${profileId}`)
     return { success: true }
