@@ -34,9 +34,17 @@ export class TwitterPublisher extends BasePlatformPublisher {
         try {
           mediaId = await this.uploadMedia(accessToken, media)
         } catch (mediaError) {
-          // Media upload failed - post without media
           const errorMsg = mediaError instanceof Error ? mediaError.message : 'Unknown error'
-          console.warn('[TwitterPublisher] Media upload failed, posting without media:', errorMsg)
+          console.error('[TwitterPublisher] Media upload failed:', errorMsg)
+
+          // For videos, don't fallback to text-only - fail the whole publish
+          // Users expect their video to be posted, not just text
+          if (media.mediaType === 'video') {
+            throw new Error(`Video upload failed: ${errorMsg}`)
+          }
+
+          // For images, we can fallback to text-only with a warning
+          console.warn('[TwitterPublisher] Posting without image due to upload failure')
           mediaSkipped = true
           mediaSkipReason = errorMsg
         }
@@ -345,11 +353,11 @@ export class TwitterPublisher extends BasePlatformPublisher {
     accessToken: string,
     media: ContentPayload
   ): Promise<string> {
-    // X API v2 video upload uses DEDICATED endpoints (not command parameter):
-    // - POST /2/media/upload/initialize
-    // - POST /2/media/upload/append
-    // - POST /2/media/upload/finalize
-    // See: https://devcommunity.x.com/t/media-upload-endpoints-update/241818
+    // X API v2 chunked video upload uses POST /2/media/upload with command parameter
+    // All requests use multipart/form-data
+    // See: https://docs.x.com/x-api/media/quickstart/media-upload-chunked
+
+    const UPLOAD_URL = 'https://api.x.com/2/media/upload'
 
     console.log('[TwitterPublisher] Fetching video from URL:', media.mediaUrl)
     const videoResponse = await fetch(media.mediaUrl)
@@ -361,19 +369,20 @@ export class TwitterPublisher extends BasePlatformPublisher {
     const videoSizeBytes = videoBuffer.byteLength
     console.log('[TwitterPublisher] Video fetched, size:', Math.round(videoSizeBytes / 1024 / 1024), 'MB')
 
-    // Step 1: INITIALIZE - Use dedicated /initialize endpoint with JSON body
-    console.log('[TwitterPublisher] Initializing video upload...')
-    const initResponse = await fetch('https://api.x.com/2/media/upload/initialize', {
+    // Step 1: INIT - Initialize the upload session
+    console.log('[TwitterPublisher] Initializing video upload (INIT)...')
+    const initFormData = new FormData()
+    initFormData.append('command', 'INIT')
+    initFormData.append('media_type', media.mimeType || 'video/mp4')
+    initFormData.append('total_bytes', videoSizeBytes.toString())
+    initFormData.append('media_category', 'tweet_video')
+
+    const initResponse = await fetch(UPLOAD_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        total_bytes: videoSizeBytes,
-        media_type: media.mimeType || 'video/mp4',
-        media_category: 'tweet_video',
-      }),
+      body: initFormData,
     })
 
     const initText = await initResponse.text()
@@ -391,8 +400,8 @@ export class TwitterPublisher extends BasePlatformPublisher {
       throw new Error(`Twitter video INIT succeeded but no media_id in response: ${initText}`)
     }
 
-    // Step 2: APPEND - Use dedicated /append endpoint with form-data (binary chunks)
-    const chunkSize = 5 * 1024 * 1024 // 5MB max per chunk
+    // Step 2: APPEND - Upload video in chunks (max 5MB per chunk)
+    const chunkSize = 5 * 1024 * 1024
     const chunks = Math.ceil(videoSizeBytes / chunkSize)
 
     for (let i = 0; i < chunks; i++) {
@@ -403,13 +412,14 @@ export class TwitterPublisher extends BasePlatformPublisher {
       console.log(`[TwitterPublisher] Uploading chunk ${i + 1}/${chunks} (${Math.round(chunk.byteLength / 1024)}KB)...`)
 
       const appendFormData = new FormData()
+      appendFormData.append('command', 'APPEND')
       appendFormData.append('media_id', mediaId)
-      // Send binary data as Blob in the 'media' field
-      const blob = new Blob([chunk], { type: 'application/octet-stream' })
-      appendFormData.append('media', blob, `chunk_${i}`)
       appendFormData.append('segment_index', i.toString())
+      // Send chunk as binary blob
+      const blob = new Blob([chunk], { type: 'application/octet-stream' })
+      appendFormData.append('media', blob, `chunk_${i}.mp4`)
 
-      const appendResponse = await fetch('https://api.x.com/2/media/upload/append', {
+      const appendResponse = await fetch(UPLOAD_URL, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -417,7 +427,6 @@ export class TwitterPublisher extends BasePlatformPublisher {
         body: appendFormData,
       })
 
-      // APPEND returns 204 No Content on success (no body)
       if (!appendResponse.ok) {
         const error = await appendResponse.text()
         throw new Error(`Twitter video APPEND failed (chunk ${i + 1}/${chunks}): ${error}`)
@@ -425,17 +434,18 @@ export class TwitterPublisher extends BasePlatformPublisher {
       console.log(`[TwitterPublisher] Chunk ${i + 1}/${chunks} uploaded successfully`)
     }
 
-    // Step 3: FINALIZE - Use dedicated /finalize endpoint with JSON body
-    console.log('[TwitterPublisher] Finalizing video upload...')
-    const finalizeResponse = await fetch('https://api.x.com/2/media/upload/finalize', {
+    // Step 3: FINALIZE - Complete the upload
+    console.log('[TwitterPublisher] Finalizing video upload (FINALIZE)...')
+    const finalizeFormData = new FormData()
+    finalizeFormData.append('command', 'FINALIZE')
+    finalizeFormData.append('media_id', mediaId)
+
+    const finalizeResponse = await fetch(UPLOAD_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        media_id: mediaId,
-      }),
+      body: finalizeFormData,
     })
 
     const finalizeText = await finalizeResponse.text()
