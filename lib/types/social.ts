@@ -14,6 +14,7 @@ export type SocialPlatform =
   | 'pinterest'
   | 'discord'
   | 'meta'  // Meta represents Instagram + Facebook combined
+  | 'reddit'
 
 export type PlanTier = 'free' | 'creator' | 'pro'
 
@@ -119,6 +120,13 @@ export interface PlatformSettings {
 
   // Snapchat
   storyDuration?: number
+
+  // Reddit
+  subreddit?: string
+  postType?: 'text' | 'link' | 'image'
+  flair?: string
+  nsfw?: boolean
+  spoiler?: boolean
 }
 
 // ============================================
@@ -233,6 +241,7 @@ export const CAROUSEL_CONSTRAINTS: Record<SocialPlatform, CarouselConstraints> =
   tiktok: { minItems: 1, maxItems: 1, allowVideo: true, allowMixed: false },  // No carousel
   youtube: { minItems: 1, maxItems: 1, allowVideo: true, allowMixed: false },  // No carousel
   meta: { minItems: 2, maxItems: 10, allowVideo: true, allowMixed: true },  // Same as Instagram
+  reddit: { minItems: 1, maxItems: 1, allowVideo: false, allowMixed: false },  // No carousel support
 }
 
 // ============================================

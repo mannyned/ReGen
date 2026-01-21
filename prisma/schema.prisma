@@ -206,6 +206,7 @@ enum SocialPlatform {
   SNAPCHAT
   PINTEREST
   DISCORD
+  REDDIT
 }
 
 // ============================================

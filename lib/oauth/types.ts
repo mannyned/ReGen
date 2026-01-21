@@ -23,7 +23,8 @@ export type OAuthProvider =
   | 'x'           // Twitter
   | 'linkedin'    // LinkedIn Personal Profile
   | 'linkedin-org'  // LinkedIn Company Page (Community Management API)
-  | 'snapchat';
+  | 'snapchat'
+  | 'reddit';
 
 /**
  * Provider capability flags

@@ -243,6 +243,29 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
     responseType: 'code',
     grantType: 'authorization_code',
   },
+
+  // ============================================
+  // REDDIT
+  // ============================================
+  reddit: {
+    clientId: process.env.REDDIT_CLIENT_ID || '',
+    clientSecret: process.env.REDDIT_CLIENT_SECRET || '',
+    authUrl: 'https://www.reddit.com/api/v1/authorize',
+    tokenUrl: 'https://www.reddit.com/api/v1/access_token',
+    refreshUrl: 'https://www.reddit.com/api/v1/access_token',
+    revokeUrl: 'https://www.reddit.com/api/v1/revoke_token',
+    scopes: [
+      'identity',
+      'submit',
+      'read',
+      'mysubreddits',
+    ],
+    responseType: 'code',
+    grantType: 'authorization_code',
+    additionalParams: {
+      duration: 'permanent',
+    },
+  },
 }
 
 // ============================================
@@ -261,6 +284,7 @@ export const API_BASE_URLS: Record<SocialPlatform, string> = {
   snapchat: 'https://adsapi.snapchat.com/v1',
   pinterest: 'https://api.pinterest.com/v5',
   discord: 'https://discord.com/api/v10',
+  reddit: 'https://oauth.reddit.com',
 }
 
 // ============================================
@@ -279,6 +303,7 @@ export const RATE_LIMITS: Record<SocialPlatform, { maxRequests: number; windowMs
   snapchat: { maxRequests: 100, windowMs: 60 * 1000 }, // 100/minute
   pinterest: { maxRequests: 1000, windowMs: 60 * 60 * 1000 }, // 1000/hour
   discord: { maxRequests: 50, windowMs: 1000 }, // 50/second
+  reddit: { maxRequests: 60, windowMs: 60 * 1000 }, // 60/minute (OAuth)
 }
 
 // ============================================
@@ -368,6 +393,13 @@ export const CONTENT_LIMITS: Record<SocialPlatform, {
     maxVideoLengthSeconds: 90,
     maxFileSizeMb: 100,
     supportedFormats: ['mp4', 'mov', 'jpg', 'jpeg', 'png'],
+  },
+  reddit: {
+    maxCaptionLength: 40000, // Reddit self-post text limit
+    maxHashtags: 0, // Reddit doesn't use hashtags in the same way
+    maxVideoLengthSeconds: 900, // 15 minutes for video posts
+    maxFileSizeMb: 20, // Image upload limit
+    supportedFormats: ['jpg', 'jpeg', 'png', 'gif'],
   },
 }
 

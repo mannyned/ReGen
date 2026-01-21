@@ -24,6 +24,7 @@ export { xProvider } from './x';
 export { linkedinProvider } from './linkedin';
 export { linkedinOrgProvider } from './linkedin-org';
 export { snapchatProvider } from './snapchat';
+export { redditProvider } from './reddit';
 
 // Re-export types for convenience
 export type { OAuthProvider, OAuthProviderInterface } from '../oauth/types';
@@ -64,6 +65,11 @@ export const PROVIDER_CONFIGS = {
     displayName: 'Snapchat',
     platforms: ['Snapchat'],
     features: ['Login', 'Share (User-Initiated)'],
+  },
+  reddit: {
+    displayName: 'Reddit',
+    platforms: ['Reddit'],
+    features: ['Text Posts', 'Link Posts', 'Image Posts'],
   },
 } as const;
 

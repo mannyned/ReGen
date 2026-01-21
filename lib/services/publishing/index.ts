@@ -16,6 +16,7 @@ import { twitterPublisher } from './TwitterPublisher'
 import { linkedinPublisher } from './LinkedInPublisher'
 import { facebookPublisher } from './FacebookPublisher'
 import { snapchatPublisher } from './SnapchatPublisher'
+import { redditPublisher } from './RedditPublisher'
 
 // ============================================
 // PLATFORM PUBLISHER REGISTRY
@@ -31,6 +32,7 @@ const publishers: Partial<Record<SocialPlatform, BasePlatformPublisher>> = {
   linkedin: linkedinPublisher,
   facebook: facebookPublisher,
   snapchat: snapchatPublisher,
+  reddit: redditPublisher,
 }
 
 // Coming soon platforms
@@ -338,3 +340,4 @@ export { twitterPublisher } from './TwitterPublisher'
 export { linkedinPublisher } from './LinkedInPublisher'
 export { facebookPublisher } from './FacebookPublisher'
 export { snapchatPublisher } from './SnapchatPublisher'
+export { redditPublisher } from './RedditPublisher'
