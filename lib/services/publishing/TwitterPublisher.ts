@@ -424,8 +424,8 @@ export class TwitterPublisher extends BasePlatformPublisher {
     }
 
     const initData = JSON.parse(initText)
-    // v2 dedicated endpoint returns media_id in response
-    const mediaId = initData.media_id || initData.media_id_string || initData.id
+    // v2 dedicated endpoint returns id inside data object: {"data":{"id":"..."}}
+    const mediaId = initData.data?.id || initData.media_id || initData.media_id_string || initData.id
     console.log('[TwitterPublisher] Got media ID:', mediaId, 'Full response:', JSON.stringify(initData))
 
     if (!mediaId || mediaId === 'undefined' || mediaId === 'null') {
