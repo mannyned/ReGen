@@ -33,8 +33,8 @@ interface BetaListResponse {
 interface AssignResponse {
   success: boolean;
   assigned: number;
+  extended: number;
   invited: number;
-  skipped: number;
   emailsSent: number;
   emailsFailed: number;
   expiresAt: string;
@@ -161,7 +161,10 @@ export default function AdminBetaPage() {
 
       let message = '';
       if (data.assigned > 0) {
-        message += `Assigned ${data.assigned} existing user(s) beta access. `;
+        message += `Assigned ${data.assigned} new user(s) beta access. `;
+      }
+      if (data.extended > 0) {
+        message += `Extended ${data.extended} existing beta user(s). `;
       }
       if (data.invited > 0) {
         message += `Invited ${data.invited} new email(s). `;
@@ -171,9 +174,6 @@ export default function AdminBetaPage() {
         if (data.emailsFailed > 0) {
           message += `${data.emailsFailed} email(s) failed to send. `;
         }
-      }
-      if (data.skipped > 0) {
-        message += `${data.skipped} already had beta access.`;
       }
       if (!message) {
         message = 'No changes made.';
