@@ -433,6 +433,7 @@ export class TwitterPublisher extends BasePlatformPublisher {
     }
 
     // Step 2: APPEND - Upload video in chunks (use 3MB chunks as recommended by X staff)
+    // Use dedicated endpoint: POST /2/media/upload/{id}/append
     const chunkSize = 3 * 1024 * 1024
     const chunks = Math.ceil(videoSizeBytes / chunkSize)
 
@@ -444,13 +445,11 @@ export class TwitterPublisher extends BasePlatformPublisher {
       console.log(`[TwitterPublisher] Uploading chunk ${i + 1}/${chunks} (${Math.round(chunk.byteLength / 1024)}KB)...`)
 
       const appendFormData = new FormData()
-      appendFormData.append('command', 'APPEND')
-      appendFormData.append('media_id', String(mediaId))
       appendFormData.append('segment_index', i.toString())
       const blob = new Blob([chunk], { type: 'application/octet-stream' })
       appendFormData.append('media', blob)
 
-      const appendResponse = await fetch(UPLOAD_URL, {
+      const appendResponse = await fetch(`${UPLOAD_URL}/${mediaId}/append`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -469,18 +468,16 @@ export class TwitterPublisher extends BasePlatformPublisher {
     }
 
     // Step 3: FINALIZE - Complete the upload
+    // Use dedicated endpoint: POST /2/media/upload/{id}/finalize
     console.log('[TwitterPublisher] Finalizing video upload (FINALIZE)...')
 
-    const finalizeFormData = new FormData()
-    finalizeFormData.append('command', 'FINALIZE')
-    finalizeFormData.append('media_id', String(mediaId))
-
-    const finalizeResponse = await fetch(UPLOAD_URL, {
+    const finalizeResponse = await fetch(`${UPLOAD_URL}/${mediaId}/finalize`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
       },
-      body: finalizeFormData,
+      body: JSON.stringify({}),
     })
 
     const finalizeText = await finalizeResponse.text()
@@ -508,15 +505,13 @@ export class TwitterPublisher extends BasePlatformPublisher {
     mediaId: string,
     maxAttempts = 60
   ): Promise<void> {
-    // Use v2 STATUS command
-    const UPLOAD_URL = 'https://api.x.com/2/media/upload'
+    // Use dedicated v2 status endpoint: GET /2/media/upload/{id}
+    const STATUS_URL = `https://api.twitter.com/2/media/upload/${mediaId}`
 
     for (let i = 0; i < maxAttempts; i++) {
       console.log(`[TwitterPublisher] Checking processing status (attempt ${i + 1}/${maxAttempts})...`)
 
-      // STATUS uses GET with query params
-      const statusUrl = `${UPLOAD_URL}?command=STATUS&media_id=${mediaId}`
-      const response = await fetch(statusUrl, {
+      const response = await fetch(STATUS_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${accessToken}`,
