@@ -469,11 +469,26 @@ export class TwitterPublisher extends BasePlatformPublisher {
       throw new Error(`Twitter FINALIZE failed (${finalizeResponse.status}): ${finalizeText}`)
     }
 
-    const finalizeData = JSON.parse(finalizeText)
+    // Parse response, handle non-JSON gracefully
+    let finalizeData: any = {}
+    try {
+      if (finalizeText && finalizeText.trim()) {
+        finalizeData = JSON.parse(finalizeText)
+      }
+    } catch (parseErr) {
+      console.warn('[TwitterPublisher] FINALIZE response not JSON:', finalizeText)
+      // If response is empty or not JSON but status was OK, continue
+    }
+
     const processingInfo = finalizeData.data?.processing_info || finalizeData.processing_info
 
     if (processingInfo) {
       console.log('[TwitterPublisher] Video processing, state:', processingInfo.state)
+      await this.waitForMediaProcessing(accessToken, String(mediaId))
+    } else {
+      // No processing_info might mean video is ready, or we need to poll anyway
+      // For safety, always poll for video status
+      console.log('[TwitterPublisher] No processing_info, polling status to be safe...')
       await this.waitForMediaProcessing(accessToken, String(mediaId))
     }
 
@@ -503,16 +518,33 @@ export class TwitterPublisher extends BasePlatformPublisher {
       console.log(`[TwitterPublisher] STATUS response (${response.status}):`, responseText)
 
       if (!response.ok) {
-        console.warn('[TwitterPublisher] STATUS check failed:', response.status)
+        console.warn('[TwitterPublisher] STATUS check failed:', response.status, responseText)
         await new Promise(resolve => setTimeout(resolve, 5000))
         continue
       }
 
-      const data = JSON.parse(responseText)
+      // Parse response, handle non-JSON
+      let data: any = {}
+      try {
+        if (responseText && responseText.trim()) {
+          data = JSON.parse(responseText)
+        }
+      } catch (parseErr) {
+        console.warn('[TwitterPublisher] STATUS response not JSON:', responseText)
+        await new Promise(resolve => setTimeout(resolve, 5000))
+        continue
+      }
+
       // v2 returns: {"data":{"processing_info":{"state":"..."}}}
       const processingInfo = data.data?.processing_info || data.processing_info
       const state = processingInfo?.state
       console.log(`[TwitterPublisher] Processing state: ${state}`)
+
+      // If no processing_info at all, video might be ready
+      if (!processingInfo) {
+        console.log('[TwitterPublisher] No processing_info - assuming video is ready')
+        return
+      }
 
       if (state === 'succeeded') {
         console.log('[TwitterPublisher] Video processing completed successfully')
