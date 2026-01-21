@@ -54,9 +54,13 @@ export default function AdminBetaPage() {
   const [expiredCount, setExpiredCount] = useState(0);
   const [inviteCount, setInviteCount] = useState(0);
 
-  // Form state
+  // Form state - Assign new users
   const [emails, setEmails] = useState('');
   const [durationDays, setDurationDays] = useState(30);
+
+  // Form state - Extend existing users
+  const [extendEmail, setExtendEmail] = useState('');
+  const [extendDays, setExtendDays] = useState(30);
 
   // Check for stored API key on mount
   useEffect(() => {
@@ -181,6 +185,57 @@ export default function AdminBetaPage() {
 
       setSuccess(message);
       setEmails('');
+      fetchBetaUsers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExtend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    const email = extendEmail.trim();
+    if (!email) {
+      setError('Please enter an email address');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/beta', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': apiKey,
+        },
+        body: JSON.stringify({
+          emails: [email],
+          durationDays: extendDays,
+          extendOnly: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to extend beta access');
+      }
+
+      const data = await response.json();
+
+      if (data.extended > 0) {
+        setSuccess(`Extended beta access for ${email} by ${extendDays} days (expires ${new Date(data.expiresAt).toLocaleDateString()})`);
+        setExtendEmail('');
+      } else if (data.notFound > 0) {
+        setError(`User ${email} not found or is not a beta user`);
+      } else {
+        setError('No changes made. Make sure the email belongs to an existing beta user.');
+      }
+
       fetchBetaUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -436,6 +491,53 @@ export default function AdminBetaPage() {
               className="px-6 py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-400 text-white font-medium rounded-lg transition-colors"
             >
               {isLoading ? 'Assigning...' : 'Assign Beta Access'}
+            </button>
+          </form>
+        </div>
+
+        {/* Extend Beta Access Form */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            Extend Beta Access
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+            Extend the expiration date for an existing beta user.
+          </p>
+
+          <form onSubmit={handleExtend} className="flex flex-wrap items-end gap-4">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Beta User Email
+              </label>
+              <input
+                type="email"
+                value={extendEmail}
+                onChange={(e) => setExtendEmail(e.target.value)}
+                placeholder="user@example.com"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              />
+            </div>
+
+            <div className="w-32">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Extend by (days)
+              </label>
+              <input
+                type="number"
+                value={extendDays}
+                onChange={(e) => setExtendDays(parseInt(e.target.value) || 30)}
+                min={1}
+                max={365}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg transition-colors"
+            >
+              {isLoading ? 'Extending...' : 'Extend'}
             </button>
           </form>
         </div>
