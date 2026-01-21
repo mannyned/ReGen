@@ -252,7 +252,7 @@ export class TokenManager {
     // Note: Instagram/Facebook may be stored as 'meta' (unified) or separately
     const platformToProvider: Record<string, string> = {
       youtube: 'google',  // YouTube uses Google OAuth
-      // twitter stays as 'twitter' - that's how it's stored in OAuthConnection
+      twitter: 'x',       // Twitter/X is stored as 'x' in OAuthConnection
       // instagram and facebook stay as-is, we'll try both 'meta' and individual providers
     }
     const provider = platformToProvider[platform] || platform
