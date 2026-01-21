@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
 
       return {
         id: post.id,
+        contentUploadId: post.contentUpload?.id, // Include for editing captions
         platforms: post.platforms,
         scheduledAt: post.scheduledAt,
         timezone: post.timezone,
