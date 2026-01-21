@@ -10,6 +10,7 @@ import { publishingService } from '@/lib/services/publishing'
 import { validatePlatformParam, validatePublishContent, validationErrorResponse } from '@/lib/middleware/validation'
 import { createRateLimitMiddleware } from '@/lib/middleware/rateLimit'
 import { prisma } from '@/lib/db'
+import { sendPublishedPostNotification } from '@/lib/services/push'
 
 // ============================================
 // POST /api/publish
@@ -248,6 +249,24 @@ export async function POST(request: NextRequest) {
             failCount++
           }
         }
+      }
+
+      // Send push notification for immediate publish results
+      try {
+        const pushStatus = failCount === 0 ? 'success' : (successCount > 0 ? 'partial' : 'failed')
+        const failedPlatforms = Object.entries(resultsObject)
+          .filter(([, result]) => !(result as PublishResult).success)
+          .map(([platform]) => platform)
+
+        await sendPublishedPostNotification(
+          userId,
+          platforms,
+          pushStatus,
+          failedPlatforms.length > 0 ? failedPlatforms : undefined
+        )
+        console.log('[Publish] Push notification sent:', pushStatus)
+      } catch (pushError) {
+        console.warn('[Publish] Failed to send push notification:', pushError)
       }
 
       return NextResponse.json({
