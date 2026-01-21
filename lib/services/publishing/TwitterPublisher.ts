@@ -273,13 +273,17 @@ export class TwitterPublisher extends BasePlatformPublisher {
     accessToken: string,
     media: ContentPayload
   ): Promise<string> {
-    // X API v2 media upload
-    // - Images: Simple one-shot upload to POST /2/media/upload with 'media' field
-    // - Videos: Use dedicated chunked endpoints (/initialize, /append, /finalize)
-    // See: https://devcommunity.x.com/t/media-upload-endpoints-update-and-extended-migration-deadline/241818
+    // X API media upload limitations:
+    // - Images: Supported via v2 API with OAuth 2.0 (Free tier)
+    // - Videos: Requires v1.1 API which needs paid tier (Basic $200/month)
+    // See: https://developer.x.com/en/docs/twitter-api/tweets/media-upload/introduction
 
     if (media.mediaType === 'video') {
-      return this.uploadVideoChunkedV2(accessToken, media)
+      // Video uploads require paid X API tier - throw clear error
+      throw new Error(
+        'Twitter/X video uploads require a paid API tier (Basic at $200/month). ' +
+        'Your video was not posted. You can still post images, or upgrade your X Developer account at developer.x.com'
+      )
     }
 
     // For images, fetch first
