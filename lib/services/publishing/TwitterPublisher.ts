@@ -309,8 +309,6 @@ export class TwitterPublisher extends BasePlatformPublisher {
     // Send binary data as a Blob in the 'media' field
     const blob = new Blob([imageBuffer], { type: media.mimeType || 'image/jpeg' })
     formData.append('media', blob, 'image.jpg')
-    // Optional: specify media category
-    formData.append('media_category', 'tweet_image')
 
     const response = await fetch(V2_UPLOAD_URL, {
       method: 'POST',
@@ -321,15 +319,23 @@ export class TwitterPublisher extends BasePlatformPublisher {
     })
 
     const responseText = await response.text()
-    console.log('[TwitterPublisher] Upload response:', response.status, responseText.substring(0, 300))
+    console.log('[TwitterPublisher] Upload response:', response.status)
+    console.log('[TwitterPublisher] Upload response body:', responseText)
 
     if (!response.ok) {
       throw new Error(`Twitter upload failed (${response.status}): ${responseText.substring(0, 200)}`)
     }
 
     const data = JSON.parse(responseText)
-    const mediaId = data.id || data.media_id_string
-    console.log('[TwitterPublisher] Media uploaded successfully, ID:', mediaId)
+    // v2 API may return id in different formats - try all possibilities
+    const mediaId = data.id || data.media_id_string || data.media_id || data.data?.id || data.data?.media_id_string
+    console.log('[TwitterPublisher] Parsed response data:', JSON.stringify(data))
+    console.log('[TwitterPublisher] Media ID extracted:', mediaId)
+
+    if (!mediaId) {
+      throw new Error(`Twitter upload succeeded but no media_id in response: ${responseText.substring(0, 300)}`)
+    }
+
     return mediaId
   }
 
