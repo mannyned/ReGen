@@ -309,6 +309,8 @@ export class TwitterPublisher extends BasePlatformPublisher {
     // Send binary data as a Blob in the 'media' field
     const blob = new Blob([imageBuffer], { type: media.mimeType || 'image/jpeg' })
     formData.append('media', blob, 'image.jpg')
+    // media_category is REQUIRED for v2 API
+    formData.append('media_category', 'tweet_image')
 
     const response = await fetch(V2_UPLOAD_URL, {
       method: 'POST',
