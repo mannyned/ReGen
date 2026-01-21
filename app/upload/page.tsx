@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import type { SocialPlatform } from '@/lib/types/social'
 
 type UploadType = 'video' | 'image' | 'media' | 'text'
-type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'linkedin-org' | 'snapchat' | 'pinterest' | 'discord'
+type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'linkedin-org' | 'snapchat' | 'pinterest' | 'discord' | 'reddit'
 
 // Map Platform type to SocialPlatform for logo component
 const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
@@ -24,6 +24,7 @@ const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
   'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
+  'reddit': 'reddit',
 }
 type ContentType = 'post' | 'story'
 
@@ -45,6 +46,7 @@ const PLATFORM_LIMITS = {
   'linkedin-org': { post: 20, story: 1 },  // Company page: same as personal
   pinterest: { post: 5, story: 1 },   // Carousel pin: 2-5 images
   discord: { post: 10, story: 1 },    // Multi-attachment: up to 10
+  reddit: { post: 1, story: 1 },      // Single image/video per post
 }
 
 // Carousel-specific constraints for validation
@@ -64,6 +66,7 @@ const CAROUSEL_PLATFORM_INFO: Record<Platform, {
   'linkedin-org': { minItems: 2, maxItems: 20, allowVideo: false, description: 'Company page multi-image (images only)' },
   pinterest: { minItems: 2, maxItems: 5, allowVideo: false, description: 'Carousel pin (images only)' },
   discord: { minItems: 1, maxItems: 10, allowVideo: true, description: 'Multi-attachment message' },
+  reddit: { minItems: 1, maxItems: 1, allowVideo: true, description: 'Single image or video post' },
 }
 
 const platforms = [
@@ -77,6 +80,7 @@ const platforms = [
   { id: 'snapchat' as Platform, name: 'Snapchat', icon: '👻', color: 'bg-gradient-to-br from-yellow-400 to-yellow-500' },
   { id: 'pinterest' as Platform, name: 'Pinterest', icon: '📌', color: 'bg-gradient-to-br from-red-600 to-red-500' },
   { id: 'discord' as Platform, name: 'Discord', icon: '💬', color: 'bg-gradient-to-br from-indigo-600 to-indigo-500' },
+  { id: 'reddit' as Platform, name: 'Reddit', icon: '🤖', color: 'bg-gradient-to-br from-orange-500 to-orange-600' },
 ]
 
 // Inner component that uses useSearchParams

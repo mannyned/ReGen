@@ -25,6 +25,7 @@ const PLATFORM_ID_MAP: Record<string, SocialPlatform> = {
   'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
+  'reddit': 'reddit',
 }
 
 // Map platform IDs to OAuth providers (some platforms use different OAuth providers)
@@ -39,6 +40,7 @@ const PLATFORM_TO_PROVIDER: Record<string, string> = {
   'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
+  'reddit': 'reddit',
 }
 
 // Reverse mapping: provider ID to platform IDs
@@ -55,6 +57,7 @@ const PROVIDER_TO_PLATFORMS: Record<string, string[]> = {
   'snapchat': ['snapchat'],
   'pinterest': ['pinterest'],
   'discord': ['discord'],
+  'reddit': ['reddit'],
 }
 
 // Helper to find connected platform by provider mapping
@@ -275,6 +278,7 @@ export default function SettingsPage() {
         { id: 'snapchat', name: 'Snapchat', icon: '👻', color: 'from-yellow-400 to-yellow-500', connected: false },
         { id: 'pinterest', name: 'Pinterest', icon: '📌', color: 'from-red-600 to-red-500', connected: false },
         { id: 'discord', name: 'Discord', icon: '💬', color: 'from-indigo-600 to-indigo-500', connected: false },
+        { id: 'reddit', name: 'Reddit', icon: '🤖', color: 'from-orange-500 to-orange-600', connected: false },
       ]
 
       // Wait for auth to complete before fetching

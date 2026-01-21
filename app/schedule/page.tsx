@@ -9,7 +9,7 @@ import type { SocialPlatform } from '@/lib/types/social'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import { TikTokPostSettings, type TikTokPostSettingsData } from '../components/tiktok/TikTokPostSettings'
 
-type Platform = 'instagram' | 'twitter' | 'linkedin' | 'linkedin-org' | 'facebook' | 'tiktok' | 'youtube' | 'x' | 'snapchat' | 'pinterest' | 'discord'
+type Platform = 'instagram' | 'twitter' | 'linkedin' | 'linkedin-org' | 'facebook' | 'tiktok' | 'youtube' | 'x' | 'snapchat' | 'pinterest' | 'discord' | 'reddit'
 
 // Map Platform type to SocialPlatform for logo component
 const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
@@ -24,6 +24,7 @@ const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
   'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
+  'reddit': 'reddit',
 }
 
 interface PreviewData {
@@ -109,6 +110,7 @@ function SchedulePageContent() {
     { name: 'snapchat', label: 'Snapchat', icon: '👻' },
     { name: 'pinterest', label: 'Pinterest', icon: '📌' },
     { name: 'discord', label: 'Discord', icon: '💬' },
+    { name: 'reddit', label: 'Reddit', icon: '🤖' },
   ]
 
   // Load connected accounts from API
