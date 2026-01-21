@@ -14,7 +14,7 @@ import type { PrimaryCaption, PlatformCaptionInstance, CaptionAnalyticsMetadata 
 import { PlatformLogo } from '../components/ui'
 
 type CaptionTone = 'professional' | 'engaging' | 'casual'
-type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'snapchat' | 'pinterest' | 'discord'
+type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'snapchat' | 'pinterest' | 'discord' | 'reddit'
 type ContentType = 'post' | 'story'
 
 // Map local Platform type to SocialPlatform
@@ -28,6 +28,7 @@ const PLATFORM_MAP: Record<Platform, SocialPlatform> = {
   'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
+  'reddit': 'reddit',
 }
 
 // Extract a frame from a video for AI analysis
@@ -123,6 +124,7 @@ const PLATFORM_CONFIG = {
   snapchat: { icon: '👻', formats: { post: 'Snap', story: 'Story' } },
   pinterest: { icon: '📌', formats: { post: 'Pin', story: 'Idea Pin' } },
   discord: { icon: '💬', formats: { post: 'Message', story: 'Message' } },
+  reddit: { icon: '🤖', formats: { post: 'Post', story: 'Post' } },
 }
 
 // Inner component that uses useSearchParams
@@ -335,6 +337,7 @@ function GeneratePageContent() {
       linkedin: { post: 1, story: 1 },
       pinterest: { post: 1, story: 1 },
       discord: { post: 1, story: 1 },
+      reddit: { post: 1, story: 1 },
     }
     return limits[platform]?.[contentType] || 1
   }
@@ -374,6 +377,7 @@ function GeneratePageContent() {
       snapchat: 'New content drop! 💫 Created with AI magic ✨',
       pinterest: 'Save this for later! 📌 Creative inspiration powered by AI ✨',
       discord: 'Check out what I just created! 🎮 Made with ReGenr AI 🚀',
+      reddit: 'What does everyone think about this? Would love to hear your thoughts! r/YourSubreddit',
     }
     return captions[platform] || ''
   }
@@ -389,6 +393,7 @@ function GeneratePageContent() {
       snapchat: ['#SnapCreator', '#ContentCreation'],
       pinterest: ['#PinterestInspiration', '#SaveForLater', '#CreativeIdeas'],
       discord: [],
+      reddit: [],
     }
 
     const platformTags = baseHashtags[platform] || []

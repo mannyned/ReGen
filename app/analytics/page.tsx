@@ -624,6 +624,9 @@ export default function AnalyticsPage() {
       linkedin: ['linkedin'],
       facebook: ['facebook', 'meta'], // Include 'meta' as fallback for legacy data
       snapchat: ['snapchat'],
+      pinterest: ['pinterest'],
+      discord: ['discord'],
+      reddit: ['reddit'],
     }
 
     const platformKeys = platformKeyMap[selectedPlatform] || [selectedPlatform]
@@ -842,6 +845,9 @@ export default function AnalyticsPage() {
                     <option value="twitter">Twitter</option>
                     <option value="facebook">Facebook</option>
                     <option value="snapchat">Snapchat</option>
+                    <option value="pinterest">Pinterest</option>
+                    <option value="discord">Discord</option>
+                    <option value="reddit">Reddit</option>
                   </select>
                 </div>
 
