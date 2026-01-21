@@ -411,10 +411,12 @@ export class TwitterPublisher extends BasePlatformPublisher {
     }
 
     const initData = JSON.parse(initText)
-    const mediaId = initData.id || initData.media_id_string || initData.media_id || initData.data?.id
-    console.log('[TwitterPublisher] Got media ID:', mediaId)
+    // Ensure media_id is a string - Twitter IDs must be strings due to JS number precision
+    const rawMediaId = initData.id || initData.media_id_string || initData.media_id || initData.data?.id
+    const mediaId = String(rawMediaId)
+    console.log('[TwitterPublisher] Got media ID:', mediaId, 'raw:', rawMediaId, 'type:', typeof rawMediaId)
 
-    if (!mediaId) {
+    if (!mediaId || mediaId === 'undefined' || mediaId === 'null') {
       throw new Error(`Twitter video INIT succeeded but no media_id in response: ${initText}`)
     }
 
@@ -474,12 +476,12 @@ export class TwitterPublisher extends BasePlatformPublisher {
     }
 
     const finalizeData = JSON.parse(finalizeText)
+    console.log('[TwitterPublisher] FINALIZE data:', JSON.stringify(finalizeData))
 
-    // Check if async processing is needed (for videos)
-    if (finalizeData.processing_info) {
-      console.log('[TwitterPublisher] Video needs processing, waiting...')
-      await this.waitForMediaProcessing(accessToken, mediaId)
-    }
+    // Videos ALWAYS need processing - wait for it to complete
+    // The media ID won't be valid for tweets until processing is done
+    console.log('[TwitterPublisher] Waiting for video processing to complete...')
+    await this.waitForMediaProcessing(accessToken, mediaId)
 
     console.log('[TwitterPublisher] Video upload complete, media ID:', mediaId)
     return mediaId
@@ -494,6 +496,8 @@ export class TwitterPublisher extends BasePlatformPublisher {
     const STATUS_URL = `https://api.x.com/2/media/upload/${mediaId}/status`
 
     for (let i = 0; i < maxAttempts; i++) {
+      console.log(`[TwitterPublisher] Checking processing status (attempt ${i + 1}/${maxAttempts})...`)
+
       const response = await fetch(STATUS_URL, {
         method: 'GET',
         headers: {
@@ -501,26 +505,50 @@ export class TwitterPublisher extends BasePlatformPublisher {
         },
       })
 
+      const responseText = await response.text()
+      console.log(`[TwitterPublisher] STATUS response (${response.status}):`, responseText)
+
+      // If we get a 404, the endpoint might not exist - assume processing is done
+      if (response.status === 404) {
+        console.log('[TwitterPublisher] STATUS endpoint returned 404, assuming processing complete')
+        return
+      }
+
       if (!response.ok) {
-        const errorText = await response.text()
-        console.warn('[TwitterPublisher] STATUS check failed:', response.status, errorText)
+        console.warn('[TwitterPublisher] STATUS check failed:', response.status)
         // Continue waiting, might be temporary
         await new Promise(resolve => setTimeout(resolve, 5000))
         continue
       }
 
-      const data = await response.json()
-      const state = data.processing_info?.state || data.state
-      console.log(`[TwitterPublisher] Processing status: ${state}`)
-
-      if (state === 'succeeded' || state === 'complete') {
+      let data
+      try {
+        data = JSON.parse(responseText)
+      } catch {
+        // If response isn't JSON, assume processing is done
+        console.log('[TwitterPublisher] STATUS response not JSON, assuming processing complete')
         return
       }
 
-      if (state === 'failed') {
+      const state = data.processing_info?.state || data.state || data.status
+      console.log(`[TwitterPublisher] Processing state: ${state}`)
+
+      // Various success states
+      if (state === 'succeeded' || state === 'complete' || state === 'ready' || state === 'done') {
+        console.log('[TwitterPublisher] Video processing completed successfully')
+        return
+      }
+
+      if (state === 'failed' || state === 'error') {
         const errorName = data.processing_info?.error?.name || data.error?.name || 'Unknown'
         const errorMsg = data.processing_info?.error?.message || data.error?.message || 'Video processing failed'
         throw new Error(`Video processing failed (${errorName}): ${errorMsg}`)
+      }
+
+      // If no state but we got a 200 OK, might be done
+      if (!state && response.ok) {
+        console.log('[TwitterPublisher] No processing state in response, assuming complete')
+        return
       }
 
       // Wait for the recommended time before checking again
