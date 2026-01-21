@@ -450,19 +450,16 @@ export class TwitterPublisher extends BasePlatformPublisher {
       }
     }
 
-    // Step 3: FINALIZE - POST to /{id}/finalize
+    // Step 3: FINALIZE - POST to /{id}/finalize with JSON
     console.log('[TwitterPublisher] Finalizing video upload...')
-
-    const finalizeFormData = new FormData()
-    // Some implementations need total_bytes here too
-    finalizeFormData.append('total_bytes', videoSizeBytes.toString())
 
     const finalizeResponse = await fetch(`${BASE_URL}/${mediaId}/finalize`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
       },
-      body: finalizeFormData,
+      body: JSON.stringify({}),
     })
 
     const finalizeText = await finalizeResponse.text()
