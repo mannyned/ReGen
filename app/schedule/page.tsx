@@ -716,9 +716,9 @@ function SchedulePageContent() {
     }
   }
 
-  // Helper to cancel a scheduled post
-  const handleCancelPost = async (postId: string) => {
-    if (!confirm('Are you sure you want to cancel this scheduled post?')) return
+  // Helper to delete a scheduled post
+  const handleDeleteScheduledPost = async (postId: string) => {
+    if (!confirm('Delete this scheduled post? This cannot be undone.')) return
 
     try {
       const response = await fetch(`/api/schedule?id=${postId}`, {
@@ -730,11 +730,11 @@ function SchedulePageContent() {
         // Remove from local state
         setUpcomingPosts(prev => prev.filter(p => p.id !== postId))
       } else {
-        alert(result.error || 'Failed to cancel post')
+        alert(result.error || 'Failed to delete scheduled post')
       }
     } catch (error) {
-      console.error('Error cancelling post:', error)
-      alert('Failed to cancel post')
+      console.error('Error deleting scheduled post:', error)
+      alert('Failed to delete scheduled post')
     }
   }
 
@@ -1451,11 +1451,14 @@ function SchedulePageContent() {
                           )}
                         </button>
                         <button
-                          onClick={() => handleCancelPost(post.id)}
+                          onClick={() => handleDeleteScheduledPost(post.id)}
                           disabled={publishingPostId === post.id}
-                          className="flex-1 text-xs py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex-1 text-xs py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
                         >
-                          Cancel
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete
                         </button>
                       </div>
                     </div>
