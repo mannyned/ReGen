@@ -113,6 +113,91 @@ export async function POST(request: NextRequest) {
 }
 
 // ============================================
+// DELETE /api/content?id=xxx
+// Delete a draft ContentUpload record
+// ============================================
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const contentId = searchParams.get('id')
+
+    if (!contentId) {
+      return NextResponse.json(
+        { success: false, error: 'Content ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Find the content and verify ownership
+    const content = await prisma.contentUpload.findFirst({
+      where: {
+        id: contentId,
+        profileId: user.id,
+      },
+      include: {
+        scheduledPosts: { select: { id: true } },
+        outboundPosts: { select: { id: true } },
+      },
+    })
+
+    if (!content) {
+      return NextResponse.json(
+        { success: false, error: 'Content not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check if content has associated posts (shouldn't delete if published/scheduled)
+    if (content.scheduledPosts.length > 0) {
+      return NextResponse.json(
+        { success: false, error: 'Cannot delete content with scheduled posts. Cancel the scheduled posts first.' },
+        { status: 400 }
+      )
+    }
+
+    if (content.outboundPosts.length > 0) {
+      return NextResponse.json(
+        { success: false, error: 'Cannot delete content that has been published.' },
+        { status: 400 }
+      )
+    }
+
+    // Delete the content (this is a draft with no associated posts)
+    await prisma.contentUpload.delete({
+      where: { id: contentId },
+    })
+
+    // Optionally: Delete files from Supabase storage
+    // For now, we'll just delete the database record
+    // Storage cleanup can be handled by a background job
+
+    return NextResponse.json({
+      success: true,
+      message: 'Draft deleted successfully',
+    })
+  } catch (error: unknown) {
+    console.error('Delete content error:', error)
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : 'Failed to delete content' },
+      { status: 500 }
+    )
+  }
+}
+
+// ============================================
 // GET /api/content
 // Get all content for the authenticated user
 // ============================================

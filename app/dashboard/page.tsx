@@ -162,6 +162,32 @@ export default function DashboardPage() {
     }
   }
 
+  // Delete a draft (ContentUpload)
+  const deleteDraft = async (draftId: string) => {
+    if (!confirm('Are you sure you want to delete this draft? This cannot be undone.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/content?id=${draftId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Remove from local state
+        setRecentPosts(prev => prev.filter(post => post.id !== draftId))
+        // Refresh analytics stats
+        fetchAnalyticsStats()
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to delete draft')
+      }
+    } catch (error) {
+      console.error('Failed to delete draft:', error)
+      alert('Failed to delete draft')
+    }
+  }
+
   // Handle View click - open URL and show confirmation prompt
   const handleViewClick = (postId: string, platformUrl: string) => {
     // Open the platform URL in a new tab
@@ -736,13 +762,24 @@ export default function DashboardPage() {
                             Manage
                           </Link>
                         ) : post.status === 'INITIATED' ? (
-                          <Link
-                            href={`/upload?draft=${post.id}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-primary hover:text-primary-hover text-sm font-medium transition-colors"
-                          >
-                            Continue
-                          </Link>
+                          <>
+                            <Link
+                              href={`/upload?draft=${post.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-primary hover:text-primary-hover text-sm font-medium transition-colors"
+                            >
+                              Continue
+                            </Link>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                deleteDraft(post.id)
+                              }}
+                              className="text-red-500 hover:text-red-600 text-sm font-medium transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </>
                         ) : (
                           post.platformUrl && (
                             <button
