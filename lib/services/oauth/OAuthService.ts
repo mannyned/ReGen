@@ -354,6 +354,7 @@ export class OAuthService {
       snapchat: () => this.fetchSnapchatProfile(accessToken),
       pinterest: () => this.fetchPinterestProfile(accessToken),
       discord: () => this.fetchDiscordProfile(accessToken),
+      reddit: () => this.fetchRedditProfile(accessToken),
     }
 
     return fetchers[platform]()
@@ -548,6 +549,38 @@ export class OAuthService {
   private async fetchDiscordProfile(accessToken: string): Promise<SocialProfile> {
     // Discord API - coming soon
     throw new Error('Discord integration coming soon')
+  }
+
+  private async fetchRedditProfile(accessToken: string): Promise<SocialProfile> {
+    const response = await fetch('https://oauth.reddit.com/api/v1/me', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'User-Agent': 'ReGen/1.0',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch Reddit profile')
+    }
+
+    const data = await response.json()
+
+    return {
+      platformUserId: data.id,
+      username: data.name,
+      displayName: data.name,
+      profileImageUrl: data.icon_img?.split('?')[0], // Remove query params
+      followers: 0, // Reddit doesn't expose follower count via API
+      following: 0,
+      metadata: {
+        totalKarma: data.total_karma,
+        linkKarma: data.link_karma,
+        commentKarma: data.comment_karma,
+        verified: data.verified,
+        isGold: data.is_gold,
+        isMod: data.is_mod,
+      },
+    }
   }
 
   // ============================================

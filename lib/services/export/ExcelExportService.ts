@@ -555,6 +555,7 @@ export class ExcelExportService {
       snapchat: 'Snapchat',
       pinterest: 'Pinterest',
       discord: 'Discord',
+      reddit: 'Reddit',
     }
     return names[platform] || platform
   }

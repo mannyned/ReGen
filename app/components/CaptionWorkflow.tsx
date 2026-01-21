@@ -609,6 +609,7 @@ export function CaptionWorkflow({
       snapchat: 'You have to see this!',
       pinterest: 'Pin this for later inspiration!',
       discord: 'Check out what I just found!',
+      reddit: 'What does everyone think about this? r/YourSubreddit',
     }
     return defaults[platform]
   }

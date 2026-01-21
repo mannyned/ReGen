@@ -42,6 +42,7 @@ export class AnalyticsService {
       snapchat: () => this.getSnapchatAccountAnalytics(accessToken, dateRange),
       pinterest: () => this.getPinterestAccountAnalytics(accessToken, dateRange),
       discord: () => this.getDiscordAccountAnalytics(accessToken, dateRange),
+      reddit: () => this.getRedditAccountAnalytics(accessToken, dateRange),
     }
 
     return fetchers[platform]()
@@ -74,6 +75,7 @@ export class AnalyticsService {
       snapchat: null,
       pinterest: null,
       discord: null,
+      reddit: null,
     }
 
     let totalFollowers = 0
@@ -708,6 +710,54 @@ export class AnalyticsService {
     dateRange: { start: Date; end: Date }
   ): Promise<AccountAnalytics> {
     // Discord analytics - coming soon
+    return {
+      followers: 0,
+      following: 0,
+      totalPosts: 0,
+      avgEngagementRate: 0,
+      avgReach: 0,
+      avgImpressions: 0,
+      followerGrowth: 0,
+      topPosts: [],
+    }
+  }
+
+  private async getRedditAccountAnalytics(
+    accessToken: string,
+    dateRange: { start: Date; end: Date }
+  ): Promise<AccountAnalytics> {
+    // Reddit analytics - fetch user karma and post stats
+    try {
+      const response = await fetch('https://oauth.reddit.com/api/v1/me', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'User-Agent': 'ReGen/1.0',
+        },
+      })
+
+      if (!response.ok) {
+        return this.getEmptyAnalytics()
+      }
+
+      const data = await response.json()
+
+      return {
+        followers: 0, // Reddit doesn't expose follower count via API
+        following: 0,
+        totalPosts: 0,
+        avgEngagementRate: 0,
+        avgReach: 0,
+        avgImpressions: 0,
+        followerGrowth: 0,
+        topPosts: [],
+      }
+    } catch (error) {
+      console.error('[AnalyticsService] Reddit analytics error:', error)
+      return this.getEmptyAnalytics()
+    }
+  }
+
+  private getEmptyAnalytics(): AccountAnalytics {
     return {
       followers: 0,
       following: 0,
