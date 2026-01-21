@@ -50,6 +50,8 @@ export async function GET(request: NextRequest) {
     const platformFilter = searchParams.get('platform')
     const isFiltered = platformFilter && platformFilter !== 'all'
 
+    console.log('[Recommendations] Platform filter:', platformFilter, 'isFiltered:', isFiltered)
+
     // Get user's posts from last 30 days
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
@@ -167,29 +169,33 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Check for best performing platform - only when not filtering
+    // Check for best performing platform - only calculate when not filtering
     let bestPlatform = ''
     let bestEngagementRate = 0
     let worstPlatform = ''
     let worstEngagementRate = Infinity
 
-    for (const [platform, data] of Object.entries(platformEngagement)) {
-      if (data.reach > 0) {
-        const engagementRate = ((data.likes + data.comments) / data.reach) * 100
-        if (engagementRate > bestEngagementRate) {
-          bestEngagementRate = engagementRate
-          bestPlatform = platform
-        }
-        if (engagementRate < worstEngagementRate && data.posts >= 3) {
-          worstEngagementRate = engagementRate
-          worstPlatform = platform
+    // Only compute cross-platform comparison when not filtering
+    if (!isFiltered) {
+      for (const [platform, data] of Object.entries(platformEngagement)) {
+        if (data.reach > 0) {
+          const engagementRate = ((data.likes + data.comments) / data.reach) * 100
+          if (engagementRate > bestEngagementRate) {
+            bestEngagementRate = engagementRate
+            bestPlatform = platform
+          }
+          if (engagementRate < worstEngagementRate && data.posts >= 3) {
+            worstEngagementRate = engagementRate
+            worstPlatform = platform
+          }
         }
       }
     }
 
     // When filtering by platform, show platform-specific engagement insights
     if (isFiltered) {
-      const filteredEngagement = platformEngagement[platformFilter] || Object.values(platformEngagement)[0]
+      // Only use engagement data for the specifically filtered platform
+      const filteredEngagement = platformEngagement[platformFilter]
       if (filteredEngagement && filteredEngagement.reach > 0) {
         const engagementRate = ((filteredEngagement.likes + filteredEngagement.comments) / filteredEngagement.reach) * 100
         if (engagementRate > 5) {

@@ -388,6 +388,10 @@ export default function AnalyticsPage() {
   // Refetch stats and recommendations when platform selection changes
   useEffect(() => {
     if (mounted) {
+      // Clear old recommendations immediately to prevent showing stale data
+      if (userPlan === 'pro') {
+        setAiRecommendations([])
+      }
       fetchAnalyticsStats(timeRange, selectedPlatform)
       if (userPlan === 'pro') {
         fetchRecommendations(selectedPlatform)
