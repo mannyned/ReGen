@@ -86,6 +86,8 @@ export async function POST(request: NextRequest) {
       console.log('[Publish API] Received request with contentType:', contentType)
       console.log('[Publish API] Media URL:', media?.mediaUrl?.substring(0, 100))
       console.log('[Publish API] Media type:', media?.mediaType)
+      console.log('[Publish API] Media fileSize:', media?.fileSize, 'bytes, duration:', media?.duration, 'seconds')
+      console.log('[Publish API] Platforms:', platforms)
 
       // Validate required fields
       if (!userId) {
@@ -114,6 +116,7 @@ export async function POST(request: NextRequest) {
         })
 
         if (!contentValidation.valid) {
+          console.log('[Publish API] Content validation failed for', platform, ':', contentValidation.errors)
           return validationErrorResponse(
             contentValidation.errors.map(e => ({
               ...e,
@@ -122,6 +125,8 @@ export async function POST(request: NextRequest) {
           )
         }
       }
+
+      console.log('[Publish API] All validation passed, proceeding to publish')
 
       // Handle scheduled publishing
       if (scheduleAt) {
