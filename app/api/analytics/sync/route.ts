@@ -14,6 +14,7 @@ export const runtime = 'nodejs'
 
 const META_GRAPH_API = 'https://graph.facebook.com/v21.0'
 const YOUTUBE_API = 'https://www.googleapis.com/youtube/v3'
+const TWITTER_API = 'https://api.twitter.com/2'
 
 interface InsightValue {
   value: number
@@ -368,6 +369,99 @@ async function fetchYouTubeInsights(
   }
 }
 
+/**
+ * Fetch Twitter/X tweet metrics
+ * Uses Twitter API v2 with public_metrics
+ */
+async function fetchTwitterInsights(
+  tweetId: string,
+  accessToken: string
+): Promise<{
+  impressions: number
+  likes: number
+  retweets: number
+  replies: number
+  quotes: number
+  bookmarks: number
+} | null> {
+  try {
+    // Twitter API v2 - Get tweet with public metrics
+    // Note: impression_count requires OAuth 2.0 User Context with tweet.read scope
+    const url = `${TWITTER_API}/tweets/${tweetId}?tweet.fields=public_metrics,non_public_metrics,organic_metrics`
+
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error(`[Twitter Insights] Failed for ${tweetId} (${response.status}):`, error)
+
+      // If non_public_metrics fails (requires higher access), try with just public_metrics
+      if (response.status === 403 || response.status === 401) {
+        console.log(`[Twitter Insights] Retrying with public_metrics only for ${tweetId}`)
+        const fallbackUrl = `${TWITTER_API}/tweets/${tweetId}?tweet.fields=public_metrics`
+        const fallbackResponse = await fetch(fallbackUrl, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/json',
+          },
+        })
+
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json()
+          const metrics = fallbackData.data?.public_metrics
+
+          if (metrics) {
+            const result = {
+              impressions: 0, // Not available without elevated access
+              likes: metrics.like_count || 0,
+              retweets: metrics.retweet_count || 0,
+              replies: metrics.reply_count || 0,
+              quotes: metrics.quote_count || 0,
+              bookmarks: metrics.bookmark_count || 0,
+            }
+            console.log(`[Twitter Insights] Parsed public metrics for ${tweetId}:`, result)
+            return result
+          }
+        }
+      }
+      return null
+    }
+
+    const data = await response.json()
+    console.log(`[Twitter Insights] Response for ${tweetId}:`, JSON.stringify(data).slice(0, 500))
+
+    // Prefer organic_metrics if available (more accurate for owned content)
+    // Fall back to public_metrics
+    const metrics = data.data?.organic_metrics || data.data?.public_metrics
+    const nonPublic = data.data?.non_public_metrics
+
+    if (!metrics) {
+      console.error(`[Twitter Insights] No metrics found for ${tweetId}`)
+      return null
+    }
+
+    const result = {
+      impressions: nonPublic?.impression_count || metrics.impression_count || 0,
+      likes: metrics.like_count || 0,
+      retweets: metrics.retweet_count || 0,
+      replies: metrics.reply_count || 0,
+      quotes: metrics.quote_count || 0,
+      bookmarks: metrics.bookmark_count || 0,
+    }
+
+    console.log(`[Twitter Insights] Parsed metrics for ${tweetId}:`, result)
+    return result
+  } catch (error) {
+    console.error(`[Twitter Insights] Error for ${tweetId}:`, error)
+    return null
+  }
+}
+
 // Store debug info for response
 let facebookDebug: {
   userToken: boolean
@@ -623,7 +717,7 @@ export async function POST(request: NextRequest) {
     const posts = await prisma.outboundPost.findMany({
       where: {
         profileId,
-        provider: { in: ['instagram', 'facebook', 'meta', 'youtube', 'google', 'linkedin'] },
+        provider: { in: ['instagram', 'facebook', 'meta', 'youtube', 'google', 'linkedin', 'twitter'] },
         status: 'POSTED',
         externalPostId: { not: null },
         postedAt: { gte: thirtyDaysAgo },
@@ -657,6 +751,7 @@ export async function POST(request: NextRequest) {
     let facebookToken: string | null = null
     let youtubeToken: string | null = null
     let linkedinToken: string | null = null
+    let twitterToken: string | null = null
 
     // Try to get Instagram token - check 'instagram' first, then 'meta'
     console.log('[Analytics Sync] Attempting to get Instagram token...')
@@ -709,14 +804,19 @@ export async function POST(request: NextRequest) {
     linkedinToken = await tokenManager.getValidAccessToken(profileId, 'linkedin')
     console.log(`[Analytics Sync] LinkedIn token result: ${linkedinToken ? 'SUCCESS' : 'NOT FOUND'}`)
 
+    // Try to get Twitter token
+    console.log('[Analytics Sync] Attempting to get Twitter token...')
+    twitterToken = await tokenManager.getValidAccessToken(profileId, 'twitter')
+    console.log(`[Analytics Sync] Twitter token result: ${twitterToken ? 'SUCCESS' : 'NOT FOUND'}`)
+
     // Log token status
-    console.log(`[Analytics Sync] Final token status: Instagram=${!!instagramToken}, Facebook=${!!facebookToken}, YouTube=${!!youtubeToken}, LinkedIn=${!!linkedinToken}`)
+    console.log(`[Analytics Sync] Final token status: Instagram=${!!instagramToken}, Facebook=${!!facebookToken}, YouTube=${!!youtubeToken}, LinkedIn=${!!linkedinToken}, Twitter=${!!twitterToken}`)
 
     // Check if we have any tokens
-    if (!instagramToken && !facebookToken && !youtubeToken && !linkedinToken) {
+    if (!instagramToken && !facebookToken && !youtubeToken && !linkedinToken && !twitterToken) {
       return NextResponse.json({
         success: false,
-        error: 'No connected Instagram, Facebook, YouTube, or LinkedIn account',
+        error: 'No connected Instagram, Facebook, YouTube, LinkedIn, or Twitter account',
         code: 'NO_CONNECTION',
       }, { status: 400 })
     }
@@ -742,6 +842,7 @@ export async function POST(request: NextRequest) {
       else if (platform === 'facebook') accessToken = facebookPageToken  // Use Page Token
       else if (platform === 'youtube') accessToken = youtubeToken
       else if (platform === 'linkedin') accessToken = linkedinToken
+      else if (platform === 'twitter') accessToken = twitterToken
 
       if (!accessToken || !post.externalPostId) {
         console.log(`[Analytics Sync] Skipping post ${post.id}: provider=${post.provider}, platform=${platform}, hasToken=${!!accessToken}, hasExternalId=${!!post.externalPostId}`)
@@ -836,6 +937,25 @@ export async function POST(request: NextRequest) {
             saves: 0,
           }
         }
+      } else if (platform === 'twitter') {
+        console.log(`[Analytics Sync] Fetching Twitter insights for ${post.externalPostId}`)
+        const twitterInsights = await fetchTwitterInsights(post.externalPostId, accessToken)
+
+        if (twitterInsights) {
+          insights = {
+            impressions: twitterInsights.impressions,
+            likes: twitterInsights.likes,
+            retweets: twitterInsights.retweets,
+            replies: twitterInsights.replies,
+            quotes: twitterInsights.quotes,
+            bookmarks: twitterInsights.bookmarks,
+            // Map to common metrics
+            comments: twitterInsights.replies, // Replies are like comments
+            shares: twitterInsights.retweets + twitterInsights.quotes, // Retweets + quotes = shares
+            reach: twitterInsights.impressions, // Use impressions as reach proxy
+            saves: twitterInsights.bookmarks, // Bookmarks are like saves
+          }
+        }
       }
 
       if (insights) {
@@ -881,6 +1001,7 @@ export async function POST(request: NextRequest) {
           facebookPage: !!facebookPageToken,
           youtube: !!youtubeToken,
           linkedin: !!linkedinToken,
+          twitter: !!twitterToken,
         },
         facebook: facebookDebug,
       },
