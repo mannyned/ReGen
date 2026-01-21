@@ -827,9 +827,9 @@ function SchedulePageContent() {
         </div>
 
         <div className="mb-8">
-          {/* Back to Generate link */}
+          {/* Back to Generate link - pass contentId to preserve state */}
           <Link
-            href="/generate"
+            href={contentId ? `/generate?contentId=${contentId}` : '/generate'}
             className="inline-flex items-center gap-2 text-sm text-text-secondary hover:text-primary mb-4 transition-colors group"
           >
             <svg
