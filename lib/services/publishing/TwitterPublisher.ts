@@ -499,71 +499,85 @@ export class TwitterPublisher extends BasePlatformPublisher {
   private async waitForMediaProcessing(
     accessToken: string,
     mediaId: string,
-    maxAttempts = 60
+    maxAttempts = 30  // Reduced from 60 to avoid Vercel timeout
   ): Promise<void> {
-    // Use dedicated v2 status endpoint: GET /2/media/upload/{id}
-    const STATUS_URL = `https://api.x.com/2/media/upload/${mediaId}`
+    // Try both STATUS endpoint formats
+    const STATUS_URL_V2 = `https://api.x.com/2/media/upload/${mediaId}`
+    const STATUS_URL_QUERY = `https://api.x.com/2/media/upload?command=STATUS&media_id=${mediaId}`
+
+    let consecutiveFailures = 0
+    const MAX_FAILURES = 5  // After 5 failures, assume video is ready and try posting
 
     for (let i = 0; i < maxAttempts; i++) {
       console.log(`[TwitterPublisher] Checking processing status (attempt ${i + 1}/${maxAttempts})...`)
 
-      const response = await fetch(STATUS_URL, {
+      // Try dedicated endpoint first, fall back to query param format
+      let response = await fetch(STATUS_URL_V2, {
         method: 'GET',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { Authorization: `Bearer ${accessToken}` },
       })
 
-      const responseText = await response.text()
-      console.log(`[TwitterPublisher] STATUS response (${response.status}):`, responseText)
+      let responseText = await response.text()
+      console.log(`[TwitterPublisher] STATUS v2 response (${response.status}):`, responseText.substring(0, 200))
+
+      // If dedicated endpoint fails, try query param format
+      if (!response.ok || responseText.includes('error')) {
+        console.log('[TwitterPublisher] Trying query param STATUS format...')
+        response = await fetch(STATUS_URL_QUERY, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${accessToken}` },
+        })
+        responseText = await response.text()
+        console.log(`[TwitterPublisher] STATUS query response (${response.status}):`, responseText.substring(0, 200))
+      }
 
       if (!response.ok) {
-        console.warn('[TwitterPublisher] STATUS check failed:', response.status, responseText)
-        await new Promise(resolve => setTimeout(resolve, 5000))
+        consecutiveFailures++
+        console.warn(`[TwitterPublisher] STATUS check failed (${consecutiveFailures}/${MAX_FAILURES})`)
+
+        if (consecutiveFailures >= MAX_FAILURES) {
+          console.log('[TwitterPublisher] Too many STATUS failures - assuming video ready, will try posting')
+          return
+        }
+        await new Promise(resolve => setTimeout(resolve, 3000))
         continue
       }
 
-      // Parse response, handle non-JSON
+      consecutiveFailures = 0  // Reset on success
+
+      // Parse response
       let data: any = {}
       try {
         if (responseText && responseText.trim()) {
           data = JSON.parse(responseText)
         }
-      } catch (parseErr) {
-        console.warn('[TwitterPublisher] STATUS response not JSON:', responseText)
-        await new Promise(resolve => setTimeout(resolve, 5000))
-        continue
-      }
-
-      // v2 returns: {"data":{"processing_info":{"state":"..."}}}
-      const processingInfo = data.data?.processing_info || data.processing_info
-      const state = processingInfo?.state
-      console.log(`[TwitterPublisher] Processing state: ${state}`)
-
-      // If no processing_info at all, video might be ready
-      if (!processingInfo) {
-        console.log('[TwitterPublisher] No processing_info - assuming video is ready')
+      } catch {
+        console.warn('[TwitterPublisher] STATUS not JSON, assuming ready')
         return
       }
 
-      if (state === 'succeeded') {
-        console.log('[TwitterPublisher] Video processing completed successfully')
+      const processingInfo = data.data?.processing_info || data.processing_info
+      const state = processingInfo?.state
+      console.log(`[TwitterPublisher] Processing state: ${state || 'none'}`)
+
+      if (!processingInfo || state === 'succeeded') {
+        console.log('[TwitterPublisher] Video ready!')
         return
       }
 
       if (state === 'failed') {
-        const errorName = processingInfo?.error?.name || 'Unknown'
         const errorMsg = processingInfo?.error?.message || 'Video processing failed'
-        throw new Error(`Video processing failed (${errorName}): ${errorMsg}`)
+        throw new Error(`Video processing failed: ${errorMsg}`)
       }
 
-      // state is 'pending' or 'in_progress' - wait and retry
-      const waitTime = processingInfo?.check_after_secs || 5
-      console.log(`[TwitterPublisher] Waiting ${waitTime}s before next status check...`)
+      // Wait before next check (max 5 seconds to avoid timeout)
+      const waitTime = Math.min(processingInfo?.check_after_secs || 3, 5)
+      console.log(`[TwitterPublisher] Waiting ${waitTime}s...`)
       await new Promise(resolve => setTimeout(resolve, waitTime * 1000))
     }
 
-    throw new Error('Video processing timed out after maximum attempts')
+    // If we hit max attempts, try posting anyway - it might work
+    console.log('[TwitterPublisher] Max attempts reached - proceeding with post attempt')
   }
 
   // Keep old method for backwards compatibility but it won't be used
