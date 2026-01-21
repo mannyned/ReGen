@@ -386,7 +386,7 @@ export class TwitterPublisher extends BasePlatformPublisher {
       body: JSON.stringify({
         media_type: media.mimeType || 'video/mp4',
         total_bytes: videoSizeBytes,
-        media_category: 'amplify_video', // Use amplify_video for video uploads
+        media_category: 'tweet_video', // Use tweet_video for regular tweet videos
       }),
     })
 
