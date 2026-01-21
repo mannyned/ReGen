@@ -265,8 +265,10 @@ export class TwitterPublisher extends BasePlatformPublisher {
     accessToken: string,
     media: ContentPayload
   ): Promise<string> {
-    // X API v2 media upload using chunked upload process
-    // See: https://docs.x.com/x-api/media/quickstart/media-upload-chunked
+    // X API v2 media upload
+    // - Images: Simple one-shot upload to POST /2/media/upload with 'media' field
+    // - Videos: Use dedicated chunked endpoints (/initialize, /append, /finalize)
+    // See: https://devcommunity.x.com/t/media-upload-endpoints-update-and-extended-migration-deadline/241818
 
     if (media.mediaType === 'video') {
       return this.uploadVideoChunkedV2(accessToken, media)
@@ -298,79 +300,35 @@ export class TwitterPublisher extends BasePlatformPublisher {
       throw new Error(`Image too large for Twitter (${imageSizeKB}KB). Maximum is 5MB.`)
     }
 
-    // X API v2 uses multipart/form-data with binary file data
+    // X API v2 simple/one-shot upload for images
+    // POST /2/media/upload with 'media' field containing the binary file
     const V2_UPLOAD_URL = 'https://api.x.com/2/media/upload'
 
-    // Step 1: INIT - Initialize the upload
-    console.log('[TwitterPublisher] Step 1: INIT')
-    const initFormData = new FormData()
-    initFormData.append('media_type', media.mimeType || 'image/jpeg')
-    initFormData.append('total_bytes', imageSizeBytes.toString())
-    initFormData.append('media_category', 'tweet_image')
-
-    const initResponse = await fetch(V2_UPLOAD_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: initFormData,
-    })
-
-    const initText = await initResponse.text()
-    console.log('[TwitterPublisher] INIT response:', initResponse.status, initText.substring(0, 300))
-
-    if (!initResponse.ok) {
-      throw new Error(`Twitter INIT failed (${initResponse.status}): ${initText.substring(0, 200)}`)
-    }
-
-    const initData = JSON.parse(initText)
-    const mediaId = initData.id || initData.media_id_string
-    console.log('[TwitterPublisher] Got media_id:', mediaId)
-
-    // Step 2: APPEND - Upload the binary file data
-    console.log('[TwitterPublisher] Step 2: APPEND')
-    const appendFormData = new FormData()
-    appendFormData.append('media_id', mediaId)
-    appendFormData.append('segment_index', '0')
-    // Send binary data as a Blob, not base64
+    console.log('[TwitterPublisher] Uploading image via one-shot upload...')
+    const formData = new FormData()
+    // Send binary data as a Blob in the 'media' field
     const blob = new Blob([imageBuffer], { type: media.mimeType || 'image/jpeg' })
-    appendFormData.append('media', blob, 'image.jpg')
+    formData.append('media', blob, 'image.jpg')
+    // Optional: specify media category
+    formData.append('media_category', 'tweet_image')
 
-    const appendResponse = await fetch(V2_UPLOAD_URL, {
+    const response = await fetch(V2_UPLOAD_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
-      body: appendFormData,
+      body: formData,
     })
 
-    const appendText = await appendResponse.text()
-    console.log('[TwitterPublisher] APPEND response:', appendResponse.status)
+    const responseText = await response.text()
+    console.log('[TwitterPublisher] Upload response:', response.status, responseText.substring(0, 300))
 
-    if (!appendResponse.ok) {
-      throw new Error(`Twitter APPEND failed (${appendResponse.status}): ${appendText.substring(0, 200)}`)
+    if (!response.ok) {
+      throw new Error(`Twitter upload failed (${response.status}): ${responseText.substring(0, 200)}`)
     }
 
-    // Step 3: FINALIZE - Complete the upload
-    console.log('[TwitterPublisher] Step 3: FINALIZE')
-    const finalizeFormData = new FormData()
-    finalizeFormData.append('media_id', mediaId)
-
-    const finalizeResponse = await fetch(V2_UPLOAD_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: finalizeFormData,
-    })
-
-    const finalizeText = await finalizeResponse.text()
-    console.log('[TwitterPublisher] FINALIZE response:', finalizeResponse.status, finalizeText.substring(0, 300))
-
-    if (!finalizeResponse.ok) {
-      throw new Error(`Twitter FINALIZE failed (${finalizeResponse.status}): ${finalizeText.substring(0, 200)}`)
-    }
-
+    const data = JSON.parse(responseText)
+    const mediaId = data.id || data.media_id_string
     console.log('[TwitterPublisher] Media uploaded successfully, ID:', mediaId)
     return mediaId
   }
