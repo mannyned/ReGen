@@ -378,9 +378,17 @@ export class TwitterPublisher extends BasePlatformPublisher {
     }
 
     // Step 1: INIT - Use dedicated initialize endpoint with JSON body
+    // Note: Some docs use api.twitter.com, some use api.x.com - trying twitter.com
+    const INIT_URL = 'https://api.twitter.com/2/media/upload/initialize'
     console.log('[TwitterPublisher] Initializing video upload (INIT)...')
+    console.log('[TwitterPublisher] INIT URL:', INIT_URL)
+    console.log('[TwitterPublisher] INIT body:', JSON.stringify({
+      media_type: media.mimeType || 'video/mp4',
+      media_category: 'tweet_video',
+      total_bytes: videoSizeBytes,
+    }))
 
-    const initResponse = await fetch(`${UPLOAD_URL}/initialize`, {
+    const initResponse = await fetch(INIT_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -394,7 +402,9 @@ export class TwitterPublisher extends BasePlatformPublisher {
     })
 
     const initText = await initResponse.text()
-    console.log('[TwitterPublisher] INIT response:', initResponse.status, initText)
+    console.log('[TwitterPublisher] INIT response status:', initResponse.status)
+    console.log('[TwitterPublisher] INIT response headers:', JSON.stringify(Object.fromEntries(initResponse.headers.entries())))
+    console.log('[TwitterPublisher] INIT response body:', initText)
 
     if (!initResponse.ok) {
       // Parse error for better message
