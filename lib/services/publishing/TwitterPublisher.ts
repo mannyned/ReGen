@@ -419,6 +419,7 @@ export class TwitterPublisher extends BasePlatformPublisher {
     }
 
     // Step 2: APPEND - Upload video in chunks (max 5MB per chunk)
+    // Use media_id in URL path: /2/media/upload/{media_id}/append
     const chunkSize = 5 * 1024 * 1024
     const chunks = Math.ceil(videoSizeBytes / chunkSize)
 
@@ -430,12 +431,11 @@ export class TwitterPublisher extends BasePlatformPublisher {
       console.log(`[TwitterPublisher] Uploading chunk ${i + 1}/${chunks} (${Math.round(chunk.byteLength / 1024)}KB)...`)
 
       const appendFormData = new FormData()
-      appendFormData.append('media_id', mediaId)
       appendFormData.append('segment_index', i.toString())
       const blob = new Blob([chunk], { type: 'application/octet-stream' })
       appendFormData.append('media', blob)
 
-      const appendResponse = await fetch(`${BASE_URL}/append`, {
+      const appendResponse = await fetch(`${BASE_URL}/${mediaId}/append`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -443,25 +443,26 @@ export class TwitterPublisher extends BasePlatformPublisher {
         body: appendFormData,
       })
 
+      const appendText = await appendResponse.text()
+      console.log(`[TwitterPublisher] APPEND response (chunk ${i + 1}):`, appendResponse.status, appendText)
+
       if (!appendResponse.ok) {
-        const error = await appendResponse.text()
-        throw new Error(`Twitter video APPEND failed (chunk ${i + 1}/${chunks}): ${error}`)
+        throw new Error(`Twitter video APPEND failed (chunk ${i + 1}/${chunks}, status ${appendResponse.status}): ${appendText || 'Empty response'}`)
       }
       console.log(`[TwitterPublisher] Chunk ${i + 1}/${chunks} uploaded successfully`)
     }
 
     // Step 3: FINALIZE - Complete the upload
+    // Use media_id in URL path: /2/media/upload/{media_id}/finalize
     console.log('[TwitterPublisher] Finalizing video upload (FINALIZE)...')
 
-    const finalizeResponse = await fetch(`${BASE_URL}/finalize`, {
+    const finalizeResponse = await fetch(`${BASE_URL}/${mediaId}/finalize`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        media_id: mediaId,
-      }),
+      body: JSON.stringify({}),
     })
 
     const finalizeText = await finalizeResponse.text()
@@ -488,11 +489,11 @@ export class TwitterPublisher extends BasePlatformPublisher {
     mediaId: string,
     maxAttempts = 60
   ): Promise<void> {
-    // Use v2 status endpoint
-    const STATUS_URL = `https://api.x.com/2/media/upload/status`
+    // Use v2 status endpoint with media_id in path
+    const STATUS_URL = `https://api.x.com/2/media/upload/${mediaId}/status`
 
     for (let i = 0; i < maxAttempts; i++) {
-      const response = await fetch(`${STATUS_URL}?media_id=${mediaId}`, {
+      const response = await fetch(STATUS_URL, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${accessToken}`,
