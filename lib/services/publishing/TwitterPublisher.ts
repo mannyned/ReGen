@@ -273,17 +273,13 @@ export class TwitterPublisher extends BasePlatformPublisher {
     accessToken: string,
     media: ContentPayload
   ): Promise<string> {
-    // X API media upload limitations:
-    // - Images: Supported via v2 API with OAuth 2.0 (Free tier)
-    // - Videos: Requires v1.1 API which needs paid tier (Basic $200/month)
-    // See: https://developer.x.com/en/docs/twitter-api/tweets/media-upload/introduction
+    // X API v2 media upload supports OAuth 2.0 User Context
+    // - Images: Simple upload with 'media' field
+    // - Videos: Chunked upload with command=INIT/APPEND/FINALIZE
+    // See: https://docs.x.com/x-api/media/quickstart/media-upload-chunked
 
     if (media.mediaType === 'video') {
-      // Video uploads require paid X API tier - throw clear error
-      throw new Error(
-        'Twitter/X video uploads require a paid API tier (Basic at $200/month). ' +
-        'Your video was not posted. You can still post images, or upgrade your X Developer account at developer.x.com'
-      )
+      return this.uploadVideoChunkedV2(accessToken, media)
     }
 
     // For images, fetch first
@@ -357,11 +353,11 @@ export class TwitterPublisher extends BasePlatformPublisher {
     accessToken: string,
     media: ContentPayload
   ): Promise<string> {
-    // Use Twitter v1.1 chunked upload endpoint which supports OAuth 2.0
-    // The v2 dedicated endpoints don't seem to create valid media for tweets
-    // See: https://developer.x.com/en/docs/twitter-api/v1/media/upload-media/api-reference/post-media-upload
+    // X API v2 chunked upload - supports OAuth 2.0 User Context
+    // Uses single endpoint with command parameter in multipart/form-data
+    // See: https://docs.x.com/x-api/media/quickstart/media-upload-chunked
 
-    const UPLOAD_URL = 'https://upload.twitter.com/1.1/media/upload.json'
+    const UPLOAD_URL = 'https://api.x.com/2/media/upload'
 
     console.log('[TwitterPublisher] Fetching video from URL:', media.mediaUrl)
     const videoResponse = await fetch(media.mediaUrl)
@@ -379,7 +375,7 @@ export class TwitterPublisher extends BasePlatformPublisher {
     }
 
     // Step 1: INIT - Initialize the upload session
-    // v1.1 uses multipart/form-data for all requests
+    // Uses multipart/form-data with command parameter
     console.log('[TwitterPublisher] Initializing video upload (INIT)...')
 
     const initFormData = new FormData()
@@ -411,21 +407,21 @@ export class TwitterPublisher extends BasePlatformPublisher {
 
       // Check for auth/permission issues
       if (initResponse.status === 401 || initResponse.status === 403) {
-        throw new Error(`Twitter video upload not authorized (${initResponse.status}). Your X/Twitter app may need elevated access for video uploads, or you may need to reconnect your account.`)
+        throw new Error(`Twitter video upload not authorized (${initResponse.status}). Please reconnect your Twitter account in Settings to grant media.write permission.`)
       }
       throw new Error(`Twitter video INIT failed (${initResponse.status}): ${errorMsg}`)
     }
 
     const initData = JSON.parse(initText)
-    // v1.1 returns media_id_string
-    const mediaId = initData.media_id_string || String(initData.media_id)
+    // v2 returns id or media_id_string
+    const mediaId = initData.id || initData.media_id_string || String(initData.media_id)
     console.log('[TwitterPublisher] Got media ID:', mediaId)
 
     if (!mediaId || mediaId === 'undefined' || mediaId === 'null') {
       throw new Error(`Twitter video INIT succeeded but no media_id in response: ${initText}`)
     }
 
-    // Step 2: APPEND - Upload video in chunks (max 5MB per chunk for v1.1)
+    // Step 2: APPEND - Upload video in chunks (max 5MB per chunk)
     const chunkSize = 5 * 1024 * 1024
     const chunks = Math.ceil(videoSizeBytes / chunkSize)
 
@@ -499,8 +495,8 @@ export class TwitterPublisher extends BasePlatformPublisher {
     mediaId: string,
     maxAttempts = 60
   ): Promise<void> {
-    // Use v1.1 STATUS command
-    const UPLOAD_URL = 'https://upload.twitter.com/1.1/media/upload.json'
+    // Use v2 STATUS command
+    const UPLOAD_URL = 'https://api.x.com/2/media/upload'
 
     for (let i = 0; i < maxAttempts; i++) {
       console.log(`[TwitterPublisher] Checking processing status (attempt ${i + 1}/${maxAttempts})...`)
