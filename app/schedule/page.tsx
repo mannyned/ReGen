@@ -827,6 +827,21 @@ function SchedulePageContent() {
         </div>
 
         <div className="mb-8">
+          {/* Back to Generate link */}
+          <Link
+            href="/generate"
+            className="inline-flex items-center gap-2 text-sm text-text-secondary hover:text-primary mb-4 transition-colors group"
+          >
+            <svg
+              className="w-4 h-4 group-hover:-translate-x-1 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span>Back to Edit Captions</span>
+          </Link>
           <h1 className="text-4xl font-bold text-text-primary mb-2">Schedule Posts</h1>
           <p className="text-text-secondary">Schedule your content across multiple platforms</p>
         </div>
