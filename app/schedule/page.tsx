@@ -738,6 +738,39 @@ function SchedulePageContent() {
     }
   }
 
+  // Helper to publish a scheduled post immediately ("Post Now")
+  const [publishingPostId, setPublishingPostId] = useState<string | null>(null)
+
+  const handlePublishNowScheduled = async (postId: string) => {
+    if (!confirm('Publish this post now instead of at the scheduled time?')) return
+
+    setPublishingPostId(postId)
+
+    try {
+      const response = await fetch(`/api/schedule?id=${postId}`, {
+        method: 'PUT',
+      })
+      const result = await response.json()
+
+      if (result.success || result.partialSuccess) {
+        // Remove from upcoming posts (it's now published)
+        setUpcomingPosts(prev => prev.filter(p => p.id !== postId))
+
+        if (result.partialSuccess) {
+          alert(`Post partially published. ${result.summary.succeeded}/${result.summary.total} platforms succeeded.`)
+        }
+        // Success notification will come via push notification
+      } else {
+        alert(result.error || 'Failed to publish post')
+      }
+    } catch (error) {
+      console.error('Error publishing post:', error)
+      alert('Failed to publish post')
+    } finally {
+      setPublishingPostId(null)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader currentPage="schedule" />
@@ -1095,7 +1128,14 @@ function SchedulePageContent() {
                         type="date"
                         value={selectedDate}
                         onChange={(e) => setSelectedDate(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
+                        min={(() => {
+                          // Use local date, not UTC (toISOString uses UTC which can push min to "tomorrow")
+                          const now = new Date()
+                          const year = now.getFullYear()
+                          const month = String(now.getMonth() + 1).padStart(2, '0')
+                          const day = String(now.getDate()).padStart(2, '0')
+                          return `${year}-${month}-${day}`
+                        })()}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus bg-white"
                       />
                     </div>
@@ -1117,13 +1157,33 @@ function SchedulePageContent() {
                     <label className="block text-xs font-medium text-text-secondary mb-2 uppercase tracking-wide">
                       Quick Select
                     </label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-4 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const date = new Date()
+                          date.setMinutes(date.getMinutes() + 15)
+                          // Use local date format, not UTC
+                          const year = date.getFullYear()
+                          const month = String(date.getMonth() + 1).padStart(2, '0')
+                          const day = String(date.getDate()).padStart(2, '0')
+                          setSelectedDate(`${year}-${month}-${day}`)
+                          setSelectedTime(date.toTimeString().slice(0, 5))
+                        }}
+                        className="py-2 px-3 bg-white hover:bg-primary/5 border border-gray-200 hover:border-primary text-text-secondary hover:text-primary rounded-lg text-sm font-medium transition-all"
+                      >
+                        +15 min
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
                           const date = new Date()
                           date.setHours(date.getHours() + 1)
-                          setSelectedDate(date.toISOString().split('T')[0])
+                          // Use local date format, not UTC
+                          const year = date.getFullYear()
+                          const month = String(date.getMonth() + 1).padStart(2, '0')
+                          const day = String(date.getDate()).padStart(2, '0')
+                          setSelectedDate(`${year}-${month}-${day}`)
                           setSelectedTime(date.toTimeString().slice(0, 5))
                         }}
                         className="py-2 px-3 bg-white hover:bg-primary/5 border border-gray-200 hover:border-primary text-text-secondary hover:text-primary rounded-lg text-sm font-medium transition-all"
@@ -1135,19 +1195,29 @@ function SchedulePageContent() {
                         onClick={() => {
                           const date = new Date()
                           date.setDate(date.getDate() + 1)
-                          setSelectedDate(date.toISOString().split('T')[0])
+                          date.setHours(9, 0, 0, 0)
+                          // Use local date format, not UTC
+                          const year = date.getFullYear()
+                          const month = String(date.getMonth() + 1).padStart(2, '0')
+                          const day = String(date.getDate()).padStart(2, '0')
+                          setSelectedDate(`${year}-${month}-${day}`)
                           setSelectedTime('09:00')
                         }}
                         className="py-2 px-3 bg-white hover:bg-primary/5 border border-gray-200 hover:border-primary text-text-secondary hover:text-primary rounded-lg text-sm font-medium transition-all"
                       >
-                        Tomorrow 9AM
+                        Tomorrow
                       </button>
                       <button
                         type="button"
                         onClick={() => {
                           const date = new Date()
                           date.setDate(date.getDate() + 7)
-                          setSelectedDate(date.toISOString().split('T')[0])
+                          date.setHours(9, 0, 0, 0)
+                          // Use local date format, not UTC
+                          const year = date.getFullYear()
+                          const month = String(date.getMonth() + 1).padStart(2, '0')
+                          const day = String(date.getDate()).padStart(2, '0')
+                          setSelectedDate(`${year}-${month}-${day}`)
                           setSelectedTime('09:00')
                         }}
                         className="py-2 px-3 bg-white hover:bg-primary/5 border border-gray-200 hover:border-primary text-text-secondary hover:text-primary rounded-lg text-sm font-medium transition-all"
@@ -1352,8 +1422,23 @@ function SchedulePageContent() {
                       )}
                       <div className="flex gap-2">
                         <button
+                          onClick={() => handlePublishNowScheduled(post.id)}
+                          disabled={publishingPostId === post.id}
+                          className="flex-1 text-xs py-2 px-3 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {publishingPostId === post.id ? (
+                            <span className="flex items-center justify-center gap-1">
+                              <span className="animate-spin">⏳</span>
+                              Publishing...
+                            </span>
+                          ) : (
+                            'Post Now'
+                          )}
+                        </button>
+                        <button
                           onClick={() => handleCancelPost(post.id)}
-                          className="flex-1 text-xs py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors"
+                          disabled={publishingPostId === post.id}
+                          className="flex-1 text-xs py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Cancel
                         </button>

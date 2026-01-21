@@ -33,7 +33,15 @@ const PLATFORM_DISPLAY_NAME: Record<string, string> = {
 function formatTimeAgo(timestamp: string): string {
   const now = new Date()
   const date = new Date(timestamp)
+
+  // Handle invalid dates
+  if (isNaN(date.getTime())) return 'Just now'
+
   const diffMs = now.getTime() - date.getTime()
+
+  // Handle future dates (e.g., timezone issues) - show "Just now" instead of negative
+  if (diffMs < 0) return 'Just now'
+
   const diffMins = Math.floor(diffMs / (1000 * 60))
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
