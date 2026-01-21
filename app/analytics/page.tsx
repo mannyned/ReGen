@@ -1401,7 +1401,7 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {(realStats?.engagement?.totalViews > 0 || advancedMetrics.audienceRetention > 0) && (
+                      {((realStats?.engagement?.totalViews ?? 0) > 0 || advancedMetrics.audienceRetention > 0) && (
                         <>
                           <div className="text-right hidden md:block">
                             <p className="text-2xl font-bold">{realStats?.engagement?.totalViews ? realStats.engagement.totalViews.toLocaleString() : '—'}</p>
@@ -2063,8 +2063,8 @@ export default function AnalyticsPage() {
                           <p className="text-lg font-bold text-primary">
                             {platform.reach > 0
                               ? `${platform.engagement}%`
-                              : platform.totalEngagement > 0
-                                ? platform.totalEngagement.toLocaleString()
+                              : (platform.totalEngagement ?? 0) > 0
+                                ? platform.totalEngagement?.toLocaleString()
                                 : '—'
                             }
                           </p>

@@ -253,7 +253,7 @@ function GeneratePageContent() {
               hashtags,
               files: filesForPlatform,
               currentFileIndex: 0,
-              usageMode: savedPlatformData?.usageMode,
+              usageMode: savedPlatformData?.usageMode as Preview['usageMode'],
               appliedAdaptations: savedPlatformData?.appliedAdaptations,
             }
           })
