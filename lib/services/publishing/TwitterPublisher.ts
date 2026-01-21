@@ -353,11 +353,11 @@ export class TwitterPublisher extends BasePlatformPublisher {
     accessToken: string,
     media: ContentPayload
   ): Promise<string> {
-    // X API v2 dedicated chunked upload endpoints for video
-    // These endpoints support OAuth 2.0 User Context with media.write scope
-    // See: https://developer.x.com/en/docs/twitter-api/tweets/media-upload/introduction
+    // Use Twitter v1.1 chunked upload endpoint which supports OAuth 2.0
+    // The v2 dedicated endpoints don't seem to create valid media for tweets
+    // See: https://developer.x.com/en/docs/twitter-api/v1/media/upload-media/api-reference/post-media-upload
 
-    const BASE_URL = 'https://api.x.com/2/media/upload'
+    const UPLOAD_URL = 'https://upload.twitter.com/1.1/media/upload.json'
 
     console.log('[TwitterPublisher] Fetching video from URL:', media.mediaUrl)
     const videoResponse = await fetch(media.mediaUrl)
@@ -374,20 +374,22 @@ export class TwitterPublisher extends BasePlatformPublisher {
       throw new Error(`Video too large. Maximum size is 512MB.`)
     }
 
-    // Step 1: INIT - Initialize the upload session using dedicated endpoint
+    // Step 1: INIT - Initialize the upload session
+    // v1.1 uses multipart/form-data for all requests
     console.log('[TwitterPublisher] Initializing video upload (INIT)...')
 
-    const initResponse = await fetch(`${BASE_URL}/initialize`, {
+    const initFormData = new FormData()
+    initFormData.append('command', 'INIT')
+    initFormData.append('total_bytes', videoSizeBytes.toString())
+    initFormData.append('media_type', media.mimeType || 'video/mp4')
+    initFormData.append('media_category', 'tweet_video')
+
+    const initResponse = await fetch(UPLOAD_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        media_type: media.mimeType || 'video/mp4',
-        total_bytes: videoSizeBytes,
-        media_category: 'tweet_video', // Use tweet_video for regular tweet videos
-      }),
+      body: initFormData,
     })
 
     const initText = await initResponse.text()
@@ -395,35 +397,32 @@ export class TwitterPublisher extends BasePlatformPublisher {
 
     if (!initResponse.ok) {
       // Parse error for better message
-      let errorMsg = initText
+      let errorMsg = initText || 'Empty response'
       try {
         const errorData = JSON.parse(initText)
-        if (errorData.detail) errorMsg = errorData.detail
-        else if (errorData.errors?.[0]?.message) errorMsg = errorData.errors[0].message
+        if (errorData.errors?.[0]?.message) errorMsg = errorData.errors[0].message
         else if (errorData.error) errorMsg = errorData.error
+        else if (errorData.detail) errorMsg = errorData.detail
       } catch { /* keep original */ }
 
       // Check for auth/permission issues
       if (initResponse.status === 401 || initResponse.status === 403) {
-        throw new Error(`Twitter video upload not authorized. Please reconnect your Twitter account in Settings. (${initResponse.status}: ${errorMsg})`)
+        throw new Error(`Twitter video upload not authorized (${initResponse.status}). Your X/Twitter app may need elevated access for video uploads, or you may need to reconnect your account.`)
       }
       throw new Error(`Twitter video INIT failed (${initResponse.status}): ${errorMsg}`)
     }
 
     const initData = JSON.parse(initText)
-    // Ensure media_id is a string - Twitter IDs must be strings due to JS number precision
-    const rawMediaId = initData.id || initData.media_id_string || initData.media_id || initData.data?.id
-    const mediaId = String(rawMediaId)
-    console.log('[TwitterPublisher] Got media ID:', mediaId, 'raw:', rawMediaId, 'type:', typeof rawMediaId)
+    // v1.1 returns media_id_string
+    const mediaId = initData.media_id_string || String(initData.media_id)
+    console.log('[TwitterPublisher] Got media ID:', mediaId)
 
     if (!mediaId || mediaId === 'undefined' || mediaId === 'null') {
       throw new Error(`Twitter video INIT succeeded but no media_id in response: ${initText}`)
     }
 
-    // Step 2: APPEND - Upload video in chunks
-    // X API v2 has smaller chunk limits - use 1MB chunks
-    // Use media_id in URL path: /2/media/upload/{media_id}/append
-    const chunkSize = 1 * 1024 * 1024
+    // Step 2: APPEND - Upload video in chunks (max 5MB per chunk for v1.1)
+    const chunkSize = 5 * 1024 * 1024
     const chunks = Math.ceil(videoSizeBytes / chunkSize)
 
     for (let i = 0; i < chunks; i++) {
@@ -434,11 +433,13 @@ export class TwitterPublisher extends BasePlatformPublisher {
       console.log(`[TwitterPublisher] Uploading chunk ${i + 1}/${chunks} (${Math.round(chunk.byteLength / 1024)}KB)...`)
 
       const appendFormData = new FormData()
+      appendFormData.append('command', 'APPEND')
+      appendFormData.append('media_id', mediaId)
       appendFormData.append('segment_index', i.toString())
       const blob = new Blob([chunk], { type: 'application/octet-stream' })
       appendFormData.append('media', blob)
 
-      const appendResponse = await fetch(`${BASE_URL}/${mediaId}/append`, {
+      const appendResponse = await fetch(UPLOAD_URL, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -446,26 +447,27 @@ export class TwitterPublisher extends BasePlatformPublisher {
         body: appendFormData,
       })
 
-      const appendText = await appendResponse.text()
-      console.log(`[TwitterPublisher] APPEND response (chunk ${i + 1}):`, appendResponse.status, appendText)
-
+      // APPEND returns empty 2xx on success
       if (!appendResponse.ok) {
+        const appendText = await appendResponse.text()
         throw new Error(`Twitter video APPEND failed (chunk ${i + 1}/${chunks}, status ${appendResponse.status}): ${appendText || 'Empty response'}`)
       }
       console.log(`[TwitterPublisher] Chunk ${i + 1}/${chunks} uploaded successfully`)
     }
 
     // Step 3: FINALIZE - Complete the upload
-    // Use media_id in URL path: /2/media/upload/{media_id}/finalize
     console.log('[TwitterPublisher] Finalizing video upload (FINALIZE)...')
 
-    const finalizeResponse = await fetch(`${BASE_URL}/${mediaId}/finalize`, {
+    const finalizeFormData = new FormData()
+    finalizeFormData.append('command', 'FINALIZE')
+    finalizeFormData.append('media_id', mediaId)
+
+    const finalizeResponse = await fetch(UPLOAD_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({}),
+      body: finalizeFormData,
     })
 
     const finalizeText = await finalizeResponse.text()
@@ -478,10 +480,11 @@ export class TwitterPublisher extends BasePlatformPublisher {
     const finalizeData = JSON.parse(finalizeText)
     console.log('[TwitterPublisher] FINALIZE data:', JSON.stringify(finalizeData))
 
-    // Videos ALWAYS need processing - wait for it to complete
-    // The media ID won't be valid for tweets until processing is done
-    console.log('[TwitterPublisher] Waiting for video processing to complete...')
-    await this.waitForMediaProcessing(accessToken, mediaId)
+    // Check if async processing is needed
+    if (finalizeData.processing_info) {
+      console.log('[TwitterPublisher] Video needs processing, waiting...')
+      await this.waitForMediaProcessing(accessToken, mediaId)
+    }
 
     console.log('[TwitterPublisher] Video upload complete, media ID:', mediaId)
     return mediaId
@@ -492,13 +495,15 @@ export class TwitterPublisher extends BasePlatformPublisher {
     mediaId: string,
     maxAttempts = 60
   ): Promise<void> {
-    // Use v2 status endpoint with media_id in path
-    const STATUS_URL = `https://api.x.com/2/media/upload/${mediaId}/status`
+    // Use v1.1 STATUS command
+    const UPLOAD_URL = 'https://upload.twitter.com/1.1/media/upload.json'
 
     for (let i = 0; i < maxAttempts; i++) {
       console.log(`[TwitterPublisher] Checking processing status (attempt ${i + 1}/${maxAttempts})...`)
 
-      const response = await fetch(STATUS_URL, {
+      // STATUS uses GET with query params
+      const statusUrl = `${UPLOAD_URL}?command=STATUS&media_id=${mediaId}`
+      const response = await fetch(statusUrl, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -508,51 +513,29 @@ export class TwitterPublisher extends BasePlatformPublisher {
       const responseText = await response.text()
       console.log(`[TwitterPublisher] STATUS response (${response.status}):`, responseText)
 
-      // If we get a 404, the endpoint might not exist - assume processing is done
-      if (response.status === 404) {
-        console.log('[TwitterPublisher] STATUS endpoint returned 404, assuming processing complete')
-        return
-      }
-
       if (!response.ok) {
         console.warn('[TwitterPublisher] STATUS check failed:', response.status)
-        // Continue waiting, might be temporary
         await new Promise(resolve => setTimeout(resolve, 5000))
         continue
       }
 
-      let data
-      try {
-        data = JSON.parse(responseText)
-      } catch {
-        // If response isn't JSON, assume processing is done
-        console.log('[TwitterPublisher] STATUS response not JSON, assuming processing complete')
-        return
-      }
-
-      const state = data.processing_info?.state || data.state || data.status
+      const data = JSON.parse(responseText)
+      const state = data.processing_info?.state
       console.log(`[TwitterPublisher] Processing state: ${state}`)
 
-      // Various success states
-      if (state === 'succeeded' || state === 'complete' || state === 'ready' || state === 'done') {
+      if (state === 'succeeded') {
         console.log('[TwitterPublisher] Video processing completed successfully')
         return
       }
 
-      if (state === 'failed' || state === 'error') {
-        const errorName = data.processing_info?.error?.name || data.error?.name || 'Unknown'
-        const errorMsg = data.processing_info?.error?.message || data.error?.message || 'Video processing failed'
+      if (state === 'failed') {
+        const errorName = data.processing_info?.error?.name || 'Unknown'
+        const errorMsg = data.processing_info?.error?.message || 'Video processing failed'
         throw new Error(`Video processing failed (${errorName}): ${errorMsg}`)
       }
 
-      // If no state but we got a 200 OK, might be done
-      if (!state && response.ok) {
-        console.log('[TwitterPublisher] No processing state in response, assuming complete')
-        return
-      }
-
-      // Wait for the recommended time before checking again
-      const waitTime = data.processing_info?.check_after_secs || data.check_after_secs || 5
+      // state is 'pending' or 'in_progress' - wait and retry
+      const waitTime = data.processing_info?.check_after_secs || 5
       console.log(`[TwitterPublisher] Waiting ${waitTime}s before next status check...`)
       await new Promise(resolve => setTimeout(resolve, waitTime * 1000))
     }
