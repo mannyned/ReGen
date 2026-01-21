@@ -418,9 +418,10 @@ export class TwitterPublisher extends BasePlatformPublisher {
       throw new Error(`Twitter video INIT succeeded but no media_id in response: ${initText}`)
     }
 
-    // Step 2: APPEND - Upload video in chunks (max 5MB per chunk)
+    // Step 2: APPEND - Upload video in chunks
+    // X API v2 has smaller chunk limits - use 1MB chunks
     // Use media_id in URL path: /2/media/upload/{media_id}/append
-    const chunkSize = 5 * 1024 * 1024
+    const chunkSize = 1 * 1024 * 1024
     const chunks = Math.ceil(videoSizeBytes / chunkSize)
 
     for (let i = 0; i < chunks; i++) {
