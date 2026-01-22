@@ -55,6 +55,17 @@ class PinterestPublisher extends BasePlatformPublisher {
   async publishContent(options: PublishOptions): Promise<PublishResult> {
     const { userId, content, media } = options
 
+    // Debug logging
+    console.log('[PinterestPublisher] publishContent called with:', {
+      userId,
+      hasContent: !!content,
+      hasMedia: !!media,
+      mediaUrl: media?.mediaUrl,
+      mimeType: media?.mimeType,
+      contentSettings: content?.settings,
+      boardId: content?.settings?.boardId,
+    })
+
     try {
       const accessToken = await this.getAccessToken(userId)
 
@@ -106,49 +117,14 @@ class PinterestPublisher extends BasePlatformPublisher {
           },
         }
       } else {
-        // Image pin
-        const isSandbox = !!process.env.PINTEREST_SANDBOX_TOKEN
-
-        if (isSandbox) {
-          // Sandbox - try base64 encoding
-          console.log('[PinterestPublisher] Sandbox mode - converting image to base64')
-
-          try {
-            const imageResponse = await fetch(media.mediaUrl)
-            if (!imageResponse.ok) {
-              throw new Error(`Failed to fetch image: ${imageResponse.status}`)
-            }
-
-            const imageBuffer = await imageResponse.arrayBuffer()
-            const base64Image = Buffer.from(imageBuffer).toString('base64')
-
-            console.log('[PinterestPublisher] Image converted to base64, size:', base64Image.length)
-
-            pinData = {
-              board_id: boardId,
-              media_source: {
-                source_type: 'image_base64',
-                data: base64Image,
-              },
-            }
-          } catch (fetchError) {
-            console.error('[PinterestPublisher] Failed to convert image to base64:', fetchError)
-            return {
-              success: false,
-              platform: this.platform,
-              error: 'Failed to process image for Pinterest sandbox.',
-            }
-          }
-        } else {
-          // Production - use URL directly
-          console.log('[PinterestPublisher] Creating image pin with URL:', media.mediaUrl)
-          pinData = {
-            board_id: boardId,
-            media_source: {
-              source_type: 'image_url',
-              url: media.mediaUrl,
-            },
-          }
+        // Image pin - use URL directly (works for both sandbox and production)
+        console.log('[PinterestPublisher] Creating image pin with URL:', media.mediaUrl)
+        pinData = {
+          board_id: boardId,
+          media_source: {
+            source_type: 'image_url',
+            url: media.mediaUrl,
+          },
         }
       }
 
