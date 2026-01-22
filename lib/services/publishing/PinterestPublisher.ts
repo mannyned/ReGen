@@ -110,24 +110,34 @@ class PinterestPublisher extends BasePlatformPublisher {
         const isSandbox = !!process.env.PINTEREST_SANDBOX_TOKEN
 
         if (isSandbox) {
-          // Sandbox requires uploading images, doesn't accept external URLs
-          console.log('[PinterestPublisher] Sandbox mode - uploading image first')
-          const mediaId = await this.uploadImageToPinterest(accessToken, media.mediaUrl)
+          // Sandbox - try base64 encoding
+          console.log('[PinterestPublisher] Sandbox mode - converting image to base64')
 
-          if (!mediaId) {
+          try {
+            const imageResponse = await fetch(media.mediaUrl)
+            if (!imageResponse.ok) {
+              throw new Error(`Failed to fetch image: ${imageResponse.status}`)
+            }
+
+            const imageBuffer = await imageResponse.arrayBuffer()
+            const base64Image = Buffer.from(imageBuffer).toString('base64')
+
+            console.log('[PinterestPublisher] Image converted to base64, size:', base64Image.length)
+
+            pinData = {
+              board_id: boardId,
+              media_source: {
+                source_type: 'image_base64',
+                data: base64Image,
+              },
+            }
+          } catch (fetchError) {
+            console.error('[PinterestPublisher] Failed to convert image to base64:', fetchError)
             return {
               success: false,
               platform: this.platform,
-              error: 'Failed to upload image to Pinterest sandbox. Please try again.',
+              error: 'Failed to process image for Pinterest sandbox.',
             }
-          }
-
-          pinData = {
-            board_id: boardId,
-            media_source: {
-              source_type: 'image_id',
-              media_id: mediaId,
-            },
           }
         } else {
           // Production - use URL directly
