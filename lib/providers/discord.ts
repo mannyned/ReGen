@@ -42,7 +42,7 @@ import { registerProvider } from '../oauth/engine';
 // CONFIGURATION
 // ============================================
 
-const DISCORD_AUTH_URL = 'https://discord.com/api/oauth2/authorize';
+const DISCORD_AUTH_URL = 'https://discord.com/oauth2/authorize';
 const DISCORD_TOKEN_URL = 'https://discord.com/api/oauth2/token';
 const DISCORD_USER_URL = 'https://discord.com/api/v10/users/@me';
 const DISCORD_REVOKE_URL = 'https://discord.com/api/oauth2/token/revoke';
@@ -75,10 +75,10 @@ const config: ProviderConfig = {
   identityUrl: DISCORD_USER_URL,
 
   // Scopes for Discord API
+  // Note: webhook.incoming removed temporarily - users will provide webhook URL manually
   scopes: [
     'identify',           // Access user identity
     'guilds',             // Access user's servers
-    'webhook.incoming',   // Create webhooks for posting
   ],
 
   capabilities: {
