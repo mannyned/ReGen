@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
         contentId,      // Link to ContentUpload (draft) record
         linkedInOrganizationUrn,  // For LinkedIn organization/company page posts
         tiktokSettings, // TikTok-specific settings for Content Sharing Guidelines
+        discordChannelId, // Discord channel selection during publish
       } = body as {
         userId: string
         platforms: SocialPlatform[]
@@ -77,6 +78,7 @@ export async function POST(request: NextRequest) {
           brandContentToggle: boolean
           brandContentType: string | null
         }
+        discordChannelId?: string       // Discord channel selection during publish
       }
 
       // Determine if this is a carousel post
@@ -220,6 +222,7 @@ export async function POST(request: NextRequest) {
           contentType,
           linkedInOrganizationUrn,  // Pass LinkedIn org URN for company page posts
           tiktokSettings,           // Pass TikTok settings for Content Sharing Guidelines
+          discordChannelId,         // Pass Discord channel for channel selection
         })
 
         // Process single-item results

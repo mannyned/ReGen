@@ -357,7 +357,7 @@ export const CONTENT_LIMITS: Record<SocialPlatform, {
   },
   discord: {
     maxCaptionLength: 2000,
-    maxHashtags: 0, // Discord doesn't use hashtags
+    maxHashtags: 100, // Discord doesn't have a hashtag system, but they appear as text
     maxVideoLengthSeconds: 600,
     maxFileSizeMb: 100, // 100MB for nitro users, 25MB for free
     supportedFormats: ['mp4', 'mov', 'webm', 'jpg', 'jpeg', 'png', 'gif'],

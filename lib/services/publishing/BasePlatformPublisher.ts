@@ -33,6 +33,7 @@ export interface PublishOptions {
   scheduledAt?: Date
   contentType?: 'post' | 'story'  // Post to feed or story/reel
   linkedInOrganizationUrn?: string  // For LinkedIn organization/company page posts
+  discordChannelId?: string  // For Discord channel selection during publish
   // TikTok-specific settings for Content Sharing Guidelines compliance
   tiktokSettings?: {
     privacyLevel: string | null

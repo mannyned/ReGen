@@ -110,7 +110,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { contentUploadId, platforms, scheduledAt, timezone, platformContent } = body
+    const {
+      contentUploadId,
+      platforms,
+      scheduledAt,
+      timezone,
+      platformContent,
+      discordChannelId,
+      tiktokSettings,
+      linkedInOrganizationUrn,
+    } = body
 
     // Validate required fields
     if (!contentUploadId) {
@@ -165,6 +174,17 @@ export async function POST(request: NextRequest) {
 
     const platformEnums = platforms.map((p: string) => platformEnumMap[p.toLowerCase()] || p.toUpperCase())
 
+    // Merge platform-specific settings into platformContent for storage
+    const enrichedPlatformContent = {
+      ...(platformContent || {}),
+      // Store platform-specific settings that will be used during publishing
+      _settings: {
+        discordChannelId,
+        tiktokSettings,
+        linkedInOrganizationUrn,
+      },
+    }
+
     // Create scheduled post
     const scheduledPost = await prisma.scheduledPost.create({
       data: {
@@ -173,7 +193,7 @@ export async function POST(request: NextRequest) {
         platforms: platformEnums,
         scheduledAt: new Date(scheduledAt),
         timezone: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-        platformContent: platformContent || {},
+        platformContent: enrichedPlatformContent,
         status: 'PENDING',
       },
     })

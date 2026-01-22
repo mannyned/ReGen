@@ -24,6 +24,7 @@ export { xProvider } from './x';
 export { linkedinProvider } from './linkedin';
 export { linkedinOrgProvider } from './linkedin-org';
 export { snapchatProvider } from './snapchat';
+export { discordProvider } from './discord';
 
 // Re-export types for convenience
 export type { OAuthProvider, OAuthProviderInterface } from '../oauth/types';
@@ -64,6 +65,11 @@ export const PROVIDER_CONFIGS = {
     displayName: 'Snapchat',
     platforms: ['Snapchat'],
     features: ['Login', 'Share (User-Initiated)'],
+  },
+  discord: {
+    displayName: 'Discord',
+    platforms: ['Discord'],
+    features: ['Webhooks', 'Server Integration'],
   },
 } as const;
 

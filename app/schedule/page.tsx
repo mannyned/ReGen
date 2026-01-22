@@ -98,6 +98,18 @@ function SchedulePageContent() {
     agreedToTerms: false,
   })
 
+  // Discord channel selection state
+  const [discordChannels, setDiscordChannels] = useState<Array<{
+    id: string
+    name: string
+    type: number
+    position: number
+  }>>([])
+  const [selectedDiscordChannel, setSelectedDiscordChannel] = useState<string>('') // channel ID or empty for webhook default
+  const [discordChannelsLoading, setDiscordChannelsLoading] = useState(false)
+  const [discordGuild, setDiscordGuild] = useState<{ id: string; name: string; icon: string | null } | null>(null)
+  const [discordCurrentChannelId, setDiscordCurrentChannelId] = useState<string | null>(null)
+
   const platforms: { name: Platform; label: string; icon: string }[] = [
     { name: 'tiktok', label: 'TikTok', icon: '🎵' },
     { name: 'instagram', label: 'Instagram', icon: '📷' },
@@ -299,6 +311,50 @@ function SchedulePageContent() {
 
     fetchLinkedInOrganizations()
   }, [selectedPlatforms, user?.id, connectedAccounts, linkedInOrganizations.length])
+
+  // Fetch Discord channels when Discord is selected
+  useEffect(() => {
+    const fetchDiscordChannels = async () => {
+      // Only fetch when discord is selected AND connected
+      if (!selectedPlatforms.includes('discord') || !user?.id) {
+        return
+      }
+
+      // Check if discord is connected
+      if (!connectedAccounts.includes('discord')) {
+        return
+      }
+
+      // Only fetch if we haven't already
+      if (discordChannels.length > 0) {
+        return
+      }
+
+      setDiscordChannelsLoading(true)
+      try {
+        const response = await fetch('/api/discord/channels')
+        const data = await response.json()
+
+        if (data.channels) {
+          setDiscordChannels(data.channels)
+          setDiscordGuild(data.guild)
+          setDiscordCurrentChannelId(data.currentChannelId || null)
+          // Default to current webhook channel
+          if (data.currentChannelId) {
+            setSelectedDiscordChannel(data.currentChannelId)
+          } else if (data.channels.length > 0) {
+            setSelectedDiscordChannel(data.channels[0].id)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch Discord channels:', error)
+      } finally {
+        setDiscordChannelsLoading(false)
+      }
+    }
+
+    fetchDiscordChannels()
+  }, [selectedPlatforms, user?.id, connectedAccounts, discordChannels.length])
 
   const togglePlatform = (platform: Platform) => {
     setSelectedPlatforms(prev =>
@@ -510,6 +566,11 @@ function SchedulePageContent() {
         }
       }
 
+      // If Discord is selected, include the channel ID
+      if (selectedPlatforms.includes('discord') && selectedDiscordChannel) {
+        publishData.discordChannelId = selectedDiscordChannel
+      }
+
       // Add carouselItems for multi-file posts
       if (carouselItems && carouselItems.length > 1) {
         publishData.carouselItems = carouselItems
@@ -651,6 +712,11 @@ function SchedulePageContent() {
           brandContentToggle: tiktokSettings.brandContentToggle,
           brandContentType: tiktokSettings.brandContentType,
         }
+      }
+
+      // If Discord is selected, include the channel ID
+      if (selectedPlatforms.includes('discord') && selectedDiscordChannel) {
+        scheduleData.discordChannelId = selectedDiscordChannel
       }
 
       const response = await fetch('/api/schedule', {
@@ -1065,6 +1131,73 @@ function SchedulePageContent() {
                     onChange={setTiktokSettings}
                     disabled={isPublishing}
                   />
+                </div>
+              )}
+
+              {/* Discord Channel Selection */}
+              {selectedPlatforms.includes('discord') && connectedAccounts.includes('discord') && (
+                <div className="mb-8 p-4 bg-[#5865F2]/5 border border-[#5865F2]/20 rounded-xl">
+                  <div className="flex items-center gap-2 mb-4">
+                    <PlatformLogo platform="discord" size="md" variant="color" />
+                    <h3 className="font-semibold text-text-primary">Discord Channel</h3>
+                  </div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
+                    Select which channel to post to
+                  </label>
+
+                  {discordChannelsLoading ? (
+                    <div className="flex items-center gap-2 text-[#5865F2]">
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <span className="text-sm">Loading channels...</span>
+                    </div>
+                  ) : discordChannels.length > 0 ? (
+                    <div className="space-y-2">
+                      {discordGuild && (
+                        <p className="text-xs text-text-secondary mb-2">
+                          Server: <span className="font-medium">{discordGuild.name}</span>
+                        </p>
+                      )}
+                      {discordChannels.map((channel) => (
+                        <label
+                          key={channel.id}
+                          className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                            selectedDiscordChannel === channel.id
+                              ? 'bg-[#5865F2]/10 border-2 border-[#5865F2]'
+                              : 'bg-white border border-gray-200 hover:border-[#5865F2]/50'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="discordChannel"
+                            value={channel.id}
+                            checked={selectedDiscordChannel === channel.id}
+                            onChange={(e) => setSelectedDiscordChannel(e.target.value)}
+                            className="w-4 h-4 text-[#5865F2]"
+                          />
+                          <div className="flex-1">
+                            <span className="font-medium text-text-primary"># {channel.name}</span>
+                            {channel.id === discordCurrentChannelId && (
+                              <span className="ml-2 text-xs text-[#5865F2] bg-[#5865F2]/10 px-2 py-0.5 rounded">
+                                Webhook Default
+                              </span>
+                            )}
+                          </div>
+                          {channel.type === 5 && (
+                            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">Announcement</span>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-800">
+                        No channels available. Using default webhook channel.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

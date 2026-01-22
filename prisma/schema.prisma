@@ -248,6 +248,23 @@ model OAuthConnection {
   @@map("oauth_connections")
 }
 
+// OAuth State - Temporary storage for OAuth state during authorization flow
+// Used for providers where cookies don't work reliably (e.g., Discord with webhook.incoming)
+model OAuthState {
+  id            String   @id @default(cuid())
+  state         String   @unique  // The state parameter value
+  provider      String   // Provider ID
+  profileId     String   @map("profile_id") @db.Uuid
+  codeVerifier  String?  @map("code_verifier")  // For PKCE flows
+  targetPlatform String? @map("target_platform")  // For Meta's Instagram/Facebook targeting
+  expiresAt     DateTime @map("expires_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([state])
+  @@index([expiresAt])
+  @@map("oauth_states")
+}
+
 // ============================================
 // CONTENT MANAGEMENT
 // ============================================

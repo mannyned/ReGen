@@ -109,7 +109,16 @@ export async function GET(request: NextRequest) {
         const platformContent = scheduledPost.platformContent as Record<string, {
           caption?: string
           hashtags?: string[]
-        }> | null
+        }> & {
+          _settings?: {
+            discordChannelId?: string
+            tiktokSettings?: any
+            linkedInOrganizationUrn?: string
+          }
+        } | null
+
+        // Extract platform-specific settings
+        const platformSettings = platformContent?._settings
 
         // Get media info from content upload
         const firstFile = processedUrls?.files?.[0]
@@ -122,7 +131,7 @@ export async function GET(request: NextRequest) {
         // Get first platform's content for default caption/hashtags
         const firstPlatformContent = platformContent?.[platforms[0]] || platformContent?.[Object.keys(platformContent || {})[0]]
 
-        // Build publish options
+        // Build publish options with platform-specific settings
         const publishOptions = {
           userId: scheduledPost.profileId,
           content: {
@@ -137,6 +146,10 @@ export async function GET(request: NextRequest) {
             duration: contentUpload.duration || undefined,
           } : undefined,
           platformContent: platformContent as any,
+          // Pass platform-specific settings
+          discordChannelId: platformSettings?.discordChannelId,
+          tiktokSettings: platformSettings?.tiktokSettings,
+          linkedInOrganizationUrn: platformSettings?.linkedInOrganizationUrn,
         }
 
         console.log(`[Cron] Publishing to platforms:`, platforms)

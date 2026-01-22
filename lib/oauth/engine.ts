@@ -154,6 +154,96 @@ async function consumeOAuthCookies(): Promise<{
 }
 
 // ============================================
+// DATABASE STATE MANAGEMENT
+// ============================================
+
+/**
+ * Providers that require database-based state storage
+ * (cookies don't work reliably for these due to special OAuth flows)
+ */
+const DATABASE_STATE_PROVIDERS = ['discord'] as const;
+
+/**
+ * Check if a provider requires database state storage
+ */
+function requiresDatabaseState(providerId: string): boolean {
+  return DATABASE_STATE_PROVIDERS.includes(providerId as typeof DATABASE_STATE_PROVIDERS[number]);
+}
+
+/**
+ * Store OAuth state in database
+ * Used for providers where cookies don't work reliably
+ */
+async function storeOAuthState(
+  state: string,
+  provider: string,
+  profileId: string,
+  codeVerifier?: string,
+  targetPlatform?: string
+): Promise<void> {
+  // State expires in 10 minutes
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await prisma.oAuthState.create({
+    data: {
+      state,
+      provider,
+      profileId,
+      codeVerifier,
+      targetPlatform,
+      expiresAt,
+    },
+  });
+}
+
+/**
+ * Retrieve and delete OAuth state from database
+ */
+async function consumeOAuthState(state: string): Promise<{
+  provider: string;
+  profileId: string;
+  codeVerifier: string | null;
+  targetPlatform: string | null;
+} | null> {
+  const oauthState = await prisma.oAuthState.findUnique({
+    where: { state },
+  });
+
+  if (!oauthState) {
+    return null;
+  }
+
+  // Delete the state after reading (one-time use)
+  await prisma.oAuthState.delete({
+    where: { state },
+  });
+
+  // Check if expired
+  if (oauthState.expiresAt < new Date()) {
+    return null;
+  }
+
+  return {
+    provider: oauthState.provider,
+    profileId: oauthState.profileId,
+    codeVerifier: oauthState.codeVerifier,
+    targetPlatform: oauthState.targetPlatform,
+  };
+}
+
+/**
+ * Clean up expired OAuth states (can be called periodically)
+ */
+async function cleanupExpiredStates(): Promise<number> {
+  const result = await prisma.oAuthState.deleteMany({
+    where: {
+      expiresAt: { lt: new Date() },
+    },
+  });
+  return result.count;
+}
+
+// ============================================
 // OAUTH FLOW METHODS
 // ============================================
 
@@ -199,8 +289,16 @@ export async function startOAuth(
     codeVerifier,
   });
 
-  // Store state in cookies for validation on callback
-  await setOAuthCookies(state, provider.config.id, codeVerifier);
+  // Store state for validation on callback
+  // Use database for providers with special OAuth flows (e.g., Discord with webhook.incoming)
+  // Also set cookie as fallback lookup key since some providers don't return state in URL
+  if (requiresDatabaseState(providerId)) {
+    await storeOAuthState(state, providerId, profileId, codeVerifier, targetPlatform);
+    // Also set cookie so we can look up the state on callback (Discord doesn't return state in URL)
+    await setOAuthCookies(state, provider.config.id, codeVerifier);
+  } else {
+    await setOAuthCookies(state, provider.config.id, codeVerifier);
+  }
 
   return {
     authUrl: authResult.url,
@@ -249,28 +347,56 @@ export async function handleCallback(
     }
 
     // Get and validate state
+    // For providers using database state (e.g., Discord), the state may not be returned in URL
     const returnedState = searchParams.get('state');
-    const { state: storedState, codeVerifier } = await consumeOAuthCookies();
-
-    if (!returnedState || !storedState || returnedState !== storedState) {
-      throw new InvalidStateError(provider.config.id);
-    }
-
-    // Decode state to get profile ID and target platform
     let profileId: string;
     let targetPlatform: string | undefined;
-    try {
-      const stateData = JSON.parse(Buffer.from(storedState, 'base64url').toString());
-      profileId = stateData.profileId;
-      targetPlatform = stateData.targetPlatform; // 'instagram' or 'facebook' for Meta OAuth
+    let codeVerifier: string | undefined;
 
-      // Check if state is too old (10 minute max)
-      const stateAge = Date.now() - stateData.timestamp;
-      if (stateAge > 10 * 60 * 1000) {
+    if (requiresDatabaseState(providerId)) {
+      // For database-state providers, get state from cookies (still stored there for lookup)
+      // but retrieve actual data from database
+      const { state: cookieState } = await consumeOAuthCookies();
+
+      // Try returned state first, fall back to cookie state
+      const stateToLookup = returnedState || cookieState;
+
+      if (!stateToLookup) {
         throw new InvalidStateError(provider.config.id);
       }
-    } catch {
-      throw new InvalidStateError(provider.config.id);
+
+      const dbState = await consumeOAuthState(stateToLookup);
+      if (!dbState) {
+        throw new InvalidStateError(provider.config.id);
+      }
+
+      profileId = dbState.profileId;
+      targetPlatform = dbState.targetPlatform || undefined;
+      codeVerifier = dbState.codeVerifier || undefined;
+    } else {
+      // Standard cookie-based state validation
+      const { state: storedState, codeVerifier: storedCodeVerifier } = await consumeOAuthCookies();
+
+      if (!returnedState || !storedState || returnedState !== storedState) {
+        throw new InvalidStateError(provider.config.id);
+      }
+
+      codeVerifier = storedCodeVerifier;
+
+      // Decode state to get profile ID and target platform
+      try {
+        const stateData = JSON.parse(Buffer.from(storedState, 'base64url').toString());
+        profileId = stateData.profileId;
+        targetPlatform = stateData.targetPlatform; // 'instagram' or 'facebook' for Meta OAuth
+
+        // Check if state is too old (10 minute max)
+        const stateAge = Date.now() - stateData.timestamp;
+        if (stateAge > 10 * 60 * 1000) {
+          throw new InvalidStateError(provider.config.id);
+        }
+      } catch {
+        throw new InvalidStateError(provider.config.id);
+      }
     }
 
     // Build redirect URI (must match exactly)
@@ -353,6 +479,17 @@ export async function handleCallback(
       }
     } else {
       // For non-Meta providers, store single connection
+      // For Discord, include webhook data from token response
+      let metadata = identity.metadata || {};
+      if (provider.config.id === 'discord' && tokens.raw?.webhook) {
+        metadata = {
+          ...metadata,
+          webhook: tokens.raw.webhook,
+          guildId: tokens.raw.guild?.id || tokens.raw.webhook?.guild_id,
+          guildName: tokens.raw.guild?.name,
+        };
+      }
+
       await storeConnection({
         profileId,
         provider: provider.config.id,
@@ -361,7 +498,7 @@ export async function handleCallback(
         refreshToken: tokens.refreshToken,
         scopes: tokens.scope?.split(/[,\s]+/) || provider.config.scopes,
         expiresAt: tokens.expiresAt,
-        metadata: identity.metadata,
+        metadata,
       });
     }
 
