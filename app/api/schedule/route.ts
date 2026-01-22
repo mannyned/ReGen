@@ -331,6 +331,7 @@ export async function PUT(request: NextRequest) {
       const platformContent = scheduledPost.platformContent as Record<string, {
         caption?: string
         hashtags?: string[]
+        settings?: Record<string, unknown>
       }> | null
 
       // Get media info from content upload
@@ -350,6 +351,7 @@ export async function PUT(request: NextRequest) {
         content: {
           caption: firstPlatformContent?.caption || '',
           hashtags: firstPlatformContent?.hashtags || [],
+          settings: firstPlatformContent?.settings,  // Include platform-specific settings (e.g., Pinterest boardId)
         },
         media: mediaUrl ? {
           mediaUrl,

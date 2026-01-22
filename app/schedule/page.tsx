@@ -77,6 +77,23 @@ function SchedulePageContent() {
   }>>([])
   const [upcomingPostsLoading, setUpcomingPostsLoading] = useState(true)
 
+  // Platform-specific settings (e.g., Pinterest board ID)
+  const [platformSettings, setPlatformSettings] = useState<{
+    pinterest?: {
+      boardId?: string
+    }
+  } | null>(null)
+
+  // Pinterest board state
+  const [pinterestBoards, setPinterestBoards] = useState<Array<{
+    id: string
+    name: string
+    description?: string
+    pinCount?: number
+  }>>([])
+  const [selectedPinterestBoard, setSelectedPinterestBoard] = useState<string>('')
+  const [pinterestBoardsLoading, setPinterestBoardsLoading] = useState(false)
+
   // LinkedIn organization state
   const [linkedInOrganizations, setLinkedInOrganizations] = useState<Array<{
     organizationUrn: string
@@ -174,11 +191,21 @@ function SchedulePageContent() {
               selectedPlatforms: Platform[]
               textContent?: string
               urlContent?: string
+              platformSettings?: {
+                pinterest?: {
+                  boardId?: string
+                }
+              }
             }
 
             // Store URL content for appending to captions
             if (processedData.urlContent) {
               setUrlContent(processedData.urlContent)
+            }
+
+            // Store platform-specific settings (e.g., Pinterest board ID)
+            if (processedData.platformSettings) {
+              setPlatformSettings(processedData.platformSettings)
             }
 
             const generatedCaptions = content.generatedCaptions as Record<string, {
@@ -302,6 +329,52 @@ function SchedulePageContent() {
     fetchLinkedInOrganizations()
   }, [selectedPlatforms, user?.id, connectedAccounts, linkedInOrganizations.length])
 
+  // Fetch Pinterest boards when Pinterest is selected
+  useEffect(() => {
+    const fetchPinterestBoards = async () => {
+      // Only fetch when pinterest is selected AND connected
+      if (!selectedPlatforms.includes('pinterest') || !user?.id) {
+        return
+      }
+
+      // Check if pinterest is connected
+      if (!connectedAccounts.includes('pinterest')) {
+        return
+      }
+
+      // Only fetch if we haven't already
+      if (pinterestBoards.length > 0) {
+        return
+      }
+
+      setPinterestBoardsLoading(true)
+      try {
+        const response = await fetch(`/api/pinterest/boards?userId=${user.id}`)
+        const data = await response.json()
+
+        if (data.success && data.boards) {
+          setPinterestBoards(data.boards)
+          // If user has boards and none selected, default to first one
+          // Also check if platformSettings has a pre-selected board
+          if (data.boards.length > 0) {
+            const preSelectedBoard = platformSettings?.pinterest?.boardId
+            if (preSelectedBoard && data.boards.some((b: any) => b.id === preSelectedBoard)) {
+              setSelectedPinterestBoard(preSelectedBoard)
+            } else {
+              setSelectedPinterestBoard(data.boards[0].id)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch Pinterest boards:', error)
+      } finally {
+        setPinterestBoardsLoading(false)
+      }
+    }
+
+    fetchPinterestBoards()
+  }, [selectedPlatforms, user?.id, connectedAccounts, pinterestBoards.length, platformSettings?.pinterest?.boardId])
+
   const togglePlatform = (platform: Platform) => {
     setSelectedPlatforms(prev =>
       prev.includes(platform)
@@ -334,6 +407,15 @@ function SchedulePageContent() {
       }
       if (!tiktokSettings.agreedToTerms) {
         alert('Please agree to TikTok\'s terms to publish')
+        return
+      }
+    }
+
+    // Validate Pinterest board selection
+    if (selectedPlatforms.includes('pinterest') && connectedAccounts.includes('pinterest') && !testMode) {
+      const boardId = selectedPinterestBoard || platformSettings?.pinterest?.boardId
+      if (!boardId) {
+        alert('Please select a Pinterest board to pin to')
         return
       }
     }
@@ -483,12 +565,25 @@ function SchedulePageContent() {
       setPublishingStatus('Publishing to ' + selectedPlatforms.join(', ') + '...')
 
       // Build publish request with correct format
+      // Include platform-specific settings in content.settings
+      const contentSettings: Record<string, unknown> = {}
+
+      // Add Pinterest board ID if publishing to Pinterest
+      // Use the dropdown selection (selectedPinterestBoard) which takes precedence
+      if (selectedPlatforms.includes('pinterest')) {
+        const boardId = selectedPinterestBoard || platformSettings?.pinterest?.boardId
+        if (boardId) {
+          contentSettings.boardId = boardId
+        }
+      }
+
       const publishData: Record<string, unknown> = {
         userId: user?.id,
         platforms: selectedPlatforms.map(p => PLATFORM_ID_MAP[p] || p),
         content: {
           caption,
           hashtags,
+          settings: Object.keys(contentSettings).length > 0 ? contentSettings : undefined,
         },
         media: mediaData,
         contentType, // Pass content type (post vs story/reel)
@@ -612,6 +707,15 @@ function SchedulePageContent() {
       }
     }
 
+    // Validate Pinterest board selection
+    if (selectedPlatforms.includes('pinterest') && connectedAccounts.includes('pinterest')) {
+      const boardId = selectedPinterestBoard || platformSettings?.pinterest?.boardId
+      if (!boardId) {
+        alert('Please select a Pinterest board to pin to')
+        return
+      }
+    }
+
     setIsPublishing(true)
     setPublishingStatus('Scheduling post...')
 
@@ -624,9 +728,23 @@ function SchedulePageContent() {
         if (urlContent && !caption.includes(urlContent)) {
           caption = caption ? `${caption}\n\n${urlContent}` : urlContent
         }
+
+        // Build settings for this platform
+        const settings: Record<string, unknown> = {}
+
+        // Add Pinterest board ID if this is a Pinterest preview
+        // Use the dropdown selection (selectedPinterestBoard) which takes precedence
+        if (preview.platform === 'pinterest') {
+          const boardId = selectedPinterestBoard || platformSettings?.pinterest?.boardId
+          if (boardId) {
+            settings.boardId = boardId
+          }
+        }
+
         platformContent[preview.platform] = {
           caption,
           hashtags: preview.hashtags,
+          settings: Object.keys(settings).length > 0 ? settings : undefined,
         }
       })
 
@@ -1025,6 +1143,52 @@ function SchedulePageContent() {
                         No Company Pages found. Make sure you're an admin of at least one LinkedIn Company Page.
                       </p>
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* Pinterest Board Selection */}
+              {selectedPlatforms.includes('pinterest') && connectedAccounts.includes('pinterest') && (
+                <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl">
+                  <label className="block text-sm font-medium text-red-800 mb-3 flex items-center gap-2">
+                    <PlatformLogo platform="pinterest" size="sm" />
+                    Select Pinterest Board
+                    <span className="text-xs text-red-500 font-medium ml-1">Required</span>
+                  </label>
+
+                  {pinterestBoardsLoading ? (
+                    <div className="flex items-center gap-2 text-red-600">
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <span className="text-sm">Loading your boards...</span>
+                    </div>
+                  ) : pinterestBoards.length > 0 ? (
+                    <select
+                      value={selectedPinterestBoard}
+                      onChange={(e) => setSelectedPinterestBoard(e.target.value)}
+                      className="w-full px-4 py-3 border border-red-300 rounded-lg bg-white text-text-primary focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    >
+                      <option value="">Select a board...</option>
+                      {pinterestBoards.map((board) => (
+                        <option key={board.id} value={board.id}>
+                          {board.name} {board.pinCount !== undefined ? `(${board.pinCount} pins)` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-800">
+                        No boards found. Create a board on Pinterest first to pin content.
+                      </p>
+                    </div>
+                  )}
+
+                  {!selectedPinterestBoard && pinterestBoards.length > 0 && (
+                    <p className="mt-2 text-xs text-red-600">
+                      ⚠️ Please select a board to publish your pin
+                    </p>
                   )}
                 </div>
               )}
