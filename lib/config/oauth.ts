@@ -282,9 +282,8 @@ export const API_BASE_URLS: Record<SocialPlatform, string> = {
   facebook: 'https://graph.facebook.com/v21.0',
   meta: 'https://graph.facebook.com/v21.0',
   snapchat: 'https://adsapi.snapchat.com/v1',
-  // Pinterest: Using sandbox for trial apps
-  // TODO: Change to api.pinterest.com when app is approved for production
-  pinterest: 'https://api-sandbox.pinterest.com/v5',
+  // Pinterest API - requires production access approval from Pinterest
+  pinterest: 'https://api.pinterest.com/v5',
   discord: 'https://discord.com/api/v10',
   reddit: 'https://oauth.reddit.com',
 }
