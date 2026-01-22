@@ -25,6 +25,7 @@ export { linkedinProvider } from './linkedin';
 export { linkedinOrgProvider } from './linkedin-org';
 export { snapchatProvider } from './snapchat';
 export { redditProvider } from './reddit';
+export { pinterestProvider } from './pinterest';
 
 // Re-export types for convenience
 export type { OAuthProvider, OAuthProviderInterface } from '../oauth/types';
@@ -70,6 +71,11 @@ export const PROVIDER_CONFIGS = {
     displayName: 'Reddit',
     platforms: ['Reddit'],
     features: ['Text Posts', 'Link Posts', 'Image Posts'],
+  },
+  pinterest: {
+    displayName: 'Pinterest',
+    platforms: ['Pinterest'],
+    features: ['Pins', 'Boards', 'Analytics'],
   },
 } as const;
 
