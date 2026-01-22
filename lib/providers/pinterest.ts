@@ -14,6 +14,7 @@
  * - pins:read: Read pins
  * - pins:write: Create and update pins
  * - boards:read: Read boards
+ * - boards:write: Write to boards (required for creating pins)
  *
  * @see https://developers.pinterest.com/docs/getting-started/authentication/
  */
@@ -80,6 +81,7 @@ const config: ProviderConfig = {
     'pins:read',           // Read pins
     'pins:write',          // Create and update pins
     'boards:read',         // Read boards
+    'boards:write',        // Write to boards (required for creating pins)
   ],
 
   capabilities: {
