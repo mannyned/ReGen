@@ -527,20 +527,20 @@ class PinterestPublisher extends BasePlatformPublisher {
         }
       }
 
-      // Build carousel pin data
+      // Build carousel pin data using multiple_image_urls source type
       const carouselItems = validItems.map((item, index) => ({
         title: item.caption?.substring(0, 100) || `Image ${index + 1}`,
         description: item.caption?.substring(0, 500) || '',
         link: content.settings?.link || '',
-        media_source: {
-          source_type: 'image_url',
-          url: item.mediaUrl,
-        },
+        url: item.mediaUrl,
       }))
 
       const pinData: Record<string, any> = {
         board_id: boardId,
-        carousel_slots: carouselItems,
+        media_source: {
+          source_type: 'multiple_image_urls',
+          items: carouselItems,
+        },
       }
 
       // Add title if provided
