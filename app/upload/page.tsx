@@ -86,8 +86,7 @@ const platforms = [
   { id: 'linkedin' as Platform, name: 'LinkedIn Personal', icon: '👤', color: 'bg-gradient-to-br from-blue-700 to-blue-600' },
   { id: 'linkedin-org' as Platform, name: 'LinkedIn Company', icon: '🏢', color: 'bg-gradient-to-br from-blue-700 to-blue-600' },
   { id: 'snapchat' as Platform, name: 'Snapchat', icon: '👻', color: 'bg-gradient-to-br from-yellow-400 to-yellow-500' },
-  // Pinterest disabled until production API access is approved
-  // { id: 'pinterest' as Platform, name: 'Pinterest', icon: '📌', color: 'bg-gradient-to-br from-red-600 to-red-500' },
+  { id: 'pinterest' as Platform, name: 'Pinterest', icon: '📌', color: 'bg-gradient-to-br from-red-600 to-red-500' },
   { id: 'discord' as Platform, name: 'Discord', icon: '💬', color: 'bg-gradient-to-br from-indigo-600 to-indigo-500' },
   { id: 'reddit' as Platform, name: 'Reddit', icon: '🤖', color: 'bg-gradient-to-br from-orange-500 to-orange-600' },
 ]

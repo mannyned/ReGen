@@ -125,8 +125,7 @@ function SchedulePageContent() {
     { name: 'linkedin', label: 'LinkedIn Personal', icon: '💼' },
     { name: 'linkedin-org', label: 'LinkedIn Company', icon: '🏢' },
     { name: 'snapchat', label: 'Snapchat', icon: '👻' },
-    // Pinterest disabled until production API access is approved
-    // { name: 'pinterest', label: 'Pinterest', icon: '📌' },
+    { name: 'pinterest', label: 'Pinterest', icon: '📌' },
     { name: 'discord', label: 'Discord', icon: '💬' },
     { name: 'reddit', label: 'Reddit', icon: '🤖' },
   ]
