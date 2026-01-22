@@ -202,7 +202,12 @@ class PinterestPublisher extends BasePlatformPublisher {
 
       if (!registerResponse.ok) {
         const errorData = await registerResponse.json().catch(() => ({}))
-        console.error('[PinterestPublisher] Media registration failed:', errorData)
+        console.error('[PinterestPublisher] Media registration failed:', {
+          status: registerResponse.status,
+          statusText: registerResponse.statusText,
+          error: errorData,
+          url: `${this.baseUrl}/media`,
+        })
         return null
       }
 
