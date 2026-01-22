@@ -115,8 +115,12 @@ function getAuthorizationUrl(params: AuthorizationUrlParams): AuthorizationUrlRe
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('prompt', 'consent'); // Always show consent screen
 
+  const finalUrl = authUrl.toString();
+  console.log('[Discord OAuth] Authorization URL:', finalUrl);
+  console.log('[Discord OAuth] redirect_uri param:', redirectUri);
+
   return {
-    url: authUrl.toString(),
+    url: finalUrl,
     state: params.state,
   };
 }
