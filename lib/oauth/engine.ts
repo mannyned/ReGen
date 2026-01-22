@@ -353,6 +353,18 @@ export async function handleCallback(
       }
     } else {
       // For non-Meta providers, store single connection
+      // Include webhook URL for Discord (returned during OAuth with webhook.incoming scope)
+      const metadata = {
+        ...identity.metadata,
+        ...(tokens.raw?.webhook && {
+          webhookId: tokens.raw.webhook.id,
+          webhookToken: tokens.raw.webhook.token,
+          webhookUrl: tokens.raw.webhook.url,
+          webhookChannelId: tokens.raw.webhook.channel_id,
+          webhookGuildId: tokens.raw.webhook.guild_id,
+        }),
+      };
+
       await storeConnection({
         profileId,
         provider: provider.config.id,
@@ -361,7 +373,7 @@ export async function handleCallback(
         refreshToken: tokens.refreshToken,
         scopes: tokens.scope?.split(/[,\s]+/) || provider.config.scopes,
         expiresAt: tokens.expiresAt,
-        metadata: identity.metadata,
+        metadata,
       });
     }
 

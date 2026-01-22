@@ -26,6 +26,7 @@ import type {
 } from '../../types/social'
 import { BasePlatformPublisher, PublishOptions } from './BasePlatformPublisher'
 import { API_BASE_URLS } from '../../config/oauth'
+import { prisma } from '@/lib/db'
 
 // ============================================
 // DISCORD PUBLISHER
@@ -209,22 +210,40 @@ class DiscordPublisher extends BasePlatformPublisher {
   }
 
   /**
-   * Get webhook URL from settings
+   * Get webhook URL from OAuth connection metadata or settings
    *
-   * Discord webhooks need to be configured by the user:
-   * 1. Go to Discord Server Settings > Integrations > Webhooks
-   * 2. Create a new webhook for the desired channel
-   * 3. Copy the webhook URL and paste it in ReGen settings
+   * The webhook URL is stored during OAuth when user grants webhook.incoming scope.
+   * Alternatively, users can manually provide a webhook URL in settings.
    */
   private async getWebhookUrl(userId: string, settingsWebhookUrl?: string): Promise<string | null> {
-    // Check if webhook URL is provided in settings
+    // First check if webhook URL is provided in settings (manual override)
     if (settingsWebhookUrl) {
       return settingsWebhookUrl
     }
 
-    // For now, webhook URL must be provided in settings
-    // Future: Could store webhook during OAuth if user grants webhook.incoming scope
-    console.log('[DiscordPublisher] No webhook URL found in settings')
+    // Try to get webhook URL from OAuth connection metadata
+    try {
+      const connection = await prisma.oAuthConnection.findUnique({
+        where: {
+          profileId_provider: {
+            profileId: userId,
+            provider: 'discord',
+          },
+        },
+      })
+
+      if (connection?.metadata) {
+        const metadata = connection.metadata as Record<string, any>
+        if (metadata.webhookUrl) {
+          console.log('[DiscordPublisher] Using webhook URL from OAuth connection')
+          return metadata.webhookUrl
+        }
+      }
+    } catch (error) {
+      console.error('[DiscordPublisher] Error fetching connection:', error)
+    }
+
+    console.log('[DiscordPublisher] No webhook URL found')
     return null
   }
 
