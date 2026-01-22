@@ -127,6 +127,11 @@ export interface PlatformSettings {
   flair?: string
   nsfw?: boolean
   spoiler?: boolean
+
+  // Pinterest
+  boardId?: string
+  link?: string
+  altText?: string
 }
 
 // ============================================

@@ -17,13 +17,14 @@ import { linkedinPublisher } from './LinkedInPublisher'
 import { facebookPublisher } from './FacebookPublisher'
 import { snapchatPublisher } from './SnapchatPublisher'
 import { redditPublisher } from './RedditPublisher'
+import { pinterestPublisher } from './PinterestPublisher'
 
 // ============================================
 // PLATFORM PUBLISHER REGISTRY
 // ============================================
 
 // Publishers for implemented platforms
-// Pinterest and Discord are coming soon and not included
+// Discord is coming soon and not included
 const publishers: Partial<Record<SocialPlatform, BasePlatformPublisher>> = {
   instagram: instagramPublisher,
   tiktok: tiktokPublisher,
@@ -33,10 +34,11 @@ const publishers: Partial<Record<SocialPlatform, BasePlatformPublisher>> = {
   facebook: facebookPublisher,
   snapchat: snapchatPublisher,
   reddit: redditPublisher,
+  pinterest: pinterestPublisher,
 }
 
 // Coming soon platforms
-const comingSoonPlatforms: SocialPlatform[] = ['pinterest', 'discord']
+const comingSoonPlatforms: SocialPlatform[] = ['discord']
 
 // ============================================
 // UNIFIED PUBLISHING SERVICE
@@ -341,3 +343,4 @@ export { linkedinPublisher } from './LinkedInPublisher'
 export { facebookPublisher } from './FacebookPublisher'
 export { snapchatPublisher } from './SnapchatPublisher'
 export { redditPublisher } from './RedditPublisher'
+export { pinterestPublisher } from './PinterestPublisher'
