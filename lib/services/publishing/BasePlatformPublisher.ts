@@ -22,6 +22,7 @@ export interface ContentPayload {
   mimeType: string
   fileSize: number
   duration?: number
+  thumbnailUrl?: string  // Cover image for videos
   // For carousel posts with multiple images
   additionalMediaUrls?: string[]
 }

@@ -109,12 +109,23 @@ class PinterestPublisher extends BasePlatformPublisher {
           }
         }
 
+        // Build media source with cover image
+        const mediaSource: Record<string, any> = {
+          source_type: 'video_id',
+          media_id: mediaId,
+        }
+
+        // Pinterest requires a cover image - use thumbnail URL or key frame time
+        if (media.thumbnailUrl) {
+          mediaSource.cover_image_url = media.thumbnailUrl
+        } else {
+          // Use frame at 1 second as cover if no thumbnail provided
+          mediaSource.cover_image_key_frame_time = 1.0
+        }
+
         pinData = {
           board_id: boardId,
-          media_source: {
-            source_type: 'video_id',
-            media_id: mediaId,
-          },
+          media_source: mediaSource,
         }
       } else {
         // Image pin - use URL directly (works for both sandbox and production)
