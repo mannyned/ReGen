@@ -258,6 +258,14 @@ export async function handleCallback(
     const returnedState = searchParams.get('state');
     const { state: storedState, codeVerifier } = await consumeOAuthCookies();
 
+    console.log('[OAuth Callback] State validation:', {
+      hasReturnedState: !!returnedState,
+      hasStoredState: !!storedState,
+      statesMatch: returnedState === storedState,
+      returnedStatePrefix: returnedState?.substring(0, 50),
+      storedStatePrefix: storedState?.substring(0, 50),
+    });
+
     if (!returnedState || !storedState || returnedState !== storedState) {
       throw new InvalidStateError(provider.config.id);
     }
