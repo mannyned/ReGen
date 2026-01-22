@@ -132,6 +132,10 @@ export interface PlatformSettings {
   boardId?: string
   link?: string
   altText?: string
+
+  // Discord
+  webhookUrl?: string
+  channelId?: string
 }
 
 // ============================================

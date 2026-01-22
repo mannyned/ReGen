@@ -26,6 +26,7 @@ export { linkedinOrgProvider } from './linkedin-org';
 export { snapchatProvider } from './snapchat';
 export { redditProvider } from './reddit';
 export { pinterestProvider } from './pinterest';
+export { discordProvider } from './discord';
 
 // Re-export types for convenience
 export type { OAuthProvider, OAuthProviderInterface } from '../oauth/types';
@@ -76,6 +77,11 @@ export const PROVIDER_CONFIGS = {
     displayName: 'Pinterest',
     platforms: ['Pinterest'],
     features: ['Pins', 'Boards', 'Analytics'],
+  },
+  discord: {
+    displayName: 'Discord',
+    platforms: ['Discord'],
+    features: ['Channel Posts', 'Embeds', 'Images'],
   },
 } as const;
 
