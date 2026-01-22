@@ -4,12 +4,15 @@
  * Handles publishing content to Pinterest via the Pinterest API v5.
  *
  * Supports:
- * - Image pins
- * - Carousel pins (2-5 images)
+ * - Image pins (via image URL)
+ * - Video pins (uploaded to Pinterest servers)
+ * - Carousel pins (2-5 images, no videos)
  *
- * Does NOT support:
- * - Video pins (requires different flow)
- * - Idea pins (deprecated in favor of standard pins)
+ * Video Pin Flow:
+ * 1. Register media upload with Pinterest
+ * 2. Upload video to Pinterest's servers
+ * 3. Wait for processing (poll status)
+ * 4. Create pin with video media_id
  *
  * @see https://developers.pinterest.com/docs/api/v5/
  */
@@ -34,7 +37,7 @@ class PinterestPublisher extends BasePlatformPublisher {
   protected baseUrl: string = API_BASE_URLS.pinterest
 
   /**
-   * Publish a single image pin to Pinterest
+   * Publish a pin to Pinterest (image or video)
    */
   async publishContent(options: PublishOptions): Promise<PublishResult> {
     const { userId, content, media } = options
@@ -54,31 +57,50 @@ class PinterestPublisher extends BasePlatformPublisher {
         }
       }
 
-      // Pinterest requires an image URL
+      // Pinterest requires media
       if (!media?.mediaUrl) {
         return {
           success: false,
           platform: this.platform,
-          error: 'Pinterest requires an image for pins.',
+          error: 'Pinterest requires an image or video for pins.',
         }
       }
 
-      // Check if it's a video (not supported for now)
-      if (media.mimeType?.startsWith('video/')) {
-        return {
-          success: false,
-          platform: this.platform,
-          error: 'Video pins are not yet supported. Please use an image.',
-        }
-      }
+      const isVideo = media.mimeType?.startsWith('video/')
 
-      // Build pin data
-      const pinData: Record<string, any> = {
-        board_id: boardId,
-        media_source: {
-          source_type: 'image_url',
-          url: media.mediaUrl,
-        },
+      // Build pin data based on media type
+      let pinData: Record<string, any>
+
+      if (isVideo) {
+        // Video pin - requires uploading to Pinterest first
+        console.log(`[PinterestPublisher] Processing video pin...`)
+
+        const mediaId = await this.uploadVideoToPinterest(accessToken, media.mediaUrl)
+
+        if (!mediaId) {
+          return {
+            success: false,
+            platform: this.platform,
+            error: 'Failed to upload video to Pinterest. Please try again.',
+          }
+        }
+
+        pinData = {
+          board_id: boardId,
+          media_source: {
+            source_type: 'video_id',
+            media_id: mediaId,
+          },
+        }
+      } else {
+        // Image pin - use URL directly
+        pinData = {
+          board_id: boardId,
+          media_source: {
+            source_type: 'image_url',
+            url: media.mediaUrl,
+          },
+        }
       }
 
       // Add title and description
@@ -95,15 +117,16 @@ class PinterestPublisher extends BasePlatformPublisher {
         pinData.link = content.settings.link
       }
 
-      // Add alt text for accessibility
-      if (content.settings?.altText) {
+      // Add alt text for accessibility (images only)
+      if (!isVideo && content.settings?.altText) {
         pinData.alt_text = content.settings.altText.substring(0, 500)
       }
 
-      console.log(`[PinterestPublisher] Creating pin on board ${boardId}`, {
+      console.log(`[PinterestPublisher] Creating ${isVideo ? 'video' : 'image'} pin on board ${boardId}`, {
         hasTitle: !!pinData.title,
         hasDescription: !!pinData.description,
         hasLink: !!pinData.link,
+        isVideo,
       })
 
       const response = await fetch(`${this.baseUrl}/pins`, {
@@ -132,6 +155,7 @@ class PinterestPublisher extends BasePlatformPublisher {
       console.log(`[PinterestPublisher] Published successfully:`, {
         pinId: data.id,
         pinUrl,
+        isVideo,
       })
 
       return {
@@ -149,6 +173,138 @@ class PinterestPublisher extends BasePlatformPublisher {
         error: error instanceof Error ? error.message : 'Unknown error occurred',
       }
     }
+  }
+
+  /**
+   * Upload video to Pinterest and return the media_id
+   *
+   * Pinterest video upload flow:
+   * 1. POST /media to register the upload
+   * 2. Upload video to the provided upload_url
+   * 3. Poll GET /media/{media_id} until status is 'succeeded'
+   * 4. Return media_id for use in pin creation
+   */
+  private async uploadVideoToPinterest(accessToken: string, videoUrl: string): Promise<string | null> {
+    try {
+      // Step 1: Register media upload
+      console.log('[PinterestPublisher] Registering video upload...')
+
+      const registerResponse = await fetch(`${this.baseUrl}/media`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          media_type: 'video',
+        }),
+      })
+
+      if (!registerResponse.ok) {
+        const errorData = await registerResponse.json().catch(() => ({}))
+        console.error('[PinterestPublisher] Media registration failed:', errorData)
+        return null
+      }
+
+      const registerData = await registerResponse.json()
+      const mediaId = registerData.media_id
+      const uploadUrl = registerData.upload_url
+      const uploadParameters = registerData.upload_parameters || {}
+
+      console.log('[PinterestPublisher] Media registered:', { mediaId })
+
+      // Step 2: Fetch video from URL
+      console.log('[PinterestPublisher] Fetching video from URL...')
+      const videoResponse = await fetch(videoUrl)
+
+      if (!videoResponse.ok) {
+        console.error('[PinterestPublisher] Failed to fetch video:', videoResponse.status)
+        return null
+      }
+
+      const videoBlob = await videoResponse.blob()
+      console.log('[PinterestPublisher] Video fetched:', { size: videoBlob.size })
+
+      // Step 3: Upload video to Pinterest's upload URL
+      console.log('[PinterestPublisher] Uploading video to Pinterest...')
+
+      // Pinterest uses multipart form upload with specific parameters
+      const formData = new FormData()
+
+      // Add upload parameters from Pinterest
+      for (const [key, value] of Object.entries(uploadParameters)) {
+        formData.append(key, value as string)
+      }
+
+      // Add the video file
+      formData.append('file', videoBlob, 'video.mp4')
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text().catch(() => '')
+        console.error('[PinterestPublisher] Video upload failed:', uploadResponse.status, errorText)
+        return null
+      }
+
+      console.log('[PinterestPublisher] Video uploaded successfully')
+
+      // Step 4: Poll for processing status
+      console.log('[PinterestPublisher] Waiting for video processing...')
+
+      const maxAttempts = 30 // Max 5 minutes (30 * 10 seconds)
+      let attempts = 0
+
+      while (attempts < maxAttempts) {
+        await this.sleep(10000) // Wait 10 seconds between polls
+
+        const statusResponse = await fetch(`${this.baseUrl}/media/${mediaId}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        })
+
+        if (!statusResponse.ok) {
+          console.error('[PinterestPublisher] Status check failed:', statusResponse.status)
+          attempts++
+          continue
+        }
+
+        const statusData = await statusResponse.json()
+        const status = statusData.status
+
+        console.log(`[PinterestPublisher] Video status: ${status} (attempt ${attempts + 1})`)
+
+        if (status === 'succeeded') {
+          console.log('[PinterestPublisher] Video processing complete!')
+          return mediaId
+        }
+
+        if (status === 'failed') {
+          console.error('[PinterestPublisher] Video processing failed')
+          return null
+        }
+
+        // Status is 'registered' or 'processing', continue polling
+        attempts++
+      }
+
+      console.error('[PinterestPublisher] Video processing timed out')
+      return null
+    } catch (error) {
+      console.error('[PinterestPublisher] Video upload error:', error)
+      return null
+    }
+  }
+
+  /**
+   * Helper to sleep for a specified duration
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
   }
 
   /**
