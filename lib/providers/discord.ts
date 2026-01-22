@@ -75,10 +75,10 @@ const config: ProviderConfig = {
   identityUrl: DISCORD_USER_URL,
 
   // Scopes for Discord API
-  // Note: webhook.incoming removed temporarily - users will provide webhook URL manually
   scopes: [
     'identify',           // Access user identity
     'guilds',             // Access user's servers
+    'webhook.incoming',   // Create webhooks for posting to channels
   ],
 
   capabilities: {
@@ -109,11 +109,10 @@ function getAuthorizationUrl(params: AuthorizationUrlParams): AuthorizationUrlRe
 
   const authUrl = new URL(config.authorizationUrl);
   authUrl.searchParams.set('client_id', clientId);
-  authUrl.searchParams.set('redirect_uri', redirectUri);
-  authUrl.searchParams.set('state', params.state);
-  authUrl.searchParams.set('scope', allScopes.join(' ')); // Space-separated scopes
   authUrl.searchParams.set('response_type', 'code');
-  authUrl.searchParams.set('prompt', 'consent'); // Always show consent screen
+  authUrl.searchParams.set('redirect_uri', redirectUri);
+  authUrl.searchParams.set('integration_type', '0');
+  authUrl.searchParams.set('scope', allScopes.join(' '));
 
   const finalUrl = authUrl.toString();
   console.log('[Discord OAuth] Authorization URL:', finalUrl);
