@@ -22,7 +22,7 @@ import { redirect } from 'next/navigation';
 // Import providers to register them with the engine
 import '@/lib/providers';
 
-import { OAuthEngine, isProviderRegistered } from '@/lib/oauth/engine';
+import { OAuthEngine, isProviderRegistered, getAllProviders } from '@/lib/oauth/engine';
 import { UnknownProviderError, isOAuthError, wrapError } from '@/lib/oauth/errors';
 import { getUserId } from '@/lib/auth/getUser';
 
@@ -39,12 +39,13 @@ export async function GET(
     // Step 1: Validate provider exists
     if (!isProviderRegistered(provider)) {
       console.log('[OAuth Start] Provider not registered:', provider);
+      const registeredProviders = getAllProviders().map(p => p.config.id);
       return NextResponse.json(
         {
           error: 'Unknown provider',
           code: 'UNKNOWN_PROVIDER',
           message: `Provider "${provider}" is not supported.`,
-          supportedProviders: ['meta', 'tiktok', 'google', 'x', 'linkedin', 'linkedin-org', 'snapchat'],
+          supportedProviders: registeredProviders,
         },
         { status: 400 }
       );

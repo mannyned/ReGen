@@ -192,6 +192,12 @@ export async function startOAuth(
   // Build redirect URI
   const redirectUri = `${baseUrl}/api/auth/${providerId}/callback`;
 
+  console.log('[OAuth Engine] Built redirect URI:', {
+    baseUrl,
+    providerId,
+    redirectUri,
+  });
+
   // Get authorization URL from provider
   const authResult = provider.getAuthorizationUrl({
     redirectUri,
