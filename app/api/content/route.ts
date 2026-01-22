@@ -21,6 +21,12 @@ interface CreateContentRequest {
   customHashtags?: string
   textContent?: string
   urlContent?: string
+  // Platform-specific settings (e.g., Pinterest board ID)
+  platformSettings?: {
+    pinterest?: {
+      boardId?: string
+    }
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -47,6 +53,7 @@ export async function POST(request: NextRequest) {
       customHashtags,
       textContent,
       urlContent,
+      platformSettings,
     } = body
 
     // Validate required fields
@@ -89,6 +96,7 @@ export async function POST(request: NextRequest) {
           customHashtags: customHashtags || '',
           textContent: textContent || '',
           urlContent: urlContent || '',
+          platformSettings: platformSettings || {},
         },
       },
     })
