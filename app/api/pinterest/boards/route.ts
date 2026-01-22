@@ -21,8 +21,9 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { tokenManager } from '@/lib/services/oauth/TokenManager'
+import { API_BASE_URLS } from '@/lib/config/oauth'
 
-const PINTEREST_API_BASE = 'https://api.pinterest.com/v5'
+const PINTEREST_API_BASE = API_BASE_URLS.pinterest
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
