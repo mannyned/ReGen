@@ -106,13 +106,39 @@ class PinterestPublisher extends BasePlatformPublisher {
           },
         }
       } else {
-        // Image pin - use URL directly
-        pinData = {
-          board_id: boardId,
-          media_source: {
-            source_type: 'image_url',
-            url: media.mediaUrl,
-          },
+        // Image pin
+        const isSandbox = !!process.env.PINTEREST_SANDBOX_TOKEN
+
+        if (isSandbox) {
+          // Sandbox requires uploading images, doesn't accept external URLs
+          console.log('[PinterestPublisher] Sandbox mode - uploading image first')
+          const mediaId = await this.uploadImageToPinterest(accessToken, media.mediaUrl)
+
+          if (!mediaId) {
+            return {
+              success: false,
+              platform: this.platform,
+              error: 'Failed to upload image to Pinterest sandbox. Please try again.',
+            }
+          }
+
+          pinData = {
+            board_id: boardId,
+            media_source: {
+              source_type: 'image_id',
+              media_id: mediaId,
+            },
+          }
+        } else {
+          // Production - use URL directly
+          console.log('[PinterestPublisher] Creating image pin with URL:', media.mediaUrl)
+          pinData = {
+            board_id: boardId,
+            media_source: {
+              source_type: 'image_url',
+              url: media.mediaUrl,
+            },
+          }
         }
       }
 
@@ -140,7 +166,10 @@ class PinterestPublisher extends BasePlatformPublisher {
         hasDescription: !!pinData.description,
         hasLink: !!pinData.link,
         isVideo,
+        mediaSource: pinData.media_source,
       })
+
+      console.log('[PinterestPublisher] Full pinData:', JSON.stringify(pinData, null, 2))
 
       const response = await fetch(`${this.baseUrl}/pins`, {
         method: 'POST',
@@ -314,6 +343,128 @@ class PinterestPublisher extends BasePlatformPublisher {
       return null
     } catch (error) {
       console.error('[PinterestPublisher] Video upload error:', error)
+      return null
+    }
+  }
+
+  /**
+   * Upload image to Pinterest and return the media_id
+   * Similar to video upload but for images (required for sandbox)
+   */
+  private async uploadImageToPinterest(accessToken: string, imageUrl: string): Promise<string | null> {
+    try {
+      // Step 1: Register media upload for image
+      console.log('[PinterestPublisher] Registering image upload...')
+
+      const registerResponse = await fetch(`${this.baseUrl}/media`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          media_type: 'image',
+        }),
+      })
+
+      if (!registerResponse.ok) {
+        const errorData = await registerResponse.json().catch(() => ({}))
+        console.error('[PinterestPublisher] Image registration failed:', {
+          status: registerResponse.status,
+          error: errorData,
+        })
+        return null
+      }
+
+      const registerData = await registerResponse.json()
+      const mediaId = registerData.media_id
+      const uploadUrl = registerData.upload_url
+      const uploadParameters = registerData.upload_parameters || {}
+
+      console.log('[PinterestPublisher] Image media registered:', { mediaId })
+
+      // Step 2: Fetch image from URL
+      console.log('[PinterestPublisher] Fetching image from URL...')
+      const imageResponse = await fetch(imageUrl)
+
+      if (!imageResponse.ok) {
+        console.error('[PinterestPublisher] Failed to fetch image:', imageResponse.status)
+        return null
+      }
+
+      const imageBlob = await imageResponse.blob()
+      console.log('[PinterestPublisher] Image fetched:', { size: imageBlob.size, type: imageBlob.type })
+
+      // Step 3: Upload image to Pinterest's upload URL
+      console.log('[PinterestPublisher] Uploading image to Pinterest...')
+
+      const formData = new FormData()
+
+      // Add upload parameters from Pinterest
+      for (const [key, value] of Object.entries(uploadParameters)) {
+        formData.append(key, value as string)
+      }
+
+      // Add the image file
+      const extension = imageUrl.split('.').pop()?.split('?')[0] || 'jpg'
+      formData.append('file', imageBlob, `image.${extension}`)
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text().catch(() => '')
+        console.error('[PinterestPublisher] Image upload failed:', uploadResponse.status, errorText)
+        return null
+      }
+
+      console.log('[PinterestPublisher] Image uploaded successfully')
+
+      // Step 4: Poll for processing status (images should be quick)
+      console.log('[PinterestPublisher] Waiting for image processing...')
+
+      const maxAttempts = 10 // Images process faster than videos
+      let attempts = 0
+
+      while (attempts < maxAttempts) {
+        await this.sleep(2000) // Wait 2 seconds between polls
+
+        const statusResponse = await fetch(`${this.baseUrl}/media/${mediaId}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        })
+
+        if (!statusResponse.ok) {
+          console.error('[PinterestPublisher] Image status check failed:', statusResponse.status)
+          attempts++
+          continue
+        }
+
+        const statusData = await statusResponse.json()
+        const status = statusData.status
+
+        console.log(`[PinterestPublisher] Image status: ${status} (attempt ${attempts + 1})`)
+
+        if (status === 'succeeded') {
+          console.log('[PinterestPublisher] Image processing complete!')
+          return mediaId
+        }
+
+        if (status === 'failed') {
+          console.error('[PinterestPublisher] Image processing failed')
+          return null
+        }
+
+        attempts++
+      }
+
+      console.error('[PinterestPublisher] Image processing timed out')
+      return null
+    } catch (error) {
+      console.error('[PinterestPublisher] Image upload error:', error)
       return null
     }
   }
