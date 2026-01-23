@@ -36,18 +36,6 @@ class PinterestPublisher extends BasePlatformPublisher {
   protected platform: SocialPlatform = 'pinterest'
   protected baseUrl: string = API_BASE_URLS.pinterest
 
-  /**
-   * Override getAccessToken to support sandbox token
-   * If PINTEREST_SANDBOX_TOKEN is set, use it instead of OAuth token
-   */
-  protected async getAccessToken(userId: string): Promise<string> {
-    const sandboxToken = process.env.PINTEREST_SANDBOX_TOKEN
-    if (sandboxToken) {
-      console.log('[PinterestPublisher] Using SANDBOX token')
-      return sandboxToken
-    }
-    return super.getAccessToken(userId)
-  }
 
   /**
    * Publish a pin to Pinterest (image or video)

@@ -37,9 +37,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Use sandbox token if available, otherwise get from OAuth
-    const sandboxToken = process.env.PINTEREST_SANDBOX_TOKEN
-    const accessToken = sandboxToken || await tokenManager.getValidAccessToken(userId, 'pinterest')
+    const accessToken = await tokenManager.getValidAccessToken(userId, 'pinterest')
 
     if (!accessToken) {
       return NextResponse.json(
@@ -48,7 +46,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log('[Pinterest Boards] Using', sandboxToken ? 'SANDBOX' : 'OAuth', 'token')
+    console.log('[Pinterest Boards] Fetching boards for user:', userId)
 
     // Fetch boards from Pinterest API
     const response = await fetch(`${PINTEREST_API_BASE}/boards?page_size=100`, {
