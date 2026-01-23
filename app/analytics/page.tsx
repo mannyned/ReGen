@@ -430,7 +430,9 @@ export default function AnalyticsPage() {
       tiktok: 'TikTok',
       youtube: 'YouTube',
       google: 'YouTube', // Google provider maps to YouTube
-      snapchat: 'Snapchat',
+      pinterest: 'Pinterest',
+      discord: 'Discord',
+      reddit: 'Reddit',
     }
 
     // Get per-platform best times from calendarInsights
@@ -845,7 +847,6 @@ export default function AnalyticsPage() {
                     <option value="linkedin">LinkedIn</option>
                     <option value="twitter">Twitter</option>
                     <option value="facebook">Facebook</option>
-                    <option value="snapchat">Snapchat</option>
                     <option value="pinterest">Pinterest</option>
                     <option value="discord">Discord</option>
                     <option value="reddit">Reddit</option>

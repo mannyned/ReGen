@@ -57,9 +57,9 @@ const DEFAULT_PLATFORMS: { id: SocialPlatform; name: string }[] = [
   { id: 'twitter', name: 'X (Twitter)' },
   { id: 'linkedin', name: 'LinkedIn' },
   { id: 'facebook', name: 'Facebook' },
-  { id: 'snapchat', name: 'Snapchat' },
   { id: 'pinterest', name: 'Pinterest' },
   { id: 'discord', name: 'Discord' },
+  { id: 'reddit', name: 'Reddit' },
 ]
 
 // Modal Portal Component - renders modal at document body level

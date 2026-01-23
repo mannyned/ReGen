@@ -607,7 +607,7 @@ function PlatformBreakdown({ data, isLoading }: PlatformBreakdownProps) {
 // ============================================
 // Main Page Component
 // ============================================
-type PlatformFilter = 'all' | 'instagram' | 'youtube' | 'facebook' | 'tiktok' | 'linkedin' | 'twitter' | 'snapchat';
+type PlatformFilter = 'all' | 'instagram' | 'youtube' | 'facebook' | 'tiktok' | 'linkedin' | 'twitter' | 'pinterest' | 'discord' | 'reddit';
 
 export default function SaveRateAnalyticsPage() {
   const [period, setPeriod] = useState<Period>('30d');
@@ -833,7 +833,9 @@ export default function SaveRateAnalyticsPage() {
                     <option value="linkedin">LinkedIn</option>
                     <option value="twitter">Twitter</option>
                     <option value="facebook">Facebook</option>
-                    <option value="snapchat">Snapchat</option>
+                    <option value="pinterest">Pinterest</option>
+                    <option value="discord">Discord</option>
+                    <option value="reddit">Reddit</option>
                   </select>
                 </div>
 
