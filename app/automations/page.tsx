@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { AppHeader, Card, Badge } from '@/app/components/ui'
 import { PlatformLogo } from '@/app/components/ui/PlatformLogo'
+import { uploadToStorage } from '@/lib/storage/upload'
+import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import type { SocialPlatform } from '@/lib/types/social'
 
 // ============================================
@@ -80,11 +82,16 @@ const AVAILABLE_PLATFORMS: { id: SocialPlatform; name: string; description: stri
 // ============================================
 
 export default function AutomationsPage() {
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<'settings' | 'posts'>('settings')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+
+  // Image upload state
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Settings state
   const [settings, setSettings] = useState<AutoShareSettings>({
@@ -244,6 +251,50 @@ export default function AutomationsPage() {
     } catch (err) {
       setError('Failed to dismiss post')
     }
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be less than 5MB')
+      return
+    }
+
+    try {
+      setUploading(true)
+      setError(null)
+
+      const result = await uploadToStorage(file, user.id)
+
+      if (result.success && result.publicUrl) {
+        setSettings(prev => ({ ...prev, defaultImageUrl: result.publicUrl! }))
+        setSuccess('Image uploaded successfully!')
+        setTimeout(() => setSuccess(null), 3000)
+      } else {
+        setError(result.error || 'Failed to upload image')
+      }
+    } catch (err) {
+      setError('Failed to upload image')
+    } finally {
+      setUploading(false)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleRemoveImage = () => {
+    setSettings(prev => ({ ...prev, defaultImageUrl: null }))
   }
 
   // ============================================
@@ -486,13 +537,81 @@ export default function AutomationsPage() {
                       <p className="text-sm text-text-secondary mb-4">
                         Used when the blog post doesn&apos;t have an Open Graph image
                       </p>
-                      <input
-                        type="url"
-                        value={settings.defaultImageUrl || ''}
-                        onChange={e => setSettings(prev => ({ ...prev, defaultImageUrl: e.target.value || null }))}
-                        placeholder="https://example.com/default-image.jpg"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      />
+
+                      {/* Current Image Preview */}
+                      {settings.defaultImageUrl && (
+                        <div className="mb-4 relative inline-block">
+                          <img
+                            src={settings.defaultImageUrl}
+                            alt="Default fallback"
+                            className="w-32 h-32 object-cover rounded-lg border border-gray-200"
+                          />
+                          <button
+                            onClick={handleRemoveImage}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                            title="Remove image"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Upload Options */}
+                      <div className="space-y-3">
+                        {/* Upload Button */}
+                        <div>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                            id="fallback-image-upload"
+                          />
+                          <label
+                            htmlFor="fallback-image-upload"
+                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-all ${
+                              uploading
+                                ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                                : 'border-purple-300 hover:border-purple-500 hover:bg-purple-50'
+                            }`}
+                          >
+                            {uploading ? (
+                              <>
+                                <svg className="animate-spin h-5 w-5 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span className="text-sm text-gray-600">Uploading...</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span className="text-sm text-purple-700 font-medium">Upload Image</span>
+                              </>
+                            )}
+                          </label>
+                          <span className="text-xs text-text-tertiary ml-3">Max 5MB, JPG/PNG/GIF</span>
+                        </div>
+
+                        {/* Or divider */}
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-px bg-gray-200"></div>
+                          <span className="text-xs text-text-tertiary">or paste URL</span>
+                          <div className="flex-1 h-px bg-gray-200"></div>
+                        </div>
+
+                        {/* URL Input */}
+                        <input
+                          type="url"
+                          value={settings.defaultImageUrl || ''}
+                          onChange={e => setSettings(prev => ({ ...prev, defaultImageUrl: e.target.value || null }))}
+                          placeholder="https://example.com/default-image.jpg"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                        />
+                      </div>
                     </Card>
 
                     {/* Instagram Note */}
