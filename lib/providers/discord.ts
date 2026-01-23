@@ -57,10 +57,18 @@ function getDiscordConfig() {
   const clientId = process.env.DISCORD_CLIENT_ID;
   const clientSecret = process.env.DISCORD_CLIENT_SECRET;
 
+  console.log('[Discord Config] Checking config...', {
+    hasClientId: !!clientId,
+    hasClientSecret: !!clientSecret,
+    clientIdLength: clientId?.length || 0,
+  });
+
   if (!clientId) {
+    console.error('[Discord Config] DISCORD_CLIENT_ID is missing!');
     throw new MissingConfigError('DISCORD_CLIENT_ID', 'discord');
   }
   if (!clientSecret) {
+    console.error('[Discord Config] DISCORD_CLIENT_SECRET is missing!');
     throw new MissingConfigError('DISCORD_CLIENT_SECRET', 'discord');
   }
 
@@ -138,9 +146,12 @@ function getAuthorizationUrl(params: AuthorizationUrlParams): AuthorizationUrlRe
  * - webhook (legacy - if webhook.incoming scope granted)
  */
 async function exchangeCodeForToken(params: TokenExchangeParams): Promise<ProcessedToken> {
+  console.log('[Discord Token Exchange] Starting token exchange...');
   const { clientId, clientSecret } = getDiscordConfig();
 
   try {
+    console.log('[Discord Token Exchange] Using redirect_uri:', params.redirectUri);
+
     const body = new URLSearchParams({
       client_id: clientId,
       client_secret: clientSecret,
@@ -157,8 +168,11 @@ async function exchangeCodeForToken(params: TokenExchangeParams): Promise<Proces
       body: body.toString(),
     });
 
+    console.log('[Discord Token Exchange] Response status:', response.status);
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error('[Discord Token Exchange] Error:', errorData);
       throw new TokenExchangeError(
         'discord',
         errorData.error_description || errorData.error || `HTTP ${response.status}`
