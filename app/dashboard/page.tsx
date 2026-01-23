@@ -815,6 +815,42 @@ export default function DashboardPage() {
           )}
         </div>
 
+        {/* Quick Links */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8">
+          <Link
+            href="/upload"
+            className="group p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all"
+          >
+            <div className="text-2xl mb-2">📤</div>
+            <h4 className="font-semibold text-text-primary group-hover:text-purple-600 transition-colors">Upload</h4>
+            <p className="text-xs text-text-secondary mt-1">Create new content</p>
+          </Link>
+          <Link
+            href="/schedule"
+            className="group p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all"
+          >
+            <div className="text-2xl mb-2">📅</div>
+            <h4 className="font-semibold text-text-primary group-hover:text-purple-600 transition-colors">Schedule</h4>
+            <p className="text-xs text-text-secondary mt-1">Plan your posts</p>
+          </Link>
+          <Link
+            href="/automations"
+            className="group p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all"
+          >
+            <div className="text-2xl mb-2">🤖</div>
+            <h4 className="font-semibold text-text-primary group-hover:text-purple-600 transition-colors">Automations</h4>
+            <p className="text-xs text-text-secondary mt-1">Blog Auto-Share</p>
+          </Link>
+          <Link
+            href="/analytics"
+            className="group p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all"
+          >
+            <div className="text-2xl mb-2">📊</div>
+            <h4 className="font-semibold text-text-primary group-hover:text-purple-600 transition-colors">Analytics</h4>
+            <p className="text-xs text-text-secondary mt-1">Track performance</p>
+          </Link>
+        </div>
+
         {/* Quick Actions CTA */}
         <GradientBanner className="mt-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
