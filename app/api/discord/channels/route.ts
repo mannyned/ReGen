@@ -84,6 +84,7 @@ export async function GET(request: NextRequest) {
     if (!guildId) {
       // Decrypt user's access token to fetch their guilds
       const accessToken = decrypt(connection.accessTokenEnc)
+      console.log('[Discord Channels] Fetching guilds with access token, token length:', accessToken?.length || 0)
 
       const guildsResponse = await fetch('https://discord.com/api/v10/users/@me/guilds', {
         headers: {
@@ -91,7 +92,11 @@ export async function GET(request: NextRequest) {
         },
       })
 
+      console.log('[Discord Channels] Guilds response status:', guildsResponse.status)
+
       if (!guildsResponse.ok) {
+        const errorData = await guildsResponse.json().catch(() => ({}))
+        console.error('[Discord Channels] Failed to fetch guilds:', errorData)
         return NextResponse.json(
           { error: 'Failed to fetch your Discord servers. Please reconnect Discord.' },
           { status: 400 }
