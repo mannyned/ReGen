@@ -73,6 +73,10 @@ model Profile {
   // YouTube metrics cache
   youtubeMetrics     YouTubeMetricsCache[]
 
+  // Blog Auto-Share
+  blogAutoShareSettings BlogAutoShareSettings?
+  blogAutoSharePosts    BlogAutoSharePost[]
+
   @@index([stripeCustomerId])
   @@index([betaUser])
   @@map("profiles")
@@ -825,6 +829,7 @@ model RssFeedItem {
   feed          RssFeed        @relation(fields: [feedId], references: [id], onDelete: Cascade)
   profile       Profile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
   contentUpload ContentUpload? @relation(fields: [contentUploadId], references: [id])
+  blogAutoSharePosts BlogAutoSharePost[]
 
   // Constraints - prevent duplicate items per feed
   @@unique([feedId, guid])
@@ -1002,4 +1007,128 @@ model YouTubeMetricsCache {
   @@index([videoId])
   @@index([fetchedAt])
   @@map("youtube_metrics_cache")
+}
+
+// ============================================
+// BLOG AUTO-SHARE AUTOMATION
+// ============================================
+
+/// BlogAutoShareSettings - User configuration for automatic blog post sharing
+/// Stores preferences for RSS-to-social automation
+model BlogAutoShareSettings {
+  id          String   @id @default(cuid())
+  profileId   String   @unique @map("profile_id") @db.Uuid
+
+  // Feature toggle
+  enabled     Boolean  @default(false)
+
+  // Platform selection (V1: instagram, facebook, twitter, linkedin, discord, pinterest)
+  platforms   String[] @default([])
+
+  // Publishing mode
+  autoPublish Boolean  @default(false) @map("auto_publish")  // false = create draft for approval
+
+  // Default fallback image URL (used when og:image not found)
+  defaultImageUrl String? @map("default_image_url")
+
+  // Quiet hours (UTC) - don't publish during these hours
+  quietHoursEnabled Boolean @default(false) @map("quiet_hours_enabled")
+  quietHoursStart   Int?    @map("quiet_hours_start")  // 0-23 hour
+  quietHoursEnd     Int?    @map("quiet_hours_end")    // 0-23 hour
+
+  // Posting windows - preferred times (UTC)
+  postingWindowEnabled Boolean @default(false) @map("posting_window_enabled")
+  postingWindowStart   Int?    @map("posting_window_start")  // 0-23 hour
+  postingWindowEnd     Int?    @map("posting_window_end")    // 0-23 hour
+
+  // Per-platform caption templates (JSON object)
+  // { "instagram": "Check out my new post! {title} {url}", "twitter": "{title} - Read more: {url}" }
+  captionTemplates Json? @map("caption_templates")
+
+  // RSS feed filter - only auto-share from specific feeds (null = all feeds)
+  feedIds String[] @map("feed_ids")
+
+  // Discord channel for auto-share (if Discord is enabled)
+  discordChannelId String? @map("discord_channel_id")
+
+  // Pinterest board for auto-share (if Pinterest is enabled)
+  pinterestBoardId String? @map("pinterest_board_id")
+
+  // LinkedIn organization URN (if posting to company page)
+  linkedinOrgUrn String? @map("linkedin_org_urn")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([enabled])
+  @@map("blog_auto_share_settings")
+}
+
+/// BlogAutoSharePost status tracking
+enum BlogAutoShareStatus {
+  PENDING       // Waiting to be processed
+  DRAFT         // Created as draft for user approval
+  QUEUED        // Approved, waiting for posting window
+  PROCESSING    // Currently being published
+  PUBLISHED     // Successfully published to all platforms
+  PARTIAL       // Published to some platforms, failed on others
+  FAILED        // Failed to publish to all platforms
+  SKIPPED       // Skipped (duplicate, quiet hours, etc.)
+
+  @@map("blog_auto_share_status")
+}
+
+/// BlogAutoSharePost - Tracks individual blog post shares
+/// Links RSS items to their cross-platform publishing results
+model BlogAutoSharePost {
+  id            String   @id @default(cuid())
+  profileId     String   @map("profile_id") @db.Uuid
+  rssFeedItemId String   @map("rss_feed_item_id")
+
+  // Extracted metadata from article
+  articleUrl      String    @map("article_url")
+  canonicalUrl    String?   @map("canonical_url")
+  ogTitle         String?   @map("og_title")
+  ogDescription   String?   @map("og_description")
+  ogImage         String?   @map("og_image")
+  articleTitle    String    @map("article_title")
+  articleExcerpt  String?   @map("article_excerpt")
+
+  // Deduplication hash (SHA256 of guid + canonical URL)
+  dedupeHash    String    @unique @map("dedupe_hash")
+
+  // Generated caption (base caption before platform-specific modifications)
+  generatedCaption String? @map("generated_caption")
+
+  // Status
+  status        BlogAutoShareStatus @default(PENDING)
+  errorMessage  String?   @map("error_message")
+
+  // Scheduling
+  scheduledAt   DateTime? @map("scheduled_at")
+  processedAt   DateTime? @map("processed_at")
+
+  // Platform results (JSON array)
+  // [{ platform: "twitter", status: "published", postId: "123", postUrl: "...", error: null }]
+  platformResults Json?   @map("platform_results")
+
+  // Timestamps
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  profile       Profile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  rssFeedItem   RssFeedItem @relation(fields: [rssFeedItemId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([rssFeedItemId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([createdAt(sort: Desc)])
+  @@map("blog_auto_share_posts")
 }

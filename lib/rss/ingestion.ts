@@ -9,11 +9,13 @@
  * - Rate limited: Processes feeds in batches
  * - Error resilient: Continues on individual feed failures
  * - Auto-pause: Disables feeds after consecutive errors
+ * - Blog Auto-Share: Triggers auto-share processing for new items
  */
 
 import { prisma } from '@/lib/db';
 import { fetchAndParseFeed, type ParsedFeedItem } from './parser';
 import type { RssFeed, RssFeedStatus } from '@prisma/client';
+import { blogAutoShareService } from '@/lib/services/blog-auto-share';
 
 // ============================================
 // CONFIGURATION
@@ -201,6 +203,7 @@ async function processFeed(feed: RssFeed): Promise<IngestionResult> {
  *
  * This is the main entry point called by the cron endpoint.
  * Processes all active feeds that need updating.
+ * Also triggers Blog Auto-Share processing for new items.
  */
 export async function runIngestionJob(): Promise<IngestionJobResult> {
   const startTime = Date.now();
@@ -219,6 +222,18 @@ export async function runIngestionJob(): Promise<IngestionJobResult> {
   const successful = results.filter((r) => r.success).length;
   const failed = results.filter((r) => !r.success).length;
   const itemsCreated = results.reduce((sum, r) => sum + r.itemsCreated, 0);
+
+  // Trigger Blog Auto-Share processing if any new items were created
+  if (itemsCreated > 0) {
+    try {
+      console.log(`[RSS Ingestion] Triggering Blog Auto-Share for ${itemsCreated} new items`);
+      const autoShareResult = await blogAutoShareService.processNewItems();
+      console.log(`[RSS Ingestion] Blog Auto-Share: ${autoShareResult.published} published, ${autoShareResult.drafts} drafts, ${autoShareResult.failed} failed`);
+    } catch (error) {
+      console.error('[RSS Ingestion] Blog Auto-Share processing failed:', error);
+      // Don't fail the entire job if auto-share fails
+    }
+  }
 
   return {
     processed: feeds.length,
