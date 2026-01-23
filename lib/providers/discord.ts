@@ -123,9 +123,15 @@ function getAuthorizationUrl(params: AuthorizationUrlParams): AuthorizationUrlRe
   authUrl.searchParams.set('redirect_uri', redirectUri);
   authUrl.searchParams.set('scope', allScopes.join(' '));
 
+  // IMPORTANT: Include state parameter for CSRF protection
+  if (params.state) {
+    authUrl.searchParams.set('state', params.state);
+  }
+
   const finalUrl = authUrl.toString();
   console.log('[Discord OAuth] Authorization URL:', finalUrl);
   console.log('[Discord OAuth] redirect_uri param:', redirectUri);
+  console.log('[Discord OAuth] state param included:', !!params.state);
 
   return {
     url: finalUrl,
