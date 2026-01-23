@@ -624,6 +624,9 @@ export default function AnalyticsPage() {
       linkedin: ['linkedin'],
       facebook: ['facebook', 'meta'], // Include 'meta' as fallback for legacy data
       snapchat: ['snapchat'],
+      pinterest: ['pinterest'],
+      discord: ['discord'],
+      reddit: ['reddit'],
     }
 
     const platformKeys = platformKeyMap[selectedPlatform] || [selectedPlatform]
@@ -842,6 +845,9 @@ export default function AnalyticsPage() {
                     <option value="twitter">Twitter</option>
                     <option value="facebook">Facebook</option>
                     <option value="snapchat">Snapchat</option>
+                    <option value="pinterest">Pinterest</option>
+                    <option value="discord">Discord</option>
+                    <option value="reddit">Reddit</option>
                   </select>
                 </div>
 
@@ -1401,7 +1407,7 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {(realStats?.engagement?.totalViews > 0 || advancedMetrics.audienceRetention > 0) && (
+                      {((realStats?.engagement?.totalViews ?? 0) > 0 || advancedMetrics.audienceRetention > 0) && (
                         <>
                           <div className="text-right hidden md:block">
                             <p className="text-2xl font-bold">{realStats?.engagement?.totalViews ? realStats.engagement.totalViews.toLocaleString() : '—'}</p>
@@ -2063,8 +2069,8 @@ export default function AnalyticsPage() {
                           <p className="text-lg font-bold text-primary">
                             {platform.reach > 0
                               ? `${platform.engagement}%`
-                              : platform.totalEngagement > 0
-                                ? platform.totalEngagement.toLocaleString()
+                              : (platform.totalEngagement ?? 0) > 0
+                                ? platform.totalEngagement?.toLocaleString()
                                 : '—'
                             }
                           </p>

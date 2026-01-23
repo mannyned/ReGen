@@ -24,7 +24,9 @@ export type OAuthProvider =
   | 'linkedin'    // LinkedIn Personal Profile
   | 'linkedin-org'  // LinkedIn Company Page (Community Management API)
   | 'snapchat'
-  | 'discord';    // Discord
+  | 'discord'
+  | 'reddit'
+  | 'pinterest';
 
 /**
  * Provider capability flags

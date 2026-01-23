@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { emails, userIds, durationDays = 30 } = body;
+    const { emails, userIds, durationDays = 30, extendOnly = false } = body;
 
     // Validate input
     if (!emails?.length && !userIds?.length) {
@@ -143,11 +143,54 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Separate already-beta users
+    // Separate already-beta users from new beta users
     const alreadyBeta = profiles.filter(p => p.betaUser);
     const toAssign = profiles.filter(p => !p.betaUser);
 
-    // Assign beta access to existing users and upgrade to PRO
+    // Track counts
+    let assignedCount = 0;
+    let invitedCount = 0;
+    const emailsSent: string[] = [];
+    const emailsFailed: string[] = [];
+
+    // In extendOnly mode, only extend existing beta users
+    if (extendOnly) {
+      // Extend beta access for existing beta users only
+      if (alreadyBeta.length > 0) {
+        await prisma.profile.updateMany({
+          where: {
+            id: {
+              in: alreadyBeta.map(p => p.id),
+            },
+          },
+          data: {
+            betaExpiresAt: expiresAt,
+          },
+        });
+      }
+
+      // Calculate not found (non-beta users + emails not in system)
+      const notFoundCount = toAssign.length + notFoundEmails.length;
+
+      console.log('[Admin] Beta access extended:', {
+        extended: alreadyBeta.length,
+        notFound: notFoundCount,
+        expiresAt: expiresAt.toISOString(),
+      });
+
+      return NextResponse.json({
+        success: true,
+        assigned: 0,
+        extended: alreadyBeta.length,
+        invited: 0,
+        notFound: notFoundCount,
+        emailsSent: 0,
+        emailsFailed: 0,
+        expiresAt: expiresAt.toISOString(),
+      });
+    }
+
+    // Normal mode: Assign beta access to new users and upgrade to PRO
     if (toAssign.length > 0) {
       await prisma.profile.updateMany({
         where: {
@@ -161,13 +204,24 @@ export async function POST(request: NextRequest) {
           betaExpiresAt: expiresAt,
         },
       });
+      assignedCount = toAssign.length;
+    }
+
+    // Extend beta access for existing beta users
+    if (alreadyBeta.length > 0) {
+      await prisma.profile.updateMany({
+        where: {
+          id: {
+            in: alreadyBeta.map(p => p.id),
+          },
+        },
+        data: {
+          betaExpiresAt: expiresAt,
+        },
+      });
     }
 
     // Create beta invites for non-existing users
-    let invitedCount = 0;
-    const emailsSent: string[] = [];
-    const emailsFailed: string[] = [];
-
     if (notFoundEmails.length > 0) {
       // Check for existing invites
       const existingInvites = await prisma.betaInvite.findMany({
@@ -217,9 +271,9 @@ export async function POST(request: NextRequest) {
 
     // Log the action (non-sensitive info only)
     console.log('[Admin] Beta access assigned:', {
-      assigned: toAssign.length,
+      assigned: assignedCount,
+      extended: alreadyBeta.length,
       invited: invitedCount,
-      skipped: alreadyBeta.length,
       emailsSent: emailsSent.length,
       emailsFailed: emailsFailed.length,
       expiresAt: expiresAt.toISOString(),
@@ -227,9 +281,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      assigned: toAssign.length,
+      assigned: assignedCount,
+      extended: alreadyBeta.length,
       invited: invitedCount,
-      skipped: alreadyBeta.length,
       emailsSent: emailsSent.length,
       emailsFailed: emailsFailed.length,
       expiresAt: expiresAt.toISOString(),

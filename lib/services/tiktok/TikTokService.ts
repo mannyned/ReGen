@@ -470,7 +470,7 @@ export class TikTokService {
     return {
       success: true,
       postId,
-      status: publishStatus.status === 'PUBLISH_COMPLETE' ? 'published' : 'processing',
+      status: publishStatus.status === 'PUBLISH_COMPLETE' ? 'posted' : 'processing',
       publishId,
       tiktokVideoId: publishStatus.video_id,
       message: publishStatus.status === 'PUBLISH_COMPLETE'
@@ -605,7 +605,7 @@ export class TikTokService {
     return {
       success: true,
       postId,
-      status: publishStatus.status === 'PUBLISH_COMPLETE' ? 'published' : 'processing',
+      status: publishStatus.status === 'PUBLISH_COMPLETE' ? 'posted' : 'processing',
       publishId,
       tiktokVideoId: publishStatus.video_id,
       message: publishStatus.status === 'PUBLISH_COMPLETE'

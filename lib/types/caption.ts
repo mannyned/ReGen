@@ -82,6 +82,11 @@ export const PLATFORM_CHARACTER_LIMITS: Record<SocialPlatform, {
     hashtags: 0, // Discord doesn't use hashtags
     warningThreshold: 90,
   },
+  reddit: {
+    caption: 40000, // Reddit self-post text limit
+    hashtags: 0, // Reddit doesn't use hashtags
+    warningThreshold: 95,
+  },
 }
 
 // ============================================
@@ -327,6 +332,9 @@ export const PLATFORM_ADAPTATION_PRESETS: Record<SocialPlatform, AdaptationOptio
   ],
   discord: [
     { adaptation: 'casual_tone', enabled: true },
+    { adaptation: 'remove_hashtags', enabled: true },
+  ],
+  reddit: [
     { adaptation: 'remove_hashtags', enabled: true },
   ],
 }

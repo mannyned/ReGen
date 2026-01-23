@@ -63,7 +63,7 @@ export async function GET(
   } catch (error) {
     console.error('[OAuth Callback Error]', { provider, error });
 
-    const oauthError = isOAuthError(error) ? error : wrapError(error, provider as 'meta' | 'tiktok' | 'google' | 'x' | 'linkedin' | 'linkedin-org');
+    const oauthError = isOAuthError(error) ? error : wrapError(error, provider as import('@/lib/oauth/types').OAuthProvider);
 
     // Redirect to callback success page with error (will auto-close popup)
     return NextResponse.redirect(

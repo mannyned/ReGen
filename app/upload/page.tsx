@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import type { SocialPlatform } from '@/lib/types/social'
 
 type UploadType = 'video' | 'image' | 'media' | 'text'
-type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'linkedin-org' | 'snapchat' | 'pinterest' | 'discord'
+type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'linkedin-org' | 'snapchat' | 'pinterest' | 'discord' | 'reddit'
 
 // Map Platform type to SocialPlatform for logo component
 const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
@@ -24,6 +24,7 @@ const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
   'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
+  'reddit': 'reddit',
 }
 type ContentType = 'post' | 'story'
 
@@ -31,6 +32,14 @@ interface UploadedFileData {
   file: File
   previewUrl: string
   fileId: string
+}
+
+interface PinterestBoard {
+  id: string
+  name: string
+  description?: string
+  pinCount?: number
+  privacy?: string
 }
 
 // Platform limits for carousel/multi-media posts
@@ -45,6 +54,7 @@ const PLATFORM_LIMITS = {
   'linkedin-org': { post: 20, story: 1 },  // Company page: same as personal
   pinterest: { post: 5, story: 1 },   // Carousel pin: 2-5 images
   discord: { post: 10, story: 1 },    // Multi-attachment: up to 10
+  reddit: { post: 1, story: 1 },      // Single image/video per post
 }
 
 // Carousel-specific constraints for validation
@@ -64,6 +74,7 @@ const CAROUSEL_PLATFORM_INFO: Record<Platform, {
   'linkedin-org': { minItems: 2, maxItems: 20, allowVideo: false, description: 'Company page multi-image (images only)' },
   pinterest: { minItems: 2, maxItems: 5, allowVideo: false, description: 'Carousel pin (images only)' },
   discord: { minItems: 1, maxItems: 10, allowVideo: true, description: 'Multi-attachment message' },
+  reddit: { minItems: 1, maxItems: 1, allowVideo: true, description: 'Single image or video post' },
 }
 
 const platforms = [
@@ -77,6 +88,7 @@ const platforms = [
   { id: 'snapchat' as Platform, name: 'Snapchat', icon: '👻', color: 'bg-gradient-to-br from-yellow-400 to-yellow-500' },
   { id: 'pinterest' as Platform, name: 'Pinterest', icon: '📌', color: 'bg-gradient-to-br from-red-600 to-red-500' },
   { id: 'discord' as Platform, name: 'Discord', icon: '💬', color: 'bg-gradient-to-br from-indigo-600 to-indigo-500' },
+  { id: 'reddit' as Platform, name: 'Reddit', icon: '🤖', color: 'bg-gradient-to-br from-orange-500 to-orange-600' },
 ]
 
 // Inner component that uses useSearchParams
@@ -96,6 +108,12 @@ function UploadPageContent() {
   const [customHashtags, setCustomHashtags] = useState('')
   const [mounted, setMounted] = useState(false)
   const [isRedirectingDraft, setIsRedirectingDraft] = useState(false)
+
+  // Pinterest board selection
+  const [pinterestBoards, setPinterestBoards] = useState<PinterestBoard[]>([])
+  const [selectedPinterestBoard, setSelectedPinterestBoard] = useState<string>('')
+  const [loadingPinterestBoards, setLoadingPinterestBoards] = useState(false)
+  const [pinterestBoardsError, setPinterestBoardsError] = useState<string | null>(null)
 
   // Check for draft parameter and redirect to generate page - runs first
   const draftId = searchParams.get('draft')
@@ -234,6 +252,46 @@ function UploadPageContent() {
     }
   }, [uploadedFiles])
 
+  // Fetch Pinterest boards when Pinterest is selected and user is connected
+  useEffect(() => {
+    const fetchPinterestBoards = async () => {
+      // Only fetch if Pinterest is selected, user is authenticated, and Pinterest is connected
+      if (!selectedPlatforms.includes('pinterest') || !user?.id || !connectedAccounts.includes('pinterest')) {
+        setPinterestBoards([])
+        setSelectedPinterestBoard('')
+        setPinterestBoardsError(null)
+        return
+      }
+
+      setLoadingPinterestBoards(true)
+      setPinterestBoardsError(null)
+
+      try {
+        const response = await fetch(`/api/pinterest/boards?userId=${user.id}`)
+        const data = await response.json()
+
+        if (data.success && data.boards) {
+          setPinterestBoards(data.boards)
+          // Auto-select first board if none selected
+          if (data.boards.length > 0 && !selectedPinterestBoard) {
+            setSelectedPinterestBoard(data.boards[0].id)
+          }
+        } else {
+          setPinterestBoardsError(data.error || 'Failed to load boards')
+          setPinterestBoards([])
+        }
+      } catch (error) {
+        console.error('Error fetching Pinterest boards:', error)
+        setPinterestBoardsError('Failed to load Pinterest boards')
+        setPinterestBoards([])
+      } finally {
+        setLoadingPinterestBoards(false)
+      }
+    }
+
+    fetchPinterestBoards()
+  }, [selectedPlatforms, user?.id, connectedAccounts])
+
   const togglePlatform = (platformId: Platform) => {
     setSelectedPlatforms(prev =>
       prev.includes(platformId)
@@ -343,6 +401,18 @@ function UploadPageContent() {
       return
     }
 
+    // Validate Pinterest board selection
+    if (selectedPlatforms.includes('pinterest') && connectedAccounts.includes('pinterest')) {
+      if (!selectedPinterestBoard && pinterestBoards.length > 0) {
+        alert('Please select a Pinterest board to pin to')
+        return
+      }
+      if (pinterestBoards.length === 0 && !loadingPinterestBoards) {
+        alert('No Pinterest boards found. Please create a board on Pinterest first, or deselect Pinterest.')
+        return
+      }
+    }
+
     setIsUploading(true)
 
     try {
@@ -397,6 +467,12 @@ function UploadPageContent() {
           customHashtags,
           textContent,
           urlContent,
+          // Platform-specific settings
+          platformSettings: {
+            pinterest: selectedPlatforms.includes('pinterest') ? {
+              boardId: selectedPinterestBoard || undefined,
+            } : undefined,
+          },
         }),
       })
 
@@ -445,7 +521,13 @@ function UploadPageContent() {
           customHashtags,
           files: fileMetadata,
           textContent,
-          urlContent
+          urlContent,
+          // Platform-specific settings
+          platformSettings: {
+            pinterest: selectedPlatforms.includes('pinterest') ? {
+              boardId: selectedPinterestBoard || undefined,
+            } : undefined,
+          },
         }
 
         localStorage.setItem('uploadData', JSON.stringify(uploadData))
@@ -1191,6 +1273,75 @@ function UploadPageContent() {
                     </p>
                     <p className="text-xs text-green-600 mt-1">
                       ✓ You'll select your Company Page on the Schedule page
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Pinterest Board Selection */}
+            {selectedPlatforms.includes('pinterest') && connectedAccounts.includes('pinterest') && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                    <span className="text-lg">📌</span>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-medium text-red-800 mb-2">Pinterest Board Selection</h4>
+                    <p className="text-xs text-red-700 mb-3">
+                      Choose which board to pin your content to
+                    </p>
+
+                    {loadingPinterestBoards ? (
+                      <div className="flex items-center gap-2 text-sm text-red-600">
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Loading boards...
+                      </div>
+                    ) : pinterestBoardsError ? (
+                      <div className="text-sm text-red-600">
+                        <span className="font-medium">Error:</span> {pinterestBoardsError}
+                      </div>
+                    ) : pinterestBoards.length === 0 ? (
+                      <div className="text-sm text-red-600">
+                        No boards found. <a href="https://pinterest.com" target="_blank" rel="noopener noreferrer" className="underline">Create a board on Pinterest</a> first.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <select
+                          value={selectedPinterestBoard}
+                          onChange={(e) => setSelectedPinterestBoard(e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                        >
+                          {pinterestBoards.map((board) => (
+                            <option key={board.id} value={board.id}>
+                              {board.name} {board.pinCount ? `(${board.pinCount} pins)` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedPinterestBoard && (
+                          <p className="text-xs text-red-600">
+                            ✓ Pins will be added to: <span className="font-medium">{pinterestBoards.find(b => b.id === selectedPinterestBoard)?.name}</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Pinterest Not Connected Warning */}
+            {selectedPlatforms.includes('pinterest') && !connectedAccounts.includes('pinterest') && (
+              <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">📌</span>
+                  <div>
+                    <p className="text-sm font-medium text-amber-900">Pinterest not connected</p>
+                    <p className="text-xs text-amber-700">
+                      <Link href="/settings" className="underline font-medium">Connect your Pinterest account</Link> to select a board and publish pins.
                     </p>
                   </div>
                 </div>

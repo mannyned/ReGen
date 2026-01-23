@@ -1,26 +1,23 @@
 /**
  * Discord OAuth Provider
  *
- * Discord uses OAuth 2.0 for authentication and authorization.
+ * Discord uses OAuth 2.0 with refresh tokens.
  *
  * Key characteristics:
+ * - Standard OAuth 2.0 flow
  * - Access tokens expire in 7 days
- * - Refresh tokens are long-lived
- * - Supports token refresh
- * - Token verification via user lookup endpoint
- * - No PKCE required
+ * - Refresh tokens don't expire (unless revoked)
+ * - webhook.incoming scope allows creating webhooks during OAuth
  *
  * Scopes:
- * - identify: Read user info (id, username, avatar, etc.)
- * - guilds: Read user's guilds/servers
- * - webhook.incoming: Create webhooks for posting to channels
+ * - identify: Access user identity
+ * - guilds: Access user's servers
+ * - webhook.incoming: Create webhooks for posting
  *
  * @see https://discord.com/developers/docs/topics/oauth2
- * @see https://discord.com/developers/docs/resources/user#get-current-user
  */
 
 import type {
-  OAuthProvider,
   OAuthProviderInterface,
   ProviderConfig,
   AuthorizationUrlParams,
@@ -45,9 +42,9 @@ import { registerProvider } from '../oauth/engine';
 // CONFIGURATION
 // ============================================
 
-const DISCORD_AUTH_URL = 'https://discord.com/api/oauth2/authorize';
+const DISCORD_AUTH_URL = 'https://discord.com/oauth2/authorize';
 const DISCORD_TOKEN_URL = 'https://discord.com/api/oauth2/token';
-const DISCORD_USER_URL = 'https://discord.com/api/users/@me';
+const DISCORD_USER_URL = 'https://discord.com/api/v10/users/@me';
 const DISCORD_REVOKE_URL = 'https://discord.com/api/oauth2/token/revoke';
 
 /**
@@ -58,10 +55,10 @@ function getDiscordConfig() {
   const clientSecret = process.env.DISCORD_CLIENT_SECRET;
 
   if (!clientId) {
-    throw new MissingConfigError('DISCORD_CLIENT_ID', PROVIDER_ID);
+    throw new MissingConfigError('DISCORD_CLIENT_ID', 'discord');
   }
   if (!clientSecret) {
-    throw new MissingConfigError('DISCORD_CLIENT_SECRET', PROVIDER_ID);
+    throw new MissingConfigError('DISCORD_CLIENT_SECRET', 'discord');
   }
 
   return { clientId, clientSecret };
@@ -70,27 +67,24 @@ function getDiscordConfig() {
 /**
  * Provider configuration
  */
-const PROVIDER_ID: OAuthProvider = 'discord';
-
 const config: ProviderConfig = {
-  id: PROVIDER_ID,
+  id: 'discord',
   displayName: 'Discord',
   authorizationUrl: DISCORD_AUTH_URL,
   tokenUrl: DISCORD_TOKEN_URL,
   identityUrl: DISCORD_USER_URL,
 
   // Scopes for Discord API
-  // See: https://discord.com/developers/docs/topics/oauth2#shared-resources-oauth2-scopes
   scopes: [
-    'identify',           // Read user info
-    'guilds',             // Read user's guilds
+    'identify',           // Access user identity
+    'guilds',             // Access user's servers
     'webhook.incoming',   // Create webhooks for posting to channels
   ],
 
   capabilities: {
     supportsRefresh: true,           // Refresh tokens supported
     supportsTokenVerification: false, // No dedicated verification endpoint
-    tokensExpire: true,              // Access tokens expire in 7 days
+    tokensExpire: true,              // Access tokens expire in ~7 days
     requiresPKCE: false,             // PKCE not required
     supportsTokenExchange: false,    // No short/long lived exchange
   },
@@ -103,7 +97,7 @@ const config: ProviderConfig = {
 /**
  * Generate authorization URL
  *
- * Discord uses standard OAuth 2.0 authorization code flow.
+ * Discord OAuth requires response_type=code for authorization code flow
  */
 function getAuthorizationUrl(params: AuthorizationUrlParams): AuthorizationUrlResult {
   const { clientId } = getDiscordConfig();
@@ -115,13 +109,17 @@ function getAuthorizationUrl(params: AuthorizationUrlParams): AuthorizationUrlRe
 
   const authUrl = new URL(config.authorizationUrl);
   authUrl.searchParams.set('client_id', clientId);
-  authUrl.searchParams.set('redirect_uri', redirectUri);
-  authUrl.searchParams.set('state', params.state);
-  authUrl.searchParams.set('scope', allScopes.join(' ')); // Space-separated scopes
   authUrl.searchParams.set('response_type', 'code');
+  authUrl.searchParams.set('redirect_uri', redirectUri);
+  authUrl.searchParams.set('integration_type', '0');
+  authUrl.searchParams.set('scope', allScopes.join(' '));
+
+  const finalUrl = authUrl.toString();
+  console.log('[Discord OAuth] Authorization URL:', finalUrl);
+  console.log('[Discord OAuth] redirect_uri param:', redirectUri);
 
   return {
-    url: authUrl.toString(),
+    url: finalUrl,
     state: params.state,
   };
 }
@@ -130,11 +128,12 @@ function getAuthorizationUrl(params: AuthorizationUrlParams): AuthorizationUrlRe
  * Exchange authorization code for tokens
  *
  * Discord returns:
- * - access_token (7 day lifetime)
- * - refresh_token (long-lived)
+ * - access_token (~7 day lifetime)
+ * - refresh_token (doesn't expire)
  * - expires_in (seconds)
  * - token_type (Bearer)
  * - scope (granted scopes)
+ * - webhook (if webhook.incoming scope granted)
  */
 async function exchangeCodeForToken(params: TokenExchangeParams): Promise<ProcessedToken> {
   const { clientId, clientSecret } = getDiscordConfig();
@@ -159,7 +158,7 @@ async function exchangeCodeForToken(params: TokenExchangeParams): Promise<Proces
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new TokenExchangeError(
-        PROVIDER_ID,
+        'discord',
         errorData.error_description || errorData.error || `HTTP ${response.status}`
       );
     }
@@ -167,7 +166,7 @@ async function exchangeCodeForToken(params: TokenExchangeParams): Promise<Proces
     const data = await response.json();
 
     if (!data.access_token) {
-      throw new TokenExchangeError(PROVIDER_ID, 'No access token in response');
+      throw new TokenExchangeError('discord', 'No access token in response');
     }
 
     const expiresAt = data.expires_in
@@ -188,7 +187,7 @@ async function exchangeCodeForToken(params: TokenExchangeParams): Promise<Proces
       throw error;
     }
     throw new TokenExchangeError(
-      PROVIDER_ID,
+      'discord',
       error instanceof Error ? error.message : 'Unknown error'
     );
   }
@@ -196,9 +195,6 @@ async function exchangeCodeForToken(params: TokenExchangeParams): Promise<Proces
 
 /**
  * Refresh an expired access token
- *
- * Discord refresh tokens are long-lived.
- * A new refresh token may be returned with each refresh.
  */
 async function refreshAccessToken(params: RefreshTokenParams): Promise<ProcessedToken> {
   const { clientId, clientSecret } = getDiscordConfig();
@@ -222,7 +218,7 @@ async function refreshAccessToken(params: RefreshTokenParams): Promise<Processed
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new TokenRefreshError(
-        PROVIDER_ID,
+        'discord',
         errorData.error_description || errorData.error || `HTTP ${response.status}`
       );
     }
@@ -235,7 +231,6 @@ async function refreshAccessToken(params: RefreshTokenParams): Promise<Processed
 
     return {
       accessToken: data.access_token,
-      // Discord may return a new refresh token
       refreshToken: data.refresh_token || params.refreshToken,
       tokenType: data.token_type || 'Bearer',
       expiresIn: data.expires_in,
@@ -248,7 +243,7 @@ async function refreshAccessToken(params: RefreshTokenParams): Promise<Processed
       throw error;
     }
     throw new TokenRefreshError(
-      PROVIDER_ID,
+      'discord',
       error instanceof Error ? error.message : 'Token refresh failed'
     );
   }
@@ -288,52 +283,40 @@ async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new IdentityFetchError(
-        PROVIDER_ID,
-        errorData.message || `HTTP ${response.status}`
+        'discord',
+        errorData.message || errorData.error || `HTTP ${response.status}`
       );
     }
 
-    const userData = await response.json();
+    const data = await response.json();
 
-    if (!userData || !userData.id) {
-      throw new IdentityFetchError(PROVIDER_ID, 'No user data in response');
+    if (!data.id) {
+      throw new IdentityFetchError('discord', 'No user data in response');
     }
 
-    // Build avatar URL if avatar hash exists
-    let avatarUrl: string | undefined;
-    if (userData.avatar) {
-      const ext = userData.avatar.startsWith('a_') ? 'gif' : 'png';
-      avatarUrl = `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.${ext}`;
-    } else if (userData.discriminator && userData.discriminator !== '0') {
-      // Default avatar for users with discriminator (legacy)
-      avatarUrl = `https://cdn.discordapp.com/embed/avatars/${parseInt(userData.discriminator) % 5}.png`;
-    } else {
-      // Default avatar for users without discriminator (new username system)
-      avatarUrl = `https://cdn.discordapp.com/embed/avatars/${(BigInt(userData.id) >> 22n) % 6n}.png`;
-    }
-
-    // Format display name
-    const displayName = userData.global_name || userData.username;
+    // Discord avatar URL construction
+    const avatarUrl = data.avatar
+      ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png`
+      : `https://cdn.discordapp.com/embed/avatars/${parseInt(data.discriminator || '0') % 5}.png`;
 
     return {
-      providerAccountId: userData.id,
-      displayName,
-      email: userData.email,
+      providerAccountId: data.id,
+      displayName: data.global_name || data.username,
       avatarUrl,
       metadata: {
-        discordId: userData.id,
-        username: userData.username,
-        globalName: userData.global_name,
-        discriminator: userData.discriminator,
-        avatar: userData.avatar,
-        banner: userData.banner,
-        accentColor: userData.accent_color,
-        locale: userData.locale,
-        verified: userData.verified,
-        mfaEnabled: userData.mfa_enabled,
-        premiumType: userData.premium_type,
-        publicFlags: userData.public_flags,
-        flags: userData.flags,
+        discordId: data.id,
+        username: data.username,
+        globalName: data.global_name,
+        discriminator: data.discriminator,
+        avatar: data.avatar,
+        email: data.email,
+        verified: data.verified,
+        mfaEnabled: data.mfa_enabled,
+        banner: data.banner,
+        accentColor: data.accent_color,
+        locale: data.locale,
+        premiumType: data.premium_type,
+        publicFlags: data.public_flags,
       },
     };
   } catch (error) {
@@ -341,7 +324,7 @@ async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
       throw error;
     }
     throw new IdentityFetchError(
-      PROVIDER_ID,
+      'discord',
       error instanceof Error ? error.message : 'Failed to fetch identity'
     );
   }

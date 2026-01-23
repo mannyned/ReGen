@@ -1129,6 +1129,7 @@ export class PDFExportService {
       snapchat: 'Snapchat',
       pinterest: 'Pinterest',
       discord: 'Discord',
+      reddit: 'Reddit',
     }
     return names[platform] || platform
   }
@@ -1146,6 +1147,7 @@ export class PDFExportService {
       snapchat: '👻',
       pinterest: '📌',
       discord: '💬',
+      reddit: '🤖',
     }
     return icons[platform] || '📱'
   }

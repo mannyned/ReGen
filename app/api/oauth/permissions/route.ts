@@ -23,6 +23,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserId } from '@/lib/auth/getUser'
 import { tokenManager } from '@/lib/services/oauth/TokenManager'
+import type { SocialPlatform } from '@/lib/types/social'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -148,9 +149,9 @@ export async function GET(request: NextRequest) {
 
     // Map platform names
     const normalizedPlatform = platform.toLowerCase()
-    const tokenPlatform = normalizedPlatform === 'facebook' || normalizedPlatform === 'instagram'
+    const tokenPlatform = (normalizedPlatform === 'facebook' || normalizedPlatform === 'instagram'
       ? 'meta'
-      : normalizedPlatform
+      : normalizedPlatform) as SocialPlatform
 
     // Get access token
     const accessToken = await tokenManager.getValidAccessToken(profileId, tokenPlatform)

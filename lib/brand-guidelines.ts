@@ -76,6 +76,11 @@ export const BRAND_RESOURCE_URLS: Record<SocialPlatform, {
     pressKit: 'https://about.meta.com/brand/resources/',
     trademark: 'https://about.meta.com/brand/resources/',
   },
+  reddit: {
+    brandGuidelines: 'https://www.redditinc.com/brand',
+    pressKit: 'https://www.redditinc.com/press',
+    trademark: 'https://www.redditinc.com/policies/trademark-use-policy',
+  },
 }
 
 /**
@@ -157,6 +162,12 @@ export const BRAND_COLORS: Record<SocialPlatform, {
     background: 'linear-gradient(45deg, #0081FB 0%, #833AB4 50%, #E4405F 100%)',
     text: '#FFFFFF',
     safeZone: '25%',
+  },
+  reddit: {
+    primary: '#FF4500',
+    background: '#FF4500',
+    text: '#FFFFFF',
+    safeZone: '20%',
   },
 }
 
@@ -289,6 +300,17 @@ export const LOGO_USAGE_RULES: Record<SocialPlatform, {
     ],
     allowedBackgrounds: ['White', 'Light backgrounds', 'Dark backgrounds'],
   },
+  reddit: {
+    minSize: 24,
+    allowedVariants: ['color', 'monochrome', 'white'],
+    restrictions: [
+      'Do not modify the Snoo mascot',
+      'Use official Reddit Orange (#FF4500)',
+      'Do not add effects or filters',
+      'Maintain clear space around logo',
+    ],
+    allowedBackgrounds: ['White', 'Reddit Orange', 'Dark backgrounds'],
+  },
 }
 
 /**
@@ -353,6 +375,11 @@ export const TRADEMARK_INFO: Record<SocialPlatform, {
     owner: 'Meta Platforms, Inc.',
     registeredName: 'Meta',
     copyrightYear: 2021,
+  },
+  reddit: {
+    owner: 'Reddit, Inc.',
+    registeredName: 'Reddit',
+    copyrightYear: 2005,
   },
 }
 

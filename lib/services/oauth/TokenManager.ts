@@ -64,6 +64,7 @@ function toPrismaPlatform(platform: SocialPlatform): PrismaSocialPlatform {
     snapchat: 'SNAPCHAT',
     pinterest: 'PINTEREST',
     discord: 'DISCORD',
+    reddit: 'REDDIT',
   }
   return mapping[platform]
 }

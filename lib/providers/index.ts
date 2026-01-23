@@ -24,6 +24,8 @@ export { xProvider } from './x';
 export { linkedinProvider } from './linkedin';
 export { linkedinOrgProvider } from './linkedin-org';
 export { snapchatProvider } from './snapchat';
+export { redditProvider } from './reddit';
+export { pinterestProvider } from './pinterest';
 export { discordProvider } from './discord';
 
 // Re-export types for convenience
@@ -66,10 +68,20 @@ export const PROVIDER_CONFIGS = {
     platforms: ['Snapchat'],
     features: ['Login', 'Share (User-Initiated)'],
   },
+  reddit: {
+    displayName: 'Reddit',
+    platforms: ['Reddit'],
+    features: ['Text Posts', 'Link Posts', 'Image Posts'],
+  },
+  pinterest: {
+    displayName: 'Pinterest',
+    platforms: ['Pinterest'],
+    features: ['Pins', 'Boards', 'Analytics'],
+  },
   discord: {
     displayName: 'Discord',
     platforms: ['Discord'],
-    features: ['Webhooks', 'Server Integration'],
+    features: ['Webhooks', 'Channel Posts', 'Embeds', 'Images'],
   },
 } as const;
 

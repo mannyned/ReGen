@@ -260,6 +260,7 @@ export class CSVExportService {
       snapchat: 'Snapchat',
       pinterest: 'Pinterest',
       discord: 'Discord',
+      reddit: 'Reddit',
     }
     return names[platform] || platform
   }
