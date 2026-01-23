@@ -115,6 +115,13 @@ class DiscordPublisher extends BasePlatformPublisher {
   async publishContent(options: PublishOptions): Promise<PublishResult> {
     const { userId, content, media, discordChannelId } = options
 
+    console.log('[DiscordPublisher] publishContent called:', {
+      userId,
+      discordChannelId,
+      hasDiscordChannelId: !!discordChannelId,
+      optionsKeys: Object.keys(options),
+    })
+
     try {
       const botToken = this.getBotToken()
 
@@ -127,6 +134,7 @@ class DiscordPublisher extends BasePlatformPublisher {
       }
 
       const channelId = await this.getChannelId(userId, discordChannelId)
+      console.log('[DiscordPublisher] getChannelId returned:', channelId)
 
       if (!channelId) {
         return {
