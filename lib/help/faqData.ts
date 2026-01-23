@@ -84,7 +84,6 @@ Our AI analyzes your content's tone, key messages, and structure to create engag
 | Facebook | 10 | Yes |
 | Twitter/X | 4 | Images only |
 | LinkedIn | 20 | Images only |
-| Snapchat | 10 | Yes |
 | Discord | 10 | Yes |
 | Pinterest | 5 | Images only |
 
@@ -913,7 +912,7 @@ When connected with Community Management API access:
 **Platform Filtering:**
 Select specific platforms to include in your export:
 - Instagram, TikTok, YouTube, Twitter/X
-- LinkedIn, Facebook, Snapchat
+- LinkedIn, Facebook
 - Pinterest, Discord
 
 Leave empty to export all connected platforms.`,
@@ -938,7 +937,7 @@ Leave empty to export all connected platforms.`,
 Discord's Bot API is designed for posting messages, not analytics. Unlike platforms like Instagram or TikTok that have dedicated analytics APIs, Discord doesn't expose engagement metrics for bot-posted messages.
 
 **Platforms with full analytics:**
-Instagram, TikTok, YouTube, Facebook, LinkedIn, Twitter/X, Pinterest, and Snapchat all provide engagement data that appears in your ReGenr analytics dashboard.`,
+Instagram, TikTok, YouTube, Facebook, LinkedIn, Twitter/X, and Pinterest all provide engagement data that appears in your ReGenr analytics dashboard.`,
       },
       {
         id: 'caption-usage-analytics',

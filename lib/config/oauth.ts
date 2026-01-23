@@ -164,26 +164,7 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
   },
 
   // ============================================
-  // SNAPCHAT
-  // ============================================
-  snapchat: {
-    clientId: process.env.SNAPCHAT_CLIENT_ID || '',
-    clientSecret: process.env.SNAPCHAT_CLIENT_SECRET || '',
-    authUrl: 'https://accounts.snapchat.com/login/oauth2/authorize',
-    tokenUrl: 'https://accounts.snapchat.com/login/oauth2/access_token',
-    refreshUrl: 'https://accounts.snapchat.com/login/oauth2/access_token',
-    revokeUrl: 'https://accounts.snapchat.com/login/oauth2/revoke_token',
-    scopes: [
-      'snapchat-marketing-api',
-      'snapchat-profile-api',
-    ],
-    responseType: 'code',
-    grantType: 'authorization_code',
-    pkceRequired: true,
-  },
-
-  // ============================================
-  // PINTEREST (Coming Soon)
+  // PINTEREST
   // ============================================
   pinterest: {
     clientId: process.env.PINTEREST_CLIENT_ID || '',
@@ -280,7 +261,6 @@ export const API_BASE_URLS: Record<SocialPlatform, string> = {
   'linkedin-org': 'https://api.linkedin.com/v2',
   facebook: 'https://graph.facebook.com/v21.0',
   meta: 'https://graph.facebook.com/v21.0',
-  snapchat: 'https://adsapi.snapchat.com/v1',
   pinterest: 'https://api.pinterest.com/v5',
   discord: 'https://discord.com/api/v10',
   reddit: 'https://oauth.reddit.com',
@@ -299,7 +279,6 @@ export const RATE_LIMITS: Record<SocialPlatform, { maxRequests: number; windowMs
   'linkedin-org': { maxRequests: 100, windowMs: 24 * 60 * 60 * 1000 }, // 100/day (same as linkedin)
   facebook: { maxRequests: 200, windowMs: 60 * 60 * 1000 }, // 200/hour
   meta: { maxRequests: 200, windowMs: 60 * 60 * 1000 }, // 200/hour (same as FB)
-  snapchat: { maxRequests: 100, windowMs: 60 * 1000 }, // 100/minute
   pinterest: { maxRequests: 1000, windowMs: 60 * 60 * 1000 }, // 1000/hour
   discord: { maxRequests: 50, windowMs: 1000 }, // 50/second
   reddit: { maxRequests: 60, windowMs: 60 * 1000 }, // 60/minute (OAuth)
@@ -364,13 +343,6 @@ export const CONTENT_LIMITS: Record<SocialPlatform, {
     maxVideoLengthSeconds: 14400, // 4 hours
     maxFileSizeMb: 10000, // 10GB
     supportedFormats: ['mp4', 'mov', 'wmv', 'avi', 'jpg', 'jpeg', 'png'],
-  },
-  snapchat: {
-    maxCaptionLength: 250,
-    maxHashtags: 10,
-    maxVideoLengthSeconds: 180,
-    maxFileSizeMb: 1000,
-    supportedFormats: ['mp4', 'mov', 'jpg', 'jpeg', 'png'],
   },
   pinterest: {
     maxCaptionLength: 500,

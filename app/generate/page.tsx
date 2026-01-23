@@ -14,7 +14,7 @@ import type { PrimaryCaption, PlatformCaptionInstance, CaptionAnalyticsMetadata 
 import { PlatformLogo } from '../components/ui'
 
 type CaptionTone = 'professional' | 'engaging' | 'casual'
-type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'snapchat' | 'pinterest' | 'discord' | 'reddit'
+type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'pinterest' | 'discord' | 'reddit'
 type ContentType = 'post' | 'story'
 
 // Map local Platform type to SocialPlatform
@@ -25,7 +25,6 @@ const PLATFORM_MAP: Record<Platform, SocialPlatform> = {
   'facebook': 'facebook',
   'x': 'twitter',
   'linkedin': 'linkedin',
-  'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
   'reddit': 'reddit',

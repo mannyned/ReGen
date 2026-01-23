@@ -68,8 +68,8 @@ export const LANDING_FAQ_SECTIONS: LandingFAQSection[] = [
       {
         id: 'supported-platforms',
         question: 'Which social media platforms are supported?',
-        answer: `ReGenr currently supports Instagram, Facebook, TikTok, YouTube, Twitter/X, LinkedIn, Snapchat, Pinterest, and Discord. We're constantly adding new platforms based on user feedback.`,
-        highlight: '9+ platforms supported',
+        answer: `ReGenr currently supports Instagram, Facebook, TikTok, YouTube, Twitter/X, LinkedIn, Pinterest, and Discord. We're constantly adding new platforms based on user feedback.`,
+        highlight: '8 platforms supported',
       },
       {
         id: 'content-types',
@@ -100,7 +100,7 @@ export const LANDING_FAQ_SECTIONS: LandingFAQSection[] = [
         question: 'Does ReGenr provide analytics?',
         answer: `Yes. Track your content performance across all connected platforms in one dashboard. See engagement metrics, reach, saves, shares, and more. Our analytics help you understand what's working so you can create more of what your audience loves.
 
-**Note:** Discord does not provide engagement analytics through their API, so Discord posts won't show metrics. All other platforms (Instagram, TikTok, YouTube, Facebook, LinkedIn, Twitter/X, Pinterest, Snapchat) provide full analytics.`,
+**Note:** Discord does not provide engagement analytics through their API, so Discord posts won't show metrics. All other platforms (Instagram, TikTok, YouTube, Facebook, LinkedIn, Twitter/X, Pinterest) provide full analytics.`,
         highlight: 'All your metrics in one place',
       },
       {

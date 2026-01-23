@@ -9,7 +9,7 @@ import type { SocialPlatform } from '@/lib/types/social'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import { TikTokPostSettings, type TikTokPostSettingsData } from '../components/tiktok/TikTokPostSettings'
 
-type Platform = 'instagram' | 'twitter' | 'linkedin' | 'linkedin-org' | 'facebook' | 'tiktok' | 'youtube' | 'x' | 'snapchat' | 'pinterest' | 'discord' | 'reddit'
+type Platform = 'instagram' | 'twitter' | 'linkedin' | 'linkedin-org' | 'facebook' | 'tiktok' | 'youtube' | 'x' | 'pinterest' | 'discord' | 'reddit'
 
 // Map Platform type to SocialPlatform for logo component
 const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
@@ -21,7 +21,6 @@ const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
   'facebook': 'facebook',
   'tiktok': 'tiktok',
   'youtube': 'youtube',
-  'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
   'reddit': 'reddit',

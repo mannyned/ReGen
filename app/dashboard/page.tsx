@@ -19,7 +19,6 @@ const PLATFORM_ID_MAP: Record<string, SocialPlatform> = {
   'Facebook': 'facebook',
   'TikTok': 'tiktok',
   'YouTube': 'youtube',
-  'Snapchat': 'snapchat',
   'Pinterest': 'pinterest',
   'Discord': 'discord',
 }
@@ -32,7 +31,6 @@ const PLATFORM_DISPLAY_NAME: Record<string, string> = {
   facebook: 'Facebook',
   tiktok: 'TikTok',
   youtube: 'YouTube',
-  snapchat: 'Snapchat',
   pinterest: 'Pinterest',
   discord: 'Discord',
   draft: 'Draft',

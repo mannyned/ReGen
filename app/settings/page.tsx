@@ -22,7 +22,6 @@ const PLATFORM_ID_MAP: Record<string, SocialPlatform> = {
   'x': 'twitter',
   'linkedin': 'linkedin',
   'linkedin-org': 'linkedin',  // Uses same logo as LinkedIn personal
-  'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
   'reddit': 'reddit',
@@ -37,7 +36,6 @@ const PLATFORM_TO_PROVIDER: Record<string, string> = {
   'twitter': 'x',  // Provider is registered as 'x'
   'linkedin': 'linkedin',
   'linkedin-org': 'linkedin-org',  // Separate OAuth provider for Company Page
-  'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
   'reddit': 'reddit',
@@ -54,7 +52,6 @@ const PROVIDER_TO_PLATFORMS: Record<string, string[]> = {
   'x': ['twitter'],  // OAuth stores as 'x', UI uses 'twitter'
   'linkedin': ['linkedin'],
   'linkedin-org': ['linkedin-org'],  // Separate provider for Company Page
-  'snapchat': ['snapchat'],
   'pinterest': ['pinterest'],
   'discord': ['discord'],
   'reddit': ['reddit'],
@@ -275,7 +272,6 @@ export default function SettingsPage() {
         { id: 'linkedin', name: 'LinkedIn Personal', icon: '💼', color: 'from-blue-700 to-blue-600', connected: false },
         { id: 'linkedin-org', name: 'LinkedIn Company', icon: '🏢', color: 'from-blue-700 to-blue-600', connected: false },
         { id: 'facebook', name: 'Facebook', icon: '👥', color: 'from-blue-600 to-blue-500', connected: false },
-        { id: 'snapchat', name: 'Snapchat', icon: '👻', color: 'from-yellow-400 to-yellow-500', connected: false },
         { id: 'pinterest', name: 'Pinterest', icon: '📌', color: 'from-red-600 to-red-500', connected: false },
         { id: 'discord', name: 'Discord', icon: '💬', color: 'from-indigo-600 to-indigo-500', connected: false },
         { id: 'reddit', name: 'Reddit', icon: '🤖', color: 'from-orange-500 to-orange-600', connected: false },

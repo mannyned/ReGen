@@ -67,11 +67,6 @@ export const PLATFORM_CHARACTER_LIMITS: Record<SocialPlatform, {
     hashtags: 30,
     warningThreshold: 90,
   },
-  snapchat: {
-    caption: 250,
-    hashtags: 0, // No hashtags on Snapchat
-    warningThreshold: 80,
-  },
   pinterest: {
     caption: 500,
     hashtags: 20,

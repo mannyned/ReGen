@@ -48,7 +48,8 @@ const PLATFORM_ID_MAP: Record<string, SocialPlatform> = {
   'Facebook': 'facebook',
   'TikTok': 'tiktok',
   'YouTube': 'youtube',
-  'Snapchat': 'snapchat',
+  'Pinterest': 'pinterest',
+  'Discord': 'discord',
 }
 
 interface AIRecommendation {

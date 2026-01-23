@@ -23,7 +23,6 @@ export { googleProvider } from './google';
 export { xProvider } from './x';
 export { linkedinProvider } from './linkedin';
 export { linkedinOrgProvider } from './linkedin-org';
-export { snapchatProvider } from './snapchat';
 export { redditProvider } from './reddit';
 export { pinterestProvider } from './pinterest';
 export { discordProvider } from './discord';
@@ -62,11 +61,6 @@ export const PROVIDER_CONFIGS = {
     displayName: 'LinkedIn Company Page',
     platforms: ['LinkedIn'],
     features: ['Company Posts', 'Analytics', 'Engagement Data'],
-  },
-  snapchat: {
-    displayName: 'Snapchat',
-    platforms: ['Snapchat'],
-    features: ['Login', 'Share (User-Initiated)'],
   },
   reddit: {
     displayName: 'Reddit',

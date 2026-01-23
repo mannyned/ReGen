@@ -10,7 +10,6 @@ export type SocialPlatform =
   | 'linkedin'
   | 'linkedin-org'  // LinkedIn Company Page (Community Management API)
   | 'facebook'
-  | 'snapchat'
   | 'pinterest'
   | 'discord'
   | 'meta'  // Meta represents Instagram + Facebook combined

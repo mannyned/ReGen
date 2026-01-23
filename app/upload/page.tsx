@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import type { SocialPlatform } from '@/lib/types/social'
 
 type UploadType = 'video' | 'image' | 'media' | 'text'
-type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'linkedin-org' | 'snapchat' | 'pinterest' | 'discord' | 'reddit'
+type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'linkedin-org' | 'pinterest' | 'discord' | 'reddit'
 
 // Map Platform type to SocialPlatform for logo component
 const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
@@ -21,7 +21,6 @@ const PLATFORM_ID_MAP: Record<Platform, SocialPlatform> = {
   'x': 'twitter',
   'linkedin': 'linkedin',
   'linkedin-org': 'linkedin-org',
-  'snapchat': 'snapchat',
   'pinterest': 'pinterest',
   'discord': 'discord',
   'reddit': 'reddit',
@@ -47,7 +46,6 @@ const PLATFORM_LIMITS = {
   instagram: { post: 10, story: 1 },  // Carousel: up to 10 images/videos
   facebook: { post: 10, story: 1 },   // Multi-photo: up to 10 items
   tiktok: { post: 1, story: 1 },      // No carousel support
-  snapchat: { post: 1, story: 10 },   // Stories posted sequentially
   youtube: { post: 1, story: 1 },     // No carousel support
   x: { post: 4, story: 1 },           // Up to 4 images per tweet
   linkedin: { post: 20, story: 1 },   // Multi-image: 2-20 items
@@ -67,7 +65,6 @@ const CAROUSEL_PLATFORM_INFO: Record<Platform, {
   instagram: { minItems: 2, maxItems: 10, allowVideo: true, description: 'Carousel with images & videos' },
   facebook: { minItems: 2, maxItems: 10, allowVideo: true, description: 'Multi-photo post' },
   tiktok: { minItems: 1, maxItems: 1, allowVideo: true, description: 'Single video only' },
-  snapchat: { minItems: 1, maxItems: 10, allowVideo: true, description: 'Posted as story sequence' },
   youtube: { minItems: 1, maxItems: 1, allowVideo: true, description: 'Single video only' },
   x: { minItems: 1, maxItems: 4, allowVideo: false, description: 'Up to 4 images (no video carousel)' },
   linkedin: { minItems: 2, maxItems: 20, allowVideo: false, description: 'Multi-image post (images only)' },
@@ -85,7 +82,6 @@ const platforms = [
   { id: 'x' as Platform, name: 'X (Twitter)', icon: '𝕏', color: 'bg-gradient-to-br from-gray-900 to-gray-700' },
   { id: 'linkedin' as Platform, name: 'LinkedIn Personal', icon: '👤', color: 'bg-gradient-to-br from-blue-700 to-blue-600' },
   { id: 'linkedin-org' as Platform, name: 'LinkedIn Company', icon: '🏢', color: 'bg-gradient-to-br from-blue-700 to-blue-600' },
-  { id: 'snapchat' as Platform, name: 'Snapchat', icon: '👻', color: 'bg-gradient-to-br from-yellow-400 to-yellow-500' },
   { id: 'pinterest' as Platform, name: 'Pinterest', icon: '📌', color: 'bg-gradient-to-br from-red-600 to-red-500' },
   { id: 'discord' as Platform, name: 'Discord', icon: '💬', color: 'bg-gradient-to-br from-indigo-600 to-indigo-500' },
   { id: 'reddit' as Platform, name: 'Reddit', icon: '🤖', color: 'bg-gradient-to-br from-orange-500 to-orange-600' },
