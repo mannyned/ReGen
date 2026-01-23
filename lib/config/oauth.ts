@@ -215,7 +215,6 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
     scopes: [
       'identify',
       'guilds',
-      'bot',
     ],
     responseType: 'code',
     grantType: 'authorization_code',

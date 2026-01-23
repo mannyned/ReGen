@@ -7,17 +7,15 @@
  * - Standard OAuth 2.0 flow
  * - Access tokens expire in 7 days
  * - Refresh tokens don't expire (unless revoked)
- * - Bot scope allows adding bot to server for posting to any channel
+ * - User OAuth for identity + guilds list
+ * - Bot must be added separately to server for posting
  *
  * Scopes:
  * - identify: Access user identity
- * - guilds: Access user's servers
- * - bot: Add bot to server for posting messages
+ * - guilds: Access user's servers (to show server selection)
  *
- * Bot Permissions (2048 = SEND_MESSAGES):
- * - SEND_MESSAGES: Post messages to channels
- * - EMBED_LINKS: Send embedded content
- * - ATTACH_FILES: Upload images/files
+ * Note: Bot is added via separate invite link, not OAuth.
+ * Bot requires DISCORD_BOT_TOKEN env var.
  *
  * @see https://discord.com/developers/docs/topics/oauth2
  */
@@ -82,8 +80,7 @@ const config: ProviderConfig = {
   // Scopes for Discord API
   scopes: [
     'identify',           // Access user identity
-    'guilds',             // Access user's servers
-    'bot',                // Add bot to server for posting messages
+    'guilds',             // Access user's servers (to select which server to post to)
   ],
 
   capabilities: {
@@ -103,7 +100,6 @@ const config: ProviderConfig = {
  * Generate authorization URL
  *
  * Discord OAuth requires response_type=code for authorization code flow
- * Bot permissions are included for posting messages to channels
  */
 function getAuthorizationUrl(params: AuthorizationUrlParams): AuthorizationUrlResult {
   const { clientId } = getDiscordConfig();
@@ -113,16 +109,11 @@ function getAuthorizationUrl(params: AuthorizationUrlParams): AuthorizationUrlRe
 
   const allScopes = [...config.scopes, ...(params.additionalScopes || [])];
 
-  // Bot permissions bitmask:
-  // SEND_MESSAGES (2048) + EMBED_LINKS (16384) + ATTACH_FILES (32768) = 51200
-  const botPermissions = '51200';
-
   const authUrl = new URL(config.authorizationUrl);
   authUrl.searchParams.set('client_id', clientId);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('redirect_uri', redirectUri);
   authUrl.searchParams.set('scope', allScopes.join(' '));
-  authUrl.searchParams.set('permissions', botPermissions);
 
   const finalUrl = authUrl.toString();
   console.log('[Discord OAuth] Authorization URL:', finalUrl);

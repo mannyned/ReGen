@@ -126,6 +126,11 @@ function UploadPageContent() {
   const [loadingDiscordChannels, setLoadingDiscordChannels] = useState(false)
   const [discordChannelsError, setDiscordChannelsError] = useState<string | null>(null)
   const [discordGuild, setDiscordGuild] = useState<{ id: string; name: string; icon: string | null } | null>(null)
+  const [discordGuilds, setDiscordGuilds] = useState<Array<{ id: string; name: string; icon: string | null; owner?: boolean }>>([])
+  const [selectedDiscordGuild, setSelectedDiscordGuild] = useState<string>('')
+  const [needsDiscordGuildSelection, setNeedsDiscordGuildSelection] = useState(false)
+  const [needsDiscordBotInvite, setNeedsDiscordBotInvite] = useState(false)
+  const [discordBotInviteUrl, setDiscordBotInviteUrl] = useState<string>('')
 
   // Check for draft parameter and redirect to generate page - runs first
   const draftId = searchParams.get('draft')
@@ -306,13 +311,16 @@ function UploadPageContent() {
 
   // Fetch Discord channels when Discord is selected and user is connected
   useEffect(() => {
-    const fetchDiscordChannels = async () => {
+    const fetchDiscordChannels = async (guildId?: string) => {
       // Only fetch if Discord is selected, user is authenticated, and Discord is connected
       if (!selectedPlatforms.includes('discord') || !user?.id || !connectedAccounts.includes('discord')) {
         setDiscordChannels([])
         setSelectedDiscordChannel('')
         setDiscordChannelsError(null)
         setDiscordGuild(null)
+        setDiscordGuilds([])
+        setNeedsDiscordGuildSelection(false)
+        setNeedsDiscordBotInvite(false)
         return
       }
 
@@ -320,21 +328,45 @@ function UploadPageContent() {
       setDiscordChannelsError(null)
 
       try {
-        const response = await fetch('/api/discord/channels')
+        const url = guildId ? `/api/discord/channels?guildId=${guildId}` : '/api/discord/channels'
+        const response = await fetch(url)
         const data = await response.json()
 
-        if (data.channels) {
-          setDiscordChannels(data.channels)
-          setDiscordGuild(data.guild || null)
-          // Auto-select current webhook channel or first channel
-          if (data.currentChannelId) {
-            setSelectedDiscordChannel(data.currentChannelId)
-          } else if (data.channels.length > 0 && !selectedDiscordChannel) {
-            setSelectedDiscordChannel(data.channels[0].id)
-          }
-        } else {
-          setDiscordChannelsError(data.error || 'Failed to load channels')
+        // Handle guild selection needed
+        if (data.needsGuildSelection) {
+          setNeedsDiscordGuildSelection(true)
+          setDiscordGuilds(data.guilds || [])
+          setDiscordBotInviteUrl(data.botInviteUrl || '')
           setDiscordChannels([])
+          return
+        }
+
+        // Handle bot invite needed
+        if (data.needsBotInvite) {
+          setNeedsDiscordBotInvite(true)
+          setDiscordGuilds(data.guilds || [])
+          setDiscordBotInviteUrl(data.botInviteUrl || '')
+          setDiscordGuild(data.guild || null)
+          setDiscordChannels([])
+          setDiscordChannelsError(data.error || 'Bot needs to be added to this server')
+          return
+        }
+
+        // We have channels
+        setNeedsDiscordGuildSelection(false)
+        setNeedsDiscordBotInvite(false)
+        setDiscordChannels(data.channels || [])
+        setDiscordGuild(data.guild || null)
+
+        // Auto-select first channel if none selected
+        if (data.currentChannelId) {
+          setSelectedDiscordChannel(data.currentChannelId)
+        } else if (data.channels?.length > 0 && !selectedDiscordChannel) {
+          setSelectedDiscordChannel(data.channels[0].id)
+        }
+
+        if (data.error) {
+          setDiscordChannelsError(data.error)
         }
       } catch (error) {
         console.error('Error fetching Discord channels:', error)
@@ -345,8 +377,32 @@ function UploadPageContent() {
       }
     }
 
-    fetchDiscordChannels()
-  }, [selectedPlatforms, user?.id, connectedAccounts])
+    fetchDiscordChannels(selectedDiscordGuild || undefined)
+  }, [selectedPlatforms, user?.id, connectedAccounts, selectedDiscordGuild])
+
+  // Handle Discord guild selection
+  const handleDiscordGuildSelect = async (guildId: string) => {
+    const guild = discordGuilds.find(g => g.id === guildId)
+    if (!guild) return
+
+    setSelectedDiscordGuild(guildId)
+    setNeedsDiscordGuildSelection(false)
+
+    // Save the selected guild
+    try {
+      await fetch('/api/discord/channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          guildId: guild.id,
+          guildName: guild.name,
+          guildIcon: guild.icon,
+        }),
+      })
+    } catch (error) {
+      console.error('Error saving guild selection:', error)
+    }
+  }
 
   const togglePlatform = (platformId: Platform) => {
     setSelectedPlatforms(prev =>
@@ -1410,7 +1466,7 @@ function UploadPageContent() {
               </div>
             )}
 
-            {/* Discord Channel Selection */}
+            {/* Discord Server & Channel Selection */}
             {selectedPlatforms.includes('discord') && connectedAccounts.includes('discord') && (
               <div className="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
                 <div className="flex items-start gap-3">
@@ -1418,10 +1474,7 @@ function UploadPageContent() {
                     <span className="text-lg">💬</span>
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-medium text-indigo-800 mb-2">Discord Channel Selection</h4>
-                    <p className="text-xs text-indigo-700 mb-3">
-                      {discordGuild ? `Server: ${discordGuild.name} — ` : ''}Choose which channel to post to
-                    </p>
+                    <h4 className="font-medium text-indigo-800 mb-2">Discord Setup</h4>
 
                     {loadingDiscordChannels ? (
                       <div className="flex items-center gap-2 text-sm text-indigo-600">
@@ -1429,18 +1482,76 @@ function UploadPageContent() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Loading channels...
+                        Loading...
                       </div>
-                    ) : discordChannelsError ? (
-                      <div className="text-sm text-indigo-600">
-                        <span className="font-medium">Error:</span> {discordChannelsError}
+                    ) : needsDiscordGuildSelection ? (
+                      // Step 1: Server Selection
+                      <div className="space-y-3">
+                        <p className="text-xs text-indigo-700">Select a server to post to:</p>
+                        <select
+                          value={selectedDiscordGuild}
+                          onChange={(e) => handleDiscordGuildSelect(e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-indigo-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        >
+                          <option value="">Select a server...</option>
+                          {discordGuilds.map((guild) => (
+                            <option key={guild.id} value={guild.id}>
+                              {guild.name} {guild.owner ? '(Owner)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {discordBotInviteUrl && (
+                          <p className="text-xs text-indigo-600">
+                            Note: You&apos;ll need to add our bot to the server after selecting.
+                          </p>
+                        )}
                       </div>
-                    ) : discordChannels.length === 0 ? (
-                      <div className="text-sm text-indigo-600">
-                        No text channels found. Make sure the bot has access to view channels.
+                    ) : needsDiscordBotInvite ? (
+                      // Step 2: Bot Invite Needed
+                      <div className="space-y-3">
+                        <p className="text-xs text-indigo-700">
+                          {discordGuild ? `Server: ${discordGuild.name}` : 'Selected server'}
+                        </p>
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                          <p className="text-sm text-amber-800 font-medium mb-2">Bot needs to be added</p>
+                          <p className="text-xs text-amber-700 mb-3">
+                            Add our bot to this server to enable posting.
+                          </p>
+                          <a
+                            href={discordBotInviteUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                          >
+                            Add Bot to Server
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                          <button
+                            onClick={() => setSelectedDiscordGuild(selectedDiscordGuild)}
+                            className="ml-2 px-4 py-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                          >
+                            Refresh
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedDiscordGuild('')
+                            setNeedsDiscordBotInvite(false)
+                            setNeedsDiscordGuildSelection(true)
+                          }}
+                          className="text-xs text-indigo-600 hover:text-indigo-800 underline"
+                        >
+                          Choose different server
+                        </button>
                       </div>
-                    ) : (
+                    ) : discordChannels.length > 0 ? (
+                      // Step 3: Channel Selection
                       <div className="space-y-2">
+                        <p className="text-xs text-indigo-700 mb-3">
+                          {discordGuild ? `Server: ${discordGuild.name} — ` : ''}Choose channel:
+                        </p>
                         <select
                           value={selectedDiscordChannel}
                           onChange={(e) => setSelectedDiscordChannel(e.target.value)}
@@ -1457,6 +1568,14 @@ function UploadPageContent() {
                             ✓ Posts will be sent to: <span className="font-medium">#{discordChannels.find(c => c.id === selectedDiscordChannel)?.name}</span>
                           </p>
                         )}
+                      </div>
+                    ) : discordChannelsError ? (
+                      <div className="text-sm text-red-600">
+                        <span className="font-medium">Error:</span> {discordChannelsError}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-indigo-600">
+                        No text channels found in this server.
                       </div>
                     )}
                   </div>
