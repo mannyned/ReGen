@@ -203,7 +203,7 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
   },
 
   // ============================================
-  // DISCORD (Coming Soon)
+  // DISCORD
   // ============================================
   discord: {
     clientId: process.env.DISCORD_CLIENT_ID || '',
@@ -215,7 +215,7 @@ export const OAUTH_CONFIGS: Record<SocialPlatform, OAuthConfig> = {
     scopes: [
       'identify',
       'guilds',
-      'webhook.incoming',
+      'bot',
     ],
     responseType: 'code',
     grantType: 'authorization_code',

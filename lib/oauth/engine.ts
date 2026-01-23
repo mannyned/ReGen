@@ -367,15 +367,25 @@ export async function handleCallback(
       }
     } else {
       // For non-Meta providers, store single connection
-      // Include webhook URL for Discord (returned during OAuth with webhook.incoming scope)
+      // Include guild info for Discord (returned during OAuth with bot scope)
+      // Also supports legacy webhook.incoming scope
       const metadata = {
         ...identity.metadata,
+        // Bot authorization returns guild object
+        ...(tokens.raw?.guild && {
+          guildId: tokens.raw.guild.id,
+          guildName: tokens.raw.guild.name,
+          guildIcon: tokens.raw.guild.icon,
+        }),
+        // Legacy webhook support (webhook.incoming scope)
         ...(tokens.raw?.webhook && {
           webhookId: tokens.raw.webhook.id,
           webhookToken: tokens.raw.webhook.token,
           webhookUrl: tokens.raw.webhook.url,
           webhookChannelId: tokens.raw.webhook.channel_id,
           webhookGuildId: tokens.raw.webhook.guild_id,
+          // Also set guildId from webhook for backward compatibility
+          ...(!tokens.raw?.guild && { guildId: tokens.raw.webhook.guild_id }),
         }),
       };
 

@@ -1,11 +1,12 @@
 /**
  * Discord Publishing Service
  *
- * Handles publishing content to Discord via webhooks.
+ * Handles publishing content to Discord via Bot API.
  *
- * Discord Integration Options:
- * 1. Webhook URL (stored during OAuth with webhook.incoming scope)
- * 2. Manual webhook URL (user provides webhook URL from Discord settings)
+ * Discord Integration:
+ * - Uses Discord Bot API to post messages to any channel the bot has access to
+ * - Bot is added to server during OAuth flow
+ * - Channel selection happens at publish time (not during OAuth)
  *
  * Supports:
  * - Text messages (up to 2000 characters)
@@ -13,14 +14,13 @@
  * - Image attachments
  * - Video links (embedded via URL)
  *
- * @see https://discord.com/developers/docs/resources/webhook
+ * @see https://discord.com/developers/docs/resources/channel#create-message
  */
 
 import type {
   SocialPlatform,
   PublishResult,
   PostAnalytics,
-  CarouselItem,
   CarouselPublishOptions,
   PlatformCarouselResult,
 } from '../../types/social'
@@ -37,48 +37,144 @@ class DiscordPublisher extends BasePlatformPublisher {
   protected baseUrl: string = API_BASE_URLS.discord
 
   /**
-   * Publish content to Discord via webhook
+   * Get the Discord Bot Token from environment
+   */
+  private getBotToken(): string | null {
+    return process.env.DISCORD_BOT_TOKEN || null
+  }
+
+  /**
+   * Get the channel ID for publishing
+   * Priority: 1. discordChannelId from options, 2. stored guildId's first channel
+   */
+  private async getChannelId(userId: string, optionsChannelId?: string): Promise<string | null> {
+    // If channel ID is provided in options, use it
+    if (optionsChannelId) {
+      return optionsChannelId
+    }
+
+    // Try to get from connection metadata (legacy support)
+    try {
+      const connection = await prisma.oAuthConnection.findUnique({
+        where: {
+          profileId_provider: {
+            profileId: userId,
+            provider: 'discord',
+          },
+        },
+      })
+
+      if (connection?.metadata) {
+        const metadata = connection.metadata as Record<string, any>
+        // Check for stored channel ID
+        if (metadata.channelId) {
+          return metadata.channelId
+        }
+        // Check legacy webhook channel ID
+        if (metadata.webhookChannelId) {
+          return metadata.webhookChannelId
+        }
+      }
+    } catch (error) {
+      console.error('[DiscordPublisher] Error fetching connection:', error)
+    }
+
+    return null
+  }
+
+  /**
+   * Get the guild ID for the user's Discord connection
+   */
+  private async getGuildId(userId: string): Promise<string | null> {
+    try {
+      const connection = await prisma.oAuthConnection.findUnique({
+        where: {
+          profileId_provider: {
+            profileId: userId,
+            provider: 'discord',
+          },
+        },
+      })
+
+      if (connection?.metadata) {
+        const metadata = connection.metadata as Record<string, any>
+        return metadata.guildId || metadata.webhookGuildId || null
+      }
+    } catch (error) {
+      console.error('[DiscordPublisher] Error fetching guild ID:', error)
+    }
+
+    return null
+  }
+
+  /**
+   * Publish content to Discord via Bot API
    *
-   * The webhook URL can be:
-   * 1. Stored during OAuth (webhook.incoming scope)
-   * 2. Provided in settings.webhookUrl
+   * Posts a message to the specified channel using the bot token.
    */
   async publishContent(options: PublishOptions): Promise<PublishResult> {
-    const { userId, content, media } = options
+    const { userId, content, media, discordChannelId } = options
 
     try {
-      // Get webhook URL from settings or token metadata
-      const webhookUrl = await this.getWebhookUrl(userId, content.settings?.webhookUrl)
+      const botToken = this.getBotToken()
 
-      if (!webhookUrl) {
+      if (!botToken) {
         return {
           success: false,
           platform: this.platform,
-          error:
-            'No Discord webhook configured. Please reconnect Discord or provide a webhook URL in settings.',
+          error: 'Discord bot token not configured. Please contact support.',
+        }
+      }
+
+      const channelId = await this.getChannelId(userId, discordChannelId)
+
+      if (!channelId) {
+        return {
+          success: false,
+          platform: this.platform,
+          error: 'No Discord channel selected. Please select a channel to post to.',
         }
       }
 
       // Build the message payload
       const payload = this.buildMessagePayload(content, media)
 
-      console.log('[DiscordPublisher] Publishing to webhook', {
+      console.log('[DiscordPublisher] Publishing via Bot API', {
+        channelId,
         hasContent: !!content.caption,
         hasMedia: !!media,
         hasEmbeds: payload.embeds?.length > 0,
       })
 
-      const response = await fetch(`${webhookUrl}?wait=true`, {
+      const response = await fetch(`${this.baseUrl}/channels/${channelId}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bot ${botToken}`,
         },
         body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        console.error('[DiscordPublisher] Webhook error:', errorData)
+        console.error('[DiscordPublisher] Bot API error:', errorData)
+
+        // Handle specific error cases
+        if (response.status === 403) {
+          return {
+            success: false,
+            platform: this.platform,
+            error: 'Bot does not have permission to post in this channel. Please check bot permissions.',
+          }
+        }
+        if (response.status === 404) {
+          return {
+            success: false,
+            platform: this.platform,
+            error: 'Channel not found. The channel may have been deleted.',
+          }
+        }
+
         return {
           success: false,
           platform: this.platform,
@@ -88,9 +184,12 @@ class DiscordPublisher extends BasePlatformPublisher {
 
       const data = await response.json()
 
-      // Extract channel and message IDs for the URL
+      // Get guild ID for proper URL construction
+      const guildId = await this.getGuildId(userId)
+
+      // Build proper message URL
       const messageUrl = data.id && data.channel_id
-        ? `https://discord.com/channels/@me/${data.channel_id}/${data.id}`
+        ? `https://discord.com/channels/${guildId || '@me'}/${data.channel_id}/${data.id}`
         : undefined
 
       console.log('[DiscordPublisher] Published successfully:', {
@@ -122,15 +221,28 @@ class DiscordPublisher extends BasePlatformPublisher {
    */
   async publishCarousel(options: CarouselPublishOptions): Promise<PlatformCarouselResult> {
     const { userId, items, content } = options
+    const discordChannelId = (options as any).discordChannelId
 
     try {
-      const webhookUrl = await this.getWebhookUrl(userId, content.settings?.webhookUrl)
+      const botToken = this.getBotToken()
 
-      if (!webhookUrl) {
+      if (!botToken) {
         return {
           platform: this.platform,
           success: false,
-          error: 'No Discord webhook configured.',
+          error: 'Discord bot token not configured.',
+          itemsPublished: 0,
+          itemsTruncated: 0,
+        }
+      }
+
+      const channelId = await this.getChannelId(userId, discordChannelId)
+
+      if (!channelId) {
+        return {
+          platform: this.platform,
+          success: false,
+          error: 'No Discord channel selected.',
           itemsPublished: 0,
           itemsTruncated: 0,
         }
@@ -153,6 +265,7 @@ class DiscordPublisher extends BasePlatformPublisher {
       const embeds = validItems.slice(0, 10).map((item, index) => ({
         image: { url: item.mediaUrl },
         description: index === 0 ? content.caption?.substring(0, 2000) : undefined,
+        color: 0x5865F2, // Discord blurple
       }))
 
       const payload: Record<string, any> = { embeds }
@@ -163,12 +276,13 @@ class DiscordPublisher extends BasePlatformPublisher {
         embeds[0].description = undefined
       }
 
-      console.log(`[DiscordPublisher] Publishing carousel with ${embeds.length} images`)
+      console.log(`[DiscordPublisher] Publishing carousel with ${embeds.length} images to channel ${channelId}`)
 
-      const response = await fetch(`${webhookUrl}?wait=true`, {
+      const response = await fetch(`${this.baseUrl}/channels/${channelId}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bot ${botToken}`,
         },
         body: JSON.stringify(payload),
       })
@@ -185,13 +299,14 @@ class DiscordPublisher extends BasePlatformPublisher {
       }
 
       const data = await response.json()
+      const guildId = await this.getGuildId(userId)
 
       return {
         platform: this.platform,
         success: true,
         postId: data.id,
         postUrl: data.id && data.channel_id
-          ? `https://discord.com/channels/@me/${data.channel_id}/${data.id}`
+          ? `https://discord.com/channels/${guildId || '@me'}/${data.channel_id}/${data.id}`
           : undefined,
         itemsPublished: validItems.length,
         itemsTruncated: truncatedCount,
@@ -210,45 +325,7 @@ class DiscordPublisher extends BasePlatformPublisher {
   }
 
   /**
-   * Get webhook URL from OAuth connection metadata or settings
-   *
-   * The webhook URL is stored during OAuth when user grants webhook.incoming scope.
-   * Alternatively, users can manually provide a webhook URL in settings.
-   */
-  private async getWebhookUrl(userId: string, settingsWebhookUrl?: string): Promise<string | null> {
-    // First check if webhook URL is provided in settings (manual override)
-    if (settingsWebhookUrl) {
-      return settingsWebhookUrl
-    }
-
-    // Try to get webhook URL from OAuth connection metadata
-    try {
-      const connection = await prisma.oAuthConnection.findUnique({
-        where: {
-          profileId_provider: {
-            profileId: userId,
-            provider: 'discord',
-          },
-        },
-      })
-
-      if (connection?.metadata) {
-        const metadata = connection.metadata as Record<string, any>
-        if (metadata.webhookUrl) {
-          console.log('[DiscordPublisher] Using webhook URL from OAuth connection')
-          return metadata.webhookUrl
-        }
-      }
-    } catch (error) {
-      console.error('[DiscordPublisher] Error fetching connection:', error)
-    }
-
-    console.log('[DiscordPublisher] No webhook URL found')
-    return null
-  }
-
-  /**
-   * Build message payload for Discord webhook
+   * Build message payload for Discord Bot API
    */
   private buildMessagePayload(
     content: PublishOptions['content'],
@@ -276,10 +353,8 @@ class DiscordPublisher extends BasePlatformPublisher {
 
       // Add media based on type
       if (media.mimeType?.startsWith('video/')) {
-        // Video - use video embed or link
-        // Discord webhooks don't support direct video upload, use URL
-        embed.video = { url: media.mediaUrl }
-        // Add as URL in content for better compatibility
+        // Video - Discord bot API doesn't support direct video upload via JSON
+        // Add video URL in content for embedding
         payload.content = media.mediaUrl
       } else if (media.mimeType?.startsWith('image/')) {
         // Image embed
@@ -313,12 +388,11 @@ class DiscordPublisher extends BasePlatformPublisher {
   /**
    * Get post analytics from Discord
    *
-   * Note: Discord doesn't provide analytics for webhook messages.
+   * Note: Discord doesn't provide public analytics for bot messages.
    * This returns empty analytics.
    */
   async getPostAnalytics(postId: string, userId: string): Promise<PostAnalytics> {
-    // Discord doesn't provide analytics for webhook messages
-    console.log('[DiscordPublisher] Analytics not available for Discord webhooks')
+    console.log('[DiscordPublisher] Analytics not available for Discord messages')
 
     return {
       views: 0,
@@ -339,25 +413,33 @@ class DiscordPublisher extends BasePlatformPublisher {
   }
 
   /**
-   * Delete a Discord message
-   *
-   * Requires the webhook URL to include the message token
+   * Delete a Discord message via Bot API
    */
   async deletePost(postId: string, userId: string): Promise<boolean> {
     try {
-      const webhookUrl = await this.getWebhookUrl(userId)
+      const botToken = this.getBotToken()
 
-      if (!webhookUrl) {
-        console.error('[DiscordPublisher] No webhook URL for delete')
+      if (!botToken) {
+        console.error('[DiscordPublisher] No bot token for delete')
         return false
       }
 
-      // Delete message via webhook
-      const response = await fetch(`${webhookUrl}/messages/${postId}`, {
+      // We need the channel ID to delete - try to get from connection
+      const channelId = await this.getChannelId(userId)
+
+      if (!channelId) {
+        console.error('[DiscordPublisher] No channel ID for delete')
+        return false
+      }
+
+      const response = await fetch(`${this.baseUrl}/channels/${channelId}/messages/${postId}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bot ${botToken}`,
+        },
       })
 
-      if (!response.ok) {
+      if (!response.ok && response.status !== 204) {
         console.error('[DiscordPublisher] Delete error:', response.status)
         return false
       }
