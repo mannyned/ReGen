@@ -172,6 +172,7 @@ export async function POST(request: NextRequest) {
           content,
           platformContent,
           contentType,
+          discordChannelId,  // Pass Discord channel for carousel posts
         })
 
         // Process carousel results
