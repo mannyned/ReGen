@@ -919,6 +919,28 @@ Select specific platforms to include in your export:
 Leave empty to export all connected platforms.`,
       },
       {
+        id: 'discord-analytics-limitation',
+        question: 'Why can\'t I see Discord engagement data?',
+        answer: `Discord does not provide engagement analytics through their API. This is a platform limitation, not a ReGenr limitation.
+
+**What Discord doesn't provide:**
+- View/impression counts
+- Reaction counts
+- Reply/comment counts
+- Share or forward metrics
+
+**What you can do:**
+- View your posts in the Discord app directly
+- Check reactions and replies manually in Discord
+- Track posting activity (what you posted and when)
+
+**Why this happens:**
+Discord's Bot API is designed for posting messages, not analytics. Unlike platforms like Instagram or TikTok that have dedicated analytics APIs, Discord doesn't expose engagement metrics for bot-posted messages.
+
+**Platforms with full analytics:**
+Instagram, TikTok, YouTube, Facebook, LinkedIn, Twitter/X, Pinterest, and Snapchat all provide engagement data that appears in your ReGenr analytics dashboard.`,
+      },
+      {
         id: 'caption-usage-analytics',
         question: 'What are Caption Usage Analytics?',
         answer: `Pro plan users can track how different caption strategies perform:

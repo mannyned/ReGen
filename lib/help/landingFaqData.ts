@@ -98,7 +98,9 @@ export const LANDING_FAQ_SECTIONS: LandingFAQSection[] = [
       {
         id: 'analytics',
         question: 'Does ReGenr provide analytics?',
-        answer: `Yes. Track your content performance across all connected platforms in one dashboard. See engagement metrics, reach, saves, shares, and more. Our analytics help you understand what's working so you can create more of what your audience loves.`,
+        answer: `Yes. Track your content performance across all connected platforms in one dashboard. See engagement metrics, reach, saves, shares, and more. Our analytics help you understand what's working so you can create more of what your audience loves.
+
+**Note:** Discord does not provide engagement analytics through their API, so Discord posts won't show metrics. All other platforms (Instagram, TikTok, YouTube, Facebook, LinkedIn, Twitter/X, Pinterest, Snapchat) provide full analytics.`,
         highlight: 'All your metrics in one place',
       },
       {
