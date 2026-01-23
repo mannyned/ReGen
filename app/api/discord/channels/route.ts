@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/auth/getUser'
-import { decrypt } from '@/lib/oauth/encryption'
+import { decrypt } from '@/lib/crypto/encrypt'
 
 export const runtime = 'nodejs'
 
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Decrypt access token
-    const accessToken = await decrypt(connection.accessTokenEnc)
+    const accessToken = decrypt(connection.accessTokenEnc)
 
     // Get webhook info from metadata
     const metadata = connection.metadata as Record<string, unknown> | null
