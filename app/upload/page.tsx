@@ -115,6 +115,18 @@ function UploadPageContent() {
   const [loadingPinterestBoards, setLoadingPinterestBoards] = useState(false)
   const [pinterestBoardsError, setPinterestBoardsError] = useState<string | null>(null)
 
+  // Discord channel selection
+  const [discordChannels, setDiscordChannels] = useState<Array<{
+    id: string
+    name: string
+    type: number
+    position: number
+  }>>([])
+  const [selectedDiscordChannel, setSelectedDiscordChannel] = useState<string>('')
+  const [loadingDiscordChannels, setLoadingDiscordChannels] = useState(false)
+  const [discordChannelsError, setDiscordChannelsError] = useState<string | null>(null)
+  const [discordGuild, setDiscordGuild] = useState<{ id: string; name: string; icon: string | null } | null>(null)
+
   // Check for draft parameter and redirect to generate page - runs first
   const draftId = searchParams.get('draft')
 
@@ -290,6 +302,50 @@ function UploadPageContent() {
     }
 
     fetchPinterestBoards()
+  }, [selectedPlatforms, user?.id, connectedAccounts])
+
+  // Fetch Discord channels when Discord is selected and user is connected
+  useEffect(() => {
+    const fetchDiscordChannels = async () => {
+      // Only fetch if Discord is selected, user is authenticated, and Discord is connected
+      if (!selectedPlatforms.includes('discord') || !user?.id || !connectedAccounts.includes('discord')) {
+        setDiscordChannels([])
+        setSelectedDiscordChannel('')
+        setDiscordChannelsError(null)
+        setDiscordGuild(null)
+        return
+      }
+
+      setLoadingDiscordChannels(true)
+      setDiscordChannelsError(null)
+
+      try {
+        const response = await fetch('/api/discord/channels')
+        const data = await response.json()
+
+        if (data.channels) {
+          setDiscordChannels(data.channels)
+          setDiscordGuild(data.guild || null)
+          // Auto-select current webhook channel or first channel
+          if (data.currentChannelId) {
+            setSelectedDiscordChannel(data.currentChannelId)
+          } else if (data.channels.length > 0 && !selectedDiscordChannel) {
+            setSelectedDiscordChannel(data.channels[0].id)
+          }
+        } else {
+          setDiscordChannelsError(data.error || 'Failed to load channels')
+          setDiscordChannels([])
+        }
+      } catch (error) {
+        console.error('Error fetching Discord channels:', error)
+        setDiscordChannelsError('Failed to load Discord channels')
+        setDiscordChannels([])
+      } finally {
+        setLoadingDiscordChannels(false)
+      }
+    }
+
+    fetchDiscordChannels()
   }, [selectedPlatforms, user?.id, connectedAccounts])
 
   const togglePlatform = (platformId: Platform) => {
@@ -472,6 +528,9 @@ function UploadPageContent() {
             pinterest: selectedPlatforms.includes('pinterest') ? {
               boardId: selectedPinterestBoard || undefined,
             } : undefined,
+            discord: selectedPlatforms.includes('discord') ? {
+              channelId: selectedDiscordChannel || undefined,
+            } : undefined,
           },
         }),
       })
@@ -526,6 +585,9 @@ function UploadPageContent() {
           platformSettings: {
             pinterest: selectedPlatforms.includes('pinterest') ? {
               boardId: selectedPinterestBoard || undefined,
+            } : undefined,
+            discord: selectedPlatforms.includes('discord') ? {
+              channelId: selectedDiscordChannel || undefined,
             } : undefined,
           },
         }
@@ -1342,6 +1404,75 @@ function UploadPageContent() {
                     <p className="text-sm font-medium text-amber-900">Pinterest not connected</p>
                     <p className="text-xs text-amber-700">
                       <Link href="/settings" className="underline font-medium">Connect your Pinterest account</Link> to select a board and publish pins.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Discord Channel Selection */}
+            {selectedPlatforms.includes('discord') && connectedAccounts.includes('discord') && (
+              <div className="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <span className="text-lg">💬</span>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-medium text-indigo-800 mb-2">Discord Channel Selection</h4>
+                    <p className="text-xs text-indigo-700 mb-3">
+                      {discordGuild ? `Server: ${discordGuild.name} — ` : ''}Choose which channel to post to
+                    </p>
+
+                    {loadingDiscordChannels ? (
+                      <div className="flex items-center gap-2 text-sm text-indigo-600">
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Loading channels...
+                      </div>
+                    ) : discordChannelsError ? (
+                      <div className="text-sm text-indigo-600">
+                        <span className="font-medium">Error:</span> {discordChannelsError}
+                      </div>
+                    ) : discordChannels.length === 0 ? (
+                      <div className="text-sm text-indigo-600">
+                        No text channels found. Make sure the bot has access to view channels.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <select
+                          value={selectedDiscordChannel}
+                          onChange={(e) => setSelectedDiscordChannel(e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-indigo-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        >
+                          {discordChannels.map((channel) => (
+                            <option key={channel.id} value={channel.id}>
+                              # {channel.name} {channel.type === 5 ? '(Announcement)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedDiscordChannel && (
+                          <p className="text-xs text-indigo-600">
+                            ✓ Posts will be sent to: <span className="font-medium">#{discordChannels.find(c => c.id === selectedDiscordChannel)?.name}</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Discord Not Connected Warning */}
+            {selectedPlatforms.includes('discord') && !connectedAccounts.includes('discord') && (
+              <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">💬</span>
+                  <div>
+                    <p className="text-sm font-medium text-amber-900">Discord not connected</p>
+                    <p className="text-xs text-amber-700">
+                      <Link href="/settings" className="underline font-medium">Connect your Discord account</Link> to select a channel and publish posts.
                     </p>
                   </div>
                 </div>
