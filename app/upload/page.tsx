@@ -120,7 +120,9 @@ function UploadPageContent() {
     id: string
     name: string
     type: number
+    typeLabel: string | null
     position: number
+    category: string | null
   }>>([])
   const [selectedDiscordChannel, setSelectedDiscordChannel] = useState<string>('')
   const [loadingDiscordChannels, setLoadingDiscordChannels] = useState(false)
@@ -1559,7 +1561,7 @@ function UploadPageContent() {
                         >
                           {discordChannels.map((channel) => (
                             <option key={channel.id} value={channel.id}>
-                              # {channel.name} {channel.type === 5 ? '(Announcement)' : ''}
+                              {channel.category ? `[${channel.category}] ` : ''}# {channel.name}{channel.typeLabel && channel.typeLabel !== 'Text' ? ` (${channel.typeLabel})` : ''}
                             </option>
                           ))}
                         </select>
@@ -1575,7 +1577,7 @@ function UploadPageContent() {
                       </div>
                     ) : (
                       <div className="text-sm text-indigo-600">
-                        No text channels found in this server.
+                        No postable channels found in this server.
                       </div>
                     )}
                   </div>

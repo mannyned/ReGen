@@ -23,6 +23,19 @@ interface DiscordChannel {
   name: string
   type: number
   position: number
+  parent_id?: string | null
+}
+
+// Discord channel types that support posting messages
+// https://discord.com/developers/docs/resources/channel#channel-object-channel-types
+const POSTABLE_CHANNEL_TYPES = {
+  0: 'Text',           // GUILD_TEXT - standard text channel
+  5: 'Announcement',   // GUILD_ANNOUNCEMENT - news/announcement channel
+  15: 'Forum',         // GUILD_FORUM - forum channel (posts as threads)
+}
+
+function getChannelTypeLabel(type: number): string | null {
+  return POSTABLE_CHANNEL_TYPES[type as keyof typeof POSTABLE_CHANNEL_TYPES] || null
 }
 
 interface DiscordGuild {
@@ -192,23 +205,34 @@ export async function GET(request: NextRequest) {
 
     const allChannels = await channelsResponse.json()
 
-    // Filter to text channels only (type 0 = text, type 5 = announcement)
-    const textChannels: DiscordChannel[] = allChannels
-      .filter((ch: DiscordChannel) => ch.type === 0 || ch.type === 5)
+    // Get categories for grouping (type 4 = GUILD_CATEGORY)
+    const categories = allChannels
+      .filter((ch: DiscordChannel) => ch.type === 4)
+      .reduce((acc: Record<string, string>, ch: DiscordChannel) => {
+        acc[ch.id] = ch.name
+        return acc
+      }, {})
+
+    // Filter to postable channel types only (text, announcement, forum)
+    const postableChannels = allChannels
+      .filter((ch: DiscordChannel) => getChannelTypeLabel(ch.type) !== null)
       .sort((a: DiscordChannel, b: DiscordChannel) => a.position - b.position)
       .map((ch: DiscordChannel) => ({
         id: ch.id,
         name: ch.name,
         type: ch.type,
+        typeLabel: getChannelTypeLabel(ch.type),
         position: ch.position,
+        category: ch.parent_id ? categories[ch.parent_id] || null : null,
       }))
 
-    // Default to first text channel
-    const currentChannelId = textChannels.length > 0 ? textChannels[0].id : null
+    // Default to first text channel (type 0) if available
+    const firstTextChannel = postableChannels.find((ch: { type: number }) => ch.type === 0)
+    const currentChannelId = firstTextChannel?.id || (postableChannels.length > 0 ? postableChannels[0].id : null)
 
     return NextResponse.json({
       guild,
-      channels: textChannels,
+      channels: postableChannels,
       currentChannelId,
       limited: false,
     })
