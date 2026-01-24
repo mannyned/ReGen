@@ -297,7 +297,7 @@ export default function BrandVoiceManager({ onProfileUpdate, currentProfile }: B
                 }`}
               >
                 <div className="font-semibold text-gray-900">Default Voice</div>
-                <div className="text-xs text-gray-500 mt-1">Standard caption generation</div>
+                <div className="text-xs text-gray-500 mt-1">Uses your selected Caption Tone</div>
               </button>
 
               {profiles.map((profile) => (
