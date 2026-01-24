@@ -21,6 +21,8 @@ export default function BrandVoiceManager({ onProfileUpdate, currentProfile }: B
   const [selectedProfile, setSelectedProfile] = useState<BrandVoiceProfile | null>(currentProfile || null)
   const [showCreateProfile, setShowCreateProfile] = useState(false)
   const [newProfileName, setNewProfileName] = useState('')
+  const [editingProfile, setEditingProfile] = useState<BrandVoiceProfile | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
 
   // Only available for Pro users
   if (currentPlan !== 'pro') {
@@ -240,6 +242,135 @@ export default function BrandVoiceManager({ onProfileUpdate, currentProfile }: B
     localStorage.setItem('activeBrandVoiceProfile', profile ? profile.id : '')
   }
 
+  const handleEditProfile = (profile: BrandVoiceProfile) => {
+    setEditingProfile(profile)
+    setNewProfileName(profile.name)
+    // If it has a custom tone description, use that
+    if (profile.description?.startsWith('Custom tone:')) {
+      setCustomTone(profile.description.replace('Custom tone: ', ''))
+      setTrainingMethod('custom')
+    } else {
+      setTrainingMethod('custom')
+      // Reconstruct tone from attributes
+      const toneWords = []
+      if (profile.toneAttributes.personality) toneWords.push(profile.toneAttributes.personality)
+      if (profile.toneAttributes.emotion) toneWords.push(profile.toneAttributes.emotion)
+      setCustomTone(toneWords.join(', '))
+    }
+    setIsTrainingMode(true)
+  }
+
+  const handleUpdateProfile = () => {
+    if (!editingProfile || !newProfileName.trim()) return
+
+    const toneWords = customTone.toLowerCase().split(/[,\s]+/).filter(w => w.length > 0)
+
+    const toneMapping: Record<string, { formality: string; emotion: string; personality: string }> = {
+      'witty': { formality: 'casual', emotion: 'playful', personality: 'witty' },
+      'funny': { formality: 'casual', emotion: 'humorous', personality: 'entertaining' },
+      'engaging': { formality: 'conversational', emotion: 'enthusiastic', personality: 'engaging' },
+      'professional': { formality: 'professional', emotion: 'confident', personality: 'authoritative' },
+      'casual': { formality: 'casual', emotion: 'friendly', personality: 'approachable' },
+      'friendly': { formality: 'casual', emotion: 'warm', personality: 'friendly' },
+      'inspirational': { formality: 'conversational', emotion: 'inspiring', personality: 'motivational' },
+      'educational': { formality: 'professional', emotion: 'informative', personality: 'knowledgeable' },
+      'bold': { formality: 'direct', emotion: 'confident', personality: 'bold' },
+      'playful': { formality: 'casual', emotion: 'playful', personality: 'fun' },
+      'sarcastic': { formality: 'casual', emotion: 'sarcastic', personality: 'witty' },
+      'motivational': { formality: 'conversational', emotion: 'inspiring', personality: 'motivational' },
+      'authentic': { formality: 'conversational', emotion: 'genuine', personality: 'authentic' },
+      'edgy': { formality: 'casual', emotion: 'bold', personality: 'edgy' },
+      'warm': { formality: 'friendly', emotion: 'warm', personality: 'caring' },
+      'humorous': { formality: 'casual', emotion: 'humorous', personality: 'entertaining' },
+    }
+
+    let formality = 'conversational'
+    let emotion = 'engaging'
+    let personality = 'authentic'
+
+    for (const word of toneWords) {
+      const mapping = toneMapping[word]
+      if (mapping) {
+        formality = mapping.formality
+        emotion = mapping.emotion
+        personality = mapping.personality
+        break
+      }
+    }
+
+    const updatedProfile: BrandVoiceProfile = {
+      ...editingProfile,
+      name: newProfileName,
+      description: `Custom tone: ${customTone}`,
+      updatedAt: new Date(),
+      toneAttributes: {
+        formality,
+        emotion,
+        personality,
+        humor: toneWords.some(w => ['funny', 'witty', 'humorous', 'sarcastic', 'playful'].includes(w)) ? 'high' : 'moderate',
+        energy: toneWords.some(w => ['engaging', 'bold', 'edgy', 'motivational'].includes(w)) ? 'high' : 'moderate'
+      },
+      stylePatterns: {
+        sentenceLength: 'mixed',
+        vocabulary: toneWords.some(w => ['professional', 'educational'].includes(w)) ? 'sophisticated' : 'conversational',
+        punctuationStyle: toneWords.some(w => ['bold', 'edgy', 'engaging'].includes(w)) ? 'expressive' : 'standard',
+        paragraphStructure: 'varied'
+      },
+      contentPreferences: {
+        hashtagUsage: 'moderate',
+        emojiUsage: toneWords.some(w => ['playful', 'funny', 'casual', 'friendly'].includes(w)) ? 'frequent' : 'moderate',
+        ctaStyle: 'conversational',
+        contentLength: 'medium'
+      },
+      learnedPatterns: {
+        ...editingProfile.learnedPatterns,
+        signatureWords: toneWords,
+      }
+    }
+
+    const updatedProfiles = profiles.map(p =>
+      p.id === editingProfile.id ? updatedProfile : p
+    )
+    setProfiles(updatedProfiles)
+    localStorage.setItem('brandVoiceProfiles', JSON.stringify(updatedProfiles))
+
+    // Update selected profile if it was the one being edited
+    if (selectedProfile?.id === editingProfile.id) {
+      setSelectedProfile(updatedProfile)
+      onProfileUpdate(updatedProfile)
+    }
+
+    // Reset form
+    setEditingProfile(null)
+    setNewProfileName('')
+    setCustomTone('')
+    setIsTrainingMode(false)
+  }
+
+  const handleDeleteProfile = (profileId: string) => {
+    const updatedProfiles = profiles.filter(p => p.id !== profileId)
+    setProfiles(updatedProfiles)
+    localStorage.setItem('brandVoiceProfiles', JSON.stringify(updatedProfiles))
+
+    // If deleted profile was selected, clear selection
+    if (selectedProfile?.id === profileId) {
+      setSelectedProfile(null)
+      onProfileUpdate(null)
+      localStorage.setItem('activeBrandVoiceProfile', '')
+    }
+
+    setShowDeleteConfirm(null)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingProfile(null)
+    setNewProfileName('')
+    setCustomTone('')
+    setTrainingContent('')
+    setAnalysis(null)
+    setIsTrainingMode(false)
+  }
+
   // Load profiles on mount
   useEffect(() => {
     const savedProfiles = localStorage.getItem('brandVoiceProfiles')
@@ -273,10 +404,16 @@ export default function BrandVoiceManager({ onProfileUpdate, currentProfile }: B
           </p>
         </div>
         <button
-          onClick={() => setIsTrainingMode(!isTrainingMode)}
+          onClick={() => {
+            if (isTrainingMode) {
+              handleCancelEdit()
+            } else {
+              setIsTrainingMode(true)
+            }
+          }}
           className="px-4 py-2 bg-white border border-purple-300 text-purple-700 rounded-lg font-medium hover:bg-purple-50 transition-colors"
         >
-          {isTrainingMode ? 'Close Training' : '+ Train New Voice'}
+          {isTrainingMode ? (editingProfile ? 'Cancel Edit' : 'Close Training') : '+ Train New Voice'}
         </button>
       </div>
 
@@ -301,29 +438,83 @@ export default function BrandVoiceManager({ onProfileUpdate, currentProfile }: B
               </button>
 
               {profiles.map((profile) => (
-                <button
+                <div
                   key={profile.id}
-                  onClick={() => handleSelectProfile(profile)}
-                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                  className={`relative p-4 rounded-lg border-2 transition-all ${
                     selectedProfile?.id === profile.id
                       ? 'border-purple-500 bg-purple-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <div className="font-semibold text-gray-900">{profile.name}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {profile.toneAttributes.formality} • {profile.toneAttributes.emotion}
+                  {/* Edit/Delete buttons */}
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleEditProfile(profile)
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-100 rounded transition-colors"
+                      title="Edit profile"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowDeleteConfirm(profile.id)
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded transition-colors"
+                      title="Delete profile"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="flex-1 bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full"
-                        style={{ width: `${profile.confidence.overall}%` }}
-                      />
+
+                  {/* Delete confirmation */}
+                  {showDeleteConfirm === profile.id && (
+                    <div className="absolute inset-0 bg-white rounded-lg border-2 border-red-300 p-3 flex flex-col items-center justify-center z-10">
+                      <p className="text-sm text-gray-700 mb-3 text-center">Delete this voice?</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleDeleteProfile(profile.id)}
+                          className="px-3 py-1.5 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600"
+                        >
+                          Delete
+                        </button>
+                        <button
+                          onClick={() => setShowDeleteConfirm(null)}
+                          className="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs rounded-lg hover:bg-gray-300"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                    <span className="text-xs text-gray-600">{profile.confidence.overall}%</span>
-                  </div>
-                </button>
+                  )}
+
+                  {/* Profile content - clickable area */}
+                  <button
+                    onClick={() => handleSelectProfile(profile)}
+                    className="w-full text-left"
+                  >
+                    <div className="font-semibold text-gray-900 pr-16">{profile.name}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {profile.toneAttributes.formality} • {profile.toneAttributes.emotion}
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="flex-1 bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full"
+                          style={{ width: `${profile.confidence.overall}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-600">{profile.confidence.overall}%</span>
+                    </div>
+                  </button>
+                </div>
               ))}
 
               {profiles.length < 3 && (
@@ -425,7 +616,9 @@ export default function BrandVoiceManager({ onProfileUpdate, currentProfile }: B
           {/* Custom Tone Method */}
           {trainingMethod === 'custom' && (
             <div className="bg-white rounded-lg p-4">
-              <h4 className="font-semibold text-gray-900 mb-3">Set Your Tone</h4>
+              <h4 className="font-semibold text-gray-900 mb-3">
+                {editingProfile ? `Edit Voice: ${editingProfile.name}` : 'Set Your Tone'}
+              </h4>
               <p className="text-sm text-gray-600 mb-4">
                 Describe your desired tone using keywords like: witty, funny, engaging, professional,
                 casual, inspirational, bold, playful, sarcastic, authentic, edgy, warm
@@ -480,7 +673,7 @@ export default function BrandVoiceManager({ onProfileUpdate, currentProfile }: B
                 </div>
               )}
 
-              {/* Create Profile Form */}
+              {/* Create/Update Profile Form */}
               <div className="mt-4 space-y-3 pt-4 border-t border-gray-200">
                 <input
                   type="text"
@@ -489,13 +682,23 @@ export default function BrandVoiceManager({ onProfileUpdate, currentProfile }: B
                   placeholder="Profile name (e.g., 'My Fun Voice', 'Brand Personality')"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
-                <button
-                  onClick={handleCreateCustomToneProfile}
-                  disabled={!customTone.trim() || !newProfileName.trim()}
-                  className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Create Voice Profile
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={editingProfile ? handleUpdateProfile : handleCreateCustomToneProfile}
+                    disabled={!customTone.trim() || !newProfileName.trim()}
+                    className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {editingProfile ? 'Update Voice Profile' : 'Create Voice Profile'}
+                  </button>
+                  {editingProfile && (
+                    <button
+                      onClick={handleCancelEdit}
+                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
