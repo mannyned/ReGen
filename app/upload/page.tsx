@@ -93,7 +93,7 @@ function UploadPageContent() {
   const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
   const [uploadType, setUploadType] = useState<UploadType>('video')
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(['instagram', 'tiktok'])
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([])
   const [contentType, setContentType] = useState<ContentType>('post')
   const [dragActive, setDragActive] = useState(false)
   const [textContent, setTextContent] = useState('')
@@ -904,56 +904,6 @@ function UploadPageContent() {
               </div>
             )}
 
-            {/* Upload Limit Info */}
-            {selectedPlatforms.length > 0 && uploadType !== 'text' && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-blue-900 font-medium">
-                      You can upload up to {maxUploadLimit} {maxUploadLimit === 1 ? 'file' : 'files'}
-                    </p>
-                    {singleUploadPlatforms.length > 0 && multiUploadPlatforms.length > 0 && (
-                      <div className="text-xs text-blue-700 mt-1 space-y-0.5">
-                        <p>• {multiUploadPlatforms.join(', ')}: Will use all {maxUploadLimit} items</p>
-                        <p>• {singleUploadPlatforms.join(', ')}: You'll select 1 item during generation</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Carousel Warnings */}
-            {isCarousel && getCarouselWarnings().length > 0 && (
-              <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-lg">⚠️</span>
-                  </div>
-                  <div>
-                    <p className="text-sm text-amber-900 font-medium mb-2">
-                      Carousel compatibility notes:
-                    </p>
-                    <ul className="text-xs text-amber-800 space-y-1">
-                      {getCarouselWarnings().map((warning, idx) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <span className={warning.severity === 'warning' ? 'text-amber-600' : 'text-blue-600'}>
-                            {warning.severity === 'warning' ? '•' : 'ℹ'}
-                          </span>
-                          <span>{warning.message}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Upload Area */}
             <div className="mt-6">
               {uploadType !== 'text' ? (
@@ -1596,6 +1546,56 @@ function UploadPageContent() {
               </div>
             )}
           </Card>
+
+          {/* Upload Limit Info - Shows after platform selection */}
+          {selectedPlatforms.length > 0 && uploadType !== 'text' && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-blue-900 font-medium">
+                    You can upload up to {maxUploadLimit} {maxUploadLimit === 1 ? 'file' : 'files'}
+                  </p>
+                  {singleUploadPlatforms.length > 0 && multiUploadPlatforms.length > 0 && (
+                    <div className="text-xs text-blue-700 mt-1 space-y-0.5">
+                      <p>• {multiUploadPlatforms.join(', ')}: Will use all {maxUploadLimit} items</p>
+                      <p>• {singleUploadPlatforms.join(', ')}: You'll select 1 item during generation</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Carousel Warnings - Shows after platform selection */}
+          {isCarousel && getCarouselWarnings().length > 0 && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-lg">⚠️</span>
+                </div>
+                <div>
+                  <p className="text-sm text-amber-900 font-medium mb-2">
+                    Carousel compatibility notes:
+                  </p>
+                  <ul className="text-xs text-amber-800 space-y-1">
+                    {getCarouselWarnings().map((warning, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className={warning.severity === 'warning' ? 'text-amber-600' : 'text-blue-600'}>
+                          {warning.severity === 'warning' ? '•' : 'ℹ'}
+                        </span>
+                        <span>{warning.message}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex items-center justify-between pt-4">
