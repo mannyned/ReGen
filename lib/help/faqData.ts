@@ -1114,6 +1114,48 @@ For video platforms, you'll need to create video content separately. Blog Auto-S
 
 **Free and Creator plans** don't include Blog Auto-Share. If you're on these plans, you'll see an upgrade prompt when visiting the Automations page.`,
       },
+      {
+        id: 'blog-auto-share-testing',
+        question: 'How do I test Blog Auto-Share?',
+        answer: `Follow these steps to set up and test Blog Auto-Share:
+
+**Step 1: Add an RSS Feed**
+1. Go to **Content Feeds** (click "📡 Manage RSS Feeds" on the Automations page)
+2. Click "Add Content Feed" and paste your blog's RSS feed URL
+3. Wait for the feed to be fetched and items to appear
+
+**Step 2: Configure Blog Auto-Share**
+1. Go to the **Automations** page
+2. Enable the **Blog Auto-Share** toggle
+3. Select which platforms to share to (Instagram, Facebook, X, LinkedIn, Discord, Pinterest)
+4. Choose your publishing mode:
+   - **Create Draft for Approval** (recommended) - Review posts before publishing
+   - **Auto-Publish** - Posts go live automatically
+5. Optionally configure Quiet Hours and a fallback image
+6. Click **Save Settings**
+
+**Step 3: Test Auto-Share**
+1. After saving, a **"🧪 Test Auto-Share"** button will appear
+2. Click it to manually trigger processing of new RSS items
+3. The system will:
+   - Find unprocessed RSS items from your feeds
+   - Generate AI-powered captions for each platform
+   - Create drafts or auto-publish based on your settings
+
+**Step 4: Review Results**
+1. If drafts are created, you'll be switched to the **Posts** tab automatically
+2. Review each draft and click:
+   - **Approve & Publish** - Send to your connected platforms
+   - **Dismiss** - Skip this post
+   - **View Article** - See the original blog post
+3. Check status badges: Draft, Published, Partial, Failed
+
+**Troubleshooting:**
+- "No new RSS items to process" → Refresh your feed in Content Feeds first
+- Make sure your RSS feed has recent posts (items are marked as NEW when first ingested)
+- Check browser console (F12) for detailed error logs
+- Ensure you have at least one platform connected in Settings → Integrations`,
+      },
     ],
   },
   {
