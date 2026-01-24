@@ -191,23 +191,48 @@ export function TikTokPostSettings({
             <img
               src={creatorInfo.avatarUrl}
               alt={creatorInfo.displayName}
-              className="w-10 h-10 rounded-full object-cover"
+              className="w-12 h-12 rounded-full object-cover border-2 border-white/20"
             />
           ) : (
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-cyan-400 flex items-center justify-center text-white font-bold">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-500 to-cyan-400 flex items-center justify-center text-white font-bold text-lg border-2 border-white/20">
               {creatorInfo?.displayName?.[0] || 'T'}
             </div>
           )}
           <div className="flex-1">
-            <p className="font-semibold">Posting to @{creatorInfo?.displayName}</p>
-            <p className="text-xs text-gray-400">
-              {creatorInfo?.followerCount
-                ? `${creatorInfo.followerCount.toLocaleString()} followers`
-                : 'TikTok Account'}
-            </p>
+            <p className="font-semibold text-base">Posting to @{creatorInfo?.displayName}</p>
+            <div className="flex items-center gap-3 text-xs text-gray-300 mt-0.5">
+              {creatorInfo?.followerCount !== undefined && (
+                <span className="flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                  </svg>
+                  {creatorInfo.followerCount.toLocaleString()} followers
+                </span>
+              )}
+              {creatorInfo?.maxVideoPostPerDay && (
+                <span className="flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                  </svg>
+                  {creatorInfo.maxVideoPostPerDay} posts/day limit
+                </span>
+              )}
+            </div>
           </div>
           <div className="text-2xl">🎵</div>
         </div>
+
+        {/* Posting Limit Warning */}
+        {creatorInfo?.postingLimitReached && (
+          <div className="mt-3 p-2 bg-red-500/20 border border-red-400/30 rounded-lg">
+            <p className="text-xs text-red-200 flex items-center gap-2">
+              <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              Daily posting limit reached. Please try again tomorrow.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ============================================ */}
