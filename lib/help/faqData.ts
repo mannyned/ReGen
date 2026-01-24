@@ -970,6 +970,129 @@ Get platform-specific recommendations based on your data.`,
     ],
   },
   {
+    id: 'automations',
+    title: 'Automations',
+    icon: '🤖',
+    items: [
+      {
+        id: 'what-is-blog-auto-share',
+        question: 'What is Blog Auto-Share?',
+        answer: `Blog Auto-Share is a Pro feature that automatically shares your blog posts to social media when new content is published.
+
+**How it works:**
+1. Connect your blog's RSS feed in Content Feeds
+2. Enable Blog Auto-Share in Automations
+3. Select which platforms to share to
+4. Choose auto-publish or draft mode
+5. New posts are automatically detected and shared
+
+**What gets shared:**
+- Article title and excerpt
+- Open Graph image (or your fallback image)
+- AI-generated caption optimized for each platform
+- Link back to the original article
+
+This is perfect for bloggers who want to maximize their content reach without manually creating social posts for every article.`,
+      },
+      {
+        id: 'blog-auto-share-platforms',
+        question: 'Which platforms support Blog Auto-Share?',
+        answer: `Blog Auto-Share currently supports these platforms:
+
+**Supported:**
+- **Instagram** - Image post with caption (link in bio)
+- **Facebook** - Link post with preview
+- **Twitter/X** - Text post with link
+- **LinkedIn** - Professional link post
+- **Discord** - Channel message with embed
+- **Pinterest** - Pin with destination link
+
+**Not Supported:**
+- **TikTok** - Video-only platform
+- **YouTube** - Video-only platform
+
+For video platforms, you'll need to create video content separately. Blog Auto-Share is designed for article/blog content that includes images and text.`,
+      },
+      {
+        id: 'blog-auto-share-modes',
+        question: 'What is the difference between Draft and Auto-Publish mode?',
+        answer: `Blog Auto-Share offers two publishing modes:
+
+**Draft Mode (Recommended)**
+- New blog posts create drafts in ReGenr
+- You review and approve each post before publishing
+- Edit the AI-generated caption if needed
+- Full control over what gets published
+
+**Auto-Publish Mode**
+- Posts are published automatically without review
+- Faster workflow, less manual work
+- Best for established workflows where you trust the AI output
+
+**Tip:** Start with Draft mode to see how the AI generates captions for your content, then switch to Auto-Publish once you're confident in the output quality.`,
+      },
+      {
+        id: 'blog-auto-share-quiet-hours',
+        question: 'What are Quiet Hours in Blog Auto-Share?',
+        answer: `Quiet Hours prevent posts from being published during specific time windows.
+
+**Use cases:**
+- Avoid posting during sleeping hours (e.g., 10 PM - 6 AM)
+- Prevent weekend posts if your audience is B2B
+- Respect your audience's time zones
+
+**How it works:**
+1. Enable Quiet Hours in Automations settings
+2. Set start and end times (in UTC)
+3. Posts scheduled during quiet hours are queued
+4. They're published once quiet hours end
+
+**Note:** This only affects Auto-Publish mode. Draft mode posts wait for your approval regardless of quiet hours.`,
+      },
+      {
+        id: 'blog-auto-share-fallback-image',
+        question: 'What is the fallback image in Blog Auto-Share?',
+        answer: `The fallback image is used when your blog post doesn't have an Open Graph image.
+
+**When it's used:**
+- Blog post has no og:image meta tag
+- The image URL is invalid or inaccessible
+- The image fails to load
+
+**Setting your fallback:**
+1. Go to Automations → Settings
+2. Upload an image or paste a URL
+3. This image will be used for all posts without images
+
+**Best practices:**
+- Use your brand logo or a branded graphic
+- Recommended size: 1200x630 pixels
+- Supports JPG, PNG, GIF (max 5MB)
+
+**Instagram note:** Instagram requires an image for every post, so the fallback ensures your blog shares always work.`,
+      },
+      {
+        id: 'blog-auto-share-access',
+        question: 'Why can\'t I access Blog Auto-Share?',
+        answer: `Blog Auto-Share is a **Pro plan exclusive** feature.
+
+**To access Blog Auto-Share:**
+1. Upgrade to the Pro plan ($29/month)
+2. Go to Settings → Billing to upgrade
+3. Once upgraded, visit Automations to enable
+
+**What Pro includes:**
+- Blog Auto-Share automation
+- Unlimited platform connections
+- Advanced analytics (Location, Retention)
+- Team workspace (3 seats)
+- Priority support
+
+**Free and Creator plans** don't include Blog Auto-Share. If you're on these plans, you'll see an upgrade prompt when visiting the Automations page.`,
+      },
+    ],
+  },
+  {
     id: 'troubleshooting',
     title: 'Troubleshooting & Privacy',
     icon: '🔧',

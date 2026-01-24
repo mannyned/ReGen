@@ -6,6 +6,8 @@ import { AppHeader, Card, Badge } from '@/app/components/ui'
 import { PlatformLogo } from '@/app/components/ui/PlatformLogo'
 import { uploadToStorage } from '@/lib/storage/upload'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
+import { usePlan } from '@/app/context/PlanContext'
+import { hasBlogAutoShare } from '@/app/config/plans'
 import type { SocialPlatform } from '@/lib/types/social'
 
 // ============================================
@@ -76,6 +78,111 @@ const AVAILABLE_PLATFORMS: { id: SocialPlatform; name: string; description: stri
   { id: 'discord', name: 'Discord', description: 'Channel messages with embed' },
   { id: 'pinterest', name: 'Pinterest', description: 'Pins with destination link' },
 ]
+
+// ============================================
+// PRO-ONLY ACCESS GATE
+// ============================================
+
+function ProOnlyGate({ children }: { children: React.ReactNode }) {
+  const { currentPlan } = usePlan()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-tertiary flex items-center justify-center">
+        <div className="animate-pulse text-text-secondary">Loading...</div>
+      </div>
+    )
+  }
+
+  const hasAccess = hasBlogAutoShare(currentPlan)
+
+  if (!hasAccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-tertiary">
+        <AppHeader currentPage="automations" />
+
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+          <Card className="overflow-hidden" hover={false}>
+            {/* Preview Image */}
+            <div className="relative h-64 bg-gradient-to-br from-purple-50 to-pink-50">
+              <div className="absolute inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-6xl mb-4">🤖</div>
+                  <Badge variant="primary" className="bg-purple-100 text-purple-700">
+                    Pro Feature
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Decorative elements */}
+              <div className="absolute inset-4 rounded-xl bg-gradient-to-b from-purple-100 to-pink-100 opacity-50">
+                <div className="flex justify-around items-center h-full opacity-30">
+                  <span className="text-4xl">📝</span>
+                  <span className="text-2xl">→</span>
+                  <span className="text-4xl">📱</span>
+                  <span className="text-2xl">→</span>
+                  <span className="text-4xl">🌐</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-8 text-center">
+              <h2 className="text-2xl font-bold text-text-primary mb-4">
+                Unlock Blog Auto-Share
+              </h2>
+              <p className="text-text-secondary mb-6 max-w-lg mx-auto">
+                Automatically share your blog posts to social media. Connect your RSS feeds
+                and let AI generate platform-optimized captions for each post.
+              </p>
+
+              {/* Feature List */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 text-left max-w-lg mx-auto">
+                {[
+                  'Automatic RSS feed monitoring',
+                  'AI-powered caption generation',
+                  'Multi-platform publishing',
+                  'Draft approval workflow',
+                  'Quiet hours scheduling',
+                  'Platform-specific formatting'
+                ].map((feature) => (
+                  <div key={feature} className="flex items-start gap-3">
+                    <span className="text-green-500 mt-0.5">✓</span>
+                    <span className="text-text-secondary">{feature}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* CTA Button */}
+              <Link
+                href="/settings?tab=billing"
+                className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl"
+              >
+                Upgrade to Pro - $29/month
+              </Link>
+
+              <p className="text-sm text-text-secondary mt-4">
+                Cancel anytime. 14-day money-back guarantee.
+              </p>
+            </div>
+          </Card>
+
+          {/* Current Plan Info */}
+          <div className="mt-8 text-center text-text-secondary text-sm">
+            Your current plan: <span className="font-medium text-text-primary capitalize">{currentPlan}</span>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
 
 // ============================================
 // COMPONENT
@@ -308,21 +415,22 @@ export default function AutomationsPage() {
       case 'PARTIAL':
         return <Badge variant="warning">Partial</Badge>
       case 'FAILED':
-        return <Badge variant="destructive">Failed</Badge>
+        return <Badge variant="error">Failed</Badge>
       case 'DRAFT':
-        return <Badge variant="default">Draft</Badge>
+        return <Badge variant="gray">Draft</Badge>
       case 'QUEUED':
-        return <Badge variant="info">Queued</Badge>
+        return <Badge variant="secondary">Queued</Badge>
       case 'SKIPPED':
-        return <Badge variant="secondary">Skipped</Badge>
+        return <Badge variant="gray">Skipped</Badge>
       default:
-        return <Badge variant="secondary">{status}</Badge>
+        return <Badge variant="gray">{status}</Badge>
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-tertiary">
-      <AppHeader title="Automations" subtitle="Blog Auto-Share" />
+    <ProOnlyGate>
+      <div className="min-h-screen bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-tertiary">
+        <AppHeader currentPage="automations" />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         {/* Navigation */}
@@ -786,7 +894,8 @@ export default function AutomationsPage() {
             )}
           </div>
         )}
-      </main>
-    </div>
+        </main>
+      </div>
+    </ProOnlyGate>
   )
 }

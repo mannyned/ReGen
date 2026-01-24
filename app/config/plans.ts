@@ -35,6 +35,9 @@ export interface PlanFeatures {
   aiRecommendations: boolean
   exportReports: boolean
 
+  // Automation
+  blogAutoShare: boolean         // Pro only - automatic blog post sharing from RSS
+
   // Storage
   cloudStorage: number // in GB
 
@@ -78,6 +81,8 @@ export const PLANS: Record<PlanType, PlanFeatures> = {
     retentionAnalytics: false,    // Pro only
     aiRecommendations: false,
     exportReports: false,
+    // Automation
+    blogAutoShare: false,         // Pro only
     // Storage
     cloudStorage: 1, // 1GB
     // Support
@@ -117,6 +122,8 @@ export const PLANS: Record<PlanType, PlanFeatures> = {
     retentionAnalytics: false,    // Pro only
     aiRecommendations: false,
     exportReports: false,
+    // Automation
+    blogAutoShare: false,         // Pro only
     // Storage
     cloudStorage: 10, // 10GB
     // Support
@@ -156,6 +163,8 @@ export const PLANS: Record<PlanType, PlanFeatures> = {
     retentionAnalytics: true,     // Pro exclusive - Retention Graphs
     aiRecommendations: true,
     exportReports: true,
+    // Automation
+    blogAutoShare: true,          // Pro exclusive
     // Storage
     cloudStorage: 100, // 100GB
     // Support
@@ -254,4 +263,10 @@ export function hasSaveRateAnalytics(planType: PlanType): boolean {
 export function hasRetentionAnalytics(planType: PlanType): boolean {
   const plan = getPlan(planType)
   return plan.retentionAnalytics
+}
+
+// Check if blog auto-share is available (Pro only)
+export function hasBlogAutoShare(planType: PlanType): boolean {
+  const plan = getPlan(planType)
+  return plan.blogAutoShare
 }

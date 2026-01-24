@@ -115,6 +115,12 @@ export const LANDING_FAQ_SECTIONS: LandingFAQSection[] = [
         answer: `ReGenr is fully compliant with TikTok's Content Sharing Guidelines. When posting to TikTok, you control privacy settings, enable/disable comments, duets, and stitches, and disclose branded content—all from one simple interface. Your video is sent to TikTok for a final review before going live.`,
         highlight: 'Full TikTok compliance built-in',
       },
+      {
+        id: 'blog-auto-share',
+        question: 'What is Blog Auto-Share?',
+        answer: `Blog Auto-Share (Pro) automatically shares your blog posts to social media when you publish new content. Connect your RSS feed, and ReGenr detects new articles, extracts the title and image, generates AI captions, and posts to your chosen platforms—all automatically. Perfect for bloggers who want maximum reach with zero manual work.`,
+        highlight: 'Pro feature - automatic blog promotion',
+      },
     ],
   },
   {
