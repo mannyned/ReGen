@@ -291,23 +291,36 @@ export default function AutomationsPage() {
       setError(null)
       setSuccess(null)
 
+      console.log('[Automations] Saving settings:', settings)
+
       const response = await fetch('/api/blog-auto-share/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       })
 
+      console.log('[Automations] Response status:', response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('[Automations] Response error:', errorText)
+        setError(`Failed to save: ${response.status} ${response.statusText}`)
+        return
+      }
+
       const data = await response.json()
+      console.log('[Automations] Response data:', data)
 
       if (data.success) {
         setSettings(data.settings)
         setSuccess('Settings saved successfully!')
-        setTimeout(() => setSuccess(null), 3000)
+        setTimeout(() => setSuccess(null), 5000)
       } else {
         setError(data.error || 'Failed to save settings')
       }
     } catch (err) {
-      setError('Failed to save settings')
+      console.error('[Automations] Save error:', err)
+      setError('Failed to save settings. Check console for details.')
     } finally {
       setSaving(false)
     }
@@ -738,13 +751,40 @@ export default function AutomationsPage() {
                 )}
 
                 {/* Save Button */}
-                <div className="flex justify-end">
+                <div className="flex items-center justify-end gap-4">
+                  {/* Inline success/error feedback */}
+                  {success && (
+                    <span className="text-green-600 font-medium flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      {success}
+                    </span>
+                  )}
+                  {error && (
+                    <span className="text-red-600 font-medium flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      {error}
+                    </span>
+                  )}
                   <button
                     onClick={handleSaveSettings}
                     disabled={saving}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
+                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
                   >
-                    {saving ? 'Saving...' : 'Save Settings'}
+                    {saving ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Settings'
+                    )}
                   </button>
                 </div>
               </>
