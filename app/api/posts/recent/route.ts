@@ -281,6 +281,52 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // For 'all' or 'published' filter, also include Blog Auto-Share posts
+    if (filter === 'all' || filter === 'published') {
+      const autoSharePosts = await prisma.blogAutoSharePost.findMany({
+        where: {
+          profileId,
+          status: 'PUBLISHED',
+        },
+        orderBy: {
+          processedAt: 'desc',
+        },
+        take: 5,
+      })
+
+      const autoSharePostsTransformed = autoSharePosts.map((post) => {
+        const platformResults = post.platformResults
+          ? (typeof post.platformResults === 'string' ? JSON.parse(post.platformResults) : post.platformResults)
+          : []
+        const platforms = platformResults.map((r: { platform: string }) => r.platform.toLowerCase())
+
+        return {
+          id: `autoshare-${post.id}`,
+          platform: platforms[0] || 'blog',
+          platformPostId: null,
+          platformUrl: post.articleUrl,
+          caption: post.generatedCaption || post.articleTitle,
+          postedAt: post.processedAt?.toISOString() || post.createdAt.toISOString(),
+          status: OutboundPostStatus.POSTED,
+          deletedAt: undefined as string | undefined,
+          thumbnail: post.ogImage || undefined,
+          fileName: post.articleTitle,
+          mimeType: 'text/html',
+          mediaType: 'article' as string | undefined,
+          platforms: platforms.length > 0 ? platforms : ['blog'],
+          scheduledAt: undefined as string | undefined,
+          isScheduled: false,
+          isAutoShare: true,
+          articleUrl: post.articleUrl,
+        }
+      })
+
+      // Add to posts list
+      recentPosts = [...recentPosts, ...autoSharePostsTransformed]
+        .sort((a, b) => new Date(b.postedAt || 0).getTime() - new Date(a.postedAt || 0).getTime())
+        .slice(0, limit)
+    }
+
     // For 'all' filter, also include pending scheduled posts
     if (filter === 'all') {
       const scheduledPosts = await prisma.scheduledPost.findMany({

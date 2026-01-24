@@ -92,6 +92,17 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    // Fetch recently published Blog Auto-Share posts
+    const recentAutoSharePosts = await prisma.blogAutoSharePost.findMany({
+      where: {
+        profileId,
+        status: { in: ['PUBLISHED', 'PARTIAL', 'FAILED'] },
+        processedAt: { gte: cutoffDate },
+      },
+      orderBy: { processedAt: 'desc' },
+      take: 10,
+    })
+
     // Transform to notifications
     const notifications: PostNotification[] = []
 
@@ -140,6 +151,26 @@ export async function GET(request: NextRequest) {
         thumbnail: processedUrls?.files?.[0]?.publicUrl || post.contentUpload?.thumbnailUrl || undefined,
         timestamp: post.processedAt?.toISOString() || post.scheduledAt?.toISOString() || '',
         errorMessage: post.errorMessage || undefined,
+        isRead: false,
+      })
+    }
+
+    // Add Blog Auto-Share post completions
+    for (const post of recentAutoSharePosts) {
+      const platformResults = post.platformResults
+        ? (typeof post.platformResults === 'string' ? JSON.parse(post.platformResults) : post.platformResults)
+        : []
+      const platforms = platformResults.map((r: { platform: string }) => r.platform.toLowerCase())
+
+      notifications.push({
+        id: `autoshare-${post.id}`,
+        type: post.status === 'PUBLISHED' ? 'success' : post.status === 'PARTIAL' ? 'partial' : 'failed',
+        platform: platforms[0] || 'blog',
+        platforms: platforms.length > 0 ? platforms : ['blog'],
+        caption: post.generatedCaption?.substring(0, 100) || post.articleTitle?.substring(0, 100),
+        thumbnail: post.ogImage || undefined,
+        timestamp: post.processedAt?.toISOString() || post.createdAt.toISOString(),
+        errorMessage: post.status === 'FAILED' ? 'Failed to publish blog post' : undefined,
         isRead: false,
       })
     }
