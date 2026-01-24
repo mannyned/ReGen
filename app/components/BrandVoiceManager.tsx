@@ -12,7 +12,9 @@ interface BrandVoiceManagerProps {
 export default function BrandVoiceManager({ onProfileUpdate, currentProfile }: BrandVoiceManagerProps) {
   const { currentPlan } = usePlan()
   const [isTrainingMode, setIsTrainingMode] = useState(false)
+  const [trainingMethod, setTrainingMethod] = useState<'content' | 'custom'>('content')
   const [trainingContent, setTrainingContent] = useState('')
+  const [customTone, setCustomTone] = useState('')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<BrandVoiceAnalysis | null>(null)
   const [profiles, setProfiles] = useState<BrandVoiceProfile[]>([])
@@ -127,6 +129,108 @@ export default function BrandVoiceManager({ onProfileUpdate, currentProfile }: B
     setNewProfileName('')
     setTrainingContent('')
     setAnalysis(null)
+    setIsTrainingMode(false)
+  }
+
+  const handleCreateCustomToneProfile = () => {
+    if (!newProfileName || !customTone.trim()) return
+
+    // Parse the custom tone input to create a profile
+    const toneWords = customTone.toLowerCase().split(/[,\s]+/).filter(w => w.length > 0)
+
+    // Map common tone descriptors to profile attributes
+    const toneMapping: Record<string, { formality: string; emotion: string; personality: string }> = {
+      'witty': { formality: 'casual', emotion: 'playful', personality: 'witty' },
+      'funny': { formality: 'casual', emotion: 'humorous', personality: 'entertaining' },
+      'engaging': { formality: 'conversational', emotion: 'enthusiastic', personality: 'engaging' },
+      'professional': { formality: 'professional', emotion: 'confident', personality: 'authoritative' },
+      'casual': { formality: 'casual', emotion: 'friendly', personality: 'approachable' },
+      'friendly': { formality: 'casual', emotion: 'warm', personality: 'friendly' },
+      'inspirational': { formality: 'conversational', emotion: 'inspiring', personality: 'motivational' },
+      'educational': { formality: 'professional', emotion: 'informative', personality: 'knowledgeable' },
+      'bold': { formality: 'direct', emotion: 'confident', personality: 'bold' },
+      'playful': { formality: 'casual', emotion: 'playful', personality: 'fun' },
+      'sarcastic': { formality: 'casual', emotion: 'sarcastic', personality: 'witty' },
+      'motivational': { formality: 'conversational', emotion: 'inspiring', personality: 'motivational' },
+      'authentic': { formality: 'conversational', emotion: 'genuine', personality: 'authentic' },
+      'edgy': { formality: 'casual', emotion: 'bold', personality: 'edgy' },
+      'warm': { formality: 'friendly', emotion: 'warm', personality: 'caring' },
+      'humorous': { formality: 'casual', emotion: 'humorous', personality: 'entertaining' },
+    }
+
+    // Determine attributes based on input
+    let formality = 'conversational'
+    let emotion = 'engaging'
+    let personality = 'authentic'
+
+    for (const word of toneWords) {
+      const mapping = toneMapping[word]
+      if (mapping) {
+        formality = mapping.formality
+        emotion = mapping.emotion
+        personality = mapping.personality
+        break // Use first matching tone
+      }
+    }
+
+    const newProfile: BrandVoiceProfile = {
+      id: `profile_${Date.now()}`,
+      userId: 'current_user',
+      name: newProfileName,
+      description: `Custom tone: ${customTone}`,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      toneAttributes: {
+        formality,
+        emotion,
+        personality,
+        humor: toneWords.some(w => ['funny', 'witty', 'humorous', 'sarcastic', 'playful'].includes(w)) ? 'high' : 'moderate',
+        energy: toneWords.some(w => ['engaging', 'bold', 'edgy', 'motivational'].includes(w)) ? 'high' : 'moderate'
+      },
+      stylePatterns: {
+        sentenceLength: 'mixed',
+        vocabulary: toneWords.some(w => ['professional', 'educational'].includes(w)) ? 'sophisticated' : 'conversational',
+        punctuationStyle: toneWords.some(w => ['bold', 'edgy', 'engaging'].includes(w)) ? 'expressive' : 'standard',
+        paragraphStructure: 'varied'
+      },
+      contentPreferences: {
+        hashtagUsage: 'moderate',
+        emojiUsage: toneWords.some(w => ['playful', 'funny', 'casual', 'friendly'].includes(w)) ? 'frequent' : 'moderate',
+        ctaStyle: 'conversational',
+        contentLength: 'medium'
+      },
+      learnedPatterns: {
+        commonPhrases: [],
+        signatureWords: toneWords,
+        openingStyles: [],
+        closingStyles: [],
+        hashtagPatterns: [],
+        emojiPreferences: []
+      },
+      trainingContent: {
+        samples: [],
+        totalSamples: 0,
+        lastAnalyzedAt: new Date()
+      },
+      confidence: {
+        overall: 75, // Custom tone profiles start at 75% confidence
+        toneAccuracy: 80,
+        styleAccuracy: 70,
+        vocabularyMatch: 75
+      }
+    }
+
+    const updatedProfiles = [...profiles, newProfile]
+    setProfiles(updatedProfiles)
+    setSelectedProfile(newProfile)
+    onProfileUpdate(newProfile)
+    localStorage.setItem('brandVoiceProfiles', JSON.stringify(updatedProfiles))
+
+    // Reset form
+    setShowCreateProfile(false)
+    setNewProfileName('')
+    setCustomTone('')
     setIsTrainingMode(false)
   }
 
@@ -263,36 +367,141 @@ export default function BrandVoiceManager({ onProfileUpdate, currentProfile }: B
       {/* Training Mode */}
       {isTrainingMode && (
         <div className="space-y-4">
-          <div className="bg-white rounded-lg p-4">
-            <h4 className="font-semibold text-gray-900 mb-3">Train New Brand Voice</h4>
-            <p className="text-sm text-gray-600 mb-4">
-              Paste 3-5 examples of your best-performing content. The AI will analyze your writing style,
-              tone, and patterns to create a unique voice profile.
-            </p>
-
-            <textarea
-              value={trainingContent}
-              onChange={(e) => setTrainingContent(e.target.value)}
-              placeholder="Paste your content here... (minimum 50 characters)"
-              className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-            />
-
-            <div className="flex items-center justify-between mt-4">
-              <span className="text-sm text-gray-500">
-                {trainingContent.length} characters
-              </span>
-              <button
-                onClick={handleAnalyzeContent}
-                disabled={isAnalyzing || trainingContent.length < 50}
-                className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isAnalyzing ? 'Analyzing...' : 'Analyze Content'}
-              </button>
-            </div>
+          {/* Training Method Toggle */}
+          <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+            <button
+              onClick={() => setTrainingMethod('content')}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                trainingMethod === 'content'
+                  ? 'bg-white text-purple-700 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Analyze Content
+            </button>
+            <button
+              onClick={() => setTrainingMethod('custom')}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                trainingMethod === 'custom'
+                  ? 'bg-white text-purple-700 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Set Custom Tone
+            </button>
           </div>
 
-          {/* Analysis Results */}
-          {analysis && (
+          {/* Content Analysis Method */}
+          {trainingMethod === 'content' && (
+            <div className="bg-white rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 mb-3">Train from Your Content</h4>
+              <p className="text-sm text-gray-600 mb-4">
+                Paste 3-5 examples of your best-performing content. The AI will analyze your writing style,
+                tone, and patterns to create a unique voice profile.
+              </p>
+
+              <textarea
+                value={trainingContent}
+                onChange={(e) => setTrainingContent(e.target.value)}
+                placeholder="Paste your content here... (minimum 50 characters)"
+                className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+              />
+
+              <div className="flex items-center justify-between mt-4">
+                <span className="text-sm text-gray-500">
+                  {trainingContent.length} characters
+                </span>
+                <button
+                  onClick={handleAnalyzeContent}
+                  disabled={isAnalyzing || trainingContent.length < 50}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isAnalyzing ? 'Analyzing...' : 'Analyze Content'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Custom Tone Method */}
+          {trainingMethod === 'custom' && (
+            <div className="bg-white rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 mb-3">Set Your Tone</h4>
+              <p className="text-sm text-gray-600 mb-4">
+                Describe your desired tone using keywords like: witty, funny, engaging, professional,
+                casual, inspirational, bold, playful, sarcastic, authentic, edgy, warm
+              </p>
+
+              <input
+                type="text"
+                value={customTone}
+                onChange={(e) => setCustomTone(e.target.value)}
+                placeholder="e.g., Witty, Funny and Engaging"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+
+              {/* Quick Tone Presets */}
+              <div className="mt-4">
+                <p className="text-xs text-gray-500 mb-2">Quick presets:</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    'Witty & Engaging',
+                    'Professional & Confident',
+                    'Casual & Friendly',
+                    'Bold & Inspirational',
+                    'Playful & Fun',
+                    'Authentic & Warm'
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      onClick={() => setCustomTone(preset)}
+                      className={`px-3 py-1 text-xs rounded-full border transition-all ${
+                        customTone === preset
+                          ? 'bg-purple-100 border-purple-400 text-purple-700'
+                          : 'border-gray-300 text-gray-600 hover:border-purple-300 hover:text-purple-600'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Preview of detected attributes */}
+              {customTone.trim() && (
+                <div className="mt-4 p-3 bg-purple-50 rounded-lg">
+                  <p className="text-xs text-purple-600 mb-2">Detected style:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {customTone.toLowerCase().split(/[,\s]+/).filter(w => w.length > 2).map((word, i) => (
+                      <span key={i} className="px-2 py-1 bg-white text-purple-700 rounded text-xs font-medium">
+                        {word}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Create Profile Form */}
+              <div className="mt-4 space-y-3 pt-4 border-t border-gray-200">
+                <input
+                  type="text"
+                  value={newProfileName}
+                  onChange={(e) => setNewProfileName(e.target.value)}
+                  placeholder="Profile name (e.g., 'My Fun Voice', 'Brand Personality')"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+                <button
+                  onClick={handleCreateCustomToneProfile}
+                  disabled={!customTone.trim() || !newProfileName.trim()}
+                  className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Create Voice Profile
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Analysis Results - Only show for content analysis method */}
+          {trainingMethod === 'content' && analysis && (
             <div className="bg-white rounded-lg p-4 space-y-4">
               <h4 className="font-semibold text-gray-900">Analysis Results</h4>
 
