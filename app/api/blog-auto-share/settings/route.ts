@@ -41,6 +41,8 @@ export async function GET(request: NextRequest) {
       postingWindowEnd: null,
       captionTemplates: null,
       feedIds: [],
+      onlyNewPosts: true,
+      enabledAt: null,
       discordChannelId: null,
       pinterestBoardId: null,
       linkedinOrgUrn: null,
@@ -101,6 +103,21 @@ export async function POST(request: NextRequest) {
       postingWindowEnd = Math.max(0, Math.min(23, parseInt(postingWindowEnd, 10)))
     }
 
+    // Check if we need to set enabledAt (when enabling for first time or re-enabling with onlyNewPosts)
+    const existingSettings = await prisma.blogAutoShareSettings.findUnique({
+      where: { profileId: user.id },
+    })
+
+    // Set enabledAt when:
+    // 1. Enabling for the first time
+    // 2. Re-enabling after being disabled (if onlyNewPosts is true)
+    const shouldSetEnabledAt = body.enabled && (body.onlyNewPosts ?? true) && (
+      !existingSettings?.enabled || // Was disabled or new
+      !existingSettings?.enabledAt   // Never had enabledAt set
+    )
+
+    const enabledAt = shouldSetEnabledAt ? new Date() : (existingSettings?.enabledAt || null)
+
     // Upsert settings
     const settings = await prisma.blogAutoShareSettings.upsert({
       where: { profileId: user.id },
@@ -118,6 +135,8 @@ export async function POST(request: NextRequest) {
         postingWindowEnd,
         captionTemplates: body.captionTemplates || null,
         feedIds: body.feedIds || [],
+        onlyNewPosts: body.onlyNewPosts ?? true,
+        enabledAt: body.enabled ? new Date() : null,
         discordChannelId: body.discordChannelId || null,
         pinterestBoardId: body.pinterestBoardId || null,
         linkedinOrgUrn: body.linkedinOrgUrn || null,
@@ -135,6 +154,8 @@ export async function POST(request: NextRequest) {
         postingWindowEnd,
         captionTemplates: body.captionTemplates,
         feedIds: body.feedIds,
+        onlyNewPosts: body.onlyNewPosts ?? true,
+        enabledAt,
         discordChannelId: body.discordChannelId,
         pinterestBoardId: body.pinterestBoardId,
         linkedinOrgUrn: body.linkedinOrgUrn,

@@ -27,6 +27,8 @@ interface AutoShareSettings {
   postingWindowEnd: number | null
   captionTemplates: Record<string, string> | null
   feedIds: string[]
+  onlyNewPosts: boolean
+  enabledAt: string | null
   discordChannelId: string | null
   pinterestBoardId: string | null
   linkedinOrgUrn: string | null
@@ -215,6 +217,8 @@ export default function AutomationsPage() {
     postingWindowEnd: null,
     captionTemplates: null,
     feedIds: [],
+    onlyNewPosts: true,
+    enabledAt: null,
     discordChannelId: null,
     pinterestBoardId: null,
     linkedinOrgUrn: null,
@@ -567,6 +571,25 @@ export default function AutomationsPage() {
 
                 {settings.enabled && (
                   <>
+                    {/* Only New Posts Info */}
+                    <Card className="p-4 bg-blue-50 border-blue-200">
+                      <div className="flex items-start gap-3">
+                        <span className="text-xl">📅</span>
+                        <div>
+                          <h4 className="font-semibold text-blue-800">Only New Posts</h4>
+                          <p className="text-sm text-blue-700 mt-1">
+                            Only blog posts published <strong>after you enable auto-share</strong> will be processed.
+                            Existing posts in your RSS feed will be ignored to prevent duplicate sharing.
+                          </p>
+                          {settings.enabledAt && (
+                            <p className="text-xs text-blue-600 mt-2">
+                              Enabled on: {new Date(settings.enabledAt).toLocaleDateString()} at {new Date(settings.enabledAt).toLocaleTimeString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+
                     {/* Platform Selection */}
                     <Card className="p-6">
                       <h3 className="text-lg font-semibold text-text-primary mb-4">

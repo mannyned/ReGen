@@ -117,11 +117,18 @@ export class BlogAutoShareService {
       ? { feedId: { in: settings.feedIds } }
       : {}
 
+    // Filter by enabledAt if onlyNewPosts is true (default behavior)
+    // This ensures we only process items published AFTER auto-share was enabled
+    const dateFilter = (settings.onlyNewPosts && settings.enabledAt)
+      ? { publishedAt: { gte: settings.enabledAt } }
+      : {}
+
     const newItems = await prisma.rssFeedItem.findMany({
       where: {
         profileId: settings.profileId,
         status: 'NEW',
         ...feedFilter,
+        ...dateFilter,
         // Exclude items that already have auto-share posts
         blogAutoSharePosts: { none: {} },
       },
@@ -317,7 +324,8 @@ export class BlogAutoShareService {
   }
 
   /**
-   * Generate AI-powered caption
+   * Generate AI-powered caption that summarizes blog content
+   * Prioritizes article content over images, always includes blog link
    */
   private async generateAICaption(
     title: string,
@@ -325,15 +333,30 @@ export class BlogAutoShareService {
     url: string
   ): Promise<string | null> {
     try {
+      // Build a content-focused prompt for the AI
+      // Explicitly tell AI to summarize the blog content, not describe images
+      const contentPrompt = `Summarize this blog post for social media. Focus on the key insights and value for readers.
+
+Title: ${title}
+
+Content Summary: ${excerpt || 'A new blog post sharing valuable insights.'}
+
+Create an engaging caption that:
+1. Summarizes the main point or takeaway from the article
+2. Creates curiosity to read the full post
+3. Uses a conversational, engaging tone
+4. Does NOT describe any images - focus on the written content
+5. Keep it concise (2-3 sentences max)`
+
       const response = await fetch(`${process.env.NEXTAUTH_URL || ''}/api/brand-voice/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content: `New blog post: ${title}. ${excerpt}`,
+          content: contentPrompt,
           platform: 'general',
-          includeCTA: true,
+          includeCTA: false, // We'll add our own CTA with the link
           includeEmojis: true,
-          includeHashtags: false, // Will add separately if needed
+          includeHashtags: false,
         }),
       })
 
@@ -342,8 +365,8 @@ export class BlogAutoShareService {
       const data = await response.json()
       if (!data.success || !data.caption) return null
 
-      // Append the article URL
-      return `${data.caption}\n\n🔗 Read more: ${url}`
+      // Always append the article URL with a clear CTA
+      return `${data.caption}\n\n📖 Read the full article:\n🔗 ${url}`
     } catch {
       return null
     }

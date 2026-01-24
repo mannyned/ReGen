@@ -1048,6 +1048,10 @@ model BlogAutoShareSettings {
   // RSS feed filter - only auto-share from specific feeds (null = all feeds)
   feedIds String[] @map("feed_ids")
 
+  // Only share new posts - ignore items published before enabledAt
+  onlyNewPosts Boolean   @default(true) @map("only_new_posts")
+  enabledAt    DateTime? @map("enabled_at")  // When auto-share was enabled (for filtering)
+
   // Discord channel for auto-share (if Discord is enabled)
   discordChannelId String? @map("discord_channel_id")
 
