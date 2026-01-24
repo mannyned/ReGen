@@ -41,18 +41,18 @@ interface PinterestBoard {
   privacy?: string
 }
 
-// Platform limits for carousel/multi-media posts
+// Platform limits for carousel/multi-media posts (verified 2025)
 const PLATFORM_LIMITS = {
-  instagram: { post: 10, story: 1 },  // Carousel: up to 10 images/videos
+  instagram: { post: 20, story: 1 },  // Carousel: up to 20 images/videos (updated 2024)
   facebook: { post: 10, story: 1 },   // Multi-photo: up to 10 items
-  tiktok: { post: 1, story: 1 },      // No carousel support
-  youtube: { post: 1, story: 1 },     // No carousel support
-  x: { post: 4, story: 1 },           // Up to 4 images per tweet
-  linkedin: { post: 20, story: 1 },   // Multi-image: 2-20 items
+  tiktok: { post: 35, story: 1 },     // Photo carousel: up to 35 images (video: 1)
+  youtube: { post: 1, story: 1 },     // Single video per upload
+  x: { post: 4, story: 1 },           // Up to 4 images per tweet (standard users)
+  linkedin: { post: 20, story: 1 },   // Document carousel: up to 20 slides
   'linkedin-org': { post: 20, story: 1 },  // Company page: same as personal
   pinterest: { post: 5, story: 1 },   // Carousel pin: 2-5 images
   discord: { post: 10, story: 1 },    // Multi-attachment: up to 10
-  reddit: { post: 1, story: 1 },      // Single image/video per post
+  reddit: { post: 20, story: 1 },     // Gallery posts: up to 20 images
 }
 
 // Carousel-specific constraints for validation
@@ -154,9 +154,9 @@ function UploadPageContent() {
   }
 
   const getMaxUploadLimit = () => {
-    // When no platforms selected, allow max uploads (10 = Instagram carousel limit)
+    // When no platforms selected, allow max uploads (20 = Instagram carousel limit)
     // Users can upload first, then select platforms
-    if (selectedPlatforms.length === 0) return 10
+    if (selectedPlatforms.length === 0) return 20
     const limits = selectedPlatforms.map(platform =>
       PLATFORM_LIMITS[platform]?.[contentType] || 1
     )

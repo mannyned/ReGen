@@ -326,17 +326,18 @@ function GeneratePageContent() {
   }, [router, searchParams])
 
   const getPlatformLimit = (platform: Platform, contentType: ContentType): number => {
+    // Platform limits for carousel/multi-media posts (verified 2025, synced with upload page)
     const limits: Record<Platform, { post: number, story: number }> = {
-      instagram: { post: 6, story: 6 },
-      facebook: { post: 6, story: 6 },
-      tiktok: { post: 1, story: 1 },
-      snapchat: { post: 1, story: 1 },
-      youtube: { post: 1, story: 1 },
-      x: { post: 4, story: 1 },
-      linkedin: { post: 1, story: 1 },
-      pinterest: { post: 1, story: 1 },
-      discord: { post: 1, story: 1 },
-      reddit: { post: 1, story: 1 },
+      instagram: { post: 20, story: 1 },  // Carousel: up to 20 images/videos (updated 2024)
+      facebook: { post: 10, story: 1 },   // Multi-photo: up to 10 items
+      tiktok: { post: 35, story: 1 },     // Photo carousel: up to 35 images (video: 1)
+      snapchat: { post: 1, story: 1 },    // Single snap per post
+      youtube: { post: 1, story: 1 },     // Single video per upload
+      x: { post: 4, story: 1 },           // Up to 4 images per tweet (standard users)
+      linkedin: { post: 20, story: 1 },   // Document carousel: up to 20 slides
+      pinterest: { post: 5, story: 1 },   // Carousel pin: 2-5 images
+      discord: { post: 10, story: 1 },    // Multi-attachment: up to 10
+      reddit: { post: 20, story: 1 },     // Gallery posts: up to 20 images
     }
     return limits[platform]?.[contentType] || 1
   }
