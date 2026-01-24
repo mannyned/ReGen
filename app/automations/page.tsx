@@ -193,6 +193,7 @@ export default function AutomationsPage() {
   const [activeTab, setActiveTab] = useState<'settings' | 'posts'>('settings')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
@@ -323,6 +324,41 @@ export default function AutomationsPage() {
       setError('Failed to save settings. Check console for details.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleTestAutoShare = async () => {
+    try {
+      setTesting(true)
+      setError(null)
+      setSuccess(null)
+
+      console.log('[Automations] Testing auto-share...')
+
+      const response = await fetch('/api/blog-auto-share/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      const data = await response.json()
+      console.log('[Automations] Test result:', data)
+
+      if (data.success) {
+        setSuccess(data.message || 'Auto-share test complete!')
+        // Refresh posts if we're on the posts tab or switch to it
+        if (data.drafts > 0 || data.published > 0) {
+          setActiveTab('posts')
+          fetchPosts(postsFilter)
+        }
+        setTimeout(() => setSuccess(null), 8000)
+      } else {
+        setError(data.error || 'Test failed')
+      }
+    } catch (err) {
+      console.error('[Automations] Test error:', err)
+      setError('Failed to test auto-share')
+    } finally {
+      setTesting(false)
     }
   }
 
@@ -750,42 +786,67 @@ export default function AutomationsPage() {
                   </>
                 )}
 
-                {/* Save Button */}
-                <div className="flex items-center justify-end gap-4">
+                {/* Save Button and Test Button */}
+                <div className="flex flex-col gap-4">
                   {/* Inline success/error feedback */}
                   {success && (
-                    <span className="text-green-600 font-medium flex items-center gap-2">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 flex items-center gap-2">
+                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                       {success}
-                    </span>
+                    </div>
                   )}
                   {error && (
-                    <span className="text-red-600 font-medium flex items-center gap-2">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-2">
+                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                       {error}
-                    </span>
+                    </div>
                   )}
-                  <button
-                    onClick={handleSaveSettings}
-                    disabled={saving}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {saving ? (
-                      <>
-                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Saving...
-                      </>
-                    ) : (
-                      'Save Settings'
+                  <div className="flex items-center justify-end gap-3">
+                    {/* Test Button - only show when enabled */}
+                    {settings.enabled && settings.platforms.length > 0 && (
+                      <button
+                        onClick={handleTestAutoShare}
+                        disabled={testing || saving}
+                        className="px-6 py-3 bg-white border-2 border-purple-300 text-purple-700 font-medium rounded-xl hover:bg-purple-50 transition-all disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {testing ? (
+                          <>
+                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <span>🧪</span>
+                            Test Auto-Share
+                          </>
+                        )}
+                      </button>
                     )}
-                  </button>
+                    <button
+                      onClick={handleSaveSettings}
+                      disabled={saving || testing}
+                      className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {saving ? (
+                        <>
+                          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Saving...
+                        </>
+                      ) : (
+                        'Save Settings'
+                      )}
+                    </button>
+                  </div>
                 </div>
               </>
             )}
