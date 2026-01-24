@@ -77,15 +77,19 @@ Our AI analyzes your content's tone, key messages, and structure to create engag
         question: 'What is Mixed Media upload?',
         answer: `Mixed Media lets you upload a combination of images and videos to create carousel posts.
 
-**Platform Support:**
-| Platform | Max Items | Video Support |
-|----------|-----------|---------------|
-| Instagram | 10 | Yes |
-| Facebook | 10 | Yes |
+**Platform Support (Updated 2025):**
+| Platform | Max Items | Notes |
+|----------|-----------|-------|
+| Instagram | 20 | Images & videos |
+| Facebook | 10 | Images & videos |
+| TikTok | 35 | Photo carousel mode |
 | Twitter/X | 4 | Images only |
-| LinkedIn | 20 | Images only |
-| Discord | 10 | Yes |
+| LinkedIn | 20 | Document carousel |
 | Pinterest | 5 | Images only |
+| Discord | 10 | Images & videos |
+| Reddit | 20 | Gallery posts |
+| YouTube | 1 | Single video |
+| Snapchat | 1 | Single snap |
 
 **Tips:**
 - The first image becomes your cover image
@@ -179,22 +183,32 @@ Upload a photo of a sunset at the beach, and the AI might generate:
       {
         id: 'ai-brand-voice',
         question: 'What is AI Brand Voice and how does it work?',
-        answer: `AI Brand Voice is a feature that tells the AI how to style your generated content to match your brand's personality.
+        answer: `AI Brand Voice is a Pro feature that lets you create custom voice profiles so the AI generates content matching your brand's personality.
 
-**How it works:**
-1. You provide a brand voice description (e.g., "professional and friendly", "edgy and casual", "corporate and formal")
-2. The AI embeds your brand voice into its content generation prompts
-3. All generated captions and descriptions follow your specified style
+**Two Ways to Create a Voice Profile:**
+
+**1. Analyze Content (Recommended)**
+- Paste 3-5 examples of your best-performing content (minimum 50 characters)
+- The AI analyzes your writing style, tone, and patterns
+- Creates a detailed profile with formality, emotion, personality traits
+
+**2. Set Custom Tone (Quick Setup)**
+- Enter tone keywords like "Witty, Funny and Engaging"
+- Or use quick presets: Witty & Engaging, Professional & Confident, Casual & Friendly, Bold & Inspirational, Playful & Fun, Authentic & Warm
+- The AI maps your keywords to voice attributes automatically
+
+**Managing Voice Profiles:**
+- Create up to 3 voice profiles
+- Edit any profile by clicking the pencil icon
+- Delete profiles you no longer need with the trash icon
+- Switch between profiles anytime
 
 **Default Voice:**
-If you don't specify a brand voice, ReGenr uses "professional and engaging" as the default.
+When "Default Voice" is selected, captions use your "Select Caption Tone" choice (engaging, professional, casual, etc.) with standard platform formatting.
 
-**Examples of Brand Voices:**
-- *"Professional and authoritative"* - For B2B and corporate content
-- *"Casual and fun with humor"* - For lifestyle brands
-- *"Inspirational and motivating"* - For fitness and coaching
-- *"Minimalist and sophisticated"* - For luxury brands
-- *"Friendly and approachable"* - For small businesses
+**Custom Profile vs Default:**
+- **Default Voice**: Uses the Caption Tone selector for basic styling
+- **Custom Profile**: Overrides with your trained voice characteristics (formality, emotion, humor level, emoji usage, etc.)
 
 **Platform Adaptation:**
 Your brand voice is combined with platform-specific guidelines:
@@ -446,19 +460,25 @@ ReGenr's TikTok posting interface is fully compliant with TikTok's UX requiremen
 You cannot publish to TikTok without checking the agreement box.`,
       },
       {
-        id: 'tiktok-video-only',
-        question: 'Why does TikTok only accept video content?',
-        answer: `TikTok's Content Posting API is designed for video content only. Unlike Instagram or Twitter, TikTok doesn't support:
-- Image-only posts
-- Text-only posts
-- Carousels (multiple images)
+        id: 'tiktok-content-types',
+        question: 'What content types does TikTok support?',
+        answer: `TikTok now supports both video and photo carousel content:
 
-**Supported formats:**
-- MP4, MOV, WebM
+**Video Posts:**
+- Formats: MP4, MOV, WebM
 - Maximum 10 minutes duration
 - Maximum file size: 500MB
 
-**Tip:** If you have images you want to share on TikTok, consider creating a slideshow video with them using video editing software before uploading.`,
+**Photo Carousel (Photo Mode):**
+- Up to 35 images per carousel
+- Great for slideshows, tutorials, stories
+- Each image can have its own timing
+
+**Not Supported:**
+- Text-only posts
+- Single image posts (must be carousel or video)
+
+**Tip:** Photo carousels are perfect for step-by-step tutorials, before/after comparisons, or storytelling sequences.`,
       },
       {
         id: 'tiktok-inbox-flow',
