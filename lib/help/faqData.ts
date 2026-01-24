@@ -377,13 +377,17 @@ Your scheduled posts appear in the Schedule tab where you can edit, reschedule, 
         question: 'What are TikTok\'s Content Sharing Guidelines?',
         answer: `TikTok requires third-party apps like ReGenr to follow their Content Sharing Guidelines. These guidelines ensure users have full control over their content before it's published.
 
-**Key Requirements:**
-- You must select a privacy level before posting (no default)
-- Interaction settings (comments, duets, stitches) must be explicitly chosen
-- Commercial content must be properly disclosed
-- You must agree to TikTok's terms before each post
+**ReGenr follows the exact order specified by TikTok:**
 
-ReGenr's TikTok posting interface is fully compliant with these guidelines.`,
+1. **Creator Info** - Shows which TikTok account will receive the content
+2. **Caption Preview** - Displays the caption that will be posted
+3. **Privacy Level** - Required selection with no default value
+4. **Interaction Settings** - Comments, Duet, Stitch (with Music Usage notice)
+5. **Content Disclosure** - Toggle for branded/promotional content
+6. **Terms Agreement** - Dynamic text based on content disclosure selection
+7. **Processing Notice** - Information about TikTok's processing time
+
+ReGenr's TikTok posting interface is fully compliant with TikTok's UX requirements.`,
       },
       {
         id: 'tiktok-privacy-levels',

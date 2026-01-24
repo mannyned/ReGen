@@ -1292,6 +1292,7 @@ function SchedulePageContent() {
                   </div>
                   <TikTokPostSettings
                     isVideo={selectedPreviews[0]?.files?.[0]?.type?.startsWith('video/') || false}
+                    caption={selectedPreviews[0]?.caption || ''}
                     settings={tiktokSettings}
                     onChange={setTiktokSettings}
                     disabled={isPublishing}

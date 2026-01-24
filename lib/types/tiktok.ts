@@ -95,6 +95,8 @@ export interface TikTokCreatorInfo {
   duetDisabled: boolean
   stitchDisabled: boolean
   maxVideoPostPerDay: number
+  maxVideoDuration?: number // Max video duration in seconds (Point 1 validation)
+  postingLimitReached?: boolean // True if daily posting limit is reached
 }
 
 /**
