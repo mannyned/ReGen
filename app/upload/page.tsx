@@ -1287,12 +1287,6 @@ function UploadPageContent() {
               })}
             </div>
 
-            <div className="mt-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
-              <p className="text-sm text-text-primary">
-                <span className="font-bold text-primary">{selectedPlatforms.length} platforms</span> selected — ReGenr will create optimized versions for each
-              </p>
-            </div>
-
             {connectedAccounts.length === 0 && (
               <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                 <div className="flex items-center gap-3">
@@ -1548,6 +1542,60 @@ function UploadPageContent() {
               </div>
             )}
           </Card>
+
+          {/* Platform Distribution Preview - Shows selected platforms with limits */}
+          {selectedPlatforms.length > 0 && (
+            <Card className="p-6" hover={false}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-text-primary">Platform Distribution Preview</h3>
+                  <p className="text-xs text-text-secondary">
+                    <span className="font-medium text-primary">{selectedPlatforms.length} platform{selectedPlatforms.length !== 1 ? 's' : ''}</span> selected
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {selectedPlatforms.map((platformId) => {
+                  const platform = platforms.find(p => p.id === platformId)
+                  const limit = PLATFORM_LIMITS[platformId]?.[contentType] || 1
+                  const isConnected = connectedAccounts.includes(platformId)
+
+                  return (
+                    <div
+                      key={platformId}
+                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100"
+                    >
+                      <div className="w-8 h-8 flex items-center justify-center">
+                        <PlatformLogo
+                          platform={PLATFORM_ID_MAP[platformId]}
+                          size="md"
+                          variant="color"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-text-primary truncate">
+                          {platform?.name || platformId}
+                        </p>
+                        <p className="text-xs text-text-secondary">
+                          {limit === 1 ? 'Single file' : `Up to ${limit} files`}
+                        </p>
+                      </div>
+                      {isConnected ? (
+                        <div className="w-2 h-2 bg-green-500 rounded-full" title="Connected" />
+                      ) : (
+                        <div className="w-2 h-2 bg-orange-500 rounded-full" title="Not connected" />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
+          )}
 
           {/* Upload Limit Info - Shows after platform selection */}
           {selectedPlatforms.length > 0 && uploadType !== 'text' && (
