@@ -154,7 +154,9 @@ function UploadPageContent() {
   }
 
   const getMaxUploadLimit = () => {
-    if (selectedPlatforms.length === 0) return 1
+    // When no platforms selected, allow max uploads (10 = Instagram carousel limit)
+    // Users can upload first, then select platforms
+    if (selectedPlatforms.length === 0) return 10
     const limits = selectedPlatforms.map(platform =>
       PLATFORM_LIMITS[platform]?.[contentType] || 1
     )
