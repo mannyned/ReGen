@@ -681,6 +681,60 @@ export default function AutomationsPage() {
                       </div>
                     </Card>
 
+                    {/* Platform-Specific Settings */}
+                    {(settings.platforms.includes('discord') || settings.platforms.includes('pinterest')) && (
+                      <Card className="p-6">
+                        <h3 className="text-lg font-semibold text-text-primary mb-4">
+                          Platform Settings
+                        </h3>
+                        <p className="text-sm text-text-secondary mb-4">
+                          Configure required settings for specific platforms.
+                        </p>
+
+                        <div className="space-y-4">
+                          {/* Discord Channel ID */}
+                          {settings.platforms.includes('discord') && (
+                            <div>
+                              <label className="block text-sm font-medium text-text-primary mb-2">
+                                Discord Channel ID
+                              </label>
+                              <input
+                                type="text"
+                                value={settings.discordChannelId || ''}
+                                onChange={(e) => setSettings(prev => ({ ...prev, discordChannelId: e.target.value || null }))}
+                                placeholder="e.g., 1234567890123456789"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                              />
+                              <p className="text-xs text-text-tertiary mt-2">
+                                To find your Channel ID: Enable Developer Mode in Discord (Settings → App Settings → Advanced),
+                                then right-click the channel and select &quot;Copy Channel ID&quot;.
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Pinterest Board ID */}
+                          {settings.platforms.includes('pinterest') && (
+                            <div>
+                              <label className="block text-sm font-medium text-text-primary mb-2">
+                                Pinterest Board ID
+                              </label>
+                              <input
+                                type="text"
+                                value={settings.pinterestBoardId || ''}
+                                onChange={(e) => setSettings(prev => ({ ...prev, pinterestBoardId: e.target.value || null }))}
+                                placeholder="e.g., 1234567890123456789"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                              />
+                              <p className="text-xs text-text-tertiary mt-2">
+                                To find your Board ID: Open the board on Pinterest, the ID is the number in the URL
+                                (e.g., pinterest.com/username/board-name/<strong>1234567890123456789</strong>).
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    )}
+
                     {/* Publishing Mode */}
                     <Card className="p-6">
                       <h3 className="text-lg font-semibold text-text-primary mb-4">
