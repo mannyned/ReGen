@@ -222,8 +222,9 @@ export abstract class BasePlatformPublisher {
         )
       }
 
-      // Validate format
-      const extension = media.mediaUrl.split('.').pop()?.toLowerCase()
+      // Validate format - strip query parameters and hash from URL first
+      const urlWithoutParams = media.mediaUrl.split('?')[0].split('#')[0]
+      const extension = urlWithoutParams.split('.').pop()?.toLowerCase()
       if (extension && !limits.supportedFormats.includes(extension)) {
         throw new Error(
           `File format .${extension} is not supported by ${this.platform}. Supported: ${limits.supportedFormats.join(', ')}`
