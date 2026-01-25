@@ -1095,7 +1095,7 @@ enum BlogAutoShareStatus {
 model BlogAutoSharePost {
   id            String   @id @default(cuid())
   profileId     String   @map("profile_id") @db.Uuid
-  rssFeedItemId String   @map("rss_feed_item_id")
+  rssFeedItemId String?  @map("rss_feed_item_id")  // Optional - not used when creating from blogUrl directly
 
   // Extracted metadata from article
   articleUrl      String    @map("article_url")
@@ -1129,8 +1129,8 @@ model BlogAutoSharePost {
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  profile       Profile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  rssFeedItem   RssFeedItem @relation(fields: [rssFeedItemId], references: [id], onDelete: Cascade)
+  profile       Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  rssFeedItem   RssFeedItem? @relation(fields: [rssFeedItemId], references: [id], onDelete: Cascade)
 
   @@index([profileId])
   @@index([rssFeedItemId])
