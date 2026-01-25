@@ -26,6 +26,10 @@
     {
       "path": "/api/cron/analytics-sync",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/blog-auto-share",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
