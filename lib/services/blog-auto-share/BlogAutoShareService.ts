@@ -1,7 +1,7 @@
 /**
  * Blog Auto-Share Service
  *
- * Processes new RSS feed items and automatically shares them to social platforms.
+ * Processes new blog posts from the user's blog URL and automatically shares them to social platforms.
  * Integrates with the existing publishing infrastructure.
  */
 
@@ -15,11 +15,29 @@ import {
 } from '@/lib/config/platformCapabilities'
 import type { SocialPlatform, PlatformContent } from '@/lib/types/social'
 import type {
-  RssFeedItem,
   BlogAutoShareSettings,
   BlogAutoSharePost,
   BlogAutoShareStatus,
 } from '@prisma/client'
+import Parser from 'rss-parser'
+
+// RSS Parser instance
+const rssParser = new Parser({
+  timeout: 10000,
+  headers: {
+    'User-Agent': 'ReGenr Blog Auto-Share Bot/1.0',
+  },
+})
+
+// Parsed RSS item type
+interface ParsedRssItem {
+  guid: string
+  title: string
+  link: string
+  description?: string
+  pubDate?: string
+  imageUrl?: string
+}
 
 // ============================================
 // TYPES
@@ -107,45 +125,72 @@ export class BlogAutoShareService {
   }
 
   /**
+   * Fetch and parse RSS feed from URL
+   */
+  private async fetchRssFeed(url: string): Promise<ParsedRssItem[]> {
+    try {
+      const feed = await rssParser.parseURL(url)
+
+      return feed.items.map(item => ({
+        guid: item.guid || item.link || item.title || '',
+        title: item.title || 'Untitled',
+        link: item.link || '',
+        description: item.contentSnippet || item.content || item.summary || '',
+        pubDate: item.pubDate || item.isoDate,
+        imageUrl: item.enclosure?.url || (item as any)['media:content']?.$.url,
+      }))
+    } catch (error) {
+      console.error(`[BlogAutoShare] Failed to fetch RSS feed from ${url}:`, error)
+      return []
+    }
+  }
+
+  /**
    * Process new RSS items for a specific user
    */
   private async processUserItems(settings: BlogAutoShareSettings): Promise<AutoShareResult[]> {
     const results: AutoShareResult[] = []
 
-    // Get new RSS items that haven't been processed for auto-share
-    const feedFilter = settings.feedIds.length > 0
-      ? { feedId: { in: settings.feedIds } }
-      : {}
+    // Check if blogUrl is set
+    if (!settings.blogUrl) {
+      console.log(`[BlogAutoShare] No blog URL configured for user ${settings.profileId}`)
+      return results
+    }
 
-    // Filter by enabledAt if onlyNewPosts is true (default behavior)
-    // This ensures we only process items published AFTER auto-share was enabled
-    const dateFilter = (settings.onlyNewPosts && settings.enabledAt)
-      ? { publishedAt: { gte: settings.enabledAt } }
-      : {}
+    // Fetch RSS feed from blogUrl
+    const feedItems = await this.fetchRssFeed(settings.blogUrl)
 
-    const newItems = await prisma.rssFeedItem.findMany({
-      where: {
-        profileId: settings.profileId,
-        status: 'NEW',
-        ...feedFilter,
-        ...dateFilter,
-        // Exclude items that already have auto-share posts
-        blogAutoSharePosts: { none: {} },
-      },
-      orderBy: { publishedAt: 'desc' },
-      take: MAX_ITEMS_PER_RUN,
+    if (feedItems.length === 0) {
+      console.log(`[BlogAutoShare] No items found in feed for user ${settings.profileId}`)
+      return results
+    }
+
+    console.log(`[BlogAutoShare] Found ${feedItems.length} items in feed for user ${settings.profileId}`)
+
+    // Filter items by enabledAt date if onlyNewPosts is true
+    const filteredItems = feedItems.filter(item => {
+      if (!settings.onlyNewPosts || !settings.enabledAt) return true
+      if (!item.pubDate) return false
+
+      const itemDate = new Date(item.pubDate)
+      return itemDate >= settings.enabledAt
     })
 
-    console.log(`[BlogAutoShare] Processing ${newItems.length} items for user ${settings.profileId}`)
+    console.log(`[BlogAutoShare] ${filteredItems.length} items after date filter`)
 
-    for (const item of newItems) {
+    // Process up to MAX_ITEMS_PER_RUN
+    const itemsToProcess = filteredItems.slice(0, MAX_ITEMS_PER_RUN)
+
+    for (const item of itemsToProcess) {
       try {
-        const result = await this.processItem(item, settings)
-        results.push(result)
+        const result = await this.processRssItem(item, settings)
+        if (result) {
+          results.push(result)
+        }
       } catch (error) {
-        console.error(`[BlogAutoShare] Error processing item ${item.id}:`, error)
+        console.error(`[BlogAutoShare] Error processing item ${item.guid}:`, error)
         results.push({
-          rssFeedItemId: item.id,
+          rssFeedItemId: item.guid,
           autoSharePostId: '',
           status: 'FAILED',
           platformResults: [],
@@ -158,18 +203,18 @@ export class BlogAutoShareService {
   }
 
   /**
-   * Process a single RSS item
+   * Process a single RSS item from the feed
    */
-  private async processItem(
-    item: RssFeedItem,
+  private async processRssItem(
+    item: ParsedRssItem,
     settings: BlogAutoShareSettings
-  ): Promise<AutoShareResult> {
-    const articleUrl = item.link || ''
+  ): Promise<AutoShareResult | null> {
+    const articleUrl = item.link
 
     // Skip if no URL
     if (!articleUrl) {
       return {
-        rssFeedItemId: item.id,
+        rssFeedItemId: item.guid,
         autoSharePostId: '',
         status: 'SKIPPED',
         platformResults: [],
@@ -185,22 +230,15 @@ export class BlogAutoShareService {
 
     if (existingPost) {
       console.log(`[BlogAutoShare] Skipping duplicate: ${item.guid}`)
-      return {
-        rssFeedItemId: item.id,
-        autoSharePostId: existingPost.id,
-        status: 'SKIPPED',
-        platformResults: [],
-        error: 'Duplicate content (already shared)',
-      }
+      return null // Already processed, skip silently
     }
 
     // Check quiet hours
     if (settings.quietHoursEnabled && this.isInQuietHours(settings)) {
       console.log(`[BlogAutoShare] Skipping due to quiet hours`)
-      // Create draft instead
-      const autoSharePost = await this.createAutoSharePost(item, settings, null, 'QUEUED')
+      const autoSharePost = await this.createAutoSharePostFromRss(item, settings, null, 'QUEUED')
       return {
-        rssFeedItemId: item.id,
+        rssFeedItemId: item.guid,
         autoSharePostId: autoSharePost.id,
         status: 'QUEUED',
         platformResults: [],
@@ -211,7 +249,7 @@ export class BlogAutoShareService {
     const extraction = await metadataExtractor.extractMetadata(articleUrl)
 
     // Create auto-share post record
-    const autoSharePost = await this.createAutoSharePost(
+    const autoSharePost = await this.createAutoSharePostFromRss(
       item,
       settings,
       extraction.success ? extraction.metadata : null,
@@ -221,7 +259,7 @@ export class BlogAutoShareService {
     // If not auto-publishing, stop here (user will approve later)
     if (!settings.autoPublish) {
       return {
-        rssFeedItemId: item.id,
+        rssFeedItemId: item.guid,
         autoSharePostId: autoSharePost.id,
         status: 'DRAFT',
         platformResults: [],
@@ -229,14 +267,14 @@ export class BlogAutoShareService {
     }
 
     // Generate caption
-    const caption = await this.generateCaption(item, extraction.metadata, settings)
+    const caption = await this.generateCaptionFromRss(item, extraction.metadata, settings)
 
     // Publish to platforms
     const platformResults = await this.publishToPlatforms(
       autoSharePost,
       settings,
       caption,
-      extraction.metadata?.image || settings.defaultImageUrl
+      extraction.metadata?.image || item.imageUrl || settings.defaultImageUrl
     )
 
     // Determine final status
@@ -260,7 +298,7 @@ export class BlogAutoShareService {
     })
 
     return {
-      rssFeedItemId: item.id,
+      rssFeedItemId: item.guid,
       autoSharePostId: autoSharePost.id,
       status: finalStatus,
       platformResults,
@@ -268,10 +306,10 @@ export class BlogAutoShareService {
   }
 
   /**
-   * Create an auto-share post record
+   * Create an auto-share post record from RSS item
    */
-  private async createAutoSharePost(
-    item: RssFeedItem,
+  private async createAutoSharePostFromRss(
+    item: ParsedRssItem,
     settings: BlogAutoShareSettings,
     metadata: any,
     status: BlogAutoShareStatus
@@ -281,12 +319,11 @@ export class BlogAutoShareService {
     return prisma.blogAutoSharePost.create({
       data: {
         profileId: settings.profileId,
-        rssFeedItemId: item.id,
-        articleUrl: item.link || '',
+        articleUrl: item.link,
         canonicalUrl: metadata?.canonicalUrl,
         ogTitle: metadata?.ogTitle,
         ogDescription: metadata?.ogDescription,
-        ogImage: metadata?.ogImage,
+        ogImage: metadata?.ogImage || item.imageUrl,
         articleTitle: metadata?.title || item.title,
         articleExcerpt: metadata?.description
           ? MetadataExtractor.cleanExcerpt(metadata.description)
@@ -298,20 +335,20 @@ export class BlogAutoShareService {
   }
 
   /**
-   * Generate caption for the blog post
+   * Generate caption from RSS item
    */
-  private async generateCaption(
-    item: RssFeedItem,
+  private async generateCaptionFromRss(
+    item: ParsedRssItem,
     metadata: any,
     settings: BlogAutoShareSettings
   ): Promise<string> {
     const title = metadata?.title || item.title
-    const url = metadata?.canonicalUrl || item.link || ''
+    const url = metadata?.canonicalUrl || item.link
     const excerpt = metadata?.description
       ? MetadataExtractor.cleanExcerpt(metadata.description, 100)
       : (item.description ? MetadataExtractor.cleanExcerpt(item.description, 100) : '')
 
-    // Try to generate AI caption using brand voice
+    // Try to generate AI caption
     try {
       const aiCaption = await this.generateAICaption(title, excerpt, url)
       if (aiCaption) return aiCaption
@@ -595,7 +632,6 @@ Create an engaging caption that:
         profileId: userId,
         status: 'DRAFT',
       },
-      include: { rssFeedItem: true },
     })
 
     if (!autoSharePost) {
@@ -611,8 +647,13 @@ Create an engaging caption that:
     }
 
     // Generate caption if not already done
-    const caption = autoSharePost.generatedCaption || await this.generateCaption(
-      autoSharePost.rssFeedItem,
+    const caption = autoSharePost.generatedCaption || await this.generateCaptionFromRss(
+      {
+        guid: autoSharePost.dedupeHash,
+        title: autoSharePost.articleTitle,
+        link: autoSharePost.articleUrl,
+        description: autoSharePost.articleExcerpt || undefined,
+      },
       {
         title: autoSharePost.ogTitle || autoSharePost.articleTitle,
         description: autoSharePost.ogDescription || autoSharePost.articleExcerpt,
@@ -650,7 +691,7 @@ Create an engaging caption that:
     })
 
     return {
-      rssFeedItemId: autoSharePost.rssFeedItemId,
+      rssFeedItemId: autoSharePost.dedupeHash,
       autoSharePostId: autoSharePost.id,
       status: finalStatus,
       platformResults,
@@ -683,7 +724,6 @@ Create an engaging caption that:
         profileId: userId,
         status: { in: ['DRAFT', 'QUEUED'] },
       },
-      include: { rssFeedItem: { include: { feed: true } } },
       orderBy: { createdAt: 'desc' },
     })
   }
@@ -694,7 +734,6 @@ Create an engaging caption that:
   async getHistory(userId: string, limit: number = 50) {
     return prisma.blogAutoSharePost.findMany({
       where: { profileId: userId },
-      include: { rssFeedItem: { include: { feed: true } } },
       orderBy: { createdAt: 'desc' },
       take: limit,
     })

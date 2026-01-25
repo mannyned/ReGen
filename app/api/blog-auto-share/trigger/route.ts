@@ -37,31 +37,15 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Check for unprocessed RSS items
-    const feedFilter = settings.feedIds.length > 0
-      ? { feedId: { in: settings.feedIds } }
-      : {}
-
-    const pendingItems = await prisma.rssFeedItem.count({
-      where: {
-        profileId: user.id,
-        status: 'NEW',
-        ...feedFilter,
-        blogAutoSharePosts: { none: {} },
-      },
-    })
-
-    if (pendingItems === 0) {
+    // Check if blog URL is configured
+    if (!settings.blogUrl) {
       return NextResponse.json({
-        success: true,
-        message: 'No new RSS items to process. Add an RSS feed with new posts first.',
-        processed: 0,
-        drafts: 0,
-        published: 0,
-      })
+        success: false,
+        error: 'No blog URL configured. Add your blog RSS feed URL in settings.',
+      }, { status: 400 })
     }
 
-    console.log(`[BlogAutoShare] Manual trigger for user ${user.id} - ${pendingItems} items pending`)
+    console.log(`[BlogAutoShare] Manual trigger for user ${user.id} - Blog URL: ${settings.blogUrl}`)
 
     // Run processing for this user only
     const result = await blogAutoShareService.processNewItems()
@@ -72,13 +56,21 @@ export async function POST(request: NextRequest) {
       return true // For now return all since we're running for all enabled users
     })
 
+    // Generate appropriate message
+    let message = 'Processing complete.'
+    if (result.processed === 0) {
+      message = 'No new blog posts found to share. Posts may have already been shared or are older than your enablement date.'
+    } else if (result.drafts > 0) {
+      message = `Created ${result.drafts} draft(s) for review. Check the Posts tab.`
+    } else if (result.published > 0) {
+      message = `Published ${result.published} post(s) successfully!`
+    } else if (result.failed > 0) {
+      message = `Failed to publish ${result.failed} post(s). Check the Posts tab for details.`
+    }
+
     return NextResponse.json({
       success: true,
-      message: result.drafts > 0
-        ? `Created ${result.drafts} draft(s) for review. Check the Posts tab.`
-        : result.published > 0
-          ? `Published ${result.published} post(s) successfully!`
-          : 'Processing complete. Check the Posts tab for results.',
+      message,
       processed: result.processed,
       drafts: result.drafts,
       published: result.published,
