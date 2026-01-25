@@ -303,6 +303,7 @@ export default function AutomationsPage() {
       setSuccess(null)
 
       console.log('[Automations] Saving settings:', settings)
+      console.log('[Automations] blogUrl being saved:', settings.blogUrl)
 
       const response = await fetch('/api/blog-auto-share/settings', {
         method: 'POST',
@@ -321,6 +322,7 @@ export default function AutomationsPage() {
 
       const data = await response.json()
       console.log('[Automations] Response data:', data)
+      console.log('[Automations] blogUrl from server:', data.settings?.blogUrl)
 
       if (data.success) {
         setSettings(data.settings)
@@ -602,7 +604,10 @@ export default function AutomationsPage() {
                             <div className="flex gap-2 flex-shrink-0">
                               <button
                                 type="button"
-                                onClick={() => setEditingBlogUrl(true)}
+                                onClick={() => {
+                                  setBlogUrlInput(settings.blogUrl || '')
+                                  setEditingBlogUrl(true)
+                                }}
                                 className="px-3 py-1.5 text-sm text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors"
                               >
                                 Edit
