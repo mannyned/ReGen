@@ -335,13 +335,13 @@ export default function AutomationsPage() {
     }
   }
 
-  const handleTestAutoShare = async (resetDate: boolean = false) => {
+  const handleTestAutoShare = async (options: { resetDate?: boolean; skipDateFilter?: boolean } = {}) => {
     try {
       setTesting(true)
       setError(null)
       setSuccess(null)
 
-      console.log('[Automations] Testing auto-share...', resetDate ? '(with date reset)' : '')
+      console.log('[Automations] Testing auto-share...', options)
       console.log('[Automations] Current settings.blogUrl:', settings.blogUrl)
 
       // IMPORTANT: Save settings first to ensure the latest blogUrl is used
@@ -366,7 +366,7 @@ export default function AutomationsPage() {
       const response = await fetch('/api/blog-auto-share/trigger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resetDate }),
+        body: JSON.stringify(options),
       })
 
       const data = await response.json()
@@ -379,7 +379,7 @@ export default function AutomationsPage() {
           setSettings(saveData.settings)
         }
         // If resetDate, fetch again to get the updated enabledAt
-        if (resetDate) {
+        if (options.resetDate) {
           fetchSettings()
         }
         // Refresh posts if we're on the posts tab or switch to it
@@ -906,14 +906,15 @@ export default function AutomationsPage() {
                       {error}
                     </div>
                   )}
-                  <div className="flex items-center justify-end gap-3">
+                  <div className="flex items-center justify-end gap-3 flex-wrap">
                     {/* Test Buttons - only show when enabled */}
                     {settings.enabled && settings.platforms.length > 0 && (
                       <>
                         <button
-                          onClick={() => handleTestAutoShare(false)}
+                          onClick={() => handleTestAutoShare({})}
                           disabled={testing || saving}
                           className="px-4 py-3 bg-white border-2 border-purple-300 text-purple-700 font-medium rounded-xl hover:bg-purple-50 transition-all disabled:opacity-50 flex items-center gap-2"
+                          title="Test with date filter (only new posts)"
                         >
                           {testing ? (
                             <>
@@ -931,10 +932,10 @@ export default function AutomationsPage() {
                           )}
                         </button>
                         <button
-                          onClick={() => handleTestAutoShare(true)}
+                          onClick={() => handleTestAutoShare({ skipDateFilter: true })}
                           disabled={testing || saving}
-                          className="px-4 py-3 bg-white border-2 border-orange-300 text-orange-700 font-medium rounded-xl hover:bg-orange-50 transition-all disabled:opacity-50 flex items-center gap-2"
-                          title="Reset the enablement date to now and process all posts in your feed"
+                          className="px-4 py-3 bg-white border-2 border-green-300 text-green-700 font-medium rounded-xl hover:bg-green-50 transition-all disabled:opacity-50 flex items-center gap-2"
+                          title="Process ALL posts in feed, ignoring publish date"
                         >
                           {testing ? (
                             <>
@@ -946,8 +947,8 @@ export default function AutomationsPage() {
                             </>
                           ) : (
                             <>
-                              <span>🔄</span>
-                              Reset Date & Test
+                              <span>📥</span>
+                              Test All Posts
                             </>
                           )}
                         </button>
