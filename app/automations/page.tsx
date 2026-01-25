@@ -46,13 +46,13 @@ interface AutoSharePost {
   platformResults: PlatformResult[]
   createdAt: string
   processedAt: string | null
-  rssFeedItem: {
+  rssFeedItem?: {
     feed: {
       id: string
       name: string
       feedTitle: string | null
     }
-  }
+  } | null
 }
 
 interface PlatformResult {
@@ -1046,9 +1046,11 @@ export default function AutomationsPage() {
                             <h4 className="font-semibold text-text-primary truncate">
                               {post.articleTitle}
                             </h4>
-                            <p className="text-sm text-text-secondary mt-1">
-                              From: {post.rssFeedItem.feed.feedTitle || post.rssFeedItem.feed.name}
-                            </p>
+                            {post.rssFeedItem?.feed && (
+                              <p className="text-sm text-text-secondary mt-1">
+                                From: {post.rssFeedItem.feed.feedTitle || post.rssFeedItem.feed.name}
+                              </p>
+                            )}
                           </div>
                           {getStatusBadge(post.status)}
                         </div>
