@@ -1373,23 +1373,39 @@ export default function AutomationsPage() {
 
                         {/* Platform Results */}
                         {post.platformResults && post.platformResults.length > 0 && (
-                          <div className="flex items-center gap-2 mt-3">
-                            {post.platformResults.map((result, idx) => (
-                              <div
-                                key={idx}
-                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                                  result.status === 'published'
-                                    ? 'bg-green-100 text-green-700'
-                                    : result.status === 'failed'
-                                      ? 'bg-red-100 text-red-700'
-                                      : 'bg-gray-100 text-gray-600'
-                                }`}
-                                title={result.error || undefined}
-                              >
-                                <PlatformLogo platform={result.platform as SocialPlatform} size="xs" variant="color" />
-                                {result.status === 'published' ? '✓' : result.status === 'failed' ? '✗' : '−'}
+                          <div className="mt-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {post.platformResults.map((result, idx) => (
+                                <div
+                                  key={idx}
+                                  className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                                    result.status === 'published'
+                                      ? 'bg-green-100 text-green-700'
+                                      : result.status === 'failed'
+                                        ? 'bg-red-100 text-red-700'
+                                        : 'bg-gray-100 text-gray-600'
+                                  }`}
+                                  title={result.error || undefined}
+                                >
+                                  <PlatformLogo platform={result.platform as SocialPlatform} size="xs" variant="color" />
+                                  <span className="capitalize">{result.platform}</span>
+                                  {result.status === 'published' ? ' ✓' : result.status === 'failed' ? ' ✗' : ' −'}
+                                </div>
+                              ))}
+                            </div>
+                            {/* Show error details for failed platforms */}
+                            {post.platformResults.some(r => r.status === 'failed' && r.error) && (
+                              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+                                <p className="text-xs font-medium text-red-800 mb-1">Failed platforms:</p>
+                                {post.platformResults
+                                  .filter(r => r.status === 'failed' && r.error)
+                                  .map((result, idx) => (
+                                    <p key={idx} className="text-xs text-red-700">
+                                      <span className="font-medium capitalize">{result.platform}:</span> {result.error}
+                                    </p>
+                                  ))}
                               </div>
-                            ))}
+                            )}
                           </div>
                         )}
 
