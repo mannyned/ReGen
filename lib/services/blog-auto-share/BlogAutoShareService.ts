@@ -151,6 +151,8 @@ export class BlogAutoShareService {
    */
   private async processUserItems(settings: BlogAutoShareSettings): Promise<AutoShareResult[]> {
     const results: AutoShareResult[] = []
+    let skippedByDate = 0
+    let skippedByDedupe = 0
 
     // Check if blogUrl is set
     if (!settings.blogUrl) {
@@ -188,12 +190,13 @@ export class BlogAutoShareService {
 
       if (!isNew) {
         console.log(`[BlogAutoShare] Skipping "${item.title}" - published ${itemDate.toISOString()} before enabledAt ${enabledAt.toISOString()}`)
+        skippedByDate++
       }
 
       return isNew
     })
 
-    console.log(`[BlogAutoShare] ${filteredItems.length} items after date filter`)
+    console.log(`[BlogAutoShare] ${filteredItems.length} items after date filter (${skippedByDate} skipped by date)`)
 
     // Process up to MAX_ITEMS_PER_RUN
     const itemsToProcess = filteredItems.slice(0, MAX_ITEMS_PER_RUN)
@@ -203,6 +206,9 @@ export class BlogAutoShareService {
         const result = await this.processRssItem(item, settings)
         if (result) {
           results.push(result)
+        } else {
+          // null means skipped due to deduplication
+          skippedByDedupe++
         }
       } catch (error) {
         console.error(`[BlogAutoShare] Error processing item ${item.guid}:`, error)
@@ -215,6 +221,8 @@ export class BlogAutoShareService {
         })
       }
     }
+
+    console.log(`[BlogAutoShare] User ${settings.profileId} summary: ${results.length} processed, ${skippedByDate} skipped by date, ${skippedByDedupe} skipped as duplicates`)
 
     return results
   }
@@ -318,28 +326,33 @@ export class BlogAutoShareService {
     const successfulPlatforms = platformResults.filter(r => r.status === 'published').map(r => r.platform)
     const failedPlatforms = platformResults.filter(r => r.status === 'failed').map(r => r.platform)
 
+    console.log(`[BlogAutoShare] Sending push notification for ${finalStatus} status to user ${settings.profileId}`)
+
+    let pushResult
     if (finalStatus === 'PUBLISHED') {
-      await sendPushToUser(settings.profileId, 'published', {
+      pushResult = await sendPushToUser(settings.profileId, 'published', {
         title: 'Blog Post Published!',
         body: `"${item.title}" shared to ${successfulPlatforms.join(', ')}`,
         url: '/automations',
         tag: 'blog-auto-share',
       })
     } else if (finalStatus === 'PARTIAL') {
-      await sendPushToUser(settings.profileId, 'published', {
+      pushResult = await sendPushToUser(settings.profileId, 'published', {
         title: 'Blog Post Partially Published',
         body: `"${item.title}" - Failed on: ${failedPlatforms.join(', ')}`,
         url: '/automations',
         tag: 'blog-auto-share',
       })
     } else if (finalStatus === 'FAILED') {
-      await sendPushToUser(settings.profileId, 'published', {
+      pushResult = await sendPushToUser(settings.profileId, 'published', {
         title: 'Blog Post Failed',
         body: `"${item.title}" failed to publish to all platforms`,
         url: '/automations',
         tag: 'blog-auto-share',
       })
     }
+
+    console.log(`[BlogAutoShare] Push notification result:`, pushResult)
 
     return {
       rssFeedItemId: item.guid,

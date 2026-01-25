@@ -8,6 +8,7 @@ export {
   storePushSubscription,
   removePushSubscription,
   hasPushSubscription,
+  getUserSubscriptions,
 } from './PushNotificationService'
 
 export type {

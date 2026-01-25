@@ -115,7 +115,7 @@ export async function sendPushNotification(
  * Get all push subscriptions for a user
  * Handles both legacy single subscription and new multi-device array format
  */
-async function getUserSubscriptions(profileId: string): Promise<DeviceSubscription[]> {
+export async function getUserSubscriptions(profileId: string): Promise<DeviceSubscription[]> {
   const profile = await prisma.profile.findUnique({
     where: { id: profileId },
     select: { pushSubscription: true },
