@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
     // Return settings or defaults
     const response = settings || {
       enabled: false,
+      blogUrl: null,
       platforms: [],
       autoPublish: false,
       defaultImageUrl: null,
@@ -124,6 +125,7 @@ export async function POST(request: NextRequest) {
       create: {
         profileId: user.id,
         enabled: body.enabled ?? false,
+        blogUrl: body.blogUrl || null,
         platforms,
         autoPublish: body.autoPublish ?? false,
         defaultImageUrl: body.defaultImageUrl || null,
@@ -143,6 +145,7 @@ export async function POST(request: NextRequest) {
       },
       update: {
         enabled: body.enabled,
+        blogUrl: body.blogUrl,
         platforms,
         autoPublish: body.autoPublish,
         defaultImageUrl: body.defaultImageUrl,

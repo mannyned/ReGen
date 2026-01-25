@@ -16,6 +16,7 @@ import type { SocialPlatform } from '@/lib/types/social'
 
 interface AutoShareSettings {
   enabled: boolean
+  blogUrl: string | null
   platforms: string[]
   autoPublish: boolean
   defaultImageUrl: string | null
@@ -206,6 +207,7 @@ export default function AutomationsPage() {
   // Settings state
   const [settings, setSettings] = useState<AutoShareSettings>({
     enabled: false,
+    blogUrl: null,
     platforms: [],
     autoPublish: false,
     defaultImageUrl: null,
@@ -515,13 +517,6 @@ export default function AutomationsPage() {
               )}
             </button>
           </nav>
-
-          <Link
-            href="/rss"
-            className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
-          >
-            📡 Manage RSS Feeds →
-          </Link>
         </div>
 
         {/* Error/Success Messages */}
@@ -571,6 +566,28 @@ export default function AutomationsPage() {
 
                 {settings.enabled && (
                   <>
+                    {/* Blog URL */}
+                    <Card className="p-6">
+                      <h3 className="text-lg font-semibold text-text-primary mb-2">
+                        Blog URL
+                      </h3>
+                      <p className="text-sm text-text-secondary mb-4">
+                        Enter your blog&apos;s RSS feed URL. New posts will be automatically detected and shared.
+                      </p>
+                      <input
+                        type="url"
+                        value={settings.blogUrl || ''}
+                        onChange={(e) => setSettings(prev => ({ ...prev, blogUrl: e.target.value || null }))}
+                        placeholder="https://yourblog.substack.com/feed"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                      <p className="text-xs text-text-tertiary mt-2">
+                        Common RSS feed URLs: Substack uses <code className="bg-gray-100 px-1 rounded">/feed</code>,
+                        WordPress uses <code className="bg-gray-100 px-1 rounded">/feed</code> or <code className="bg-gray-100 px-1 rounded">/rss</code>,
+                        Medium uses <code className="bg-gray-100 px-1 rounded">/feed</code>
+                      </p>
+                    </Card>
+
                     {/* Only New Posts Info */}
                     <Card className="p-4 bg-blue-50 border-blue-200">
                       <div className="flex items-start gap-3">

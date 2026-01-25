@@ -1022,6 +1022,9 @@ model BlogAutoShareSettings {
   // Feature toggle
   enabled     Boolean  @default(false)
 
+  // Blog URL (RSS feed URL for the user's blog)
+  blogUrl     String?  @map("blog_url")
+
   // Platform selection (V1: instagram, facebook, twitter, linkedin, discord, pinterest)
   platforms   String[] @default([])
 
