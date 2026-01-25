@@ -204,10 +204,6 @@ export default function AutomationsPage() {
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Blog URL editing state
-  const [editingBlogUrl, setEditingBlogUrl] = useState(false)
-  const [blogUrlInput, setBlogUrlInput] = useState('')
-
   // Settings state
   const [settings, setSettings] = useState<AutoShareSettings>({
     enabled: false,
@@ -346,7 +342,27 @@ export default function AutomationsPage() {
       setSuccess(null)
 
       console.log('[Automations] Testing auto-share...', resetDate ? '(with date reset)' : '')
+      console.log('[Automations] Current settings.blogUrl:', settings.blogUrl)
 
+      // IMPORTANT: Save settings first to ensure the latest blogUrl is used
+      console.log('[Automations] Saving settings before test...')
+      const saveResponse = await fetch('/api/blog-auto-share/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      })
+
+      if (!saveResponse.ok) {
+        const saveError = await saveResponse.text()
+        console.error('[Automations] Failed to save before test:', saveError)
+        setError('Failed to save settings before testing')
+        return
+      }
+
+      const saveData = await saveResponse.json()
+      console.log('[Automations] Settings saved, blogUrl:', saveData.settings?.blogUrl)
+
+      // Now run the test
       const response = await fetch('/api/blog-auto-share/trigger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -358,7 +374,11 @@ export default function AutomationsPage() {
 
       if (data.success) {
         setSuccess(data.message || 'Auto-share test complete!')
-        // Refresh settings to get updated enabledAt
+        // Update local state with saved settings (including updated enabledAt if reset)
+        if (saveData.settings) {
+          setSettings(saveData.settings)
+        }
+        // If resetDate, fetch again to get the updated enabledAt
         if (resetDate) {
           fetchSettings()
         }
@@ -580,104 +600,37 @@ export default function AutomationsPage() {
                     {/* Blog URL */}
                     <Card className="p-6">
                       <h3 className="text-lg font-semibold text-text-primary mb-2">
-                        Blog URL
+                        Blog RSS Feed URL
                       </h3>
                       <p className="text-sm text-text-secondary mb-4">
-                        Enter your blog&apos;s RSS feed URL. New posts will be automatically detected and shared.
+                        Enter your blog&apos;s RSS feed URL (not a single post URL). Click &quot;Save Settings&quot; below to save.
                       </p>
 
-                      {/* Show saved URL with edit/remove options */}
-                      {settings.blogUrl && !editingBlogUrl ? (
-                        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-green-800 flex items-center gap-2">
-                                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                Blog URL configured
-                              </p>
-                              <p className="text-sm text-green-700 mt-1 break-all">
-                                {settings.blogUrl}
-                              </p>
-                            </div>
-                            <div className="flex gap-2 flex-shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setBlogUrlInput(settings.blogUrl || '')
-                                  setEditingBlogUrl(true)
-                                }}
-                                className="px-3 py-1.5 text-sm text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (confirm('Remove this blog URL?')) {
-                                    setSettings(prev => ({ ...prev, blogUrl: null }))
-                                  }
-                                }}
-                                className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        /* Show input when no URL or editing */
-                        <div className="space-y-3">
-                          <div className="flex gap-2">
-                            <input
-                              type="url"
-                              value={blogUrlInput}
-                              onChange={(e) => setBlogUrlInput(e.target.value)}
-                              placeholder="https://yourblog.substack.com/feed"
-                              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const url = blogUrlInput.trim()
-                                if (url) {
-                                  // Basic URL validation
-                                  try {
-                                    new URL(url)
-                                    setSettings(prev => ({ ...prev, blogUrl: url }))
-                                    setEditingBlogUrl(false)
-                                    setBlogUrlInput('')
-                                  } catch {
-                                    alert('Please enter a valid URL')
-                                  }
-                                }
-                              }}
-                              disabled={!blogUrlInput.trim()}
-                              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                              Save URL
-                            </button>
-                            {editingBlogUrl && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingBlogUrl(false)
-                                  setBlogUrlInput('')
-                                }}
-                                className="px-4 py-2 text-gray-600 hover:text-gray-800 rounded-lg transition-colors"
-                              >
-                                Cancel
-                              </button>
-                            )}
-                          </div>
-                          <p className="text-xs text-text-tertiary">
-                            Common RSS feed URLs: Substack uses <code className="bg-gray-100 px-1 rounded">/feed</code>,
-                            WordPress uses <code className="bg-gray-100 px-1 rounded">/feed</code> or <code className="bg-gray-100 px-1 rounded">/rss</code>,
-                            Medium uses <code className="bg-gray-100 px-1 rounded">/feed</code>
-                          </p>
-                        </div>
-                      )}
+                      <input
+                        type="url"
+                        value={settings.blogUrl || ''}
+                        onChange={(e) => setSettings(prev => ({ ...prev, blogUrl: e.target.value || null }))}
+                        placeholder="https://yourblog.substack.com/feed"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+
+                      <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="text-sm text-amber-800">
+                          <strong>Important:</strong> Use your RSS feed URL, NOT a blog post URL.
+                        </p>
+                        <p className="text-xs text-amber-700 mt-1">
+                          ✅ Correct: <code className="bg-amber-100 px-1 rounded">https://mannyned.substack.com/feed</code>
+                        </p>
+                        <p className="text-xs text-amber-700 mt-1">
+                          ❌ Wrong: <code className="bg-amber-100 px-1 rounded">https://mannyned.substack.com/p/my-post</code>
+                        </p>
+                      </div>
+
+                      <p className="text-xs text-text-tertiary mt-3">
+                        Common RSS feed URLs: Substack uses <code className="bg-gray-100 px-1 rounded">/feed</code>,
+                        WordPress uses <code className="bg-gray-100 px-1 rounded">/feed</code> or <code className="bg-gray-100 px-1 rounded">/rss</code>,
+                        Medium uses <code className="bg-gray-100 px-1 rounded">/feed</code>
+                      </p>
                     </Card>
 
                     {/* Only New Posts Info */}

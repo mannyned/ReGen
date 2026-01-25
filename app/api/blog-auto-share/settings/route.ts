@@ -79,6 +79,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
+    console.log('[BlogAutoShare] POST received body:', JSON.stringify(body, null, 2))
+    console.log('[BlogAutoShare] blogUrl from request:', body.blogUrl)
+
     // Validate platforms - only allow V1 platforms
     const platforms = (body.platforms || []).filter((p: string) =>
       BLOG_AUTO_SHARE_V1_PLATFORMS.includes(p as any)
@@ -166,6 +169,7 @@ export async function POST(request: NextRequest) {
     })
 
     console.log(`[BlogAutoShare] Settings updated for user ${user.id}`)
+    console.log('[BlogAutoShare] Saved blogUrl:', settings.blogUrl)
 
     return NextResponse.json({
       success: true,
