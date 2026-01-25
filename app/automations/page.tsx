@@ -220,8 +220,6 @@ export default function AutomationsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
-  const [debugging, setDebugging] = useState(false)
-  const [debugInfo, setDebugInfo] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
@@ -563,48 +561,6 @@ export default function AutomationsPage() {
       setError('Failed to test auto-share')
     } finally {
       setTesting(false)
-    }
-  }
-
-  const handleDebugFeed = async () => {
-    try {
-      setDebugging(true)
-      setError(null)
-      setDebugInfo(null)
-
-      const response = await fetch('/api/blog-auto-share/debug')
-      const data = await response.json()
-
-      if (data.success) {
-        setDebugInfo(data)
-      } else {
-        setError(data.error || 'Debug failed')
-      }
-    } catch (err) {
-      console.error('[Automations] Debug error:', err)
-      setError('Failed to debug feed')
-    } finally {
-      setDebugging(false)
-    }
-  }
-
-  const handleTestPush = async () => {
-    try {
-      setError(null)
-      setSuccess(null)
-
-      const response = await fetch('/api/push/test', { method: 'POST' })
-      const data = await response.json()
-
-      if (data.success) {
-        setSuccess(`Push notification sent! Check your device. (${data.sent} device(s), ${data.subscriptionCount} subscription(s))`)
-        setTimeout(() => setSuccess(null), 10000)
-      } else {
-        setError(data.error || 'Push test failed')
-      }
-    } catch (err) {
-      console.error('[Automations] Push test error:', err)
-      setError('Failed to test push notification')
     }
   }
 
@@ -1261,179 +1217,30 @@ export default function AutomationsPage() {
                     </div>
                   )}
 
-                  {/* Debug Info Panel */}
-                  {debugInfo && (
-                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-semibold text-gray-700 flex items-center gap-2">
-                          <span>🔍</span> RSS Feed Debug Info
-                        </h4>
-                        <button
-                          onClick={() => setDebugInfo(null)}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          ✕
-                        </button>
-                      </div>
-
-                      {/* Feed Info */}
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="text-gray-500">Feed Title:</div>
-                        <div className="font-medium">{debugInfo.feed?.title || 'Unknown'}</div>
-                        <div className="text-gray-500">Total Items:</div>
-                        <div className="font-medium">{debugInfo.feed?.totalItems || 0}</div>
-                        <div className="text-gray-500">Date Filter:</div>
-                        <div className="font-medium">{debugInfo.debug?.onlyNewPosts ? 'Enabled' : 'Disabled'}</div>
-                        <div className="text-gray-500">Enabled At:</div>
-                        <div className="font-medium">{debugInfo.debug?.enabledAtFormatted ? new Date(debugInfo.debug.enabledAtFormatted).toLocaleString() : 'Not set'}</div>
-                      </div>
-
-                      {/* Filtering Summary */}
-                      <div className="p-3 bg-white rounded-lg border">
-                        <div className="text-gray-700 font-medium mb-2">Filtering Summary</div>
-                        <div className="grid grid-cols-2 gap-1 text-xs">
-                          <div>Items after date filter:</div>
-                          <div className="font-medium text-blue-600">{debugInfo.filtering?.itemsAfterEnableDate || 0}</div>
-                          <div>Items already processed:</div>
-                          <div className="font-medium text-orange-600">{debugInfo.deduplication?.existingPostsCount || 0}</div>
-                          <div>New items to process:</div>
-                          <div className="font-medium text-green-600">{debugInfo.deduplication?.newItemsCount || 0}</div>
-                        </div>
-                      </div>
-
-                      {/* Feed Items */}
-                      {debugInfo.feed?.items?.length > 0 && (
-                        <div>
-                          <div className="text-gray-700 font-medium mb-2">Feed Items (first 5)</div>
-                          <div className="space-y-2">
-                            {debugInfo.feed.items.map((item: any, i: number) => (
-                              <div key={i} className="p-2 bg-white rounded border text-xs">
-                                <div className="font-medium text-gray-800">{item.title}</div>
-                                <div className="text-gray-500">
-                                  Published: {item.pubDate ? new Date(item.pubDate).toLocaleString() : 'Unknown'}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Already Processed */}
-                      {debugInfo.deduplication?.existingPosts?.length > 0 && (
-                        <div>
-                          <div className="text-gray-700 font-medium mb-2">Already Processed Posts</div>
-                          <div className="space-y-1">
-                            {debugInfo.deduplication.existingPosts.map((post: any, i: number) => (
-                              <div key={i} className="p-2 bg-orange-50 rounded text-xs flex items-center justify-between">
-                                <span className="truncate">{post.title}</span>
-                                <span className={`px-2 py-0.5 rounded text-white text-[10px] ${
-                                  post.status === 'PUBLISHED' ? 'bg-green-500' :
-                                  post.status === 'PARTIAL' ? 'bg-yellow-500' :
-                                  post.status === 'FAILED' ? 'bg-red-500' : 'bg-gray-500'
-                                }`}>{post.status}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Diagnosis */}
-                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 text-blue-800">
-                        <div className="font-medium mb-1">Diagnosis</div>
-                        {debugInfo.deduplication?.newItemsCount === 0 ? (
-                          <p className="text-xs">
-                            {debugInfo.feed?.totalItems === 0
-                              ? '❌ No items found in RSS feed. Check if your blog URL is correct.'
-                              : debugInfo.filtering?.itemsAfterEnableDate === 0
-                                ? '❌ All posts are older than when you enabled Blog Auto-Share. Try clicking "Test All Posts" to process older posts.'
-                                : '❌ All posts have already been processed. Publish a new blog post to see it auto-shared.'}
-                          </p>
-                        ) : (
-                          <p className="text-xs">
-                            ✅ {debugInfo.deduplication?.newItemsCount} new post(s) ready to be processed. Click "Test" to process them now, or wait for the next cron run (every 15 min).
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
                   <div className="flex items-center justify-end gap-3 flex-wrap">
-                    {/* Test Buttons - only show when enabled */}
+                    {/* Test Button - only show when enabled */}
                     {settings.enabled && settings.platforms.length > 0 && (
-                      <>
-                        <button
-                          onClick={() => handleTestAutoShare({})}
-                          disabled={testing || saving}
-                          className="px-4 py-3 bg-white border-2 border-purple-300 text-purple-700 font-medium rounded-xl hover:bg-purple-50 transition-all disabled:opacity-50 flex items-center gap-2"
-                          title="Test with date filter (only new posts)"
-                        >
-                          {testing ? (
-                            <>
-                              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Processing...
-                            </>
-                          ) : (
-                            <>
-                              <span>🧪</span>
-                              Test
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleTestAutoShare({ skipDateFilter: true })}
-                          disabled={testing || saving}
-                          className="px-4 py-3 bg-white border-2 border-green-300 text-green-700 font-medium rounded-xl hover:bg-green-50 transition-all disabled:opacity-50 flex items-center gap-2"
-                          title="Process ALL posts in feed, ignoring publish date"
-                        >
-                          {testing ? (
-                            <>
-                              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Processing...
-                            </>
-                          ) : (
-                            <>
-                              <span>📥</span>
-                              Test All Posts
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={handleDebugFeed}
-                          disabled={debugging || testing || saving}
-                          className="px-4 py-3 bg-white border-2 border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50 flex items-center gap-2"
-                          title="Debug RSS feed and see why posts aren't being processed"
-                        >
-                          {debugging ? (
-                            <>
-                              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Debugging...
-                            </>
-                          ) : (
-                            <>
-                              <span>🔍</span>
-                              Debug Feed
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={handleTestPush}
-                          disabled={testing || saving}
-                          className="px-4 py-3 bg-white border-2 border-blue-300 text-blue-700 font-medium rounded-xl hover:bg-blue-50 transition-all disabled:opacity-50 flex items-center gap-2"
-                          title="Send a test push notification to your device"
-                        >
-                          <span>🔔</span>
-                          Test Push
-                        </button>
-                      </>
+                      <button
+                        onClick={() => handleTestAutoShare({})}
+                        disabled={testing || saving}
+                        className="px-4 py-3 bg-white border-2 border-purple-300 text-purple-700 font-medium rounded-xl hover:bg-purple-50 transition-all disabled:opacity-50 flex items-center gap-2"
+                        title="Manually trigger auto-share for new posts"
+                      >
+                        {testing ? (
+                          <>
+                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <span>🧪</span>
+                            Test Now
+                          </>
+                        )}
+                      </button>
                     )}
                     <button
                       onClick={handleSaveSettings}
