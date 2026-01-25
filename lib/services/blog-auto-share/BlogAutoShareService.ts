@@ -8,6 +8,7 @@
 import { prisma } from '@/lib/db'
 import { publishingService } from '../publishing'
 import { metadataExtractor, MetadataExtractor } from './MetadataExtractor'
+import { sendPushToUser } from '../push/PushNotificationService'
 import {
   PLATFORM_CAPABILITIES,
   BLOG_AUTO_SHARE_V1_PLATFORMS,
@@ -312,6 +313,33 @@ export class BlogAutoShareService {
         processedAt: new Date(),
       },
     })
+
+    // Send push notification
+    const successfulPlatforms = platformResults.filter(r => r.status === 'published').map(r => r.platform)
+    const failedPlatforms = platformResults.filter(r => r.status === 'failed').map(r => r.platform)
+
+    if (finalStatus === 'PUBLISHED') {
+      await sendPushToUser(settings.profileId, 'published', {
+        title: 'Blog Post Published!',
+        body: `"${item.title}" shared to ${successfulPlatforms.join(', ')}`,
+        url: '/automations',
+        tag: 'blog-auto-share',
+      })
+    } else if (finalStatus === 'PARTIAL') {
+      await sendPushToUser(settings.profileId, 'published', {
+        title: 'Blog Post Partially Published',
+        body: `"${item.title}" - Failed on: ${failedPlatforms.join(', ')}`,
+        url: '/automations',
+        tag: 'blog-auto-share',
+      })
+    } else if (finalStatus === 'FAILED') {
+      await sendPushToUser(settings.profileId, 'published', {
+        title: 'Blog Post Failed',
+        body: `"${item.title}" failed to publish to all platforms`,
+        url: '/automations',
+        tag: 'blog-auto-share',
+      })
+    }
 
     return {
       rssFeedItemId: item.guid,
@@ -705,6 +733,33 @@ Create an engaging caption that:
         processedAt: new Date(),
       },
     })
+
+    // Send push notification
+    const successfulPlatforms = platformResults.filter(r => r.status === 'published').map(r => r.platform)
+    const failedPlatforms = platformResults.filter(r => r.status === 'failed').map(r => r.platform)
+
+    if (finalStatus === 'PUBLISHED') {
+      await sendPushToUser(settings.profileId, 'published', {
+        title: 'Blog Post Published!',
+        body: `"${autoSharePost.articleTitle}" shared to ${successfulPlatforms.join(', ')}`,
+        url: '/automations',
+        tag: 'blog-auto-share',
+      })
+    } else if (finalStatus === 'PARTIAL') {
+      await sendPushToUser(settings.profileId, 'published', {
+        title: 'Blog Post Partially Published',
+        body: `"${autoSharePost.articleTitle}" - Failed on: ${failedPlatforms.join(', ')}`,
+        url: '/automations',
+        tag: 'blog-auto-share',
+      })
+    } else if (finalStatus === 'FAILED') {
+      await sendPushToUser(settings.profileId, 'published', {
+        title: 'Blog Post Failed',
+        body: `"${autoSharePost.articleTitle}" failed to publish to all platforms`,
+        url: '/automations',
+        tag: 'blog-auto-share',
+      })
+    }
 
     return {
       rssFeedItemId: autoSharePost.dedupeHash,
