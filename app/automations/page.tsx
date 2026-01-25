@@ -72,6 +72,29 @@ interface StatusCounts {
   skipped: number
 }
 
+interface PinterestBoard {
+  id: string
+  name: string
+  description?: string
+  pinCount?: number
+  privacy?: string
+}
+
+interface DiscordChannel {
+  id: string
+  name: string
+  type: number
+  typeLabel?: string
+  category?: string
+}
+
+interface DiscordGuild {
+  id: string
+  name: string
+  icon: string | null
+  owner?: boolean
+}
+
 // V1 Platforms
 const AVAILABLE_PLATFORMS: { id: SocialPlatform; name: string; description: string }[] = [
   { id: 'instagram', name: 'Instagram', description: 'Image posts with caption (link in bio)' },
@@ -239,6 +262,21 @@ export default function AutomationsPage() {
     skipped: 0,
   })
 
+  // Pinterest board selection state
+  const [pinterestBoards, setPinterestBoards] = useState<PinterestBoard[]>([])
+  const [loadingPinterestBoards, setLoadingPinterestBoards] = useState(false)
+  const [pinterestBoardsError, setPinterestBoardsError] = useState<string | null>(null)
+
+  // Discord channel selection state
+  const [discordChannels, setDiscordChannels] = useState<DiscordChannel[]>([])
+  const [loadingDiscordChannels, setLoadingDiscordChannels] = useState(false)
+  const [discordChannelsError, setDiscordChannelsError] = useState<string | null>(null)
+  const [discordGuilds, setDiscordGuilds] = useState<DiscordGuild[]>([])
+  const [selectedDiscordGuild, setSelectedDiscordGuild] = useState<string>('')
+  const [needsDiscordGuildSelection, setNeedsDiscordGuildSelection] = useState(false)
+  const [needsDiscordBotInvite, setNeedsDiscordBotInvite] = useState(false)
+  const [discordBotInviteUrl, setDiscordBotInviteUrl] = useState<string>('')
+
   // ============================================
   // DATA FETCHING
   // ============================================
@@ -287,6 +325,133 @@ export default function AutomationsPage() {
       fetchPosts(postsFilter)
     }
   }, [activeTab, postsFilter, fetchPosts])
+
+  // Fetch Pinterest boards when Pinterest is selected
+  useEffect(() => {
+    const fetchPinterestBoards = async () => {
+      if (!settings.platforms.includes('pinterest') || !user?.id) {
+        setPinterestBoards([])
+        setPinterestBoardsError(null)
+        return
+      }
+
+      setLoadingPinterestBoards(true)
+      setPinterestBoardsError(null)
+
+      try {
+        const response = await fetch(`/api/pinterest/boards?userId=${user.id}`)
+        const data = await response.json()
+
+        if (data.success && data.boards) {
+          setPinterestBoards(data.boards)
+          // Auto-select first board if none selected
+          if (data.boards.length > 0 && !settings.pinterestBoardId) {
+            setSettings(prev => ({ ...prev, pinterestBoardId: data.boards[0].id }))
+          }
+        } else {
+          setPinterestBoardsError(data.error || 'Failed to load boards')
+          setPinterestBoards([])
+        }
+      } catch (error) {
+        console.error('Error fetching Pinterest boards:', error)
+        setPinterestBoardsError('Failed to load Pinterest boards')
+        setPinterestBoards([])
+      } finally {
+        setLoadingPinterestBoards(false)
+      }
+    }
+
+    fetchPinterestBoards()
+  }, [settings.platforms, user?.id])
+
+  // Fetch Discord channels when Discord is selected
+  useEffect(() => {
+    const fetchDiscordChannels = async (guildId?: string) => {
+      if (!settings.platforms.includes('discord') || !user?.id) {
+        setDiscordChannels([])
+        setDiscordChannelsError(null)
+        setDiscordGuilds([])
+        setNeedsDiscordGuildSelection(false)
+        setNeedsDiscordBotInvite(false)
+        return
+      }
+
+      setLoadingDiscordChannels(true)
+      setDiscordChannelsError(null)
+
+      try {
+        const url = guildId ? `/api/discord/channels?guildId=${guildId}` : '/api/discord/channels'
+        const response = await fetch(url)
+        const data = await response.json()
+
+        // Handle case where user needs to select a guild
+        if (data.needsGuildSelection && data.guilds) {
+          setDiscordGuilds(data.guilds)
+          setNeedsDiscordGuildSelection(true)
+          setDiscordChannels([])
+          setLoadingDiscordChannels(false)
+          return
+        }
+
+        // Handle case where bot needs to be invited
+        if (data.needsBotInvite) {
+          setNeedsDiscordBotInvite(true)
+          setDiscordBotInviteUrl(data.inviteUrl || '')
+          setDiscordChannels([])
+          setLoadingDiscordChannels(false)
+          return
+        }
+
+        setNeedsDiscordGuildSelection(false)
+        setNeedsDiscordBotInvite(false)
+
+        if (data.channels) {
+          setDiscordChannels(data.channels)
+          // Auto-select first channel if none selected
+          if (data.currentChannelId) {
+            setSettings(prev => ({ ...prev, discordChannelId: data.currentChannelId }))
+          } else if (data.channels.length > 0 && !settings.discordChannelId) {
+            setSettings(prev => ({ ...prev, discordChannelId: data.channels[0].id }))
+          }
+        }
+
+        if (data.error) {
+          setDiscordChannelsError(data.error)
+        }
+      } catch (error) {
+        console.error('Error fetching Discord channels:', error)
+        setDiscordChannelsError('Failed to load Discord channels')
+        setDiscordChannels([])
+      } finally {
+        setLoadingDiscordChannels(false)
+      }
+    }
+
+    fetchDiscordChannels(selectedDiscordGuild || undefined)
+  }, [settings.platforms, user?.id, selectedDiscordGuild])
+
+  // Handle Discord guild selection
+  const handleDiscordGuildSelect = async (guildId: string) => {
+    const guild = discordGuilds.find(g => g.id === guildId)
+    if (!guild) return
+
+    setSelectedDiscordGuild(guildId)
+    setNeedsDiscordGuildSelection(false)
+
+    try {
+      await fetch('/api/discord/channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          guildId: guild.id,
+          guildName: guild.name,
+          guildIcon: guild.icon,
+        }),
+      })
+    } catch (error) {
+      console.error('Error saving Discord guild:', error)
+    }
+  }
 
   // ============================================
   // HANDLERS
@@ -691,44 +856,135 @@ export default function AutomationsPage() {
                           Configure required settings for specific platforms.
                         </p>
 
-                        <div className="space-y-4">
-                          {/* Discord Channel ID */}
+                        <div className="space-y-6">
+                          {/* Discord Channel Selection */}
                           {settings.platforms.includes('discord') && (
-                            <div>
-                              <label className="block text-sm font-medium text-text-primary mb-2">
-                                Discord Channel ID
-                              </label>
-                              <input
-                                type="text"
-                                value={settings.discordChannelId || ''}
-                                onChange={(e) => setSettings(prev => ({ ...prev, discordChannelId: e.target.value || null }))}
-                                placeholder="e.g., 1234567890123456789"
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                              />
-                              <p className="text-xs text-text-tertiary mt-2">
-                                To find your Channel ID: Enable Developer Mode in Discord (Settings → App Settings → Advanced),
-                                then right-click the channel and select &quot;Copy Channel ID&quot;.
-                              </p>
+                            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                              <div className="flex items-center gap-2 mb-3">
+                                <PlatformLogo platform="discord" size="sm" variant="color" />
+                                <span className="font-medium text-indigo-800">Discord Channel</span>
+                              </div>
+
+                              {loadingDiscordChannels ? (
+                                <div className="flex items-center gap-2 text-sm text-indigo-600">
+                                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                  </svg>
+                                  Loading channels...
+                                </div>
+                              ) : needsDiscordGuildSelection ? (
+                                <div className="space-y-2">
+                                  <p className="text-sm text-indigo-700">Select which server to post to:</p>
+                                  <select
+                                    value={selectedDiscordGuild}
+                                    onChange={(e) => handleDiscordGuildSelect(e.target.value)}
+                                    className="w-full px-3 py-2 bg-white border border-indigo-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                  >
+                                    <option value="">Choose a server...</option>
+                                    {discordGuilds.map((guild) => (
+                                      <option key={guild.id} value={guild.id}>
+                                        {guild.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ) : needsDiscordBotInvite ? (
+                                <div className="space-y-2">
+                                  <p className="text-sm text-indigo-700">
+                                    The ReGenr bot needs to be added to your server.
+                                  </p>
+                                  <a
+                                    href={discordBotInviteUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
+                                  >
+                                    Add Bot to Server
+                                  </a>
+                                </div>
+                              ) : discordChannelsError ? (
+                                <div className="text-sm text-red-600">
+                                  <span className="font-medium">Error:</span> {discordChannelsError}
+                                </div>
+                              ) : discordChannels.length > 0 ? (
+                                <div className="space-y-2">
+                                  <p className="text-xs text-indigo-700 mb-2">
+                                    Select the channel where blog posts will be shared:
+                                  </p>
+                                  <select
+                                    value={settings.discordChannelId || ''}
+                                    onChange={(e) => setSettings(prev => ({ ...prev, discordChannelId: e.target.value || null }))}
+                                    className="w-full px-3 py-2 bg-white border border-indigo-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                  >
+                                    {discordChannels.map((channel) => (
+                                      <option key={channel.id} value={channel.id}>
+                                        {channel.category ? `[${channel.category}] ` : ''}# {channel.name}
+                                        {channel.typeLabel && channel.typeLabel !== 'Text' ? ` (${channel.typeLabel})` : ''}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {settings.discordChannelId && (
+                                    <p className="text-xs text-indigo-600">
+                                      ✓ Posts will be sent to: <span className="font-medium">#{discordChannels.find(c => c.id === settings.discordChannelId)?.name}</span>
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-sm text-indigo-600">
+                                  No channels found. Make sure Discord is connected in Settings.
+                                </div>
+                              )}
                             </div>
                           )}
 
-                          {/* Pinterest Board ID */}
+                          {/* Pinterest Board Selection */}
                           {settings.platforms.includes('pinterest') && (
-                            <div>
-                              <label className="block text-sm font-medium text-text-primary mb-2">
-                                Pinterest Board ID
-                              </label>
-                              <input
-                                type="text"
-                                value={settings.pinterestBoardId || ''}
-                                onChange={(e) => setSettings(prev => ({ ...prev, pinterestBoardId: e.target.value || null }))}
-                                placeholder="e.g., 1234567890123456789"
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                              />
-                              <p className="text-xs text-text-tertiary mt-2">
-                                To find your Board ID: Open the board on Pinterest, the ID is the number in the URL
-                                (e.g., pinterest.com/username/board-name/<strong>1234567890123456789</strong>).
-                              </p>
+                            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                              <div className="flex items-center gap-2 mb-3">
+                                <PlatformLogo platform="pinterest" size="sm" variant="color" />
+                                <span className="font-medium text-red-800">Pinterest Board</span>
+                              </div>
+
+                              {loadingPinterestBoards ? (
+                                <div className="flex items-center gap-2 text-sm text-red-600">
+                                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                  </svg>
+                                  Loading boards...
+                                </div>
+                              ) : pinterestBoardsError ? (
+                                <div className="text-sm text-red-600">
+                                  <span className="font-medium">Error:</span> {pinterestBoardsError}
+                                </div>
+                              ) : pinterestBoards.length === 0 ? (
+                                <div className="text-sm text-red-600">
+                                  No boards found. <a href="https://pinterest.com" target="_blank" rel="noopener noreferrer" className="underline">Create a board on Pinterest</a> first, or make sure Pinterest is connected in Settings.
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  <p className="text-xs text-red-700 mb-2">
+                                    Select the board where blog posts will be pinned:
+                                  </p>
+                                  <select
+                                    value={settings.pinterestBoardId || ''}
+                                    onChange={(e) => setSettings(prev => ({ ...prev, pinterestBoardId: e.target.value || null }))}
+                                    className="w-full px-3 py-2 bg-white border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                                  >
+                                    {pinterestBoards.map((board) => (
+                                      <option key={board.id} value={board.id}>
+                                        {board.name} {board.pinCount ? `(${board.pinCount} pins)` : ''}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {settings.pinterestBoardId && (
+                                    <p className="text-xs text-red-600">
+                                      ✓ Pins will be added to: <span className="font-medium">{pinterestBoards.find(b => b.id === settings.pinterestBoardId)?.name}</span>
+                                    </p>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
