@@ -71,16 +71,6 @@ interface StatusCounts {
   skipped: number
 }
 
-interface RssFeed {
-  id: string
-  name: string
-  url: string
-  feedTitle?: string
-  status: 'ACTIVE' | 'PAUSED' | 'ERROR'
-  lastFetchedAt?: string
-  totalItems: number
-}
-
 // V1 Platforms
 const AVAILABLE_PLATFORMS: { id: SocialPlatform; name: string; description: string }[] = [
   { id: 'instagram', name: 'Instagram', description: 'Image posts with caption (link in bio)' },
@@ -247,14 +237,6 @@ export default function AutomationsPage() {
     skipped: 0,
   })
 
-  // RSS Feeds state
-  const [feeds, setFeeds] = useState<RssFeed[]>([])
-  const [newFeedUrl, setNewFeedUrl] = useState('')
-  const [addingFeed, setAddingFeed] = useState(false)
-  const [validatingFeed, setValidatingFeed] = useState(false)
-  const [validatedFeed, setValidatedFeed] = useState<{ title: string; itemCount: number } | null>(null)
-  const [feedError, setFeedError] = useState<string | null>(null)
-
   // ============================================
   // DATA FETCHING
   // ============================================
@@ -294,22 +276,9 @@ export default function AutomationsPage() {
     }
   }, [])
 
-  const fetchFeeds = useCallback(async () => {
-    try {
-      const response = await fetch('/api/rss/feeds')
-      if (response.ok) {
-        const data = await response.json()
-        setFeeds(data.feeds || [])
-      }
-    } catch (err) {
-      console.error('Failed to load feeds:', err)
-    }
-  }, [])
-
   useEffect(() => {
     fetchSettings()
-    fetchFeeds()
-  }, [fetchSettings, fetchFeeds])
+  }, [fetchSettings])
 
   useEffect(() => {
     if (activeTab === 'posts') {
@@ -404,89 +373,6 @@ export default function AutomationsPage() {
         ? prev.platforms.filter(p => p !== platformId)
         : [...prev.platforms, platformId],
     }))
-  }
-
-  // RSS Feed handlers
-  const validateFeedUrl = async (url: string) => {
-    if (!url.trim()) {
-      setValidatedFeed(null)
-      return
-    }
-
-    setValidatingFeed(true)
-    setFeedError(null)
-    setValidatedFeed(null)
-
-    try {
-      const response = await fetch('/api/rss/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
-      })
-      const data = await response.json()
-
-      if (data.valid && data.feed) {
-        setValidatedFeed(data.feed)
-      } else {
-        setFeedError(data.error || 'Invalid feed URL')
-      }
-    } catch {
-      setFeedError('Failed to validate URL')
-    } finally {
-      setValidatingFeed(false)
-    }
-  }
-
-  const handleAddFeed = async () => {
-    if (!newFeedUrl.trim()) return
-
-    setAddingFeed(true)
-    setFeedError(null)
-
-    try {
-      const response = await fetch('/api/rss/feeds', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: newFeedUrl.trim() }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to add feed')
-      }
-
-      // Success - clear form and refresh
-      setNewFeedUrl('')
-      setValidatedFeed(null)
-      await fetchFeeds()
-      setSuccess('Feed added successfully!')
-      setTimeout(() => setSuccess(null), 3000)
-    } catch (err) {
-      setFeedError(err instanceof Error ? err.message : 'Failed to add feed')
-    } finally {
-      setAddingFeed(false)
-    }
-  }
-
-  const handleDeleteFeed = async (feedId: string) => {
-    if (!confirm('Remove this feed? Items from this feed will no longer be processed.')) {
-      return
-    }
-
-    try {
-      const response = await fetch(`/api/rss/feeds/${feedId}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        await fetchFeeds()
-        setSuccess('Feed removed')
-        setTimeout(() => setSuccess(null), 3000)
-      }
-    } catch (err) {
-      setError('Failed to remove feed')
-    }
   }
 
   const handleApproveDraft = async (postId: string) => {
@@ -632,9 +518,9 @@ export default function AutomationsPage() {
 
           <Link
             href="/rss"
-            className="text-xs text-text-secondary hover:text-purple-600 flex items-center gap-1"
+            className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
           >
-            Advanced Feed Management →
+            📡 Manage RSS Feeds →
           </Link>
         </div>
 
@@ -701,123 +587,6 @@ export default function AutomationsPage() {
                             </p>
                           )}
                         </div>
-                      </div>
-                    </Card>
-
-                    {/* RSS Feed URL */}
-                    <Card className="p-6">
-                      <h3 className="text-lg font-semibold text-text-primary mb-2">
-                        Blog/RSS Feed URL
-                      </h3>
-                      <p className="text-sm text-text-secondary mb-4">
-                        Add your blog&apos;s RSS feed URL. New posts will be automatically detected and shared.
-                      </p>
-
-                      {/* Connected Feeds */}
-                      {feeds.length > 0 && (
-                        <div className="mb-4 space-y-2">
-                          <p className="text-sm font-medium text-text-primary">Connected Feeds:</p>
-                          {feeds.map(feed => (
-                            <div
-                              key={feed.id}
-                              className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-green-800 truncate">
-                                  {feed.feedTitle || feed.name}
-                                </p>
-                                <p className="text-xs text-green-600 truncate">{feed.url}</p>
-                                <p className="text-xs text-green-600 mt-1">
-                                  {feed.totalItems} items • Last checked: {feed.lastFetchedAt ? new Date(feed.lastFetchedAt).toLocaleString() : 'Never'}
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => handleDeleteFeed(feed.id)}
-                                className="ml-3 p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                                title="Remove feed"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Add New Feed */}
-                      <div className="space-y-3">
-                        <div className="flex gap-2">
-                          <div className="flex-1 relative">
-                            <input
-                              type="url"
-                              value={newFeedUrl}
-                              onChange={(e) => setNewFeedUrl(e.target.value)}
-                              onBlur={() => validateFeedUrl(newFeedUrl)}
-                              placeholder="https://yourblog.com/feed or https://yourblog.substack.com/feed"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                            />
-                            {validatingFeed && (
-                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                <svg className="animate-spin h-4 w-4 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            onClick={handleAddFeed}
-                            disabled={addingFeed || !newFeedUrl.trim() || validatingFeed}
-                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                          >
-                            {addingFeed ? (
-                              <>
-                                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Adding...
-                              </>
-                            ) : (
-                              <>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
-                                Add Feed
-                              </>
-                            )}
-                          </button>
-                        </div>
-
-                        {/* Validation Success */}
-                        {validatedFeed && (
-                          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                            <div className="flex items-center gap-2 text-green-700">
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span className="font-medium">{validatedFeed.title}</span>
-                            </div>
-                            <p className="text-sm text-green-600 mt-1">
-                              {validatedFeed.itemCount} items available - Click &quot;Add Feed&quot; to connect
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Validation Error */}
-                        {feedError && (
-                          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                            {feedError}
-                          </div>
-                        )}
-
-                        {/* Help Text */}
-                        <p className="text-xs text-text-tertiary">
-                          Common RSS feed URLs: Substack uses <code className="bg-gray-100 px-1 rounded">/feed</code>,
-                          WordPress uses <code className="bg-gray-100 px-1 rounded">/feed</code> or <code className="bg-gray-100 px-1 rounded">/rss</code>,
-                          Medium uses <code className="bg-gray-100 px-1 rounded">/feed</code>
-                        </p>
                       </div>
                     </Card>
 
