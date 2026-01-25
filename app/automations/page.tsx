@@ -518,7 +518,7 @@ export default function AutomationsPage() {
       <div className="min-h-screen bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-tertiary">
         <AppHeader currentPage="automations" />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-20 pb-6">
         {/* Navigation */}
         <div className="flex items-center justify-between mb-6">
           <nav className="flex space-x-4">
