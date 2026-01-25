@@ -1004,11 +1004,11 @@ Get platform-specific recommendations based on your data.`,
         answer: `Blog Auto-Share is a Pro feature that automatically shares your blog posts to social media when new content is published.
 
 **How it works:**
-1. Connect your blog's RSS feed in Content Feeds
-2. Enable Blog Auto-Share in Automations
-3. Select which platforms to share to
-4. Choose auto-publish or draft mode
-5. New posts are automatically detected and shared
+1. Enter your blog's RSS feed URL in the Automations settings
+2. Enable Blog Auto-Share and select your platforms
+3. ReGenr checks your feed every 15 minutes for new posts
+4. New posts are automatically shared to all selected platforms
+5. You receive a push notification when publishing completes
 
 **What gets shared:**
 - Article title and excerpt
@@ -1016,7 +1016,32 @@ Get platform-specific recommendations based on your data.`,
 - AI-generated caption optimized for each platform
 - Link back to the original article
 
+**Automatic Detection:**
+ReGenr checks your RSS feed every 15 minutes. When a new blog post is detected, it's automatically processed and shared - no manual intervention needed.
+
 This is perfect for bloggers who want to maximize their content reach without manually creating social posts for every article.`,
+      },
+      {
+        id: 'blog-auto-share-notifications',
+        question: 'How do push notifications work with Blog Auto-Share?',
+        answer: `When Blog Auto-Share publishes your content, you'll receive a push notification on your device.
+
+**Notification types:**
+- **Published** - All platforms succeeded
+- **Partially Published** - Some platforms succeeded, others failed
+- **Failed** - All platforms failed
+
+**Requirements:**
+- Push notifications must be enabled in Settings → Notifications
+- "Published" notification type must be enabled
+- On iOS, the app must be added to your Home Screen (PWA)
+- iOS 16.4 or later is required for web push
+
+**To enable push notifications:**
+1. Go to Settings → Notifications
+2. Enable "Published" push notifications
+3. On iPhone, add the app to your Home Screen first
+4. Allow notifications when prompted by iOS`,
       },
       {
         id: 'blog-auto-share-platforms',
@@ -1028,8 +1053,12 @@ This is perfect for bloggers who want to maximize their content reach without ma
 - **Facebook** - Link post with preview
 - **Twitter/X** - Text post with link
 - **LinkedIn** - Professional link post
-- **Discord** - Channel message with embed
-- **Pinterest** - Pin with destination link
+- **Discord** - Channel message with embed (select channel in settings)
+- **Pinterest** - Pin with destination link (select board in settings)
+
+**Platform-Specific Settings:**
+- **Discord** - Choose which channel to post to from a dropdown
+- **Pinterest** - Choose which board to pin to from a dropdown
 
 **Not Supported:**
 - **TikTok** - Video-only platform
@@ -1119,42 +1148,44 @@ For video platforms, you'll need to create video content separately. Blog Auto-S
         question: 'How do I test Blog Auto-Share?',
         answer: `Follow these steps to set up and test Blog Auto-Share:
 
-**Step 1: Add an RSS Feed**
-1. Go to **Content Feeds** (click "📡 Manage RSS Feeds" on the Automations page)
-2. Click "Add Content Feed" and paste your blog's RSS feed URL
-3. Wait for the feed to be fetched and items to appear
+**Step 1: Configure Your Blog URL**
+1. Go to the **Automations** page
+2. Enter your blog's RSS feed URL (e.g., https://yourblog.substack.com/feed)
+3. The system will validate the URL automatically
 
 **Step 2: Configure Blog Auto-Share**
-1. Go to the **Automations** page
-2. Enable the **Blog Auto-Share** toggle
-3. Select which platforms to share to (Instagram, Facebook, X, LinkedIn, Discord, Pinterest)
-4. Choose your publishing mode:
-   - **Create Draft for Approval** (recommended) - Review posts before publishing
+1. Enable the **Blog Auto-Share** toggle
+2. Select which platforms to share to (Instagram, Facebook, X, LinkedIn, Discord, Pinterest)
+3. For **Discord**: Select the channel to post to from the dropdown
+4. For **Pinterest**: Select the board to pin to from the dropdown
+5. Choose your publishing mode:
    - **Auto-Publish** - Posts go live automatically
-5. Optionally configure Quiet Hours and a fallback image
-6. Click **Save Settings**
+   - **Create Draft for Approval** - Review posts before publishing
+6. Optionally upload a fallback image for posts without images
+7. Click **Save Settings**
 
-**Step 3: Test Auto-Share**
-1. After saving, a **"🧪 Test Auto-Share"** button will appear
-2. Click it to manually trigger processing of new RSS items
-3. The system will:
-   - Find unprocessed RSS items from your feeds
-   - Generate AI-powered captions for each platform
-   - Create drafts or auto-publish based on your settings
+**Step 3: Test Immediately (Optional)**
+1. After saving, a **"🧪 Test Now"** button will appear
+2. Click it to manually trigger processing without waiting for the automatic check
+3. This is useful when you've just published a blog post and don't want to wait 15 minutes
+
+**Automatic Detection:**
+- ReGenr checks your RSS feed every **15 minutes** automatically
+- New posts are detected and shared without any manual action
+- You'll receive a **push notification** when publishing completes
 
 **Step 4: Review Results**
-1. If drafts are created, you'll be switched to the **Posts** tab automatically
-2. Review each draft and click:
-   - **Approve & Publish** - Send to your connected platforms
-   - **Dismiss** - Skip this post
-   - **View Article** - See the original blog post
-3. Check status badges: Draft, Published, Partial, Failed
+1. Switch to the **Posts** tab to see all processed posts
+2. Check status badges:
+   - **Published** - Successfully shared to all platforms
+   - **Partial** - Some platforms succeeded, others failed (click to see details)
+   - **Failed** - All platforms failed
+   - **Draft** - Waiting for your approval (if using draft mode)
 
 **Troubleshooting:**
-- "No new RSS items to process" → Refresh your feed in Content Feeds first
-- Make sure your RSS feed has recent posts (items are marked as NEW when first ingested)
-- Check browser console (F12) for detailed error logs
-- Ensure you have at least one platform connected in Settings → Integrations`,
+- "No new posts found" → The system only processes posts published after you enabled Blog Auto-Share
+- Platform failures → Click on the post to see detailed error messages for each platform
+- Ensure you have all selected platforms connected in Settings → Integrations`,
       },
     ],
   },
