@@ -166,14 +166,30 @@ export class BlogAutoShareService {
     }
 
     console.log(`[BlogAutoShare] Found ${feedItems.length} items in feed for user ${settings.profileId}`)
+    console.log(`[BlogAutoShare] enabledAt: ${settings.enabledAt}, onlyNewPosts: ${settings.onlyNewPosts}`)
+
+    // Log first few items for debugging
+    feedItems.slice(0, 3).forEach((item, i) => {
+      console.log(`[BlogAutoShare] Feed item ${i + 1}: "${item.title}" pubDate: ${item.pubDate}`)
+    })
 
     // Filter items by enabledAt date if onlyNewPosts is true
     const filteredItems = feedItems.filter(item => {
       if (!settings.onlyNewPosts || !settings.enabledAt) return true
-      if (!item.pubDate) return false
+      if (!item.pubDate) {
+        console.log(`[BlogAutoShare] Item "${item.title}" has no pubDate, including it`)
+        return true // Include items without pubDate
+      }
 
       const itemDate = new Date(item.pubDate)
-      return itemDate >= settings.enabledAt
+      const enabledAt = new Date(settings.enabledAt)
+      const isNew = itemDate >= enabledAt
+
+      if (!isNew) {
+        console.log(`[BlogAutoShare] Skipping "${item.title}" - published ${itemDate.toISOString()} before enabledAt ${enabledAt.toISOString()}`)
+      }
+
+      return isNew
     })
 
     console.log(`[BlogAutoShare] ${filteredItems.length} items after date filter`)

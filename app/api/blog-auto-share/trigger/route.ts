@@ -45,21 +45,41 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Check for resetDate option in request body
+    let body: { resetDate?: boolean } = {}
+    try {
+      body = await request.json()
+    } catch {
+      // No body or invalid JSON, use defaults
+    }
+
+    // If resetDate is true, update enabledAt to now
+    if (body.resetDate) {
+      await prisma.blogAutoShareSettings.update({
+        where: { profileId: user.id },
+        data: { enabledAt: new Date() },
+      })
+      console.log(`[BlogAutoShare] Reset enabledAt date for user ${user.id}`)
+    }
+
+    // Get updated settings
+    const currentSettings = body.resetDate
+      ? await prisma.blogAutoShareSettings.findUnique({ where: { profileId: user.id } })
+      : settings
+
     console.log(`[BlogAutoShare] Manual trigger for user ${user.id} - Blog URL: ${settings.blogUrl}`)
+    console.log(`[BlogAutoShare] enabledAt: ${currentSettings?.enabledAt}`)
 
     // Run processing for this user only
     const result = await blogAutoShareService.processNewItems()
 
-    // Filter results for this user
-    const userResults = result.results.filter(r => {
-      // The result contains the auto-share post ID, we can check the profile
-      return true // For now return all since we're running for all enabled users
-    })
-
-    // Generate appropriate message
+    // Generate appropriate message with more details
     let message = 'Processing complete.'
     if (result.processed === 0) {
-      message = 'No new blog posts found to share. Posts may have already been shared or are older than your enablement date.'
+      const enabledAtStr = currentSettings?.enabledAt
+        ? new Date(currentSettings.enabledAt).toLocaleString()
+        : 'not set'
+      message = `No new blog posts found. Only posts published after ${enabledAtStr} will be processed. If your post is older, try "Reset Date & Test" button.`
     } else if (result.drafts > 0) {
       message = `Created ${result.drafts} draft(s) for review. Check the Posts tab.`
     } else if (result.published > 0) {
@@ -76,6 +96,8 @@ export async function POST(request: NextRequest) {
       published: result.published,
       failed: result.failed,
       durationMs: result.durationMs,
+      enabledAt: currentSettings?.enabledAt,
+      blogUrl: settings.blogUrl,
     })
   } catch (error) {
     console.error('[BlogAutoShare] Manual trigger error:', error)

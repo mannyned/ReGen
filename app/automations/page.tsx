@@ -337,17 +337,18 @@ export default function AutomationsPage() {
     }
   }
 
-  const handleTestAutoShare = async () => {
+  const handleTestAutoShare = async (resetDate: boolean = false) => {
     try {
       setTesting(true)
       setError(null)
       setSuccess(null)
 
-      console.log('[Automations] Testing auto-share...')
+      console.log('[Automations] Testing auto-share...', resetDate ? '(with date reset)' : '')
 
       const response = await fetch('/api/blog-auto-share/trigger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resetDate }),
       })
 
       const data = await response.json()
@@ -355,12 +356,16 @@ export default function AutomationsPage() {
 
       if (data.success) {
         setSuccess(data.message || 'Auto-share test complete!')
+        // Refresh settings to get updated enabledAt
+        if (resetDate) {
+          fetchSettings()
+        }
         // Refresh posts if we're on the posts tab or switch to it
         if (data.drafts > 0 || data.published > 0) {
           setActiveTab('posts')
           fetchPosts(postsFilter)
         }
-        setTimeout(() => setSuccess(null), 8000)
+        setTimeout(() => setSuccess(null), 10000)
       } else {
         setError(data.error || 'Test failed')
       }
@@ -947,9 +952,9 @@ export default function AutomationsPage() {
                     {/* Test Button - only show when enabled */}
                     {settings.enabled && settings.platforms.length > 0 && (
                       <button
-                        onClick={handleTestAutoShare}
+                        onClick={() => handleTestAutoShare(false)}
                         disabled={testing || saving}
-                        className="px-6 py-3 bg-white border-2 border-purple-300 text-purple-700 font-medium rounded-xl hover:bg-purple-50 transition-all disabled:opacity-50 flex items-center gap-2"
+                        className="px-4 py-3 bg-white border-2 border-purple-300 text-purple-700 font-medium rounded-xl hover:bg-purple-50 transition-all disabled:opacity-50 flex items-center gap-2"
                       >
                         {testing ? (
                           <>
@@ -962,7 +967,28 @@ export default function AutomationsPage() {
                         ) : (
                           <>
                             <span>🧪</span>
-                            Test Auto-Share
+                            Test
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleTestAutoShare(true)}
+                        disabled={testing || saving}
+                        className="px-4 py-3 bg-white border-2 border-orange-300 text-orange-700 font-medium rounded-xl hover:bg-orange-50 transition-all disabled:opacity-50 flex items-center gap-2"
+                        title="Reset the enablement date to now and process all posts in your feed"
+                      >
+                        {testing ? (
+                          <>
+                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <span>🔄</span>
+                            Reset Date & Test
                           </>
                         )}
                       </button>
