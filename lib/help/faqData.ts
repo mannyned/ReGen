@@ -1010,7 +1010,7 @@ In all Analytics pages (Overview, Location, Save Rate, Retention), use the Platf
 |----------|--------------|---------------|
 | **YouTube** | 50+ views, 24-48h delay | Country-level view breakdown |
 | **Instagram** | Business/Creator account, 100+ followers | Country and city audience data |
-| **Facebook** | Page required | Country-level fan breakdown |
+| **Facebook** | Page required, 30+ followers | Country-level fan breakdown |
 | **LinkedIn Company** | Admin access, 100+ followers | Geographic follower distribution |
 
 **❌ Not Supported:**

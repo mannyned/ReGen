@@ -923,7 +923,7 @@ export default function LocationAnalyticsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span>👥</span>
-                    <span><strong>Facebook:</strong> Page required, any follower count</span>
+                    <span><strong>Facebook:</strong> Page required, 30+ followers recommended</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span>🏢</span>
