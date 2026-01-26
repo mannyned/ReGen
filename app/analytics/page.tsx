@@ -844,7 +844,8 @@ export default function AnalyticsPage() {
                     <option value="instagram">Instagram</option>
                     <option value="tiktok">TikTok</option>
                     <option value="youtube">YouTube</option>
-                    <option value="linkedin">LinkedIn</option>
+                    <option value="linkedin">LinkedIn Personal</option>
+                    <option value="linkedin-org">LinkedIn Company</option>
                     <option value="twitter">Twitter</option>
                     <option value="facebook">Facebook</option>
                     <option value="pinterest">Pinterest</option>
@@ -918,50 +919,47 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* LinkedIn Analytics Limitations Notice */}
+            {/* LinkedIn Personal Profile Analytics Notice */}
             {selectedPlatform === 'linkedin' && (
               <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 animate-fade-in">
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    <span className="text-lg">👤</span>
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-amber-800 mb-2">LinkedIn Analytics by Account Type</h3>
-
-                    {/* Personal Profile Section */}
-                    <div className="mb-3 pb-3 border-b border-amber-200">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-lg">👤</span>
-                        <h4 className="font-medium text-amber-800">Personal Profile</h4>
-                      </div>
-                      <p className="text-sm text-amber-700 mb-1">Limited analytics due to LinkedIn API restrictions:</p>
-                      <ul className="text-sm text-amber-600 space-y-0.5 list-disc list-inside ml-1">
-                        <li>Post count and publishing status</li>
-                        <li>Post URLs and timestamps</li>
-                        <li><span className="text-amber-500">No engagement data</span> - LinkedIn requires partner approval for <code className="bg-amber-100 px-1 rounded text-xs">r_member_social</code> scope</li>
-                      </ul>
-                    </div>
-
-                    {/* Company Page Section */}
-                    <div className="mb-2">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-lg">🏢</span>
-                        <h4 className="font-medium text-amber-800">Company Page</h4>
-                      </div>
-                      <p className="text-sm text-amber-700 mb-1">Full analytics available with Community Management API:</p>
-                      <ul className="text-sm text-amber-600 space-y-0.5 list-disc list-inside ml-1">
-                        <li><span className="text-green-600">✓</span> Impressions & unique views</li>
-                        <li><span className="text-green-600">✓</span> Likes, comments & shares</li>
-                        <li><span className="text-green-600">✓</span> Click-through rates</li>
-                        <li><span className="text-green-600">✓</span> Engagement metrics</li>
-                        <li><span className="text-amber-500">Requires:</span> Admin access to the company page</li>
-                      </ul>
-                    </div>
-
+                    <h3 className="font-semibold text-amber-800 mb-2">LinkedIn Personal Profile</h3>
+                    <p className="text-sm text-amber-700 mb-2">Limited analytics due to LinkedIn API restrictions:</p>
+                    <ul className="text-sm text-amber-600 space-y-0.5 list-disc list-inside ml-1">
+                      <li>Post count and publishing status</li>
+                      <li>Post URLs and timestamps</li>
+                      <li><span className="text-amber-500">No engagement data</span> - LinkedIn requires partner approval for <code className="bg-amber-100 px-1 rounded text-xs">r_member_social</code> scope</li>
+                    </ul>
                     <p className="text-xs text-amber-500 mt-3 pt-2 border-t border-amber-200">
-                      <strong>Tip:</strong> Connect your LinkedIn Company Page in Settings to access full analytics. For personal profiles, visit LinkedIn's native analytics dashboard.
+                      <strong>Tip:</strong> Select <span className="font-medium">LinkedIn Company</span> in the filter above for full analytics including impressions, engagement, and click-through rates.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* LinkedIn Company Page Analytics Notice */}
+            {selectedPlatform === 'linkedin-org' && (
+              <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4 animate-fade-in">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <span className="text-lg">🏢</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-green-800 mb-2">LinkedIn Company Page</h3>
+                    <p className="text-sm text-green-700 mb-2">Full analytics available with Community Management API:</p>
+                    <ul className="text-sm text-green-600 space-y-0.5 list-disc list-inside ml-1">
+                      <li><span className="text-green-600">✓</span> Impressions & unique views</li>
+                      <li><span className="text-green-600">✓</span> Likes, comments & shares</li>
+                      <li><span className="text-green-600">✓</span> Click-through rates</li>
+                      <li><span className="text-green-600">✓</span> Engagement metrics</li>
+                    </ul>
+                    <p className="text-xs text-green-500 mt-3 pt-2 border-t border-green-200">
+                      <strong>Note:</strong> You must be an admin of the company page to access analytics.
                     </p>
                   </div>
                 </div>

@@ -95,12 +95,20 @@ interface DiscordGuild {
   owner?: boolean
 }
 
+interface LinkedInOrganization {
+  organizationUrn: string
+  name: string
+  vanityName?: string
+  logoUrl?: string
+}
+
 // V1 Platforms
 const AVAILABLE_PLATFORMS: { id: SocialPlatform; name: string; description: string }[] = [
   { id: 'instagram', name: 'Instagram', description: 'Image posts with caption (link in bio)' },
   { id: 'facebook', name: 'Facebook', description: 'Link posts with preview' },
   { id: 'twitter', name: 'X (Twitter)', description: 'Text posts with link' },
-  { id: 'linkedin', name: 'LinkedIn', description: 'Professional link posts' },
+  { id: 'linkedin', name: 'LinkedIn Personal', description: 'Personal profile posts (limited analytics)' },
+  { id: 'linkedin-org', name: 'LinkedIn Company', description: 'Company page posts (full analytics)' },
   { id: 'discord', name: 'Discord', description: 'Channel messages with embed' },
   { id: 'pinterest', name: 'Pinterest', description: 'Pins with destination link' },
 ]
@@ -277,6 +285,11 @@ export default function AutomationsPage() {
   const [needsDiscordBotInvite, setNeedsDiscordBotInvite] = useState(false)
   const [discordBotInviteUrl, setDiscordBotInviteUrl] = useState<string>('')
 
+  // LinkedIn organization selection state
+  const [linkedInOrganizations, setLinkedInOrganizations] = useState<LinkedInOrganization[]>([])
+  const [loadingLinkedInOrgs, setLoadingLinkedInOrgs] = useState(false)
+  const [linkedInOrgsError, setLinkedInOrgsError] = useState<string | null>(null)
+
   // ============================================
   // DATA FETCHING
   // ============================================
@@ -452,6 +465,44 @@ export default function AutomationsPage() {
       console.error('Error saving Discord guild:', error)
     }
   }
+
+  // Fetch LinkedIn organizations when LinkedIn Company is selected
+  useEffect(() => {
+    const fetchLinkedInOrganizations = async () => {
+      if (!settings.platforms.includes('linkedin-org') || !user?.id) {
+        setLinkedInOrganizations([])
+        setLinkedInOrgsError(null)
+        return
+      }
+
+      setLoadingLinkedInOrgs(true)
+      setLinkedInOrgsError(null)
+
+      try {
+        const response = await fetch('/api/linkedin/organizations')
+        const data = await response.json()
+
+        if (data.error) {
+          setLinkedInOrgsError(data.error)
+          setLinkedInOrganizations([])
+        } else if (data.organizations) {
+          setLinkedInOrganizations(data.organizations)
+          // Auto-select first organization if none selected
+          if (data.organizations.length > 0 && !settings.linkedinOrgUrn) {
+            setSettings(prev => ({ ...prev, linkedinOrgUrn: data.organizations[0].organizationUrn }))
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching LinkedIn organizations:', error)
+        setLinkedInOrgsError('Failed to load LinkedIn Company Pages')
+        setLinkedInOrganizations([])
+      } finally {
+        setLoadingLinkedInOrgs(false)
+      }
+    }
+
+    fetchLinkedInOrganizations()
+  }, [settings.platforms, user?.id])
 
   // ============================================
   // HANDLERS
@@ -985,6 +1036,75 @@ export default function AutomationsPage() {
                                   )}
                                 </div>
                               )}
+                            </div>
+                          )}
+
+                          {/* LinkedIn Company Page Selection */}
+                          {settings.platforms.includes('linkedin-org') && (
+                            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                              <div className="flex items-center gap-2 mb-3">
+                                <PlatformLogo platform="linkedin" size="sm" variant="color" />
+                                <span className="font-medium text-blue-800">LinkedIn Company Page</span>
+                              </div>
+
+                              {loadingLinkedInOrgs ? (
+                                <div className="flex items-center gap-2 text-sm text-blue-600">
+                                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                  </svg>
+                                  Loading Company Pages...
+                                </div>
+                              ) : linkedInOrgsError ? (
+                                <div className="text-sm text-blue-600">
+                                  <span className="font-medium">Error:</span> {linkedInOrgsError}
+                                </div>
+                              ) : linkedInOrganizations.length === 0 ? (
+                                <div className="text-sm text-blue-600">
+                                  No Company Pages found. Make sure you&apos;re an admin of at least one LinkedIn Company Page and that LinkedIn Company is connected in Settings.
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  <p className="text-xs text-blue-700 mb-2">
+                                    Select the Company Page where blog posts will be shared:
+                                  </p>
+                                  <select
+                                    value={settings.linkedinOrgUrn || ''}
+                                    onChange={(e) => setSettings(prev => ({ ...prev, linkedinOrgUrn: e.target.value || null }))}
+                                    className="w-full px-3 py-2 bg-white border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    {linkedInOrganizations.map((org) => (
+                                      <option key={org.organizationUrn} value={org.organizationUrn}>
+                                        {org.name} {org.vanityName ? `(${org.vanityName})` : ''}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {settings.linkedinOrgUrn && (
+                                    <p className="text-xs text-blue-600">
+                                      ✓ Posts will be shared to: <span className="font-medium">{linkedInOrganizations.find(o => o.organizationUrn === settings.linkedinOrgUrn)?.name}</span>
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                                    <span>✓</span> Full analytics available for Company Pages
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* LinkedIn Personal Profile Notice */}
+                          {settings.platforms.includes('linkedin') && !settings.platforms.includes('linkedin-org') && (
+                            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                              <div className="flex items-center gap-2 mb-2">
+                                <PlatformLogo platform="linkedin" size="sm" variant="color" />
+                                <span className="font-medium text-amber-800">LinkedIn Personal Profile</span>
+                              </div>
+                              <p className="text-xs text-amber-700">
+                                Analytics limited to post count and status only (no engagement metrics due to LinkedIn API restrictions).
+                              </p>
+                              <p className="text-xs text-amber-500 mt-2">
+                                <strong>Tip:</strong> Select <span className="font-medium">LinkedIn Company</span> above for full analytics.
+                              </p>
                             </div>
                           )}
                         </div>
