@@ -142,6 +142,8 @@ export class AnalyticsService {
           return await this.getYouTubeLocationData(accessToken)
         case 'facebook':
           return await this.getFacebookLocationData(accessToken)
+        case 'linkedin-org':
+          return await this.getLinkedInOrgLocationData(accessToken)
         default:
           // Other platforms may not provide detailed location data
           console.log(`[AnalyticsService] Platform ${platform} doesn't support location analytics`)
@@ -885,6 +887,90 @@ export class AnalyticsService {
 
     console.log(`[Facebook Analytics] Found location data for ${locationData.length} countries`)
     return locationData
+  }
+
+  private async getLinkedInOrgLocationData(accessToken: string): Promise<LocationData[]> {
+    try {
+      // First, get the user's administered organizations
+      const orgsResponse = await fetch(
+        `${API_BASE_URLS.linkedin}/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organization~))`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'LinkedIn-Version': '202401',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        }
+      )
+
+      if (!orgsResponse.ok) {
+        console.error('[LinkedIn Analytics] Failed to fetch organizations for location data')
+        return []
+      }
+
+      const orgsData = await orgsResponse.json()
+      const org = orgsData.elements?.[0]?.['organization~']
+
+      if (!org) {
+        console.log('[LinkedIn Analytics] No organization found for location data')
+        return []
+      }
+
+      // Get follower statistics by geography using organizationalEntityFollowerStatistics
+      const statsResponse = await fetch(
+        `${API_BASE_URLS.linkedin}/organizationalEntityFollowerStatistics?q=organizationalEntity&organizationalEntity=urn:li:organization:${org.id.split(':').pop()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'LinkedIn-Version': '202401',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        }
+      )
+
+      if (!statsResponse.ok) {
+        const errorText = await statsResponse.text()
+        console.error('[LinkedIn Analytics] Location stats error:', statsResponse.status, errorText)
+        return []
+      }
+
+      const statsData = await statsResponse.json()
+      const followerCountsByGeo = statsData.elements?.[0]?.followerCountsByGeo || []
+
+      if (followerCountsByGeo.length === 0) {
+        console.log('[LinkedIn Analytics] No geographic follower data available')
+        return []
+      }
+
+      // Calculate total followers for percentage calculation
+      const totalFollowers = followerCountsByGeo.reduce(
+        (sum: number, item: { followerCounts: { organicFollowerCount: number; paidFollowerCount: number } }) =>
+          sum + (item.followerCounts?.organicFollowerCount || 0) + (item.followerCounts?.paidFollowerCount || 0),
+        0
+      )
+
+      // Map geo data to LocationData format
+      const locationData: LocationData[] = followerCountsByGeo
+        .map((item: { geo: string; followerCounts: { organicFollowerCount: number; paidFollowerCount: number } }) => {
+          const count = (item.followerCounts?.organicFollowerCount || 0) + (item.followerCounts?.paidFollowerCount || 0)
+          // LinkedIn geo is in format "urn:li:geo:103644278" (country/region codes)
+          // Extract country code from geo URN
+          const geoCode = item.geo?.split(':').pop() || 'Unknown'
+
+          return {
+            country: geoCode, // This will be a numeric geo code, UI can map to country names
+            percentage: totalFollowers > 0 ? (count / totalFollowers) * 100 : 0,
+            engagement: count,
+          }
+        })
+        .sort((a: LocationData, b: LocationData) => b.engagement - a.engagement)
+
+      console.log(`[LinkedIn Analytics] Found location data for ${locationData.length} regions`)
+      return locationData
+    } catch (error) {
+      console.error('[LinkedIn Analytics] Error fetching location data:', error)
+      return []
+    }
   }
 
   // ============================================

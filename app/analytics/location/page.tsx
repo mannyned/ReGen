@@ -613,7 +613,8 @@ export default function LocationAnalyticsPage() {
       // YouTube requires yt-analytics.readonly scope
       // Instagram requires instagram_insights with business account
       // Facebook requires read_insights for page
-      const allPlatforms = ['youtube', 'instagram', 'facebook'];
+      // LinkedIn Company requires rw_organization_admin scope
+      const allPlatforms = ['youtube', 'instagram', 'facebook', 'linkedin-org'];
       // Filter platforms based on selected platform
       const platforms = selectedPlatform === 'all'
         ? allPlatforms
@@ -906,14 +907,38 @@ export default function LocationAnalyticsPage() {
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Sync Info Banner */}
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex items-start gap-3">
-            <span className="text-blue-500 text-lg">ℹ️</span>
-            <div className="text-sm text-blue-700">
-              <p className="font-medium">When does location data update?</p>
-              <p className="mt-1 text-blue-600">
-                YouTube geographic data requires 50+ views and may take 24-48 hours to appear.
-                Instagram location insights are available for Business/Creator accounts with sufficient reach.
-              </p>
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <span className="text-blue-500 text-lg">ℹ️</span>
+              <div className="text-sm text-blue-700">
+                <p className="font-medium mb-2">Location Data Requirements by Platform</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-blue-600">
+                  <div className="flex items-center gap-2">
+                    <span>📺</span>
+                    <span><strong>YouTube:</strong> 50+ views, 24-48h delay</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>📸</span>
+                    <span><strong>Instagram:</strong> Business/Creator account, 100+ followers</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>👥</span>
+                    <span><strong>Facebook:</strong> Page required, any follower count</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>🏢</span>
+                    <span><strong>LinkedIn Company:</strong> Admin access, 100+ followers</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-blue-400">
+                    <span>🐦</span>
+                    <span><strong>Twitter/X:</strong> Not available (API limitation)</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-blue-400">
+                    <span>🎵</span>
+                    <span><strong>TikTok:</strong> Not available (API limitation)</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

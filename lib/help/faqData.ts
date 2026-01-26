@@ -1000,6 +1000,97 @@ In all Analytics pages (Overview, Location, Save Rate, Retention), use the Platf
 **Tip:** For personal profile engagement metrics, use LinkedIn's native analytics in the LinkedIn app or website.`,
       },
       {
+        id: 'location-analytics-platforms',
+        question: 'Which platforms support Location of Engagement analytics?',
+        answer: `Location analytics show where your audience is geographically. Not all platforms provide this data:
+
+**✅ Supported Platforms:**
+
+| Platform | Requirements | Data Provided |
+|----------|--------------|---------------|
+| **YouTube** | 50+ views, 24-48h delay | Country-level view breakdown |
+| **Instagram** | Business/Creator account, 100+ followers | Country and city audience data |
+| **Facebook** | Page required | Country-level fan breakdown |
+| **LinkedIn Company** | Admin access, 100+ followers | Geographic follower distribution |
+
+**❌ Not Supported:**
+
+| Platform | Reason |
+|----------|--------|
+| **TikTok** | API doesn't expose geographic data for creators |
+| **Twitter/X** | Requires Enterprise API tier ($42,000+/year) |
+| **LinkedIn Personal** | API doesn't provide location data for personal profiles |
+| **Pinterest** | API doesn't include geographic analytics |
+| **Discord** | No analytics API available |
+| **Reddit** | API doesn't expose geographic data |
+
+**Why some platforms don't support it:**
+These limitations are set by the platforms themselves, not ReGenr. Each platform decides what data to expose through their API.`,
+      },
+      {
+        id: 'tiktok-no-location-data',
+        question: 'Why doesn\'t TikTok provide location engagement data?',
+        answer: `TikTok's API does not expose geographic/demographic data for individual creators. This is a platform limitation.
+
+**What TikTok's API provides:**
+- Views, likes, comments, shares
+- Watch time and average view duration
+- Basic video performance metrics
+
+**What TikTok's API does NOT provide:**
+- Country or region breakdown of viewers
+- City-level audience data
+- Demographic information (age, gender)
+- Follower location distribution
+
+**Why this limitation exists:**
+1. **Privacy focus** - TikTok restricts audience demographic data to protect user privacy
+2. **Business-only access** - Location analytics are only available through TikTok Ads Manager for paid advertising campaigns
+3. **API design** - TikTok's Content Posting API and Creator API are designed for posting and basic metrics, not detailed analytics
+
+**Alternatives:**
+- Check TikTok Analytics directly in the TikTok app (Creator Tools → Analytics)
+- TikTok Pro accounts can see some geographic data in the native app
+- Use TikTok Ads Manager for campaign-level geographic targeting`,
+      },
+      {
+        id: 'twitter-no-location-data',
+        question: 'Why doesn\'t Twitter/X provide location engagement data?',
+        answer: `Twitter/X's standard API does not include geographic analytics. This data requires expensive enterprise-level access.
+
+**API Tier Requirements:**
+| Tier | Cost | Location Data |
+|------|------|---------------|
+| Free | $0 | ❌ Not available |
+| Basic | $100/month | ❌ Not available |
+| Pro | $5,000/month | ❌ Not available |
+| Enterprise | $42,000+/year | ✅ Limited access |
+
+**What the standard API provides:**
+- Impressions and engagements
+- Retweets, likes, replies
+- Profile clicks and link clicks
+- Basic tweet performance
+
+**What's NOT available without Enterprise:**
+- Geographic breakdown of impressions
+- Country or region-level engagement
+- Audience location demographics
+- Follower geographic distribution
+
+**Additional limitations:**
+- Even with premium access, location data is limited to tweets where users enabled location tagging
+- Most users don't tag their location on tweets
+- Twitter removed analytics endpoints from free/basic tiers in 2023
+
+**Alternatives:**
+- Check Twitter Analytics directly at analytics.twitter.com
+- Twitter Blue subscribers have access to some analytics in the app
+- Use Twitter Ads for campaign-level geographic targeting
+
+**This is a Twitter policy, not a ReGenr limitation.** We would need to pay enterprise-level API fees to access this data.`,
+      },
+      {
         id: 'export-analytics',
         question: 'How do I export my analytics data?',
         answer: `Pro plan users can export analytics data in multiple formats:
