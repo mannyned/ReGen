@@ -788,7 +788,7 @@ function InsightsList({ insights }: InsightsListProps) {
 // ============================================
 // Main Page Component
 // ============================================
-type PlatformFilter = 'all' | 'instagram' | 'youtube' | 'facebook' | 'tiktok' | 'linkedin' | 'twitter' | 'pinterest' | 'discord' | 'reddit';
+type PlatformFilter = 'all' | 'instagram' | 'youtube' | 'facebook' | 'tiktok' | 'linkedin' | 'linkedin-org' | 'twitter' | 'pinterest' | 'discord' | 'reddit';
 
 export default function RetentionAnalyticsPage() {
   const [period, setPeriod] = useState<Period>('30d');
@@ -1147,7 +1147,8 @@ export default function RetentionAnalyticsPage() {
                   <option value="instagram">Instagram</option>
                   <option value="tiktok">TikTok</option>
                   <option value="youtube">YouTube</option>
-                  <option value="linkedin">LinkedIn</option>
+                  <option value="linkedin">LinkedIn Personal</option>
+                  <option value="linkedin-org">LinkedIn Company</option>
                   <option value="twitter">Twitter</option>
                   <option value="facebook">Facebook</option>
                   <option value="pinterest">Pinterest</option>
@@ -1332,6 +1333,11 @@ export default function RetentionAnalyticsPage() {
                   mid: 'Keep it 30-90 seconds. LinkedIn users scroll during work—respect their time.',
                   completion: 'End with thought-provoking questions to drive professional discussions.'
                 },
+                'linkedin-org': {
+                  hook: 'Lead with company expertise or industry insights. Company pages benefit from thought leadership.',
+                  mid: 'Showcase company culture or behind-the-scenes content. B2B audiences engage with authenticity.',
+                  completion: 'Include company CTAs and drive traffic to your website or landing pages.'
+                },
                 twitter: {
                   hook: 'Grab attention immediately—Twitter videos autoplay in timeline. First 2 seconds are critical.',
                   mid: 'Keep videos under 45 seconds for best engagement on Twitter.',
@@ -1341,6 +1347,21 @@ export default function RetentionAnalyticsPage() {
                   hook: 'Vertical, full-screen content only. Start with energy and movement.',
                   mid: 'Keep it under 10 seconds for Stories. Snappy, fun content wins.',
                   completion: 'Use interactive elements like polls or swipe-ups to boost engagement.'
+                },
+                pinterest: {
+                  hook: 'Use bright, eye-catching visuals. Pinterest is visual-first—make thumbnails pop.',
+                  mid: 'Include step-by-step tutorials or how-to content. Pinterest users love actionable content.',
+                  completion: 'Add text overlays with key takeaways. Encourage saves for later reference.'
+                },
+                discord: {
+                  hook: 'Start with community-relevant content. Discord audiences value niche expertise.',
+                  mid: 'Keep it concise—Discord users prefer quick, digestible content.',
+                  completion: 'Encourage discussion and reactions. Community engagement drives Discord success.'
+                },
+                reddit: {
+                  hook: 'Lead with value, not promotion. Reddit users are skeptical of marketing.',
+                  mid: 'Provide genuine insights or entertainment. Authenticity wins on Reddit.',
+                  completion: 'Invite discussion and be ready to engage in comments. Reddit rewards participation.'
                 }
               };
 

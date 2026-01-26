@@ -544,7 +544,7 @@ interface FormatPerformance {
   totalEngagement: number;
 }
 
-type PlatformFilter = 'all' | 'instagram' | 'youtube' | 'facebook' | 'tiktok' | 'linkedin' | 'twitter' | 'pinterest' | 'discord' | 'reddit';
+type PlatformFilter = 'all' | 'instagram' | 'youtube' | 'facebook' | 'tiktok' | 'linkedin' | 'linkedin-org' | 'twitter' | 'pinterest' | 'discord' | 'reddit';
 
 export default function LocationAnalyticsPage() {
   const [period, setPeriod] = useState<Period>('30d');
@@ -874,7 +874,8 @@ export default function LocationAnalyticsPage() {
                   <option value="instagram">Instagram</option>
                   <option value="tiktok">TikTok</option>
                   <option value="youtube">YouTube</option>
-                  <option value="linkedin">LinkedIn</option>
+                  <option value="linkedin">LinkedIn Personal</option>
+                  <option value="linkedin-org">LinkedIn Company</option>
                   <option value="twitter">Twitter</option>
                   <option value="facebook">Facebook</option>
                   <option value="pinterest">Pinterest</option>
