@@ -307,6 +307,84 @@ If you're a developer setting up your own Meta app, this URL must be added to yo
 
 **Note:** Disconnecting removes your tokens from ReGenr but doesn't revoke access on Meta's side. To fully revoke, go to Facebook Settings → Apps and Websites → Remove ReGenr.`,
       },
+      {
+        id: 'linkedin-personal-vs-company',
+        question: 'What is the difference between LinkedIn Personal and LinkedIn Company?',
+        answer: `ReGenr supports two types of LinkedIn connections with different capabilities:
+
+**👤 LinkedIn Personal (Profile)**
+- Posts to your personal LinkedIn profile
+- Limited analytics (post count, status, URLs only)
+- No engagement metrics due to LinkedIn API restrictions
+- Good for personal branding and thought leadership
+
+**🏢 LinkedIn Company (Page)**
+- Posts to your LinkedIn Company Page
+- Full analytics: impressions, likes, comments, shares, CTR
+- Requires you to be an admin of the Company Page
+- Uses LinkedIn's Community Management API
+- Better for business/brand accounts
+
+**Which should I use?**
+- **Personal branding** → LinkedIn Personal
+- **Business/company content** → LinkedIn Company
+- **Full analytics needed** → LinkedIn Company
+
+You can connect both and choose which to use when posting or setting up automations.`,
+      },
+      {
+        id: 'linkedin-company-setup',
+        question: 'How do I connect LinkedIn Company Page?',
+        answer: `To connect a LinkedIn Company Page:
+
+**Prerequisites:**
+- You must be an **admin** of the Company Page
+- The Company Page must be active and in good standing
+
+**Steps:**
+1. Go to **Settings → Integrations**
+2. Find **LinkedIn Company** (separate from LinkedIn Personal)
+3. Click **Connect**
+4. Sign in with your LinkedIn account
+5. Authorize ReGenr to access your Company Pages
+6. Select which Company Page to use
+
+**After connecting:**
+- When uploading content, select "LinkedIn Company" as a platform
+- Choose your Company Page from the dropdown
+- Full analytics will be available for posts
+
+**Troubleshooting:**
+- If no Company Pages appear, verify you're an admin on LinkedIn
+- Try disconnecting and reconnecting if pages don't load
+- Ensure you granted all requested permissions during OAuth`,
+      },
+      {
+        id: 'linkedin-analytics-limitations',
+        question: 'Why are my LinkedIn Personal analytics limited?',
+        answer: `LinkedIn Personal profile analytics are limited due to LinkedIn's API restrictions.
+
+**What's available for Personal profiles:**
+- Post count and publishing status
+- Post URLs and timestamps
+- Basic post information
+
+**What's NOT available:**
+- Likes, comments, shares
+- Impressions and reach
+- Click-through rates
+- Engagement metrics
+
+**Why?**
+LinkedIn requires special partner approval for the \`r_member_social\` scope to access engagement data on personal posts. This is a LinkedIn policy, not a ReGenr limitation.
+
+**Solutions:**
+1. **Use LinkedIn Company** - Full analytics available for Company Pages
+2. **Check LinkedIn directly** - View engagement in the LinkedIn app/website
+3. **Connect a Company Page** - If you have one, connect it for full metrics
+
+**Tip:** In the Analytics pages, select "LinkedIn Personal" or "LinkedIn Company" from the platform filter to see data for each type separately.`,
+      },
     ],
   },
   {
@@ -896,12 +974,12 @@ You can also manually refresh analytics anytime:
         question: 'Why are LinkedIn analytics different for Personal vs Company pages?',
         answer: `LinkedIn has different API access levels for personal profiles and company pages:
 
-**👤 Personal Profile (Limited)**
+**👤 LinkedIn Personal (Limited)**
 - Post count and publishing status
 - Post URLs and timestamps
 - **No engagement data** - LinkedIn requires special partner approval for the \`r_member_social\` scope to read likes, comments, and shares on personal posts
 
-**🏢 Company Page (Full Analytics)**
+**🏢 LinkedIn Company (Full Analytics)**
 When connected with Community Management API access:
 - ✓ Impressions & unique views
 - ✓ Likes, comments & shares
@@ -913,6 +991,11 @@ When connected with Community Management API access:
 - You must be an **admin** of the company page
 - Connect via "LinkedIn Company" in Settings (separate from personal profile)
 - ReGenr needs Community Management API approval from LinkedIn
+
+**Filtering by LinkedIn Type:**
+In all Analytics pages (Overview, Location, Save Rate, Retention), use the Platform filter dropdown to select:
+- **LinkedIn Personal** - View data for personal profile posts
+- **LinkedIn Company** - View data for company page posts
 
 **Tip:** For personal profile engagement metrics, use LinkedIn's native analytics in the LinkedIn app or website.`,
       },
