@@ -121,10 +121,14 @@ export async function POST(request: NextRequest) {
       { success: true, id: feedback.id },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Feedback] Error submitting feedback:', error);
     return NextResponse.json(
-      { error: 'Failed to submit feedback', code: 'SUBMIT_ERROR' },
+      {
+        error: 'Failed to submit feedback',
+        code: 'SUBMIT_ERROR',
+        details: error?.message || String(error),
+      },
       { status: 500 }
     );
   }
