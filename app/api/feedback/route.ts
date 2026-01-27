@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         betaUser: true,
         tier: true,
         outboundPosts: { select: { id: true }, take: 1 },
-        socialConnections: { select: { provider: true } },
+        socialConnections: { select: { platform: true } },
         // Check team membership for inherited beta status
         teamMembership: {
           select: {
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       data.creatorPriceInput !== undefined || data.proPriceInput !== undefined
         ? {
             role: profile.tier,
-            featuresUsed: profile.socialConnections.map((c) => c.provider),
+            featuresUsed: profile.socialConnections.map((c) => c.platform),
             postsCount: profile.outboundPosts.length > 0 ? 'has_posts' : 'no_posts',
           }
         : undefined;
