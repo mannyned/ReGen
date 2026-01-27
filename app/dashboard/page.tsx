@@ -450,9 +450,9 @@ export default function DashboardPage() {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-text-secondary text-sm font-medium">
-                  Uploads Used
+                  {currentPlan === 'free' ? 'Uploads Used' : 'Posts This Week'}
                 </span>
-                <span className="text-2xl">📤</span>
+                <span className="text-2xl">📊</span>
               </div>
               {currentPlan === 'free' ? (
                 <>
@@ -468,10 +468,8 @@ export default function DashboardPage() {
                 </>
               ) : (
                 <>
-                  <p className="text-3xl font-bold text-text-primary mb-1">{usedUploads}</p>
-                  <p className="text-sm text-text-secondary">
-                    {currentPlan === 'pro' ? 'Unlimited' : `of ${planFeatures.maxUploadsPerMonth}`}
-                  </p>
+                  <p className="text-3xl font-bold text-text-primary mb-1">{stats.postsThisWeek}</p>
+                  <p className="text-sm text-text-secondary">Across all platforms</p>
                 </>
               )}
             </Card>
