@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is a beta user
+    // Check if user is a beta user (including team members who inherit from owner)
     const profile = await prisma.profile.findUnique({
       where: { id: user.id },
       select: {
@@ -32,10 +32,25 @@ export async function POST(request: NextRequest) {
         tier: true,
         outboundPosts: { select: { id: true }, take: 1 },
         socialConnections: { select: { provider: true } },
+        // Check team membership for inherited beta status
+        teamMembership: {
+          select: {
+            team: {
+              select: {
+                owner: {
+                  select: { betaUser: true },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
-    if (!profile?.betaUser) {
+    // Check if user is beta (directly or inherited from team owner)
+    const isBetaUser = profile?.betaUser || profile?.teamMembership?.team?.owner?.betaUser || false;
+
+    if (!isBetaUser) {
       return NextResponse.json(
         { error: 'Feedback is only available for beta users', code: 'BETA_ONLY' },
         { status: 403 }
