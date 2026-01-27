@@ -20,6 +20,7 @@ import {
 } from '../components/ui'
 import { ExportAnalytics } from '../components/ExportAnalytics'
 import { useUpgradeIntent, LockedMetricId } from '../context/UpgradeIntentContext'
+import { useFeedbackTrigger } from '../context/FeedbackContext'
 import type { SocialPlatform } from '@/lib/types/social'
 
 type TimeRange = '7' | '30' | '90' | '365'
@@ -208,6 +209,16 @@ export default function AnalyticsPage() {
 
   // Upgrade intent tracking
   const upgradeIntent = useUpgradeIntent()
+
+  // Beta feedback trigger
+  const { triggerAfterFirstAnalyticsView, hasViewedAnalyticsFirst, isBetaUser } = useFeedbackTrigger()
+
+  // Trigger feedback on first analytics view (for beta users)
+  useEffect(() => {
+    if (mounted && isBetaUser && !hasViewedAnalyticsFirst) {
+      triggerAfterFirstAnalyticsView()
+    }
+  }, [mounted, isBetaUser, hasViewedAnalyticsFirst, triggerAfterFirstAnalyticsView])
 
   const isProduction = process.env.NODE_ENV === 'production'
 

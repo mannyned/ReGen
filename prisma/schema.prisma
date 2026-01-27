@@ -77,6 +77,14 @@ model Profile {
   blogAutoShareSettings BlogAutoShareSettings?
   blogAutoSharePosts    BlogAutoSharePost[]
 
+  // Beta Feedback tracking
+  hasCompletedFirstPost       Boolean   @default(false) @map("has_completed_first_post")
+  hasViewedAnalyticsFirst     Boolean   @default(false) @map("has_viewed_analytics_first")
+  hasCompletedFirstAutoShare  Boolean   @default(false) @map("has_completed_first_auto_share")
+  feedbackDismissedTypes      String[]  @default([]) @map("feedback_dismissed_types")
+  lastFeedbackPromptAt        DateTime? @map("last_feedback_prompt_at")
+  betaFeedback                BetaFeedback[]
+
   @@index([stripeCustomerId])
   @@index([betaUser])
   @@map("profiles")
@@ -1138,4 +1146,56 @@ model BlogAutoSharePost {
   @@index([scheduledAt])
   @@index([createdAt(sort: Desc)])
   @@map("blog_auto_share_posts")
+}
+
+// ============================================
+// BETA FEEDBACK SYSTEM
+// ============================================
+
+/// Feedback type enum for categorizing beta feedback submissions
+enum FeedbackType {
+  FIRST_POST
+  FIRST_ANALYTICS_VIEW
+  FIRST_AUTO_SHARE
+  GENERAL
+  PRICING
+
+  @@map("feedback_type")
+}
+
+/// BetaFeedback - Captures structured feedback from beta users
+/// Triggered after meaningful events or via persistent "Give Feedback" option
+model BetaFeedback {
+  id          String       @id @default(cuid())
+  profileId   String       @map("profile_id") @db.Uuid
+
+  // Feedback metadata
+  feedbackType FeedbackType @map("feedback_type")
+
+  // Structured feedback fields
+  usageIntent        String? @map("usage_intent")          // What they use ReGenr for
+  featureValueRating Int?    @map("feature_value_rating")  // 1-5 scale
+  usefulnessRating   Int?    @map("usefulness_rating")     // 1-5 scale
+  confusionPoints    String? @map("confusion_points")      // Open text - what's confusing
+  missingFeatures    String? @map("missing_features")      // Open text - feature requests
+
+  // Pricing feedback (for PRICING type)
+  creatorPriceInput Decimal? @map("creator_price_input") @db.Decimal(10, 2)
+  proPriceInput     Decimal? @map("pro_price_input") @db.Decimal(10, 2)
+  pricingContext    Json?    @map("pricing_context") // { role, featuresUsed }
+
+  // Additional context
+  browserInfo     String? @map("browser_info")
+  feedbackContext Json?   @map("feedback_context") // { page, action, timestamp }
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([feedbackType])
+  @@index([createdAt(sort: Desc)])
+  @@map("beta_feedback")
 }

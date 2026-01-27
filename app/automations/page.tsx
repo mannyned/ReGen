@@ -8,6 +8,7 @@ import { uploadToStorage } from '@/lib/storage/upload'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import { usePlan } from '@/app/context/PlanContext'
 import { hasBlogAutoShare } from '@/app/config/plans'
+import { useFeedbackTrigger } from '@/app/context/FeedbackContext'
 import type { SocialPlatform } from '@/lib/types/social'
 
 // ============================================
@@ -224,6 +225,7 @@ function ProOnlyGate({ children }: { children: React.ReactNode }) {
 
 export default function AutomationsPage() {
   const { user } = useAuth()
+  const { triggerAfterFirstAutoShare, hasCompletedFirstAutoShare } = useFeedbackTrigger()
   const [activeTab, setActiveTab] = useState<'settings' | 'posts'>('settings')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -602,6 +604,10 @@ export default function AutomationsPage() {
         if (data.drafts > 0 || data.published > 0) {
           setActiveTab('posts')
           fetchPosts(postsFilter)
+        }
+        // Trigger feedback for first auto-share (for beta users)
+        if (data.published > 0 && !hasCompletedFirstAutoShare) {
+          triggerAfterFirstAutoShare()
         }
         setTimeout(() => setSuccess(null), 10000)
       } else {

@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { SignOutButton } from '@/components/auth'
 import { Tooltip } from './Tooltip'
+import { useFeedback } from '@/app/context/FeedbackContext'
 
 // ==========================================
 // PLATFORM LOGO COMPONENT (RE-EXPORT)
@@ -140,6 +141,9 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
   const [scrolled, setScrolled] = useState(false)
   const [fetchedUserRole, setFetchedUserRole] = useState<'owner' | 'admin' | 'member'>('owner')
   const [userDataLoaded, setUserDataLoaded] = useState(false)
+
+  // Beta feedback
+  const { isBetaUser, openFeedbackModal } = useFeedback()
 
   // Auto-fetch user's team role if not provided via props
   useEffect(() => {
@@ -284,6 +288,22 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
                         {item.label}
                       </Link>
                     ))}
+                    {/* Beta Feedback Option */}
+                    {isBetaUser && (
+                      <>
+                        <div className="my-1 border-t border-gray-100" />
+                        <button
+                          onClick={() => {
+                            setMoreMenuOpen(false)
+                            openFeedbackModal('GENERAL')
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-sm text-violet-600 hover:bg-violet-50 transition-colors flex items-center gap-2"
+                        >
+                          <span className="text-base">💬</span>
+                          Give Beta Feedback
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -441,6 +461,22 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
               </Link>
             ))}
           </div>
+
+          {/* Beta Feedback - Mobile */}
+          {isBetaUser && (
+            <div className="py-3 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  openFeedbackModal('GENERAL')
+                }}
+                className="w-full flex items-center gap-3 py-2.5 px-3 rounded-lg text-sm font-medium text-violet-600 hover:bg-violet-50 transition-colors"
+              >
+                <span className="text-lg">💬</span>
+                Give Beta Feedback
+              </button>
+            </div>
+          )}
 
           {/* Settings & Billing - Mobile */}
           <div className="py-3 border-t border-gray-100 space-y-1">

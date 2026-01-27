@@ -3,7 +3,9 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { PlanProvider } from './context/PlanContext'
 import { UpgradeIntentProvider } from './context/UpgradeIntentContext'
+import { FeedbackProvider } from './context/FeedbackContext'
 import { ToastProvider } from './components/ui/Toast'
+import { FeedbackModal } from './components/FeedbackModal'
 import { PWAProvider } from './components/PWAProvider'
 import { PWAInstallPrompt } from './components/PWAInstallPrompt'
 import PlanSwitcher from './components/PlanSwitcher'
@@ -80,11 +82,14 @@ export default function RootLayout({
         <PWAProvider>
           <PlanProvider>
             <UpgradeIntentProvider>
-              <ToastProvider>
-                {children}
-                <PWAInstallPrompt />
-                {process.env.NODE_ENV === 'development' && <PlanSwitcher />}
-              </ToastProvider>
+              <FeedbackProvider>
+                <ToastProvider>
+                  {children}
+                  <FeedbackModal />
+                  <PWAInstallPrompt />
+                  {process.env.NODE_ENV === 'development' && <PlanSwitcher />}
+                </ToastProvider>
+              </FeedbackProvider>
             </UpgradeIntentProvider>
           </PlanProvider>
         </PWAProvider>

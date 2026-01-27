@@ -32,7 +32,7 @@ export async function GET() {
       );
     }
 
-    // Get profile from database (including beta fields)
+    // Get profile from database (including beta fields and feedback tracking)
     const profile = await prisma.profile.findUnique({
       where: { id: user.id },
       select: {
@@ -46,6 +46,12 @@ export async function GET() {
         createdAt: true,
         stripeCustomerId: true,
         stripeSubscriptionStatus: true,
+        // Beta feedback tracking
+        hasCompletedFirstPost: true,
+        hasViewedAnalyticsFirst: true,
+        hasCompletedFirstAutoShare: true,
+        feedbackDismissedTypes: true,
+        lastFeedbackPromptAt: true,
         // Check team membership
         teamMembership: {
           select: {
@@ -144,6 +150,12 @@ export async function GET() {
       // Beta access info
       betaUser: profile.betaUser,
       betaExpiresAt: profile.betaExpiresAt,
+      // Beta feedback tracking
+      hasCompletedFirstPost: profile.hasCompletedFirstPost,
+      hasViewedAnalyticsFirst: profile.hasViewedAnalyticsFirst,
+      hasCompletedFirstAutoShare: profile.hasCompletedFirstAutoShare,
+      feedbackDismissedTypes: profile.feedbackDismissedTypes,
+      lastFeedbackPromptAt: profile.lastFeedbackPromptAt,
       // Effective tier info (includes beta)
       tierInfo,
       // Team role for billing visibility (owner, admin, member)

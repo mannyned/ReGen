@@ -8,6 +8,7 @@ import { AppHeader, PlatformLogo } from '../components/ui'
 import type { SocialPlatform } from '@/lib/types/social'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import { TikTokPostSettings, type TikTokPostSettingsData } from '../components/tiktok/TikTokPostSettings'
+import { useFeedbackTrigger } from '../context/FeedbackContext'
 
 type Platform = 'instagram' | 'twitter' | 'linkedin' | 'linkedin-org' | 'facebook' | 'tiktok' | 'youtube' | 'x' | 'pinterest' | 'discord' | 'reddit'
 
@@ -44,6 +45,7 @@ interface PreviewData {
 function SchedulePageContent() {
   const { user, loading: authLoading } = useAuth()
   const searchParams = useSearchParams()
+  const { triggerAfterFirstPost, hasCompletedFirstPost } = useFeedbackTrigger()
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([])
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
@@ -691,6 +693,11 @@ function SchedulePageContent() {
         // Show success message
         setShowSuccess(true)
         setPostMode('now')
+
+        // Trigger feedback for first post (for beta users)
+        if (!hasCompletedFirstPost) {
+          triggerAfterFirstPost()
+        }
 
         // Show summary of results
         if (result.summary) {
