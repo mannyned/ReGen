@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/auth/getUser'
+import { getWorkspaceMemberIds } from '@/lib/permissions/analytics'
 
 export const runtime = 'nodejs'
 
@@ -20,6 +21,10 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    // Get all workspace member IDs for team context
+    // This allows team members to see analytics for all posts in the shared workspace
+    const workspaceMemberIds = await getWorkspaceMemberIds(profileId)
 
     // Get time range from query params (default 30 days)
     const { searchParams } = new URL(request.url)
@@ -54,7 +59,7 @@ export async function GET(request: NextRequest) {
     // Count total posts (published, not deleted)
     const totalPosts = await prisma.outboundPost.count({
       where: {
-        profileId,
+        profileId: { in: workspaceMemberIds },
         status: 'POSTED',
         ...providerWhere,
       },
@@ -63,7 +68,7 @@ export async function GET(request: NextRequest) {
     // Count posts this week (published in last 7 days, not deleted)
     const postsThisWeek = await prisma.outboundPost.count({
       where: {
-        profileId,
+        profileId: { in: workspaceMemberIds },
         status: 'POSTED',
         postedAt: {
           gte: weekStart,
@@ -75,7 +80,7 @@ export async function GET(request: NextRequest) {
     // Count deleted posts
     const deletedPosts = await prisma.outboundPost.count({
       where: {
-        profileId,
+        profileId: { in: workspaceMemberIds },
         status: 'DELETED',
         ...providerWhere,
       },
@@ -84,7 +89,7 @@ export async function GET(request: NextRequest) {
     // Count posts in time range
     const postsInRange = await prisma.outboundPost.count({
       where: {
-        profileId,
+        profileId: { in: workspaceMemberIds },
         status: 'POSTED',
         postedAt: {
           gte: startDate,
@@ -96,7 +101,7 @@ export async function GET(request: NextRequest) {
     // Count queued posts (awaiting processing)
     const queuedPosts = await prisma.outboundPost.count({
       where: {
-        profileId,
+        profileId: { in: workspaceMemberIds },
         status: 'QUEUED',
         ...providerWhere,
       },
@@ -105,7 +110,7 @@ export async function GET(request: NextRequest) {
     // Count failed posts
     const failedPosts = await prisma.outboundPost.count({
       where: {
-        profileId,
+        profileId: { in: workspaceMemberIds },
         status: 'FAILED',
         ...providerWhere,
       },
@@ -115,7 +120,7 @@ export async function GET(request: NextRequest) {
     const postsByPlatform = await prisma.outboundPost.groupBy({
       by: ['provider'],
       where: {
-        profileId,
+        profileId: { in: workspaceMemberIds },
         status: 'POSTED',
         ...providerWhere,
       },
@@ -135,7 +140,7 @@ export async function GET(request: NextRequest) {
     // Fetch engagement metrics from synced analytics
     const postsWithAnalytics = await prisma.outboundPost.findMany({
       where: {
-        profileId,
+        profileId: { in: workspaceMemberIds },
         status: 'POSTED',
         postedAt: { gte: startDate },
         ...providerWhere,
@@ -788,7 +793,7 @@ export async function GET(request: NextRequest) {
     // Fetch posts from previous period
     const previousPeriodPosts = await prisma.outboundPost.findMany({
       where: {
-        profileId,
+        profileId: { in: workspaceMemberIds },
         status: 'POSTED',
         postedAt: {
           gte: previousPeriodStart,

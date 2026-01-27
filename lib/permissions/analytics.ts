@@ -267,6 +267,44 @@ export async function updateAnalyticsToggle(
 }
 
 // ============================================
+// WORKSPACE MEMBER IDS HELPER
+// ============================================
+
+/**
+ * Get all profile IDs that belong to the same workspace as the user.
+ * This includes the owner and all team members.
+ *
+ * Returns an array of profile IDs that should be used when querying
+ * shared resources (posts, analytics, etc.) in a team context.
+ *
+ * If user is not part of a team, returns only their own ID.
+ */
+export async function getWorkspaceMemberIds(userId: string): Promise<string[]> {
+  const workspace = await getWorkspaceForUser(userId);
+
+  // Not part of a team - return only own ID
+  if (!workspace) {
+    return [userId];
+  }
+
+  // Get all team members
+  const teamMembers = await prisma.teamMember.findMany({
+    where: { teamId: workspace.teamId },
+    select: { userId: true },
+  });
+
+  // Combine owner + all members (owner is not in teamMembers table)
+  const memberIds = new Set<string>();
+  memberIds.add(workspace.ownerId); // Always include the owner
+
+  for (const member of teamMembers) {
+    memberIds.add(member.userId);
+  }
+
+  return Array.from(memberIds);
+}
+
+// ============================================
 // PERMISSION ERROR HELPERS
 // ============================================
 

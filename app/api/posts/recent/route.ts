@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/auth/getUser'
 import { OutboundPostStatus } from '@prisma/client'
+import { getWorkspaceMemberIds } from '@/lib/permissions/analytics'
 
 export const runtime = 'nodejs'
 
@@ -21,6 +22,10 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    // Get all workspace member IDs for team context
+    // This allows team members to see all posts in the shared workspace
+    const workspaceMemberIds = await getWorkspaceMemberIds(profileId)
 
     // Get query params
     const { searchParams } = new URL(request.url)
@@ -52,7 +57,7 @@ export async function GET(request: NextRequest) {
       // This helps us exclude content that was published but not properly linked
       const publishedPosts = await prisma.outboundPost.findMany({
         where: {
-          profileId,
+          profileId: { in: workspaceMemberIds },
           status: { in: ['POSTED', 'QUEUED', 'PROCESSING'] },
         },
         select: {
@@ -73,7 +78,7 @@ export async function GET(request: NextRequest) {
       // Find content uploads that don't have any associated scheduled or outbound posts
       const draftUploads = await prisma.contentUpload.findMany({
         where: {
-          profileId,
+          profileId: { in: workspaceMemberIds },
           status: 'READY', // Only show processed/ready content
           // Exclude uploads that are linked to outbound posts
           id: {
@@ -159,7 +164,7 @@ export async function GET(request: NextRequest) {
     if (filter === 'scheduled') {
       const scheduledPosts = await prisma.scheduledPost.findMany({
         where: {
-          profileId,
+          profileId: { in: workspaceMemberIds },
           status: { in: ['PENDING', 'PROCESSING'] },
         },
         orderBy: {
@@ -201,7 +206,7 @@ export async function GET(request: NextRequest) {
 
       const totalScheduled = await prisma.scheduledPost.count({
         where: {
-          profileId,
+          profileId: { in: workspaceMemberIds },
           status: { in: ['PENDING', 'PROCESSING'] },
         },
       })
@@ -229,7 +234,7 @@ export async function GET(request: NextRequest) {
     // Fetch recent outbound posts
     const posts = await prisma.outboundPost.findMany({
       where: {
-        profileId,
+        profileId: { in: workspaceMemberIds },
         status: Array.isArray(statusFilter) ? { in: statusFilter } : statusFilter,
         ...providerWhere,
       },
@@ -285,7 +290,7 @@ export async function GET(request: NextRequest) {
     if (filter === 'all' || filter === 'published') {
       const autoSharePosts = await prisma.blogAutoSharePost.findMany({
         where: {
-          profileId,
+          profileId: { in: workspaceMemberIds },
           status: 'PUBLISHED',
         },
         orderBy: {
@@ -331,7 +336,7 @@ export async function GET(request: NextRequest) {
     if (filter === 'all') {
       const scheduledPosts = await prisma.scheduledPost.findMany({
         where: {
-          profileId,
+          profileId: { in: workspaceMemberIds },
           status: { in: ['PENDING', 'PROCESSING'] },
         },
         orderBy: {
@@ -384,7 +389,7 @@ export async function GET(request: NextRequest) {
     // Get total count of all posted content (not limited)
     const totalCount = await prisma.outboundPost.count({
       where: {
-        profileId,
+        profileId: { in: workspaceMemberIds },
         status: OutboundPostStatus.POSTED,
         ...providerWhere,
       },
