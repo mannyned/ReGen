@@ -96,9 +96,10 @@ export async function GET() {
       });
     }
 
-    // Check if user is a team member (not owner) - they inherit PRO access
+    // Check if user is a team member (not owner) - they inherit PRO access and beta status
     const isTeamMember = !!profile.teamMembership;
     let teamMemberPro = false;
+    let teamMemberBeta = false;
 
     if (isTeamMember && profile.teamMembership?.team?.owner) {
       const owner = profile.teamMembership.team.owner;
@@ -106,6 +107,8 @@ export async function GET() {
       const ownerIsPro = owner.tier === 'PRO' ||
         !!(owner.betaUser && owner.betaExpiresAt && new Date(owner.betaExpiresAt) > new Date());
       teamMemberPro = ownerIsPro;
+      // Team members inherit beta status from owner
+      teamMemberBeta = owner.betaUser || false;
     }
 
     // Build profile with beta fields for tier calculation
@@ -147,8 +150,8 @@ export async function GET() {
       createdAt: profile.createdAt,
       hasSubscription: !!profile.stripeCustomerId,
       subscriptionStatus: profile.stripeSubscriptionStatus,
-      // Beta access info
-      betaUser: profile.betaUser,
+      // Beta access info (team members inherit from owner)
+      betaUser: profile.betaUser || teamMemberBeta,
       betaExpiresAt: profile.betaExpiresAt,
       // Beta feedback tracking
       hasCompletedFirstPost: profile.hasCompletedFirstPost,
