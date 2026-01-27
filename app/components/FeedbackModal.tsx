@@ -46,7 +46,7 @@ const triggerInfo: Record<FeedbackTrigger, { title: string; description: string 
   },
   GENERAL: {
     title: 'Share Your Feedback',
-    description: 'Help us improve Regen for you and other creators.',
+    description: 'Help us improve ReGenr for you and other creators.',
   },
   PRICING: {
     title: 'Help Us Price Fairly',
@@ -61,7 +61,7 @@ const planFeatures = {
     'Multi-platform publishing',
     'Basic analytics dashboard',
     'Caption AI assistance',
-    'Up to 3 connected accounts',
+    'Up to 6 connected accounts',
   ],
   pro: [
     'Everything in Creator, plus:',
@@ -418,7 +418,7 @@ export function FeedbackModal() {
               {/* Usage Intent */}
               <div className="mb-4">
                 <label htmlFor="usage-intent" className="block text-sm font-medium text-gray-700 mb-1">
-                  What are you primarily using Regen for?
+                  What are you primarily using ReGenr for?
                 </label>
                 <textarea
                   id="usage-intent"
@@ -435,7 +435,7 @@ export function FeedbackModal() {
               <RatingSelector
                 value={form.featureValueRating}
                 onChange={(v) => updateForm('featureValueRating', v)}
-                label="How valuable are Regen's features to you?"
+                label="How valuable are ReGenr's features to you?"
                 description="Consider scheduling, analytics, and AI assistance"
               />
 
@@ -443,7 +443,7 @@ export function FeedbackModal() {
               <RatingSelector
                 value={form.usefulnessRating}
                 onChange={(v) => updateForm('usefulnessRating', v)}
-                label="How useful has Regen been for your content workflow?"
+                label="How useful has ReGenr been for your content workflow?"
               />
 
               {/* Confusion Points */}
@@ -471,7 +471,7 @@ export function FeedbackModal() {
                   id="missing-features"
                   value={form.missingFeatures}
                   onChange={(e) => updateForm('missingFeatures', e.target.value)}
-                  placeholder="Features that would make Regen more valuable for you..."
+                  placeholder="Features that would make ReGenr more valuable for you..."
                   rows={2}
                   maxLength={2000}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-sm"
