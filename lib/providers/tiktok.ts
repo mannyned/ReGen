@@ -84,9 +84,9 @@ const config: ProviderConfig = {
   // Scopes for creator accounts
   // See: https://developers.tiktok.com/doc/tiktok-api-scopes/
   // Approved scopes for this app:
+  // Note: video.list scope required for analytics but needs separate TikTok approval
   scopes: [
     'user.info.basic',    // Basic profile (avatar, display name) - Login Kit
-    'video.list',         // Access to user's videos (for analytics)
     'video.upload',       // Upload videos to TikTok inbox
     'video.publish',      // Direct publish videos to TikTok (approved Jan 2026)
   ],
