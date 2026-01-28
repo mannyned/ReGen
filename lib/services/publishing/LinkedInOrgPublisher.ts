@@ -106,7 +106,7 @@ export class LinkedInOrgPublisher extends BasePlatformPublisher {
             Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
             'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': '202501',
+            'LinkedIn-Version': '202407',
           },
           body: JSON.stringify(postData),
         }
@@ -154,7 +154,7 @@ export class LinkedInOrgPublisher extends BasePlatformPublisher {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': '202501',
+            'LinkedIn-Version': '202407',
           },
         }
       )
@@ -185,7 +185,7 @@ export class LinkedInOrgPublisher extends BasePlatformPublisher {
               headers: {
                 Authorization: `Bearer ${accessToken}`,
                 'X-Restli-Protocol-Version': '2.0.0',
-                'LinkedIn-Version': '202501',
+                'LinkedIn-Version': '202407',
               },
             }
           )
@@ -245,7 +245,7 @@ export class LinkedInOrgPublisher extends BasePlatformPublisher {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           'X-Restli-Protocol-Version': '2.0.0',
-          'LinkedIn-Version': '202501',
+          'LinkedIn-Version': '202407',
         },
         body: JSON.stringify({
           initializeUploadRequest: {
@@ -335,7 +335,7 @@ export class LinkedInOrgPublisher extends BasePlatformPublisher {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           'X-Restli-Protocol-Version': '2.0.0',
-          'LinkedIn-Version': '202501',
+          'LinkedIn-Version': '202407',
         },
         body: JSON.stringify({
           initializeUploadRequest: {
@@ -382,7 +382,7 @@ export class LinkedInOrgPublisher extends BasePlatformPublisher {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           'X-Restli-Protocol-Version': '2.0.0',
-          'LinkedIn-Version': '202501',
+          'LinkedIn-Version': '202407',
         },
         body: JSON.stringify({
           finalizeUploadRequest: {
@@ -413,7 +413,7 @@ export class LinkedInOrgPublisher extends BasePlatformPublisher {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'LinkedIn-Version': '202501',
+            'LinkedIn-Version': '202407',
             'X-Restli-Protocol-Version': '2.0.0',
           },
         }
@@ -470,7 +470,7 @@ export class LinkedInOrgPublisher extends BasePlatformPublisher {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': '202501',
+            'LinkedIn-Version': '202407',
           },
         }
       )
