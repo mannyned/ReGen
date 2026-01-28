@@ -585,7 +585,7 @@ export class LinkedInPublisher extends BasePlatformPublisher {
   }
 
   /**
-   * Upload video for organization post using Videos API
+   * Upload video for organization post using Videos API with multipart upload
    */
   private async uploadOrganizationVideo(
     accessToken: string,
@@ -602,7 +602,9 @@ export class LinkedInPublisher extends BasePlatformPublisher {
     const mediaBuffer = await mediaResponse.arrayBuffer()
     const fileSize = mediaBuffer.byteLength
 
-    // Initialize upload
+    console.log('[LinkedIn] Video fetched, size:', fileSize, 'bytes')
+
+    // Step 1: Initialize upload
     const initResponse = await fetch(
       'https://api.linkedin.com/rest/videos?action=initializeUpload',
       {
@@ -630,28 +632,67 @@ export class LinkedInPublisher extends BasePlatformPublisher {
     }
 
     const initData = await initResponse.json()
-    const uploadUrl = initData.value?.uploadInstructions?.[0]?.uploadUrl
+    console.log('[LinkedIn] Initialize upload response:', JSON.stringify(initData, null, 2))
+
+    const uploadInstructions = initData.value?.uploadInstructions || []
     const videoUrn = initData.value?.video
 
-    if (!uploadUrl || !videoUrn) {
-      throw new Error('No upload URL or video URN returned')
+    if (uploadInstructions.length === 0 || !videoUrn) {
+      throw new Error(`No upload instructions or video URN returned. Response: ${JSON.stringify(initData)}`)
     }
 
-    // Upload the video
-    const uploadResponse = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': media.mimeType || 'video/mp4',
-      },
-      body: mediaBuffer,
-    })
+    console.log('[LinkedIn] Video URN:', videoUrn)
+    console.log('[LinkedIn] Upload instructions count:', uploadInstructions.length)
 
-    if (!uploadResponse.ok) {
-      throw new Error(`Failed to upload video: ${uploadResponse.status}`)
+    // Step 2: Upload each chunk to its corresponding URL
+    const uploadedPartIds: string[] = []
+    const videoData = new Uint8Array(mediaBuffer)
+    const chunkSize = Math.ceil(fileSize / uploadInstructions.length)
+
+    for (let i = 0; i < uploadInstructions.length; i++) {
+      const instruction = uploadInstructions[i]
+      const uploadUrl = instruction.uploadUrl
+
+      if (!uploadUrl) {
+        throw new Error(`No upload URL for part ${i}`)
+      }
+
+      // Calculate chunk boundaries
+      const start = i * chunkSize
+      const end = Math.min(start + chunkSize, fileSize)
+      const chunk = videoData.slice(start, end)
+
+      console.log(`[LinkedIn] Uploading chunk ${i + 1}/${uploadInstructions.length}: bytes ${start}-${end - 1} (${chunk.length} bytes)`)
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+        },
+        body: chunk,
+      })
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text().catch(() => 'No error body')
+        console.error(`[LinkedIn] Chunk ${i + 1} upload failed:`, uploadResponse.status, errorText.substring(0, 500))
+        throw new Error(`Failed to upload video chunk ${i + 1}: ${uploadResponse.status}`)
+      }
+
+      // Get the etag from the response header - this is the part ID
+      const etag = uploadResponse.headers.get('etag')
+      if (etag) {
+        // Remove quotes from etag if present
+        const cleanEtag = etag.replace(/"/g, '')
+        uploadedPartIds.push(cleanEtag)
+        console.log(`[LinkedIn] Chunk ${i + 1} uploaded, etag:`, cleanEtag)
+      } else {
+        console.log(`[LinkedIn] Chunk ${i + 1} uploaded (no etag returned)`)
+      }
     }
 
-    // Finalize upload
+    console.log('[LinkedIn] All chunks uploaded, finalizing...')
+
+    // Step 3: Finalize the upload
     const finalizeResponse = await fetch(
       'https://api.linkedin.com/rest/videos?action=finalizeUpload',
       {
@@ -666,18 +707,19 @@ export class LinkedInPublisher extends BasePlatformPublisher {
           finalizeUploadRequest: {
             video: videoUrn,
             uploadToken: '',
-            uploadedPartIds: [],
+            uploadedPartIds: uploadedPartIds,
           },
         }),
       }
     )
 
     if (!finalizeResponse.ok) {
-      console.log('[LinkedIn] Video finalize response:', finalizeResponse.status)
-      // Some videos don't require finalization, continue anyway
+      const errorText = await finalizeResponse.text()
+      console.error('[LinkedIn] Video finalize failed:', finalizeResponse.status, errorText)
+      throw new Error(`Failed to finalize video upload: ${finalizeResponse.status} - ${errorText}`)
     }
 
-    console.log('[LinkedIn] Organization video uploaded:', videoUrn)
+    console.log('[LinkedIn] Organization video uploaded successfully:', videoUrn)
     return videoUrn
   }
 
