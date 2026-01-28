@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
         'facebook': ['facebook', 'meta'],
         'tiktok': ['tiktok'],
         'linkedin': ['linkedin'],
+        'linkedin-org': ['linkedin-org'],
         'twitter': ['twitter'],
         'x': ['twitter', 'x'],
       }
@@ -189,6 +190,7 @@ export async function GET(request: NextRequest) {
       if (provider === 'google') return 'youtube'
       // 'meta' is Instagram (Facebook has its own 'facebook' provider)
       if (provider === 'meta') return 'instagram'
+      // Keep linkedin-org as-is for proper tracking
       return provider
     }
 

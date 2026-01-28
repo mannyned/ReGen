@@ -467,6 +467,7 @@ async function fetchTwitterInsights(
 /**
  * Fetch TikTok video insights
  * Uses TikTok Content Posting API v2
+ * The video/list endpoint returns the user's videos with engagement stats
  */
 async function fetchTikTokInsights(
   videoId: string,
@@ -478,35 +479,38 @@ async function fetchTikTokInsights(
   shares: number
 } | null> {
   try {
-    // TikTok Video Query API - get video stats
-    const url = `${TIKTOK_API}/video/query/?fields=id,like_count,comment_count,share_count,view_count`
+    console.log(`[TikTok Insights] Fetching stats for video ${videoId}`)
 
-    const response = await fetch(url, {
+    // Use video/list endpoint to get user's videos with stats
+    // TikTok v2 API requires POST with fields in URL
+    const listUrl = `${TIKTOK_API}/video/list/?fields=id,like_count,comment_count,share_count,view_count`
+
+    const listResponse = await fetch(listUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        filters: {
-          video_ids: [videoId],
-        },
+        max_count: 20, // Fetch recent videos
       }),
     })
 
-    if (!response.ok) {
-      const error = await response.text()
-      console.error(`[TikTok Insights] Failed for ${videoId} (${response.status}):`, error)
+    if (!listResponse.ok) {
+      const error = await listResponse.text()
+      console.error(`[TikTok Insights] Video list failed (${listResponse.status}):`, error.slice(0, 500))
       return null
     }
 
-    const data = await response.json()
-    console.log(`[TikTok Insights] Response for ${videoId}:`, JSON.stringify(data).slice(0, 500))
+    const listData = await listResponse.json()
+    console.log(`[TikTok Insights] Video list response:`, JSON.stringify(listData).slice(0, 500))
 
-    const video = data.data?.videos?.[0]
+    // Find the video in the list
+    const videos = listData.data?.videos || []
+    const video = videos.find((v: { id: string }) => v.id === videoId)
 
     if (!video) {
-      console.error(`[TikTok Insights] No video data found for ${videoId}`)
+      console.log(`[TikTok Insights] Video ${videoId} not found in recent ${videos.length} videos`)
       return null
     }
 
@@ -541,10 +545,16 @@ async function fetchLinkedInInsights(
   reach: number
 } | null> {
   try {
-    // LinkedIn uses different endpoints for personal vs org posts
+    console.log(`[LinkedIn Insights] Fetching insights for ${postId}, isOrg: ${isOrganization}`)
+
     // For organization posts, use organizationalEntityShareStatistics
     if (isOrganization) {
-      const statsUrl = `${LINKEDIN_API}/rest/organizationalEntityShareStatistics?q=organizationalEntity&shares=${encodeURIComponent(postId)}`
+      // First try to get stats from the organizationalEntityShareStatistics endpoint
+      // The shares parameter should be a List format: shares=List(urn:li:share:...)
+      const encodedPostId = encodeURIComponent(postId)
+      const statsUrl = `${LINKEDIN_API}/rest/organizationalEntityShareStatistics?q=organizationalEntity&shares=List(${encodedPostId})`
+
+      console.log(`[LinkedIn-Org Insights] Requesting: ${statsUrl}`)
 
       const response = await fetch(statsUrl, {
         headers: {
@@ -554,36 +564,63 @@ async function fetchLinkedInInsights(
         },
       })
 
-      if (!response.ok) {
+      if (response.ok) {
+        const data = await response.json()
+        console.log(`[LinkedIn-Org Insights] Stats response:`, JSON.stringify(data).slice(0, 500))
+
+        const stats = data.elements?.[0]?.totalShareStatistics
+
+        if (stats) {
+          const result = {
+            impressions: stats.impressionCount || 0,
+            likes: stats.likeCount || 0,
+            comments: stats.commentCount || 0,
+            shares: stats.shareCount || 0,
+            reach: stats.uniqueImpressionsCount || stats.impressionCount || 0,
+          }
+          console.log(`[LinkedIn-Org Insights] Parsed stats for ${postId}:`, result)
+          return result
+        }
+      } else {
         const error = await response.text()
-        console.error(`[LinkedIn-Org Insights] Failed for ${postId} (${response.status}):`, error)
-        return null
+        console.log(`[LinkedIn-Org Insights] Stats endpoint failed (${response.status}):`, error.slice(0, 200))
       }
 
-      const data = await response.json()
-      console.log(`[LinkedIn-Org Insights] Response for ${postId}:`, JSON.stringify(data).slice(0, 500))
+      // Fallback: try to get social actions (likes, comments) from the socialActions endpoint
+      const socialUrl = `${LINKEDIN_API}/rest/socialActions/${encodedPostId}`
+      console.log(`[LinkedIn-Org Insights] Trying socialActions fallback: ${socialUrl}`)
 
-      const stats = data.elements?.[0]?.totalShareStatistics
+      const socialResponse = await fetch(socialUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'LinkedIn-Version': '202503',
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      })
 
-      if (!stats) {
-        console.error(`[LinkedIn-Org Insights] No stats found for ${postId}`)
-        return null
+      if (socialResponse.ok) {
+        const socialData = await socialResponse.json()
+        console.log(`[LinkedIn-Org Insights] SocialActions response:`, JSON.stringify(socialData).slice(0, 500))
+
+        const result = {
+          impressions: 0,
+          likes: socialData.likesSummary?.totalLikes || 0,
+          comments: socialData.commentsSummary?.totalFirstLevelComments || 0,
+          shares: 0,
+          reach: 0,
+        }
+        console.log(`[LinkedIn-Org Insights] Parsed from socialActions:`, result)
+        return result
+      } else {
+        const error = await socialResponse.text()
+        console.error(`[LinkedIn-Org Insights] SocialActions failed (${socialResponse.status}):`, error.slice(0, 200))
       }
 
-      const result = {
-        impressions: stats.impressionCount || 0,
-        likes: stats.likeCount || 0,
-        comments: stats.commentCount || 0,
-        shares: stats.shareCount || 0,
-        reach: stats.uniqueImpressionsCount || stats.impressionCount || 0,
-      }
-
-      console.log(`[LinkedIn-Org Insights] Parsed stats for ${postId}:`, result)
-      return result
+      return null
     } else {
       // For personal posts, try to get basic social actions
-      // Personal profiles have more limited analytics access
       const socialUrl = `${LINKEDIN_API}/rest/socialActions/${encodeURIComponent(postId)}`
+      console.log(`[LinkedIn Insights] Requesting: ${socialUrl}`)
 
       const response = await fetch(socialUrl, {
         headers: {
@@ -595,7 +632,7 @@ async function fetchLinkedInInsights(
 
       if (!response.ok) {
         const error = await response.text()
-        console.error(`[LinkedIn Insights] Failed for ${postId} (${response.status}):`, error)
+        console.error(`[LinkedIn Insights] Failed for ${postId} (${response.status}):`, error.slice(0, 200))
         return null
       }
 
@@ -606,7 +643,7 @@ async function fetchLinkedInInsights(
         impressions: 0, // Not available for personal posts
         likes: data.likesSummary?.totalLikes || 0,
         comments: data.commentsSummary?.totalFirstLevelComments || 0,
-        shares: 0, // Not easily available
+        shares: 0,
         reach: 0,
       }
 

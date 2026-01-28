@@ -30,6 +30,7 @@ const PLATFORM_TO_PROVIDERS: Record<string, string[]> = {
   tiktok: ['tiktok'],
   twitter: ['twitter'],
   linkedin: ['linkedin'],
+  'linkedin-org': ['linkedin-org'],
   facebook: ['facebook', 'meta'],
   snapchat: ['snapchat'],
 }
