@@ -361,17 +361,22 @@ export class LinkedInOrgPublisher extends BasePlatformPublisher {
       throw new Error('No upload URL or video URN returned')
     }
 
+    console.log('[LinkedIn-Org] Uploading video to:', uploadUrl)
+    console.log('[LinkedIn-Org] Video size:', fileSize, 'bytes')
+
+    // LinkedIn's upload URL is pre-signed - don't send Authorization header
     const uploadResponse = await fetch(uploadUrl, {
       method: 'PUT',
       headers: {
-        Authorization: `Bearer ${accessToken}`,
         'Content-Type': media.mimeType || 'video/mp4',
       },
       body: mediaBuffer,
     })
 
     if (!uploadResponse.ok) {
-      throw new Error(`Failed to upload video: ${uploadResponse.status}`)
+      const errorText = await uploadResponse.text().catch(() => 'No error body')
+      console.error('[LinkedIn-Org] Video upload failed:', uploadResponse.status, errorText)
+      throw new Error(`Failed to upload video: ${uploadResponse.status} - ${errorText}`)
     }
 
     const finalizeResponse = await fetch(
