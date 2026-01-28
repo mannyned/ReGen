@@ -15,6 +15,8 @@ export const runtime = 'nodejs'
 const META_GRAPH_API = 'https://graph.facebook.com/v21.0'
 const YOUTUBE_API = 'https://www.googleapis.com/youtube/v3'
 const TWITTER_API = 'https://api.twitter.com/2'
+const TIKTOK_API = 'https://open.tiktokapis.com/v2'
+const LINKEDIN_API = 'https://api.linkedin.com'
 
 interface InsightValue {
   value: number
@@ -462,6 +464,161 @@ async function fetchTwitterInsights(
   }
 }
 
+/**
+ * Fetch TikTok video insights
+ * Uses TikTok Content Posting API v2
+ */
+async function fetchTikTokInsights(
+  videoId: string,
+  accessToken: string
+): Promise<{
+  views: number
+  likes: number
+  comments: number
+  shares: number
+} | null> {
+  try {
+    // TikTok Video Query API - get video stats
+    const url = `${TIKTOK_API}/video/query/?fields=id,like_count,comment_count,share_count,view_count`
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        filters: {
+          video_ids: [videoId],
+        },
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error(`[TikTok Insights] Failed for ${videoId} (${response.status}):`, error)
+      return null
+    }
+
+    const data = await response.json()
+    console.log(`[TikTok Insights] Response for ${videoId}:`, JSON.stringify(data).slice(0, 500))
+
+    const video = data.data?.videos?.[0]
+
+    if (!video) {
+      console.error(`[TikTok Insights] No video data found for ${videoId}`)
+      return null
+    }
+
+    const result = {
+      views: video.view_count || 0,
+      likes: video.like_count || 0,
+      comments: video.comment_count || 0,
+      shares: video.share_count || 0,
+    }
+
+    console.log(`[TikTok Insights] Parsed stats for ${videoId}:`, result)
+    return result
+  } catch (error) {
+    console.error(`[TikTok Insights] Error for ${videoId}:`, error)
+    return null
+  }
+}
+
+/**
+ * Fetch LinkedIn post insights
+ * Works for both personal profiles and organization pages
+ */
+async function fetchLinkedInInsights(
+  postId: string,
+  accessToken: string,
+  isOrganization: boolean = false
+): Promise<{
+  impressions: number
+  likes: number
+  comments: number
+  shares: number
+  reach: number
+} | null> {
+  try {
+    // LinkedIn uses different endpoints for personal vs org posts
+    // For organization posts, use organizationalEntityShareStatistics
+    if (isOrganization) {
+      const statsUrl = `${LINKEDIN_API}/rest/organizationalEntityShareStatistics?q=organizationalEntity&shares=${encodeURIComponent(postId)}`
+
+      const response = await fetch(statsUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'LinkedIn-Version': '202503',
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      })
+
+      if (!response.ok) {
+        const error = await response.text()
+        console.error(`[LinkedIn-Org Insights] Failed for ${postId} (${response.status}):`, error)
+        return null
+      }
+
+      const data = await response.json()
+      console.log(`[LinkedIn-Org Insights] Response for ${postId}:`, JSON.stringify(data).slice(0, 500))
+
+      const stats = data.elements?.[0]?.totalShareStatistics
+
+      if (!stats) {
+        console.error(`[LinkedIn-Org Insights] No stats found for ${postId}`)
+        return null
+      }
+
+      const result = {
+        impressions: stats.impressionCount || 0,
+        likes: stats.likeCount || 0,
+        comments: stats.commentCount || 0,
+        shares: stats.shareCount || 0,
+        reach: stats.uniqueImpressionsCount || stats.impressionCount || 0,
+      }
+
+      console.log(`[LinkedIn-Org Insights] Parsed stats for ${postId}:`, result)
+      return result
+    } else {
+      // For personal posts, try to get basic social actions
+      // Personal profiles have more limited analytics access
+      const socialUrl = `${LINKEDIN_API}/rest/socialActions/${encodeURIComponent(postId)}`
+
+      const response = await fetch(socialUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'LinkedIn-Version': '202503',
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      })
+
+      if (!response.ok) {
+        const error = await response.text()
+        console.error(`[LinkedIn Insights] Failed for ${postId} (${response.status}):`, error)
+        return null
+      }
+
+      const data = await response.json()
+      console.log(`[LinkedIn Insights] Response for ${postId}:`, JSON.stringify(data).slice(0, 500))
+
+      const result = {
+        impressions: 0, // Not available for personal posts
+        likes: data.likesSummary?.totalLikes || 0,
+        comments: data.commentsSummary?.totalFirstLevelComments || 0,
+        shares: 0, // Not easily available
+        reach: 0,
+      }
+
+      console.log(`[LinkedIn Insights] Parsed stats for ${postId}:`, result)
+      return result
+    }
+  } catch (error) {
+    console.error(`[LinkedIn Insights] Error for ${postId}:`, error)
+    return null
+  }
+}
+
 // Store debug info for response
 let facebookDebug: {
   userToken: boolean
@@ -710,14 +867,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get posts to sync (Instagram, Facebook, YouTube, and LinkedIn, last 30 days)
+    // Get posts to sync (all supported platforms, last 30 days)
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
     const posts = await prisma.outboundPost.findMany({
       where: {
         profileId,
-        provider: { in: ['instagram', 'facebook', 'meta', 'youtube', 'google', 'linkedin', 'twitter'] },
+        provider: { in: ['instagram', 'facebook', 'meta', 'youtube', 'google', 'linkedin', 'linkedin-org', 'twitter', 'tiktok'] },
         status: 'POSTED',
         externalPostId: { not: null },
         postedAt: { gte: thirtyDaysAgo },
@@ -741,17 +898,22 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Get access tokens for Instagram, Facebook, YouTube, and LinkedIn
+    // Get access tokens for all supported platforms
     // Provider names in database may vary:
     // - Instagram: 'meta' or 'instagram'
     // - Facebook: 'meta' or 'facebook'
-    // - YouTube: 'google'
+    // - YouTube: 'google' or 'youtube'
     // - LinkedIn: 'linkedin'
+    // - LinkedIn Org: 'linkedin-org'
+    // - TikTok: 'tiktok'
+    // - Twitter: 'twitter'
     let instagramToken: string | null = null
     let facebookToken: string | null = null
     let youtubeToken: string | null = null
     let linkedinToken: string | null = null
+    let linkedinOrgToken: string | null = null
     let twitterToken: string | null = null
+    let tiktokToken: string | null = null
 
     // Try to get Instagram token - check 'instagram' first, then 'meta'
     console.log('[Analytics Sync] Attempting to get Instagram token...')
@@ -809,14 +971,24 @@ export async function POST(request: NextRequest) {
     twitterToken = await tokenManager.getValidAccessToken(profileId, 'twitter')
     console.log(`[Analytics Sync] Twitter token result: ${twitterToken ? 'SUCCESS' : 'NOT FOUND'}`)
 
+    // Try to get TikTok token
+    console.log('[Analytics Sync] Attempting to get TikTok token...')
+    tiktokToken = await tokenManager.getValidAccessToken(profileId, 'tiktok')
+    console.log(`[Analytics Sync] TikTok token result: ${tiktokToken ? 'SUCCESS' : 'NOT FOUND'}`)
+
+    // Try to get LinkedIn Org token
+    console.log('[Analytics Sync] Attempting to get LinkedIn Org token...')
+    linkedinOrgToken = await tokenManager.getValidAccessToken(profileId, 'linkedin-org')
+    console.log(`[Analytics Sync] LinkedIn Org token result: ${linkedinOrgToken ? 'SUCCESS' : 'NOT FOUND'}`)
+
     // Log token status
-    console.log(`[Analytics Sync] Final token status: Instagram=${!!instagramToken}, Facebook=${!!facebookToken}, YouTube=${!!youtubeToken}, LinkedIn=${!!linkedinToken}, Twitter=${!!twitterToken}`)
+    console.log(`[Analytics Sync] Final token status: Instagram=${!!instagramToken}, Facebook=${!!facebookToken}, YouTube=${!!youtubeToken}, LinkedIn=${!!linkedinToken}, LinkedIn-Org=${!!linkedinOrgToken}, Twitter=${!!twitterToken}, TikTok=${!!tiktokToken}`)
 
     // Check if we have any tokens
-    if (!instagramToken && !facebookToken && !youtubeToken && !linkedinToken && !twitterToken) {
+    if (!instagramToken && !facebookToken && !youtubeToken && !linkedinToken && !linkedinOrgToken && !twitterToken && !tiktokToken) {
       return NextResponse.json({
         success: false,
-        error: 'No connected Instagram, Facebook, YouTube, LinkedIn, or Twitter account',
+        error: 'No connected social media accounts found',
         code: 'NO_CONNECTION',
       }, { status: 400 })
     }
@@ -842,7 +1014,9 @@ export async function POST(request: NextRequest) {
       else if (platform === 'facebook') accessToken = facebookPageToken  // Use Page Token
       else if (platform === 'youtube') accessToken = youtubeToken
       else if (platform === 'linkedin') accessToken = linkedinToken
+      else if (platform === 'linkedin-org') accessToken = linkedinOrgToken
       else if (platform === 'twitter') accessToken = twitterToken
+      else if (platform === 'tiktok') accessToken = tiktokToken
 
       if (!accessToken || !post.externalPostId) {
         console.log(`[Analytics Sync] Skipping post ${post.id}: provider=${post.provider}, platform=${platform}, hasToken=${!!accessToken}, hasExternalId=${!!post.externalPostId}`)
@@ -956,6 +1130,50 @@ export async function POST(request: NextRequest) {
             saves: twitterInsights.bookmarks, // Bookmarks are like saves
           }
         }
+      } else if (platform === 'tiktok') {
+        console.log(`[Analytics Sync] Fetching TikTok insights for ${post.externalPostId}`)
+        const tiktokInsights = await fetchTikTokInsights(post.externalPostId, accessToken)
+
+        if (tiktokInsights) {
+          insights = {
+            views: tiktokInsights.views,
+            likes: tiktokInsights.likes,
+            comments: tiktokInsights.comments,
+            shares: tiktokInsights.shares,
+            // Map to common metrics
+            reach: tiktokInsights.views,
+            impressions: tiktokInsights.views,
+            saves: 0, // TikTok doesn't expose saves via API
+          }
+        }
+      } else if (platform === 'linkedin') {
+        console.log(`[Analytics Sync] Fetching LinkedIn insights for ${post.externalPostId}`)
+        const linkedinInsights = await fetchLinkedInInsights(post.externalPostId, accessToken, false)
+
+        if (linkedinInsights) {
+          insights = {
+            impressions: linkedinInsights.impressions,
+            reach: linkedinInsights.reach,
+            likes: linkedinInsights.likes,
+            comments: linkedinInsights.comments,
+            shares: linkedinInsights.shares,
+            saves: 0,
+          }
+        }
+      } else if (platform === 'linkedin-org') {
+        console.log(`[Analytics Sync] Fetching LinkedIn Org insights for ${post.externalPostId}`)
+        const linkedinOrgInsights = await fetchLinkedInInsights(post.externalPostId, accessToken, true)
+
+        if (linkedinOrgInsights) {
+          insights = {
+            impressions: linkedinOrgInsights.impressions,
+            reach: linkedinOrgInsights.reach,
+            likes: linkedinOrgInsights.likes,
+            comments: linkedinOrgInsights.comments,
+            shares: linkedinOrgInsights.shares,
+            saves: 0,
+          }
+        }
       }
 
       if (insights) {
@@ -1001,7 +1219,9 @@ export async function POST(request: NextRequest) {
           facebookPage: !!facebookPageToken,
           youtube: !!youtubeToken,
           linkedin: !!linkedinToken,
+          linkedinOrg: !!linkedinOrgToken,
           twitter: !!twitterToken,
+          tiktok: !!tiktokToken,
         },
         facebook: facebookDebug,
       },
