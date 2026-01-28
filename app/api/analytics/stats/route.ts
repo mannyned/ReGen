@@ -237,8 +237,16 @@ export async function GET(request: NextRequest) {
         platformEngagement[provider].impressions += analytics.impressions || 0
         platformEngagement[provider].saves += analytics.saved || analytics.saves || 0
         platformEngagement[provider].views += analytics.views || 0
+
+        // Debug logging for linkedin-org
+        if (post.provider === 'linkedin-org') {
+          console.log(`[Stats] LinkedIn-org post ${post.id} analytics:`, JSON.stringify(analytics))
+        }
       }
     }
+
+    // Log final platform engagement for debugging
+    console.log(`[Stats] Final platformEngagement:`, JSON.stringify(platformEngagement))
 
     // Calculate average engagement rate
     const totalEngagement = totalLikes + totalComments + totalShares + totalSaves

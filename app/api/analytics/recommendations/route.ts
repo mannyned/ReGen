@@ -67,12 +67,17 @@ export async function GET(request: NextRequest) {
     // Add platform filter if specified
     if (isFiltered && PLATFORM_TO_PROVIDERS[platformFilter]) {
       whereClause.provider = { in: PLATFORM_TO_PROVIDERS[platformFilter] }
+      console.log('[Recommendations] Filtering by providers:', PLATFORM_TO_PROVIDERS[platformFilter])
+    } else if (isFiltered) {
+      console.log('[Recommendations] WARNING: Unknown platform filter:', platformFilter)
     }
 
     const posts = await prisma.outboundPost.findMany({
       where: whereClause,
       orderBy: { postedAt: 'desc' },
     })
+
+    console.log(`[Recommendations] Found ${posts.length} posts for filter: ${platformFilter || 'all'}`)
 
     // For platform-specific filtering, also get all posts for context
     const allPosts = isFiltered
@@ -293,6 +298,9 @@ export async function GET(request: NextRequest) {
     // Check engagement response
     const totalComments = Object.values(platformEngagement).reduce((sum, d) => sum + d.comments, 0)
     const totalLikes = Object.values(platformEngagement).reduce((sum, d) => sum + d.likes, 0)
+
+    console.log(`[Recommendations] Platform engagement data:`, JSON.stringify(platformEngagement))
+    console.log(`[Recommendations] Total comments: ${totalComments}, Total likes: ${totalLikes}`)
 
     if (totalComments > 10) {
       recommendations.push({
