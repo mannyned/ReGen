@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import OpenAI from 'openai'
 import { BrandVoiceProfile } from '@/app/types/brandVoice'
+
+// For App Router - extend timeout for AI generation
+export const maxDuration = 60 // 60 seconds timeout
 
 // Generate caption using brand voice profile
 export async function POST(request: NextRequest) {
@@ -21,7 +25,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate caption based on brand voice profile
+    // Check if API key is configured
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: 'OpenAI API key not configured.' },
+        { status: 500 }
+      )
+    }
+
+    // Generate caption using AI with brand voice profile
     const caption = await generateBrandVoiceCaption(
       content,
       platform,
@@ -54,238 +66,116 @@ async function generateBrandVoiceCaption(
   platform: string,
   profile: Partial<BrandVoiceProfile> | null,
   options: any
-) {
-  // Base caption generation
-  let caption = content
+): Promise<string> {
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  })
 
-  // If no profile, return standard caption
-  if (!profile) {
-    return generateStandardCaption(content, platform, options)
-  }
+  // Build brand voice instructions from profile
+  let brandVoiceInstructions = ''
 
-  // Apply brand voice characteristics
-  const { toneAttributes, stylePatterns, contentPreferences, learnedPatterns } = profile
+  if (profile) {
+    const { toneAttributes, stylePatterns, contentPreferences, learnedPatterns } = profile
 
-  // Apply tone
-  if (toneAttributes) {
-    caption = applyTone(caption, toneAttributes, options.tone)
-  }
+    brandVoiceInstructions = `\n\n**BRAND VOICE PROFILE - "${profile.name || 'Custom'}":**`
 
-  // Apply style patterns
-  if (stylePatterns) {
-    caption = applyStyle(caption, stylePatterns)
-  }
-
-  // Add learned phrases and signature words
-  if (learnedPatterns) {
-    caption = incorporateLearnedPatterns(caption, learnedPatterns, platform)
-  }
-
-  // Add emojis based on preference
-  if (options.includeEmojis && contentPreferences?.emojiUsage && contentPreferences.emojiUsage !== 'none') {
-    caption = addEmojis(caption, contentPreferences.emojiUsage, learnedPatterns?.emojiPreferences)
-  }
-
-  // Add hashtags based on style
-  if (options.includeHashtags && contentPreferences?.hashtagStyle && contentPreferences.hashtagStyle !== 'minimal') {
-    caption = addHashtags(caption, contentPreferences.hashtagStyle, learnedPatterns?.hashtagPatterns)
-  }
-
-  // Add CTA based on style
-  if (options.includeCTA && contentPreferences?.ctaStyle) {
-    caption = addCTA(caption, contentPreferences.ctaStyle, platform)
-  }
-
-  return caption
-}
-
-function generateStandardCaption(content: string, platform: string, options: any) {
-  let caption = content
-
-  // Add platform-specific formatting
-  if (platform === 'instagram') {
-    caption = `✨ ${content}\n\n`
-    if (options.includeHashtags) {
-      caption += '#contentcreator #socialmedia #instagram '
+    // Tone attributes
+    if (toneAttributes) {
+      brandVoiceInstructions += `\n- Formality: ${toneAttributes.formality || 'balanced'}`
+      brandVoiceInstructions += `\n- Emotion: ${toneAttributes.emotion || 'friendly'}`
+      brandVoiceInstructions += `\n- Personality: ${toneAttributes.personality || 'authentic'}`
+      if (toneAttributes.humor) brandVoiceInstructions += `\n- Humor: ${toneAttributes.humor}`
     }
-    if (options.includeCTA) {
-      caption += '\n\n👉 Follow for more!'
+
+    // Style patterns
+    if (stylePatterns) {
+      if (stylePatterns.sentenceLength) brandVoiceInstructions += `\n- Sentence length: ${stylePatterns.sentenceLength}`
+      if (stylePatterns.vocabulary) brandVoiceInstructions += `\n- Vocabulary: ${stylePatterns.vocabulary}`
+      if (stylePatterns.punctuation) brandVoiceInstructions += `\n- Punctuation style: ${stylePatterns.punctuation}`
     }
-  } else if (platform === 'tiktok') {
-    caption = content
-    if (options.includeHashtags) {
-      caption += ' #fyp #viral #trending'
+
+    // Learned patterns
+    if (learnedPatterns) {
+      if (learnedPatterns.signatureWords?.length) {
+        brandVoiceInstructions += `\n- Signature words to use: ${learnedPatterns.signatureWords.slice(0, 5).join(', ')}`
+      }
+      if (learnedPatterns.commonPhrases?.length) {
+        brandVoiceInstructions += `\n- Common phrases: ${learnedPatterns.commonPhrases.slice(0, 3).join('; ')}`
+      }
+      if (learnedPatterns.openingStyles?.length) {
+        brandVoiceInstructions += `\n- Opening style examples: ${learnedPatterns.openingStyles.slice(0, 2).join('; ')}`
+      }
     }
-  } else if (platform === 'linkedin') {
-    caption = `${content}\n\n`
-    if (options.includeCTA) {
-      caption += 'What are your thoughts on this?'
+
+    // Content preferences
+    if (contentPreferences) {
+      if (contentPreferences.emojiUsage) brandVoiceInstructions += `\n- Emoji usage: ${contentPreferences.emojiUsage}`
+      if (contentPreferences.hashtagStyle) brandVoiceInstructions += `\n- Hashtag style: ${contentPreferences.hashtagStyle}`
+      if (contentPreferences.ctaStyle) brandVoiceInstructions += `\n- CTA style: ${contentPreferences.ctaStyle}`
     }
   }
 
-  return caption
-}
-
-function applyTone(caption: string, toneAttributes: any, requestedTone: string) {
-  const { formality, emotion, humor, personality } = toneAttributes
-
-  // Apply formality
-  if (formality === 'very_casual') {
-    caption = caption.replace(/\byou\b/gi, 'u')
-    caption = caption.replace(/\bgoing to\b/gi, 'gonna')
-  } else if (formality === 'very_formal') {
-    caption = `Dear valued community,\n\n${caption}\n\nBest regards,`
+  // Platform-specific guidelines
+  const platformGuidelines: Record<string, string> = {
+    'tiktok': 'Keep it short, catchy, and use trending language. Max 150 characters ideal.',
+    'instagram': 'Use line breaks, emojis, and storytelling. Include a call-to-action.',
+    'youtube': 'Make it compelling and SEO-friendly. Include keywords.',
+    'x': 'Keep it concise and impactful. Max 280 characters.',
+    'twitter': 'Keep it concise and impactful. Max 280 characters.',
+    'linkedin': 'Professional and insightful. Focus on value and learning.',
+    'facebook': 'Conversational and engaging. Encourage comments and shares.',
+    'pinterest': 'Descriptive and keyword-rich. Focus on searchability.',
+    'discord': 'Casual and community-focused.',
+    'reddit': 'Authentic and discussion-oriented. Avoid being promotional.'
   }
 
-  // Apply emotion
-  if (emotion === 'enthusiastic' && requestedTone === 'excited') {
-    caption = caption.toUpperCase().replace(/\./g, '!!!')
-  } else if (emotion === 'friendly') {
-    caption = `Hey friends! ${caption} 😊`
+  // Build the prompt
+  let prompt = `Generate a social media caption for ${platform}.
+
+**CONTENT TO WRITE ABOUT:**
+${content}
+
+**PLATFORM GUIDELINES:**
+${platformGuidelines[platform.toLowerCase()] || 'Create an engaging caption.'}`
+
+  prompt += brandVoiceInstructions
+
+  // Add preferences
+  if (options.includeEmojis) {
+    prompt += '\n\nInclude appropriate emojis.'
+  }
+  if (options.includeHashtags) {
+    prompt += '\nInclude 3-5 relevant hashtags.'
+  }
+  if (options.includeCTA) {
+    prompt += '\nInclude a call-to-action.'
   }
 
-  // Apply personality
-  if (personality === 'bold') {
-    caption = `🚀 ${caption} 💪`
-  } else if (personality === 'inspiring') {
-    caption = `✨ ${caption}\n\nBelieve in yourself! 🌟`
+  // Tone override
+  if (options.tone && options.tone !== 'default') {
+    prompt += `\n\nOverall tone should be: ${options.tone}`
   }
 
-  return caption
-}
+  prompt += '\n\nGenerate only the caption text. Do not include explanations or metadata.'
 
-function applyStyle(caption: string, stylePatterns: any) {
-  const { sentenceLength, vocabulary, punctuation, capitalization } = stylePatterns
+  // Call OpenAI
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content: 'You are an expert social media content creator who writes compelling captions that drive engagement. When given a brand voice profile, you MUST write in that exact style, incorporating the specified tone, vocabulary, and patterns. The caption should feel authentic to the brand voice while being optimized for the target platform.'
+      },
+      {
+        role: 'user',
+        content: prompt
+      }
+    ],
+    temperature: 0.8,
+    max_tokens: 300,
+  })
 
-  // Apply sentence length preference
-  if (sentenceLength === 'very_short') {
-    // Split into shorter sentences
-    caption = caption.replace(/,\s/g, '. ')
-  }
-
-  // Apply punctuation style
-  if (punctuation === 'expressive') {
-    caption = caption.replace(/\!/g, '!!!')
-    caption = caption.replace(/\?/g, '??')
-  } else if (punctuation === 'creative') {
-    caption = caption.replace(/\./g, '...')
-  }
-
-  // Apply capitalization style
-  if (capitalization === 'lowercase') {
-    caption = caption.toLowerCase()
-  } else if (capitalization === 'emphasis') {
-    // Capitalize key words
-    const keywords = ['amazing', 'incredible', 'wow', 'new', 'exclusive']
-    keywords.forEach(word => {
-      const regex = new RegExp(`\\b${word}\\b`, 'gi')
-      caption = caption.replace(regex, word.toUpperCase())
-    })
-  }
-
-  return caption
-}
-
-function incorporateLearnedPatterns(caption: string, patterns: any, platform: string) {
-  const { commonPhrases, signatureWords, openingStyles, closingStyles } = patterns
-
-  // Add opening style
-  if (openingStyles && openingStyles.length > 0) {
-    const opening = openingStyles[Math.floor(Math.random() * openingStyles.length)]
-    caption = `${opening} ${caption}`
-  }
-
-  // Add signature words
-  if (signatureWords && signatureWords.length > 0) {
-    const word = signatureWords[Math.floor(Math.random() * signatureWords.length)]
-    caption = caption.replace(/great/gi, word)
-  }
-
-  // Add closing style
-  if (closingStyles && closingStyles.length > 0) {
-    const closing = closingStyles[Math.floor(Math.random() * closingStyles.length)]
-    caption = `${caption}\n\n${closing}`
-  }
-
-  return caption
-}
-
-function addEmojis(caption: string, usage: string, preferences?: string[]) {
-  const defaultEmojis = ['✨', '🎉', '💫', '🌟', '💕', '🔥', '👏', '💯', '🚀', '💪']
-  const emojis = preferences && preferences.length > 0 ? preferences : defaultEmojis
-
-  if (usage === 'heavy') {
-    // Add 5-8 emojis
-    for (let i = 0; i < 6; i++) {
-      const emoji = emojis[Math.floor(Math.random() * emojis.length)]
-      const position = Math.floor(Math.random() * caption.length)
-      caption = caption.slice(0, position) + emoji + caption.slice(position)
-    }
-  } else if (usage === 'moderate') {
-    // Add 2-3 emojis
-    caption = `${emojis[0]} ${caption} ${emojis[1]}`
-  } else if (usage === 'minimal') {
-    // Add 1 emoji
-    caption = `${caption} ${emojis[0]}`
-  }
-
-  return caption
-}
-
-function addHashtags(caption: string, style: string, patterns?: string[]) {
-  const defaultHashtags = {
-    trendy: ['#viral', '#fyp', '#trending', '#explore', '#foryou'],
-    branded: ['#brandvoice', '#authentic', '#realcontent', '#brandstory'],
-    descriptive: ['#contentcreation', '#socialmediamarketing', '#digitalstrategy']
-  }
-
-  let hashtags: string[] = []
-
-  if (patterns && patterns.length > 0) {
-    hashtags = patterns.slice(0, 5)
-  } else {
-    hashtags = defaultHashtags[style as keyof typeof defaultHashtags] || defaultHashtags.descriptive
-  }
-
-  if (style === 'trendy') {
-    caption += '\n\n' + hashtags.slice(0, 10).join(' ')
-  } else if (style === 'branded') {
-    caption += '\n\n' + hashtags.slice(0, 5).join(' ')
-  } else {
-    caption += '\n\n' + hashtags.slice(0, 3).join(' ')
-  }
-
-  return caption
-}
-
-function addCTA(caption: string, style: string, platform: string) {
-  const ctas = {
-    direct: {
-      instagram: '👉 Click the link in bio!',
-      tiktok: '👆 Follow for more!',
-      linkedin: '🔗 Connect with me for insights'
-    },
-    soft: {
-      instagram: 'Would love to hear your thoughts below 💭',
-      tiktok: 'Let me know if this helped! 🤗',
-      linkedin: 'Feel free to share your experiences'
-    },
-    question: {
-      instagram: 'What\'s your take on this? 🤔',
-      tiktok: 'Have you tried this yet?',
-      linkedin: 'What strategies have worked for you?'
-    },
-    inspirational: {
-      instagram: 'Together we can achieve amazing things! ✨',
-      tiktok: 'You\'ve got this! 💪',
-      linkedin: 'Let\'s elevate each other to success 🚀'
-    }
-  }
-
-  const ctaText = ctas[style as keyof typeof ctas]?.[platform as keyof typeof ctas.direct] ||
-                  'Thanks for reading!'
-
-  return `${caption}\n\n${ctaText}`
+  return completion.choices[0]?.message?.content?.trim() || content
 }
 
 function generateVariations(baseCaption: string, profile: any) {
