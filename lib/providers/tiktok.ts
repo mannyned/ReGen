@@ -86,6 +86,7 @@ const config: ProviderConfig = {
   // Approved scopes for this app:
   scopes: [
     'user.info.basic',    // Basic profile (avatar, display name) - Login Kit
+    'video.list',         // Access to user's videos (for analytics)
     'video.upload',       // Upload videos to TikTok inbox
     'video.publish',      // Direct publish videos to TikTok (approved Jan 2026)
   ],

@@ -532,6 +532,11 @@ async function fetchTikTokInsights(
 /**
  * Fetch LinkedIn post insights
  * Works for both personal profiles and organization pages
+ *
+ * For organizations, tries multiple approaches:
+ * 1. organizationalEntityShareStatistics (requires rw_organization_admin)
+ * 2. socialMetadata endpoint for reactions/comments count
+ * 3. reactions count endpoint as fallback
  */
 async function fetchLinkedInInsights(
   postId: string,
@@ -549,12 +554,14 @@ async function fetchLinkedInInsights(
 
     // For organization posts, use organizationalEntityShareStatistics
     if (isOrganization) {
-      // First try to get stats from the organizationalEntityShareStatistics endpoint
-      // The shares parameter should be a List format: shares=List(urn:li:share:...)
       const encodedPostId = encodeURIComponent(postId)
-      const statsUrl = `${LINKEDIN_API}/rest/organizationalEntityShareStatistics?q=organizationalEntity&shares=List(${encodedPostId})`
 
-      console.log(`[LinkedIn-Org Insights] Requesting: ${statsUrl}`)
+      // Try 1: organizationalEntityShareStatistics endpoint
+      // URL encode the List() parameter properly
+      const sharesParam = encodeURIComponent(`List(${postId})`)
+      const statsUrl = `${LINKEDIN_API}/rest/organizationalEntityShareStatistics?q=organizationalEntity&shares=${sharesParam}`
+
+      console.log(`[LinkedIn-Org Insights] Try 1 - organizationalEntityShareStatistics: ${statsUrl}`)
 
       const response = await fetch(statsUrl, {
         headers: {
@@ -586,11 +593,11 @@ async function fetchLinkedInInsights(
         console.log(`[LinkedIn-Org Insights] Stats endpoint failed (${response.status}):`, error.slice(0, 200))
       }
 
-      // Fallback: try to get social actions (likes, comments) from the socialActions endpoint
-      const socialUrl = `${LINKEDIN_API}/rest/socialActions/${encodedPostId}`
-      console.log(`[LinkedIn-Org Insights] Trying socialActions fallback: ${socialUrl}`)
+      // Try 2: Get socialMetadata which includes reaction and comment counts
+      const metadataUrl = `${LINKEDIN_API}/rest/socialMetadata/${encodedPostId}`
+      console.log(`[LinkedIn-Org Insights] Try 2 - socialMetadata: ${metadataUrl}`)
 
-      const socialResponse = await fetch(socialUrl, {
+      const metadataResponse = await fetch(metadataUrl, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'LinkedIn-Version': '202503',
@@ -598,34 +605,110 @@ async function fetchLinkedInInsights(
         },
       })
 
-      if (socialResponse.ok) {
-        const socialData = await socialResponse.json()
-        console.log(`[LinkedIn-Org Insights] SocialActions response:`, JSON.stringify(socialData).slice(0, 500))
+      if (metadataResponse.ok) {
+        const metadataData = await metadataResponse.json()
+        console.log(`[LinkedIn-Org Insights] socialMetadata response:`, JSON.stringify(metadataData).slice(0, 500))
 
         const result = {
           impressions: 0,
-          likes: socialData.likesSummary?.totalLikes || 0,
-          comments: socialData.commentsSummary?.totalFirstLevelComments || 0,
+          likes: metadataData.reactionSummaries?.reduce((sum: number, r: { count?: number }) => sum + (r.count || 0), 0) ||
+                 metadataData.totalReactionCount || 0,
+          comments: metadataData.commentCount || metadataData.totalCommentCount || 0,
+          shares: metadataData.shareCount || 0,
+          reach: 0,
+        }
+        console.log(`[LinkedIn-Org Insights] Parsed from socialMetadata:`, result)
+        return result
+      } else {
+        const error = await metadataResponse.text()
+        console.log(`[LinkedIn-Org Insights] socialMetadata failed (${metadataResponse.status}):`, error.slice(0, 200))
+      }
+
+      // Try 3: Get reactions count directly
+      const reactionsUrl = `${LINKEDIN_API}/rest/reactions/(entity:${encodedPostId})?count=true`
+      console.log(`[LinkedIn-Org Insights] Try 3 - reactions count: ${reactionsUrl}`)
+
+      const reactionsResponse = await fetch(reactionsUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'LinkedIn-Version': '202503',
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      })
+
+      if (reactionsResponse.ok) {
+        const reactionsData = await reactionsResponse.json()
+        console.log(`[LinkedIn-Org Insights] reactions response:`, JSON.stringify(reactionsData).slice(0, 500))
+
+        // Also try to get comments count
+        let commentsCount = 0
+        const commentsUrl = `${LINKEDIN_API}/rest/socialActions/${encodedPostId}/comments?count=10`
+        const commentsResponse = await fetch(commentsUrl, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'LinkedIn-Version': '202503',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        })
+        if (commentsResponse.ok) {
+          const commentsData = await commentsResponse.json()
+          commentsCount = commentsData.paging?.total || commentsData.elements?.length || 0
+          console.log(`[LinkedIn-Org Insights] comments count:`, commentsCount)
+        }
+
+        const result = {
+          impressions: 0,
+          likes: reactionsData.paging?.total || reactionsData.elements?.length || 0,
+          comments: commentsCount,
           shares: 0,
           reach: 0,
         }
-        console.log(`[LinkedIn-Org Insights] Parsed from socialActions:`, result)
+        console.log(`[LinkedIn-Org Insights] Parsed from reactions:`, result)
         return result
       } else {
-        const error = await socialResponse.text()
-        console.error(`[LinkedIn-Org Insights] SocialActions failed (${socialResponse.status}):`, error.slice(0, 200))
+        const error = await reactionsResponse.text()
+        console.log(`[LinkedIn-Org Insights] reactions failed (${reactionsResponse.status}):`, error.slice(0, 200))
       }
 
+      // Try 4: Use v2 API as fallback (older but might work)
+      const v2Url = `${LINKEDIN_API}/v2/socialActions/${encodedPostId}`
+      console.log(`[LinkedIn-Org Insights] Try 4 - v2 socialActions: ${v2Url}`)
+
+      const v2Response = await fetch(v2Url, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      })
+
+      if (v2Response.ok) {
+        const v2Data = await v2Response.json()
+        console.log(`[LinkedIn-Org Insights] v2 socialActions response:`, JSON.stringify(v2Data).slice(0, 500))
+
+        const result = {
+          impressions: 0,
+          likes: v2Data.likesSummary?.totalLikes || 0,
+          comments: v2Data.commentsSummary?.totalFirstLevelComments || 0,
+          shares: 0,
+          reach: 0,
+        }
+        console.log(`[LinkedIn-Org Insights] Parsed from v2 socialActions:`, result)
+        return result
+      } else {
+        const error = await v2Response.text()
+        console.log(`[LinkedIn-Org Insights] v2 socialActions failed (${v2Response.status}):`, error.slice(0, 200))
+      }
+
+      console.log(`[LinkedIn-Org Insights] All endpoints failed for ${postId}`)
       return null
     } else {
-      // For personal posts, try to get basic social actions
-      const socialUrl = `${LINKEDIN_API}/rest/socialActions/${encodeURIComponent(postId)}`
+      // For personal posts, try v2 socialActions endpoint
+      const socialUrl = `${LINKEDIN_API}/v2/socialActions/${encodeURIComponent(postId)}`
       console.log(`[LinkedIn Insights] Requesting: ${socialUrl}`)
 
       const response = await fetch(socialUrl, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'LinkedIn-Version': '202503',
           'X-Restli-Protocol-Version': '2.0.0',
         },
       })
