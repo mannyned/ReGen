@@ -420,7 +420,7 @@ export class AnalyticsService {
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'LinkedIn-Version': '202407',
+            'LinkedIn-Version': '202503',
             'X-Restli-Protocol-Version': '2.0.0',
           },
         }
@@ -443,7 +443,7 @@ export class AnalyticsService {
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'LinkedIn-Version': '202407',
+            'LinkedIn-Version': '202503',
             'X-Restli-Protocol-Version': '2.0.0',
           },
         }
@@ -486,7 +486,7 @@ export class AnalyticsService {
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'LinkedIn-Version': '202407',
+            'LinkedIn-Version': '202503',
             'X-Restli-Protocol-Version': '2.0.0',
           },
         }
@@ -897,7 +897,7 @@ export class AnalyticsService {
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'LinkedIn-Version': '202407',
+            'LinkedIn-Version': '202503',
             'X-Restli-Protocol-Version': '2.0.0',
           },
         }
@@ -922,7 +922,7 @@ export class AnalyticsService {
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'LinkedIn-Version': '202407',
+            'LinkedIn-Version': '202503',
             'X-Restli-Protocol-Version': '2.0.0',
           },
         }
