@@ -6,12 +6,7 @@ import { API_BASE_URLS } from '../../config/oauth'
 // TIKTOK PUBLISHER
 // Uses TikTok Content Posting API v2
 //
-// For UNAUDITED apps: Uses "Post to Inbox" flow
-// - Video is sent to user's TikTok inbox/notifications
-// - User opens TikTok app to review and publish
-// - Endpoint: /post/publish/inbox/video/init/
-//
-// For AUDITED apps: Can use direct publish flow
+// Direct publish flow (AUDITED app):
 // - Video publishes directly to user's profile
 // - Endpoint: /post/publish/video/init/
 //
@@ -83,15 +78,14 @@ export class TikTokPublisher extends BasePlatformPublisher {
       return {
         success: true,
         platform: this.platform,
-        platformPostId: uploadInfo.publish_id,
+        platformPostId: publishStatus.video_id || uploadInfo.publish_id,
         publishedAt: new Date(),
         platformUrl: publishStatus.video_id
           ? `https://www.tiktok.com/@user/video/${publishStatus.video_id}`
           : undefined,
-        // Inbox flow: video is sent to user's TikTok notifications
-        message: publishStatus.status === 'PUBLISH_COMPLETE' || publishStatus.status === 'SEND_TO_USER_INBOX'
-          ? 'Video sent to your TikTok inbox! Open TikTok app → check notifications to review and publish.'
-          : 'Video is being processed. Check your TikTok notifications shortly.',
+        message: publishStatus.status === 'PUBLISH_COMPLETE'
+          ? 'Video published to TikTok!'
+          : 'Video is being processed and will appear on your TikTok profile shortly.',
       }
     } catch (error) {
       return {
@@ -145,9 +139,8 @@ export class TikTokPublisher extends BasePlatformPublisher {
   // ============================================
 
   /**
-   * Initialize inbox publish upload (for unaudited apps)
-   * Uses "Post to Inbox" flow - video is sent to user's TikTok notifications
-   * User then opens TikTok app to review and publish
+   * Initialize direct publish upload (for audited apps)
+   * Video publishes directly to user's TikTok profile
    *
    * TikTok API requirements:
    * - For videos < 64MB: upload as single chunk (chunk_size = video_size, total_chunk_count = 1)
@@ -235,17 +228,17 @@ export class TikTokPublisher extends BasePlatformPublisher {
       },
     }
 
-    console.log('[TikTok] Initializing inbox publish:', JSON.stringify(requestBody))
+    console.log('[TikTok] Initializing direct publish:', JSON.stringify(requestBody))
     console.log(`[TikTok] Video size: ${videoSize} bytes, Chunk size: ${chunkSize}, Total chunks: ${totalChunks}`)
 
-    // Use INBOX endpoint for unaudited apps (sends to user's TikTok notifications)
+    // Use direct publish endpoint (audited app - publishes directly to profile)
     const response = await this.makeApiRequest<{
       data: {
         publish_id: string
         upload_url: string
       }
     }>(
-      '/post/publish/inbox/video/init/',
+      '/post/publish/video/init/',
       {
         method: 'POST',
         body: JSON.stringify(requestBody),
@@ -253,7 +246,7 @@ export class TikTokPublisher extends BasePlatformPublisher {
       accessToken
     )
 
-    console.log('[TikTok] Inbox publish initialized:', JSON.stringify(response.data))
+    console.log('[TikTok] Direct publish initialized:', JSON.stringify(response.data))
 
     if (!response.data.upload_url) {
       throw new Error('TikTok did not return an upload URL')
@@ -271,7 +264,7 @@ export class TikTokPublisher extends BasePlatformPublisher {
     publishId: string,
     maxAttempts: number = 10
   ): Promise<{
-    status: 'PROCESSING_UPLOAD' | 'PROCESSING_DOWNLOAD' | 'SEND_TO_USER_INBOX' | 'PUBLISH_COMPLETE' | 'FAILED'
+    status: 'PROCESSING_UPLOAD' | 'PROCESSING_DOWNLOAD' | 'PUBLISH_COMPLETE' | 'FAILED'
     video_id?: string
     fail_reason?: string
   }> {
@@ -280,7 +273,7 @@ export class TikTokPublisher extends BasePlatformPublisher {
 
       const response = await this.makeApiRequest<{
         data: {
-          status: 'PROCESSING_UPLOAD' | 'PROCESSING_DOWNLOAD' | 'SEND_TO_USER_INBOX' | 'PUBLISH_COMPLETE' | 'FAILED'
+          status: 'PROCESSING_UPLOAD' | 'PROCESSING_DOWNLOAD' | 'PUBLISH_COMPLETE' | 'FAILED'
           publicaly_available_post_id?: string[]
           fail_reason?: string
         }
