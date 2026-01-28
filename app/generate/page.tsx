@@ -113,13 +113,14 @@ type Preview = {
 }
 
 // Platform configuration
-const PLATFORM_CONFIG = {
+const PLATFORM_CONFIG: Record<string, { icon: string; formats: { post: string; story: string } }> = {
   tiktok: { icon: '🎵', formats: { post: '15-60s vertical video', story: '15s story' } },
   instagram: { icon: '📷', formats: { post: 'Carousel/Reel', story: 'Story (15s)' } },
   youtube: { icon: '▶️', formats: { post: 'Short (vertical)', story: 'Short' } },
   facebook: { icon: '👥', formats: { post: 'Feed post', story: 'Story' } },
   x: { icon: '🐦', formats: { post: 'Tweet thread', story: 'Fleet' } },
   linkedin: { icon: '💼', formats: { post: 'Professional post', story: 'Story' } },
+  'linkedin-org': { icon: '🏢', formats: { post: 'Company post', story: 'Company post' } },
   snapchat: { icon: '👻', formats: { post: 'Snap', story: 'Story' } },
   pinterest: { icon: '📌', formats: { post: 'Pin', story: 'Idea Pin' } },
   discord: { icon: '💬', formats: { post: 'Message', story: 'Message' } },
