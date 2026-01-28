@@ -133,8 +133,18 @@ export async function GET(request: NextRequest) {
     let recommendationId = 1
 
     // Get platform display name for filtered recommendations
+    const platformDisplayNames: Record<string, string> = {
+      instagram: 'Instagram',
+      tiktok: 'TikTok',
+      youtube: 'YouTube',
+      twitter: 'Twitter',
+      linkedin: 'LinkedIn',
+      'linkedin-org': 'LinkedIn Company',
+      facebook: 'Facebook',
+      snapchat: 'Snapchat',
+    }
     const platformDisplayName = isFiltered
-      ? platformFilter.charAt(0).toUpperCase() + platformFilter.slice(1)
+      ? platformDisplayNames[platformFilter] || platformFilter.charAt(0).toUpperCase() + platformFilter.slice(1)
       : null
 
     // Check posting frequency
@@ -341,6 +351,11 @@ export async function GET(request: NextRequest) {
           description: 'LinkedIn posts with professional insights and thought leadership get 3x more engagement. Share your expertise.',
           icon: '💼'
         },
+        'linkedin-org': {
+          title: 'Share Company Updates',
+          description: 'Company page posts with industry insights and updates get 3x more engagement. Showcase your expertise and company culture.',
+          icon: '🏢'
+        },
         twitter: {
           title: 'Engage in Conversations',
           description: 'Reply to trending topics and engage with others in your niche. Twitter rewards active participation.',
@@ -384,6 +399,7 @@ export async function GET(request: NextRequest) {
       tiktok: 'TikTok hashtags help categorize your content. Use 3-5 relevant hashtags including trending ones to boost discoverability.',
       twitter: 'Use 1-2 hashtags on Twitter. More can reduce engagement. Focus on trending or niche hashtags relevant to your content.',
       linkedin: 'LinkedIn posts with 3-5 hashtags perform best. Use professional, industry-specific hashtags to reach your target audience.',
+      'linkedin-org': 'Company page posts with 3-5 hashtags perform best. Use industry-specific hashtags to increase visibility and reach.',
       youtube: 'Include relevant keywords and hashtags in your video description and tags to improve search visibility.',
       facebook: 'Hashtags are less impactful on Facebook, but 1-2 relevant hashtags can help categorize your content.'
     }
@@ -445,6 +461,11 @@ export async function GET(request: NextRequest) {
             title: 'Share Industry Insights',
             description: 'LinkedIn posts with professional insights get 3x more engagement. Share your expertise and thought leadership.',
             icon: '💼'
+          },
+          'linkedin-org': {
+            title: 'Share Company Updates',
+            description: 'Company page posts with industry insights get 3x more engagement. Showcase your expertise and company culture.',
+            icon: '🏢'
           },
           twitter: {
             title: 'Join Trending Conversations',
