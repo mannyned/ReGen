@@ -14,6 +14,7 @@ import { tiktokPublisher } from './TikTokPublisher'
 import { youtubePublisher } from './YouTubePublisher'
 import { twitterPublisher } from './TwitterPublisher'
 import { linkedinPublisher } from './LinkedInPublisher'
+import { linkedinOrgPublisher } from './LinkedInOrgPublisher'
 import { facebookPublisher } from './FacebookPublisher'
 import { redditPublisher } from './RedditPublisher'
 import { pinterestPublisher } from './PinterestPublisher'
@@ -30,6 +31,7 @@ const publishers: Partial<Record<SocialPlatform, BasePlatformPublisher>> = {
   youtube: youtubePublisher,
   twitter: twitterPublisher,
   linkedin: linkedinPublisher,
+  'linkedin-org': linkedinOrgPublisher,
   facebook: facebookPublisher,
   reddit: redditPublisher,
   pinterest: pinterestPublisher,
@@ -339,6 +341,7 @@ export { tiktokPublisher } from './TikTokPublisher'
 export { youtubePublisher } from './YouTubePublisher'
 export { twitterPublisher } from './TwitterPublisher'
 export { linkedinPublisher } from './LinkedInPublisher'
+export { linkedinOrgPublisher } from './LinkedInOrgPublisher'
 export { facebookPublisher } from './FacebookPublisher'
 export { redditPublisher } from './RedditPublisher'
 export { pinterestPublisher } from './PinterestPublisher'
