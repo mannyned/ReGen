@@ -41,7 +41,8 @@ import { registerProvider } from '../oauth/engine';
 
 const LINKEDIN_AUTH_URL = 'https://www.linkedin.com/oauth/v2/authorization';
 const LINKEDIN_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken';
-const LINKEDIN_USERINFO_URL = 'https://api.linkedin.com/v2/userinfo';
+// Use /v2/me for basic profile instead of /v2/userinfo (which requires openid scope)
+const LINKEDIN_PROFILE_URL = 'https://api.linkedin.com/v2/me';
 
 /**
  * Get LinkedIn Community Management OAuth configuration from environment
@@ -69,13 +70,12 @@ const config: ProviderConfig = {
   displayName: 'LinkedIn Company Page',
   authorizationUrl: LINKEDIN_AUTH_URL,
   tokenUrl: LINKEDIN_TOKEN_URL,
-  identityUrl: LINKEDIN_USERINFO_URL,
+  identityUrl: LINKEDIN_PROFILE_URL,
 
   // Community Management API scopes for organization access
+  // Note: Must match exactly what's configured in LinkedIn Developer Portal
   scopes: [
-    'openid',                  // OpenID Connect
-    'profile',                 // Basic profile
-    'email',                   // Email address
+    'r_basicprofile',          // Basic profile (LinkedIn CM API uses this instead of 'profile')
     'w_organization_social',   // Post on behalf of organization (company page)
     'r_organization_social',   // Read organization posts/comments/reactions
     'rw_organization_admin',   // Manage organization pages and retrieve reporting data
@@ -263,13 +263,16 @@ async function verifyToken(params: TokenVerificationParams): Promise<TokenVerifi
 }
 
 /**
- * Fetch LinkedIn user identity
+ * Fetch LinkedIn user identity using /v2/me endpoint
+ * Note: /v2/me returns different format than /v2/userinfo (OpenID Connect)
  */
 async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
   try {
+    // Fetch basic profile from /v2/me
     const response = await fetch(config.identityUrl, {
       headers: {
         'Authorization': `Bearer ${params.accessToken}`,
+        'X-Restli-Protocol-Version': '2.0.0',
       },
     });
 
@@ -283,20 +286,29 @@ async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
 
     const userData = await response.json();
 
+    // /v2/me response format:
+    // { id: "urn:li:person:ABC123", localizedFirstName: "John", localizedLastName: "Doe", ... }
+    const linkedInId = userData.id?.replace('urn:li:person:', '') || userData.id;
+    const displayName = [userData.localizedFirstName, userData.localizedLastName]
+      .filter(Boolean)
+      .join(' ') || 'LinkedIn User';
+
+    // Try to get profile picture if available
+    let avatarUrl: string | undefined;
+    if (userData.profilePicture?.['displayImage~']?.elements?.[0]?.identifiers?.[0]?.identifier) {
+      avatarUrl = userData.profilePicture['displayImage~'].elements[0].identifiers[0].identifier;
+    }
+
     return {
-      providerAccountId: userData.sub,
-      displayName: userData.name,
-      email: userData.email,
-      avatarUrl: userData.picture,
+      providerAccountId: linkedInId,
+      displayName,
+      email: undefined, // Not available without email scope
+      avatarUrl,
       metadata: {
-        linkedInId: userData.sub,
-        name: userData.name,
-        givenName: userData.given_name,
-        familyName: userData.family_name,
-        email: userData.email,
-        emailVerified: userData.email_verified,
-        picture: userData.picture,
-        locale: userData.locale,
+        linkedInId,
+        linkedInUrn: userData.id,
+        firstName: userData.localizedFirstName,
+        lastName: userData.localizedLastName,
         connectionType: 'organization', // Mark this as organization connection
       },
     };
