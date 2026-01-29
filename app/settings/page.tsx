@@ -274,7 +274,7 @@ export default function SettingsPage() {
         { id: 'facebook', name: 'Facebook', icon: '👥', color: 'from-blue-600 to-blue-500', connected: false },
         { id: 'pinterest', name: 'Pinterest', icon: '📌', color: 'from-red-600 to-red-500', connected: false },
         { id: 'discord', name: 'Discord', icon: '💬', color: 'from-indigo-600 to-indigo-500', connected: false },
-        { id: 'reddit', name: 'Reddit', icon: '🤖', color: 'from-orange-500 to-orange-600', connected: false },
+        { id: 'reddit', name: 'Reddit', icon: '🤖', color: 'from-orange-500 to-orange-600', connected: false, comingSoon: true },
       ]
 
       // Wait for auth to complete before fetching
@@ -1844,62 +1844,79 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {platforms.map((platform) => (
-                    <div
-                      key={platform.id}
-                      className={`border-2 rounded-2xl p-5 transition-all ${
-                        platform.connected
-                          ? 'border-green-200 bg-green-50/50'
-                          : 'border-gray-200 hover:border-primary/50 bg-white'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 flex items-center justify-center">
-                            <PlatformLogo
-                              platform={PLATFORM_ID_MAP[platform.id] || 'instagram'}
-                              size="lg"
-                              variant="color"
-                            />
+                  {platforms.map((platform) => {
+                    const isComingSoon = 'comingSoon' in platform && platform.comingSoon
+                    return (
+                      <div
+                        key={platform.id}
+                        className={`border-2 rounded-2xl p-5 transition-all ${
+                          isComingSoon
+                            ? 'border-gray-200 bg-gray-50 opacity-60'
+                            : platform.connected
+                            ? 'border-green-200 bg-green-50/50'
+                            : 'border-gray-200 hover:border-primary/50 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 flex items-center justify-center ${isComingSoon ? 'grayscale' : ''}`}>
+                              <PlatformLogo
+                                platform={PLATFORM_ID_MAP[platform.id] || 'instagram'}
+                                size="lg"
+                                variant="color"
+                              />
+                            </div>
+                            <div>
+                              <h3 className={`font-bold ${isComingSoon ? 'text-text-secondary' : 'text-text-primary'}`}>{platform.name}</h3>
+                              {isComingSoon ? (
+                                <p className="text-sm text-text-secondary">Coming Soon</p>
+                              ) : platform.connected ? (
+                                <p className="text-sm text-primary font-medium">@{platform.username}</p>
+                              ) : (
+                                <p className="text-sm text-text-secondary">Not connected</p>
+                              )}
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="font-bold text-text-primary">{platform.name}</h3>
-                            {platform.connected ? (
-                              <p className="text-sm text-primary font-medium">@{platform.username}</p>
-                            ) : (
-                              <p className="text-sm text-text-secondary">Not connected</p>
-                            )}
-                          </div>
+                          {isComingSoon && (
+                            <span className="px-2 py-1 bg-gray-200 text-gray-600 text-xs font-medium rounded-full">Soon</span>
+                          )}
                         </div>
-                      </div>
 
-                      <div className="flex gap-3">
-                        {platform.connected ? (
-                          <>
+                        <div className="flex gap-3">
+                          {isComingSoon ? (
+                            <button
+                              disabled
+                              className="w-full py-2.5 px-4 bg-gray-100 text-text-secondary rounded-xl font-medium text-sm cursor-not-allowed"
+                            >
+                              Coming Soon
+                            </button>
+                          ) : platform.connected ? (
+                            <>
+                              <button
+                                onClick={() => handleConnect(platform)}
+                                className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-xl font-medium transition-colors text-sm"
+                              >
+                                Reconnect
+                              </button>
+                              <button
+                                onClick={() => handleDisconnect(platform.id)}
+                                className="flex-1 py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors text-sm"
+                              >
+                                Disconnect
+                              </button>
+                            </>
+                          ) : (
                             <button
                               onClick={() => handleConnect(platform)}
-                              className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-xl font-medium transition-colors text-sm"
+                              className="w-full py-2.5 px-4 btn-primary text-sm"
                             >
-                              Reconnect
+                              Connect
                             </button>
-                            <button
-                              onClick={() => handleDisconnect(platform.id)}
-                              className="flex-1 py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors text-sm"
-                            >
-                              Disconnect
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => handleConnect(platform)}
-                            className="w-full py-2.5 px-4 btn-primary text-sm"
-                          >
-                            Connect
-                          </button>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </Card>
             )}

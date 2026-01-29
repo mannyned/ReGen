@@ -140,7 +140,7 @@ function SchedulePageContent() {
     { name: 'snapchat', label: 'Snapchat', icon: '👻' },
     { name: 'pinterest', label: 'Pinterest', icon: '📌' },
     { name: 'discord', label: 'Discord', icon: '💬' },
-    { name: 'reddit', label: 'Reddit', icon: '🤖' },
+    { name: 'reddit', label: 'Reddit', icon: '🤖', comingSoon: true },
   ]
 
   // Load connected accounts from API
@@ -1127,26 +1127,35 @@ function SchedulePageContent() {
                   Select Platforms
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {platforms.map(({ name, label }) => {
+                  {platforms.map((platform) => {
+                    const { name, label } = platform
                     const isConnected = connectedAccounts.includes(name)
                     const isSelected = selectedPlatforms.includes(name)
+                    const isComingSoon = 'comingSoon' in platform && platform.comingSoon
                     return (
                       <button
                         key={name}
-                        onClick={() => togglePlatform(name)}
+                        onClick={() => !isComingSoon && togglePlatform(name)}
+                        disabled={isComingSoon}
                         className={`flex items-center gap-3 p-4 rounded-lg font-semibold transition-all relative ${
-                          isSelected
+                          isComingSoon
+                            ? 'bg-gray-100 text-text-secondary opacity-60 cursor-not-allowed'
+                            : isSelected
                             ? 'bg-primary text-white shadow-lg hover:bg-primary-hover'
                             : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
                         }`}
                       >
-                        <PlatformLogo
-                          platform={PLATFORM_ID_MAP[name]}
-                          size="md"
-                          variant={isSelected ? 'white' : 'color'}
-                        />
+                        <div className={isComingSoon ? 'grayscale' : ''}>
+                          <PlatformLogo
+                            platform={PLATFORM_ID_MAP[name]}
+                            size="md"
+                            variant={isSelected && !isComingSoon ? 'white' : 'color'}
+                          />
+                        </div>
                         <span>{label}</span>
-                        {!isConnected && (
+                        {isComingSoon ? (
+                          <span className="absolute top-1 right-1 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs font-medium rounded-full">Soon</span>
+                        ) : !isConnected && (
                           <span className="absolute top-1 right-1 w-3 h-3 bg-orange-500 rounded-full" title="Not connected" />
                         )}
                       </button>

@@ -60,7 +60,7 @@ const DEFAULT_PLATFORMS: { id: SocialPlatform; name: string }[] = [
   { id: 'facebook', name: 'Facebook' },
   { id: 'pinterest', name: 'Pinterest' },
   { id: 'discord', name: 'Discord' },
-  { id: 'reddit', name: 'Reddit' },
+  { id: 'reddit', name: 'Reddit', comingSoon: true },
 ]
 
 // Modal Portal Component - renders modal at document body level
@@ -699,20 +699,28 @@ export function ExportAnalytics({
                     Platforms <span className="text-gray-400 font-normal">(leave empty for all)</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {platforms.map((platform) => (
-                      <button
-                        key={platform.id}
-                        onClick={() => togglePlatform(platform.id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ${
-                          options.platforms.includes(platform.id)
-                            ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
-                            : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
-                        }`}
-                      >
-                        <PlatformLogo platform={platform.id} size="xs" variant="color" />
-                        <span>{platform.name}</span>
-                      </button>
-                    ))}
+                    {platforms.map((platform) => {
+                      const isComingSoon = 'comingSoon' in platform && platform.comingSoon
+                      return (
+                        <button
+                          key={platform.id}
+                          onClick={() => !isComingSoon && togglePlatform(platform.id)}
+                          disabled={isComingSoon}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ${
+                            isComingSoon
+                              ? 'bg-gray-100 text-gray-400 border-2 border-transparent cursor-not-allowed opacity-60'
+                              : options.platforms.includes(platform.id)
+                              ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
+                              : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
+                          }`}
+                        >
+                          <div className={isComingSoon ? 'grayscale' : ''}>
+                            <PlatformLogo platform={platform.id} size="xs" variant="color" />
+                          </div>
+                          <span>{platform.name}{isComingSoon ? ' (Soon)' : ''}</span>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
 

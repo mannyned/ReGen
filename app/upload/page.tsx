@@ -84,7 +84,7 @@ const platforms = [
   { id: 'linkedin-org' as Platform, name: 'LinkedIn Company', icon: '🏢', color: 'bg-gradient-to-br from-blue-700 to-blue-600' },
   { id: 'pinterest' as Platform, name: 'Pinterest', icon: '📌', color: 'bg-gradient-to-br from-red-600 to-red-500' },
   { id: 'discord' as Platform, name: 'Discord', icon: '💬', color: 'bg-gradient-to-br from-indigo-600 to-indigo-500' },
-  { id: 'reddit' as Platform, name: 'Reddit', icon: '🤖', color: 'bg-gradient-to-br from-orange-500 to-orange-600' },
+  { id: 'reddit' as Platform, name: 'Reddit', icon: '🤖', color: 'bg-gradient-to-br from-orange-500 to-orange-600', comingSoon: true },
 ]
 
 // Inner component that uses useSearchParams
@@ -1244,40 +1244,46 @@ function UploadPageContent() {
                 const isConnected = connectedAccounts.includes(platform.id)
                 const platformLimit = PLATFORM_LIMITS[platform.id]?.[contentType] || 1
                 const isSelected = selectedPlatforms.includes(platform.id)
+                const isComingSoon = 'comingSoon' in platform && platform.comingSoon
 
                 return (
                   <button
                     key={platform.id}
-                    onClick={() => togglePlatform(platform.id)}
+                    onClick={() => !isComingSoon && togglePlatform(platform.id)}
+                    disabled={isComingSoon}
                     className={`group relative p-4 rounded-xl border-2 transition-all ${
-                      isSelected
+                      isComingSoon
+                        ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                        : isSelected
                         ? 'border-primary bg-primary/5 shadow-lg'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                   >
                     <div className="flex flex-col items-center gap-2">
-                      <div className="w-12 h-12 flex items-center justify-center transition-transform group-hover:scale-105">
+                      <div className={`w-12 h-12 flex items-center justify-center transition-transform ${!isComingSoon ? 'group-hover:scale-105' : 'grayscale'}`}>
                         <PlatformLogo
                           platform={PLATFORM_ID_MAP[platform.id]}
                           size="lg"
                           variant="color"
                         />
                       </div>
-                      <span className={`font-medium text-sm ${isSelected ? 'text-primary' : 'text-text-primary'}`}>
+                      <span className={`font-medium text-sm ${isComingSoon ? 'text-text-secondary' : isSelected ? 'text-primary' : 'text-text-primary'}`}>
                         {platform.name}
                       </span>
                       <span className="text-xs text-text-secondary">
-                        {platformLimit === 1 ? 'Single' : `Up to ${platformLimit}`}
+                        {isComingSoon ? 'Coming Soon' : platformLimit === 1 ? 'Single' : `Up to ${platformLimit}`}
                       </span>
                     </div>
-                    {isSelected && (
+                    {isSelected && !isComingSoon && (
                       <div className="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                         </svg>
                       </div>
                     )}
-                    {isConnected ? (
+                    {isComingSoon ? (
+                      <div className="absolute top-2 right-2 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs font-medium rounded-full">Soon</div>
+                    ) : isConnected ? (
                       <div className="absolute top-2 left-2 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm" title="Connected" />
                     ) : (
                       <div className="absolute top-2 left-2 w-3 h-3 bg-orange-500 rounded-full border-2 border-white shadow-sm" title="Not connected" />
