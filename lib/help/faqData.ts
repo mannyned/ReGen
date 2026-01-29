@@ -559,6 +559,40 @@ You cannot publish to TikTok without checking the agreement box.`,
 **Tip:** Photo carousels are perfect for step-by-step tutorials, before/after comparisons, or storytelling sequences.`,
       },
       {
+        id: 'youtube-shorts-support',
+        question: 'Does ReGenr support YouTube Shorts?',
+        answer: `**Yes! ReGenr fully supports posting YouTube Shorts.**
+
+**How to post a Short:**
+1. Upload a vertical video (9:16 aspect ratio)
+2. Video must be 60 seconds or less
+3. Select YouTube as your platform
+4. Choose "Story" as the content type
+5. ReGenr automatically adds the #Shorts hashtag
+
+**Requirements for Shorts:**
+| Requirement | Details |
+|-------------|---------|
+| Aspect Ratio | Vertical (9:16) |
+| Duration | 60 seconds or less |
+| #Shorts Tag | Auto-added by ReGenr |
+
+**What happens behind the scenes:**
+- ReGenr's YouTube publisher has a dedicated \`publishShort()\` method
+- The #Shorts hashtag is automatically appended to your description
+- YouTube's algorithm then recognizes it as a Short
+
+**Tips for Shorts:**
+- Hook viewers in the first 1-2 seconds
+- Use trending sounds when possible
+- Keep captions short and punchy
+- Vertical video performs best
+
+**Regular vs Shorts:**
+- **Regular video** → Select "Post" content type
+- **Short video** → Select "Story" content type (auto-handles Shorts formatting)`,
+      },
+      {
         id: 'tiktok-inbox-flow',
         question: 'What does "Video sent to your TikTok inbox" mean?',
         answer: `When you post through ReGenr, your video is sent to TikTok's inbox/notifications:
