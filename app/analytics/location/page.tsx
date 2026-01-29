@@ -881,7 +881,7 @@ export default function LocationAnalyticsPage() {
                   <option value="facebook">Facebook</option>
                   <option value="pinterest">Pinterest</option>
                   <option value="discord">Discord</option>
-                  <option value="reddit">Reddit</option>
+                  <option value="reddit" disabled>Reddit (Coming Soon)</option>
                 </select>
               </div>
 
