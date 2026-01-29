@@ -530,6 +530,142 @@ async function fetchTikTokInsights(
 }
 
 /**
+ * Discover and sync ALL TikTok videos (not just ones posted through ReGenr)
+ * This creates outbound_post records for videos posted directly on TikTok
+ */
+async function discoverAndSyncTikTokVideos(
+  profileId: string,
+  accessToken: string
+): Promise<{
+  discovered: number
+  synced: number
+  videos: Array<{
+    id: string
+    views: number
+    likes: number
+    comments: number
+    shares: number
+  }>
+}> {
+  try {
+    console.log(`[TikTok Discovery] Fetching all videos for user`)
+
+    // Fetch videos with all available fields
+    const listUrl = `${TIKTOK_API}/video/list/?fields=id,title,cover_image_url,like_count,comment_count,share_count,view_count,create_time,duration`
+
+    const listResponse = await fetch(listUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        max_count: 20, // Fetch up to 20 recent videos
+      }),
+    })
+
+    if (!listResponse.ok) {
+      const error = await listResponse.text()
+      console.error(`[TikTok Discovery] Video list failed (${listResponse.status}):`, error.slice(0, 500))
+      return { discovered: 0, synced: 0, videos: [] }
+    }
+
+    const listData = await listResponse.json()
+    console.log(`[TikTok Discovery] Response:`, JSON.stringify(listData).slice(0, 1000))
+
+    const videos = listData.data?.videos || []
+    console.log(`[TikTok Discovery] Found ${videos.length} videos`)
+
+    if (videos.length === 0) {
+      return { discovered: 0, synced: 0, videos: [] }
+    }
+
+    let discovered = 0
+    let synced = 0
+    const syncedVideos: Array<{
+      id: string
+      views: number
+      likes: number
+      comments: number
+      shares: number
+    }> = []
+
+    for (const video of videos) {
+      const videoId = video.id
+      const analytics = {
+        views: video.view_count || 0,
+        likes: video.like_count || 0,
+        comments: video.comment_count || 0,
+        shares: video.share_count || 0,
+        syncedAt: new Date().toISOString(),
+      }
+
+      // Check if this video already exists in outbound_posts
+      const existingPost = await prisma.outboundPost.findFirst({
+        where: {
+          userId: profileId,
+          provider: 'tiktok',
+          externalPostId: videoId,
+        },
+      })
+
+      if (existingPost) {
+        // Update existing post with new analytics
+        await prisma.outboundPost.update({
+          where: { id: existingPost.id },
+          data: {
+            metadata: {
+              ...(existingPost.metadata as Record<string, unknown> || {}),
+              analytics,
+              title: video.title,
+              coverImage: video.cover_image_url,
+              duration: video.duration,
+            },
+          },
+        })
+        synced++
+      } else {
+        // Create new post record for discovered video
+        const createTime = video.create_time ? new Date(video.create_time * 1000) : new Date()
+
+        await prisma.outboundPost.create({
+          data: {
+            userId: profileId,
+            provider: 'tiktok',
+            status: 'posted',
+            externalPostId: videoId,
+            postedAt: createTime,
+            metadata: {
+              analytics,
+              title: video.title,
+              coverImage: video.cover_image_url,
+              duration: video.duration,
+              discoveredFromApi: true, // Mark as discovered, not posted through ReGenr
+            },
+          },
+        })
+        discovered++
+        synced++
+      }
+
+      syncedVideos.push({
+        id: videoId,
+        ...analytics,
+      })
+
+      // Rate limiting
+      await new Promise(resolve => setTimeout(resolve, 50))
+    }
+
+    console.log(`[TikTok Discovery] Discovered ${discovered} new videos, synced ${synced} total`)
+    return { discovered, synced, videos: syncedVideos }
+  } catch (error) {
+    console.error(`[TikTok Discovery] Error:`, error)
+    return { discovered: 0, synced: 0, videos: [] }
+  }
+}
+
+/**
  * Fetch LinkedIn post insights
  * Works for both personal profiles and organization pages
  *
@@ -1121,6 +1257,14 @@ export async function POST(request: NextRequest) {
       metrics: Record<string, number> | null
     }> = []
 
+    // Discover and sync TikTok videos (including those posted directly on TikTok)
+    let tiktokDiscovery: { discovered: number; synced: number; videos: Array<{ id: string; views: number; likes: number; comments: number; shares: number }> } | null = null
+    if (tiktokToken) {
+      console.log('[Analytics Sync] Running TikTok video discovery...')
+      tiktokDiscovery = await discoverAndSyncTikTokVideos(profileId, tiktokToken)
+      console.log(`[Analytics Sync] TikTok discovery complete: ${tiktokDiscovery.discovered} new, ${tiktokDiscovery.synced} synced`)
+    }
+
     for (const post of posts) {
       // Normalize platform names
       let platform = post.provider
@@ -1331,6 +1475,11 @@ export async function POST(request: NextRequest) {
       total: posts.length,
       errors: errors.length > 0 ? errors : undefined,
       results,
+      tiktok: tiktokDiscovery ? {
+        discovered: tiktokDiscovery.discovered,
+        synced: tiktokDiscovery.synced,
+        videos: tiktokDiscovery.videos,
+      } : undefined,
       debug: {
         profileId,
         tokens: {
