@@ -84,9 +84,10 @@ const config: ProviderConfig = {
   // Scopes for creator accounts
   // See: https://developers.tiktok.com/doc/tiktok-api-scopes/
   // Approved scopes for this app:
-  // Note: video.list scope required for analytics but needs separate TikTok approval
   scopes: [
     'user.info.basic',    // Basic profile (avatar, display name) - Login Kit
+    'user.info.stats',    // User stats (likes, followers, following, video count) - approved Jan 2026
+    'video.list',         // Read user's public videos with engagement metrics - approved Jan 2026
     'video.upload',       // Upload videos to TikTok inbox
     'video.publish',      // Direct publish videos to TikTok (approved Jan 2026)
   ],
@@ -323,10 +324,11 @@ async function verifyToken(params: TokenVerificationParams): Promise<TokenVerifi
  */
 async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
   try {
-    // TikTok user.info.basic scope only allows these fields:
-    // open_id, union_id, avatar_url, display_name
+    // TikTok user.info.basic + user.info.stats scopes allow these fields:
+    // Basic: open_id, union_id, avatar_url, display_name
+    // Stats: follower_count, following_count, likes_count, video_count
     // See: https://developers.tiktok.com/doc/tiktok-api-scopes/
-    const fields = 'open_id,union_id,avatar_url,display_name';
+    const fields = 'open_id,union_id,avatar_url,display_name,follower_count,following_count,likes_count,video_count';
 
     const url = new URL(config.identityUrl);
     url.searchParams.set('fields', fields);
@@ -375,6 +377,11 @@ async function getIdentity(params: IdentityParams): Promise<ProviderIdentity> {
         unionId: userData.union_id,
         displayName: userData.display_name,
         avatarUrl: userData.avatar_url,
+        // Stats from user.info.stats scope
+        followerCount: userData.follower_count,
+        followingCount: userData.following_count,
+        likesCount: userData.likes_count,
+        videoCount: userData.video_count,
       },
     };
   } catch (error) {
