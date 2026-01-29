@@ -627,7 +627,7 @@ async function discoverAndSyncTikTokVideos(
       // Check if this video already exists in outbound_posts
       const existingPost = await prisma.outboundPost.findFirst({
         where: {
-          userId: profileId,
+          profileId: profileId,
           provider: 'tiktok',
           externalPostId: videoId,
         },
@@ -654,7 +654,7 @@ async function discoverAndSyncTikTokVideos(
 
         await prisma.outboundPost.create({
           data: {
-            userId: profileId,
+            profileId: profileId,
             provider: 'tiktok',
             status: 'POSTED',
             externalPostId: videoId,
