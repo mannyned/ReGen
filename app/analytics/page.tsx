@@ -892,6 +892,10 @@ export default function AnalyticsPage() {
                   onClick={async () => {
                     await syncAnalytics()
                     await fetchAnalyticsStats(timeRange, selectedPlatform)
+                    // Also refresh recommendations with current platform filter
+                    if (userPlan === 'pro') {
+                      await fetchRecommendations(selectedPlatform)
+                    }
                   }}
                   disabled={isSyncing}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all shadow-sm ${
