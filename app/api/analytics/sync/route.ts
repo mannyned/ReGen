@@ -553,6 +553,8 @@ async function discoverAndSyncTikTokVideos(
     // Fetch videos with all available fields
     const listUrl = `${TIKTOK_API}/video/list/?fields=id,title,cover_image_url,like_count,comment_count,share_count,view_count,create_time,duration`
 
+    console.log(`[TikTok Discovery] Calling: ${listUrl}`)
+
     const listResponse = await fetch(listUrl, {
       method: 'POST',
       headers: {
@@ -564,20 +566,42 @@ async function discoverAndSyncTikTokVideos(
       }),
     })
 
+    const responseText = await listResponse.text()
+    console.log(`[TikTok Discovery] Status: ${listResponse.status}`)
+    console.log(`[TikTok Discovery] Raw response:`, responseText.slice(0, 2000))
+
     if (!listResponse.ok) {
-      const error = await listResponse.text()
-      console.error(`[TikTok Discovery] Video list failed (${listResponse.status}):`, error.slice(0, 500))
+      console.error(`[TikTok Discovery] Video list failed (${listResponse.status}):`, responseText.slice(0, 500))
       return { discovered: 0, synced: 0, videos: [] }
     }
 
-    const listData = await listResponse.json()
-    console.log(`[TikTok Discovery] Response:`, JSON.stringify(listData).slice(0, 1000))
+    let listData
+    try {
+      listData = JSON.parse(responseText)
+    } catch (parseError) {
+      console.error(`[TikTok Discovery] Failed to parse response:`, parseError)
+      return { discovered: 0, synced: 0, videos: [] }
+    }
+
+    console.log(`[TikTok Discovery] Parsed response structure:`, Object.keys(listData))
+
+    // Check for TikTok API error response
+    if (listData.error && listData.error.code !== 'ok') {
+      console.error(`[TikTok Discovery] API error:`, listData.error)
+      return { discovered: 0, synced: 0, videos: [] }
+    }
 
     const videos = listData.data?.videos || []
     console.log(`[TikTok Discovery] Found ${videos.length} videos`)
 
     if (videos.length === 0) {
+      console.log(`[TikTok Discovery] No videos found. Full response:`, JSON.stringify(listData))
       return { discovered: 0, synced: 0, videos: [] }
+    }
+
+    // Log first video structure for debugging
+    if (videos.length > 0) {
+      console.log(`[TikTok Discovery] First video structure:`, JSON.stringify(videos[0]))
     }
 
     let discovered = 0
@@ -632,7 +656,7 @@ async function discoverAndSyncTikTokVideos(
           data: {
             userId: profileId,
             provider: 'tiktok',
-            status: 'posted',
+            status: 'POSTED',
             externalPostId: videoId,
             postedAt: createTime,
             metadata: {
