@@ -41,7 +41,7 @@ import { encrypt, decrypt, generateSecureRandom, encryptOptional, decryptOptiona
 import { prisma } from '../db';
 import type { Prisma } from '@prisma/client';
 import { getTwitterCredentials } from '../services/credentials/UserCredentialsService';
-import { setUserCredentials as setXUserCredentials } from '../providers/x';
+import { setUserCredentials as setXUserCredentials } from '../providers/x-credentials';
 
 // Auto-register all providers when OAuthEngine is imported
 // This ensures providers are available even when engine is dynamically imported
