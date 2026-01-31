@@ -53,8 +53,8 @@ export function validatePublishContent(
   const errors: ValidationError[] = []
   const limits = CONTENT_LIMITS[platform]
 
-  // Validate caption
-  if (content.caption && content.caption.length > limits.maxCaptionLength) {
+  // Validate caption length (skip for Twitter - it auto-truncates to 280 chars)
+  if (platform !== 'twitter' && content.caption && content.caption.length > limits.maxCaptionLength) {
     errors.push({
       field: 'caption',
       message: `Caption exceeds maximum length of ${limits.maxCaptionLength} characters`,
