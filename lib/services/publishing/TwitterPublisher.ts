@@ -262,7 +262,7 @@ export class TwitterPublisher extends BasePlatformPublisher {
     const settings = (content.settings || {}) as Record<string, unknown>
 
     const tweetData: Record<string, unknown> = {
-      text: text.substring(0, 280), // Twitter character limit
+      text: this.truncateForTwitter(text, 280),
       media: {
         media_ids: mediaIds, // Array of media IDs
       },
@@ -678,6 +678,33 @@ export class TwitterPublisher extends BasePlatformPublisher {
   }
 
 
+  /**
+   * Truncate text to Twitter's 280 character limit safely
+   * Handles emojis and multi-byte characters properly
+   */
+  private truncateForTwitter(text: string, maxLength: number = 280): string {
+    if (!text) return ''
+
+    // Use Array.from to properly handle emojis and multi-byte chars
+    const chars = Array.from(text)
+
+    if (chars.length <= maxLength) {
+      return text
+    }
+
+    // Truncate to maxLength - 1 to leave room for ellipsis
+    let truncated = chars.slice(0, maxLength - 1).join('')
+
+    // Try to break at a word boundary (space) for cleaner truncation
+    const lastSpace = truncated.lastIndexOf(' ')
+    if (lastSpace > maxLength * 0.7) {
+      // Only break at space if we're not losing too much content
+      truncated = truncated.substring(0, lastSpace)
+    }
+
+    return truncated.trim() + '…'
+  }
+
   private async createTweet(
     accessToken: string,
     content: { caption: string; hashtags: string[]; settings?: Record<string, unknown> | object },
@@ -687,7 +714,7 @@ export class TwitterPublisher extends BasePlatformPublisher {
     const settings = (content.settings || {}) as Record<string, unknown>
 
     const tweetData: Record<string, unknown> = {
-      text: text.substring(0, 280), // Twitter character limit
+      text: this.truncateForTwitter(text, 280),
     }
 
     if (mediaId) {
