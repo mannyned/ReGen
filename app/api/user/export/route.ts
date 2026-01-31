@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
           platforms: true,
           autoPublish: true,
           blogUrl: true,
-          platformCaptionTemplates: true,
+          captionTemplates: true,
           createdAt: true,
           updatedAt: true,
         },
