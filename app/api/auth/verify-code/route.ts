@@ -154,7 +154,50 @@ export async function POST(request: NextRequest) {
           betaUser
         })
       } else {
+        // Profile exists - check if we need to apply beta invite
         console.log('[Verify Code] Profile already exists for user:', user.id)
+
+        // If profile doesn't have beta status, check for pending invite
+        if (!existingProfile.betaUser) {
+          const normalizedEmail = user.email?.toLowerCase() || ''
+          const betaInvite = await prisma.betaInvite.findUnique({
+            where: { email: normalizedEmail },
+          })
+
+          if (betaInvite && !betaInvite.usedAt) {
+            // Apply beta invite to existing profile
+            const betaExpiresAt = new Date()
+            betaExpiresAt.setDate(betaExpiresAt.getDate() + betaInvite.durationDays)
+
+            await prisma.profile.update({
+              where: { id: user.id },
+              data: {
+                tier: UserTier.PRO,
+                betaUser: true,
+                betaExpiresAt,
+                // Also update displayName if missing
+                displayName: existingProfile.displayName ||
+                  user.user_metadata?.display_name ||
+                  user.user_metadata?.full_name ||
+                  user.user_metadata?.name ||
+                  normalizedEmail.split('@')[0],
+              },
+            })
+
+            // Mark invite as used
+            await prisma.betaInvite.update({
+              where: { id: betaInvite.id },
+              data: { usedAt: new Date() },
+            })
+
+            console.log('[Verify Code] Applied beta invite to existing profile:', {
+              userId: user.id,
+              email: normalizedEmail,
+              durationDays: betaInvite.durationDays,
+              expiresAt: betaExpiresAt.toISOString(),
+            })
+          }
+        }
       }
     } catch (profileError) {
       console.error('[Verify Code] Profile creation error:', profileError)
