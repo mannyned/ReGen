@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    prompt += '\n\nGenerate only the caption text, no explanations or metadata. Do NOT include the URL in the caption - it will be added automatically.'
+    prompt += '\n\nGenerate only the caption text, no explanations or metadata. If the user included a URL or link in their content description, you may include it in the caption where appropriate.'
 
     // Prepare messages for OpenAI API
     const messages: any[] = [
