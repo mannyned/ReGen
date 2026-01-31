@@ -265,13 +265,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('[Export Data] Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorName = error instanceof Error ? error.name : 'Error';
     return NextResponse.json(
-      {
-        error: 'Failed to export data. Please try again or contact support.',
-        debug: `${errorName}: ${errorMessage}`
-      },
+      { error: 'Failed to export data. Please try again or contact support.' },
       { status: 500 }
     );
   }
