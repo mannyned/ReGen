@@ -213,6 +213,17 @@ export default function SettingsPage() {
   // Platforms state
   const [platforms, setPlatforms] = useState<Platform[]>([])
 
+  // Twitter BYOK state
+  const [twitterByokConfigured, setTwitterByokConfigured] = useState(false)
+  const [twitterByokLoading, setTwitterByokLoading] = useState(true)
+  const [twitterClientId, setTwitterClientId] = useState('')
+  const [twitterClientSecret, setTwitterClientSecret] = useState('')
+  const [twitterAppName, setTwitterAppName] = useState('')
+  const [twitterByokSaving, setTwitterByokSaving] = useState(false)
+  const [twitterByokError, setTwitterByokError] = useState<string | null>(null)
+  const [showTwitterByokForm, setShowTwitterByokForm] = useState(false)
+  const [twitterMaskedClientId, setTwitterMaskedClientId] = useState('')
+
   // Initialize
   useEffect(() => {
     setMounted(true)
@@ -346,7 +357,92 @@ export default function SettingsPage() {
     }
 
     fetchTeamData()
+
+    // Fetch Twitter BYOK status
+    async function fetchTwitterByokStatus() {
+      try {
+        const response = await fetch('/api/credentials/twitter')
+        if (response.ok) {
+          const data = await response.json()
+          setTwitterByokConfigured(data.configured)
+          if (data.configured) {
+            setTwitterMaskedClientId(data.maskedClientId || '')
+            setTwitterAppName(data.appName || '')
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch Twitter BYOK status:', error)
+      } finally {
+        setTwitterByokLoading(false)
+      }
+    }
+
+    fetchTwitterByokStatus()
   }, [user, authLoading])
+
+  // Twitter BYOK handlers
+  const handleSaveTwitterByok = async () => {
+    if (!twitterClientId || !twitterClientSecret) {
+      setTwitterByokError('Both Client ID and Client Secret are required')
+      return
+    }
+
+    setTwitterByokSaving(true)
+    setTwitterByokError(null)
+
+    try {
+      const response = await fetch('/api/credentials/twitter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: twitterClientId,
+          clientSecret: twitterClientSecret,
+          appName: twitterAppName || undefined,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setTwitterByokConfigured(true)
+        setShowTwitterByokForm(false)
+        // Mask the client ID for display
+        const masked = twitterClientId.length > 8
+          ? `${twitterClientId.slice(0, 4)}••••${twitterClientId.slice(-4)}`
+          : '••••••••'
+        setTwitterMaskedClientId(masked)
+        // Clear sensitive data
+        setTwitterClientId('')
+        setTwitterClientSecret('')
+      } else {
+        setTwitterByokError(data.error || 'Failed to save credentials')
+      }
+    } catch (error) {
+      setTwitterByokError('Failed to save credentials')
+    } finally {
+      setTwitterByokSaving(false)
+    }
+  }
+
+  const handleRemoveTwitterByok = async () => {
+    if (!confirm('Are you sure you want to remove your Twitter API credentials? You will need to reconfigure them to post to Twitter.')) {
+      return
+    }
+
+    try {
+      const response = await fetch('/api/credentials/twitter', { method: 'DELETE' })
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setTwitterByokConfigured(false)
+        setTwitterMaskedClientId('')
+        setTwitterAppName('')
+        setShowTwitterByokForm(false)
+      }
+    } catch (error) {
+      console.error('Failed to remove Twitter BYOK:', error)
+    }
+  }
 
   // Handle platform connect using the new OAuth system
   const handleConnect = async (platform: Platform) => {
@@ -1843,14 +1939,160 @@ export default function SettingsPage() {
                   <Badge variant="primary">{connectedCount} connected</Badge>
                 </div>
 
+                {/* Twitter/X BYOK Configuration */}
+                <div className="mb-6 p-5 border-2 border-gray-900 rounded-2xl bg-gradient-to-r from-gray-900/5 to-gray-800/5">
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="w-12 h-12 bg-gray-900 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <span className="text-2xl text-white">𝕏</span>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-bold text-text-primary">X (Twitter) API Setup</h3>
+                        {twitterByokConfigured && (
+                          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">Configured</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-text-secondary">
+                        Twitter/X requires API credentials to post content. You'll need to create a Twitter Developer App and enter your credentials below.
+                      </p>
+                    </div>
+                  </div>
+
+                  {twitterByokLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+                    </div>
+                  ) : twitterByokConfigured && !showTwitterByokForm ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-200">
+                        <div>
+                          <p className="text-sm font-medium text-text-primary">Client ID</p>
+                          <p className="text-sm text-text-secondary font-mono">{twitterMaskedClientId}</p>
+                        </div>
+                        {twitterAppName && (
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-text-primary">App Name</p>
+                            <p className="text-sm text-text-secondary">{twitterAppName}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setShowTwitterByokForm(true)}
+                          className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-xl font-medium transition-colors text-sm"
+                        >
+                          Update Credentials
+                        </button>
+                        <button
+                          onClick={handleRemoveTwitterByok}
+                          className="flex-1 py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {!showTwitterByokForm && !twitterByokConfigured && (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                          <div className="flex items-start gap-2">
+                            <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div className="text-sm">
+                              <p className="font-medium text-amber-800">API credentials required</p>
+                              <p className="text-amber-700 mt-1">
+                                Twitter/X charges $100/month for API access. To post from ReGenr, you need to:
+                              </p>
+                              <ol className="list-decimal list-inside mt-2 text-amber-700 space-y-1">
+                                <li>Go to <a href="https://developer.twitter.com/en/portal/dashboard" target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-900">developer.twitter.com</a></li>
+                                <li>Create a Project and App (Basic tier minimum)</li>
+                                <li>Enable OAuth 2.0 with PKCE</li>
+                                <li>Add callback URL: <code className="bg-amber-100 px-1 rounded text-xs">{typeof window !== 'undefined' ? window.location.origin : ''}/api/auth/x/callback</code></li>
+                                <li>Copy your Client ID and Client Secret</li>
+                              </ol>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {(showTwitterByokForm || !twitterByokConfigured) && (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium text-text-primary mb-1">Client ID *</label>
+                            <input
+                              type="text"
+                              value={twitterClientId}
+                              onChange={(e) => setTwitterClientId(e.target.value)}
+                              placeholder="Enter your Twitter Client ID"
+                              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-text-primary mb-1">Client Secret *</label>
+                            <input
+                              type="password"
+                              value={twitterClientSecret}
+                              onChange={(e) => setTwitterClientSecret(e.target.value)}
+                              placeholder="Enter your Twitter Client Secret"
+                              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-text-primary mb-1">App Name (optional)</label>
+                            <input
+                              type="text"
+                              value={twitterAppName}
+                              onChange={(e) => setTwitterAppName(e.target.value)}
+                              placeholder="My Twitter App"
+                              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                            />
+                          </div>
+
+                          {twitterByokError && (
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+                              <p className="text-sm text-red-600">{twitterByokError}</p>
+                            </div>
+                          )}
+
+                          <div className="flex gap-3">
+                            <button
+                              onClick={handleSaveTwitterByok}
+                              disabled={twitterByokSaving || !twitterClientId || !twitterClientSecret}
+                              className="flex-1 py-2.5 px-4 btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {twitterByokSaving ? 'Saving...' : 'Save Credentials'}
+                            </button>
+                            {showTwitterByokForm && (
+                              <button
+                                onClick={() => {
+                                  setShowTwitterByokForm(false)
+                                  setTwitterClientId('')
+                                  setTwitterClientSecret('')
+                                  setTwitterByokError(null)
+                                }}
+                                className="py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-text-secondary rounded-xl font-medium transition-colors text-sm"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {platforms.map((platform) => {
                     const isComingSoon = 'comingSoon' in platform && platform.comingSoon
+                    const isTwitter = platform.id === 'twitter'
+                    const twitterNeedsSetup = isTwitter && !twitterByokConfigured
                     return (
                       <div
                         key={platform.id}
                         className={`border-2 rounded-2xl p-5 transition-all ${
-                          isComingSoon
+                          isComingSoon || twitterNeedsSetup
                             ? 'border-gray-200 bg-gray-50 opacity-60'
                             : platform.connected
                             ? 'border-green-200 bg-green-50/50'
@@ -1859,7 +2101,7 @@ export default function SettingsPage() {
                       >
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-4">
-                            <div className={`w-12 h-12 flex items-center justify-center ${isComingSoon ? 'grayscale' : ''}`}>
+                            <div className={`w-12 h-12 flex items-center justify-center ${isComingSoon || twitterNeedsSetup ? 'grayscale' : ''}`}>
                               <PlatformLogo
                                 platform={PLATFORM_ID_MAP[platform.id] || 'instagram'}
                                 size="lg"
@@ -1867,9 +2109,11 @@ export default function SettingsPage() {
                               />
                             </div>
                             <div>
-                              <h3 className={`font-bold ${isComingSoon ? 'text-text-secondary' : 'text-text-primary'}`}>{platform.name}</h3>
+                              <h3 className={`font-bold ${isComingSoon || twitterNeedsSetup ? 'text-text-secondary' : 'text-text-primary'}`}>{platform.name}</h3>
                               {isComingSoon ? (
                                 <p className="text-sm text-text-secondary">Coming Soon</p>
+                              ) : twitterNeedsSetup ? (
+                                <p className="text-sm text-amber-600">Configure API above first</p>
                               ) : platform.connected ? (
                                 <p className="text-sm text-primary font-medium">@{platform.username}</p>
                               ) : (
@@ -1880,6 +2124,9 @@ export default function SettingsPage() {
                           {isComingSoon && (
                             <span className="px-2 py-1 bg-gray-200 text-gray-600 text-xs font-medium rounded-full">Soon</span>
                           )}
+                          {twitterNeedsSetup && (
+                            <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">Setup Required</span>
+                          )}
                         </div>
 
                         <div className="flex gap-3">
@@ -1889,6 +2136,13 @@ export default function SettingsPage() {
                               className="w-full py-2.5 px-4 bg-gray-100 text-text-secondary rounded-xl font-medium text-sm cursor-not-allowed"
                             >
                               Coming Soon
+                            </button>
+                          ) : twitterNeedsSetup ? (
+                            <button
+                              disabled
+                              className="w-full py-2.5 px-4 bg-gray-100 text-text-secondary rounded-xl font-medium text-sm cursor-not-allowed"
+                            >
+                              Configure API First
                             </button>
                           ) : platform.connected ? (
                             <>

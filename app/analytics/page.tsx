@@ -401,15 +401,12 @@ export default function AnalyticsPage() {
   useEffect(() => {
     if (mounted) {
       // Clear old recommendations immediately to prevent showing stale data
-      if (userPlan === 'pro') {
-        setAiRecommendations([])
-      }
+      setAiRecommendations([])
       fetchAnalyticsStats(timeRange, selectedPlatform)
-      if (userPlan === 'pro') {
-        fetchRecommendations(selectedPlatform)
-      }
+      // Always refresh recommendations when platform changes - API handles all users
+      fetchRecommendations(selectedPlatform)
     }
-  }, [selectedPlatform, mounted, userPlan, timeRange])
+  }, [selectedPlatform, mounted, timeRange])
 
   // Handle opening the upgrade modal
   const handleOpenUpgradeModal = (metricId: LockedMetricId) => {
@@ -892,10 +889,8 @@ export default function AnalyticsPage() {
                   onClick={async () => {
                     await syncAnalytics()
                     await fetchAnalyticsStats(timeRange, selectedPlatform)
-                    // Also refresh recommendations with current platform filter
-                    if (userPlan === 'pro') {
-                      await fetchRecommendations(selectedPlatform)
-                    }
+                    // Always refresh recommendations with current platform filter after sync
+                    await fetchRecommendations(selectedPlatform)
                   }}
                   disabled={isSyncing}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all shadow-sm ${

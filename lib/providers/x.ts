@@ -1,7 +1,12 @@
 /**
- * X (Twitter) OAuth Provider - SCAFFOLD
+ * X (Twitter) OAuth Provider
  *
  * X uses OAuth 2.0 with PKCE for their new API v2.
+ *
+ * BYOK (Bring Your Own Keys) Support:
+ * Since Twitter/X charges for API access, users can provide their own
+ * API credentials. The provider checks for user credentials first,
+ * then falls back to environment variables.
  *
  * Key characteristics:
  * - Requires PKCE (Proof Key for Code Exchange)
@@ -19,8 +24,6 @@
  *
  * @see https://developer.twitter.com/en/docs/authentication/oauth-2-0/authorization-code
  * @see https://developer.twitter.com/en/docs/twitter-api/users/lookup/api-reference/get-users-me
- *
- * TODO: Complete implementation when X developer credentials are configured
  */
 
 import type {
@@ -45,6 +48,18 @@ import {
 import { registerProvider } from '../oauth/engine';
 
 // ============================================
+// BYOK CREDENTIALS INTERFACE
+// ============================================
+
+/**
+ * User-provided credentials for BYOK support
+ */
+export interface XUserCredentials {
+  clientId: string;
+  clientSecret: string;
+}
+
+// ============================================
 // CONFIGURATION
 // ============================================
 
@@ -52,10 +67,46 @@ const X_AUTH_URL = 'https://x.com/i/oauth2/authorize';
 const X_TOKEN_URL = 'https://api.twitter.com/2/oauth2/token';
 const X_USER_URL = 'https://api.twitter.com/2/users/me';
 
+// Thread-local storage for user credentials during OAuth flow
+let currentUserCredentials: XUserCredentials | null = null;
+
 /**
- * Get X OAuth configuration from environment
+ * Set user credentials for the current request
+ * Call this before initiating OAuth or making API calls
  */
-function getXConfig() {
+export function setUserCredentials(credentials: XUserCredentials | null): void {
+  currentUserCredentials = credentials;
+}
+
+/**
+ * Get current user credentials (if set)
+ */
+export function getUserCredentials(): XUserCredentials | null {
+  return currentUserCredentials;
+}
+
+/**
+ * Get X OAuth configuration
+ *
+ * Priority:
+ * 1. User-provided credentials (BYOK)
+ * 2. Environment variables (fallback)
+ *
+ * @param userCredentials - Optional user-provided credentials
+ */
+function getXConfig(userCredentials?: XUserCredentials | null) {
+  // Check for user-provided credentials first (BYOK)
+  const creds = userCredentials || currentUserCredentials;
+
+  if (creds) {
+    return {
+      clientId: creds.clientId,
+      clientSecret: creds.clientSecret,
+      isByok: true,
+    };
+  }
+
+  // Fall back to environment variables
   const clientId = process.env.X_CLIENT_ID || process.env.TWITTER_CLIENT_ID;
   const clientSecret = process.env.X_CLIENT_SECRET || process.env.TWITTER_CLIENT_SECRET;
 
@@ -66,7 +117,16 @@ function getXConfig() {
     throw new MissingConfigError('X_CLIENT_SECRET', 'x');
   }
 
-  return { clientId, clientSecret };
+  return { clientId, clientSecret, isByok: false };
+}
+
+/**
+ * Check if BYOK credentials are required (no env vars configured)
+ */
+export function isXByokRequired(): boolean {
+  const clientId = process.env.X_CLIENT_ID || process.env.TWITTER_CLIENT_ID;
+  const clientSecret = process.env.X_CLIENT_SECRET || process.env.TWITTER_CLIENT_SECRET;
+  return !clientId || !clientSecret;
 }
 
 /**

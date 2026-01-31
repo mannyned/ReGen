@@ -385,6 +385,32 @@ LinkedIn requires special partner approval for the \`r_member_social\` scope to 
 
 **Tip:** In the Analytics pages, select "LinkedIn Personal" or "LinkedIn Company" from the platform filter to see data for each type separately.`,
       },
+      {
+        id: 'twitter-api-setup',
+        question: 'Why do I need to set up my own Twitter/X API credentials?',
+        answer: `Twitter/X charges developers for API access, which means we can't provide a shared API connection for all users.
+
+**Why BYOK (Bring Your Own Keys)?**
+- Twitter Basic API costs $100/month
+- Each user needs their own API subscription
+- This lets you control your own posting quota
+
+**How to set up:**
+1. Go to [developer.twitter.com](https://developer.twitter.com)
+2. Create a Project and App (Basic tier minimum - $100/month)
+3. Enable OAuth 2.0 with PKCE in your app settings
+4. Add this callback URL: \`https://regenr.app/api/auth/x/callback\`
+5. Copy your Client ID and Client Secret
+6. In ReGenr, go to Settings → Connections
+7. Enter your credentials in the "X (Twitter) API Setup" section
+
+**What you get:**
+- 3,000 tweets per month on Basic tier
+- Full read/write access to your account
+- Direct publishing from ReGenr
+
+**Note:** Your API credentials are encrypted and stored securely. We never share them or use them for anything other than posting on your behalf.`,
+      },
     ],
   },
   {

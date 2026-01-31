@@ -40,6 +40,8 @@ import {
 import { encrypt, decrypt, generateSecureRandom, encryptOptional, decryptOptional } from '../crypto/encrypt';
 import { prisma } from '../db';
 import type { Prisma } from '@prisma/client';
+import { getTwitterCredentials } from '../services/credentials/UserCredentialsService';
+import { setUserCredentials as setXUserCredentials } from '../providers/x';
 
 // Auto-register all providers when OAuthEngine is imported
 // This ensures providers are available even when engine is dynamically imported
@@ -198,6 +200,21 @@ export async function startOAuth(
     redirectUri,
   });
 
+  // For X/Twitter, inject user BYOK credentials if available
+  if (providerId === 'x') {
+    const userCreds = await getTwitterCredentials(profileId);
+    if (userCreds) {
+      console.log('[OAuth Engine] Using BYOK credentials for X/Twitter');
+      setXUserCredentials({
+        clientId: userCreds.clientId,
+        clientSecret: userCreds.clientSecret,
+      });
+    } else {
+      // Clear any previously set credentials
+      setXUserCredentials(null);
+    }
+  }
+
   // Get authorization URL from provider
   const authResult = provider.getAuthorizationUrl({
     redirectUri,
@@ -289,6 +306,20 @@ export async function handleCallback(
 
     // Build redirect URI (must match exactly)
     const redirectUri = `${baseUrl}/api/auth/${providerId}/callback`;
+
+    // For X/Twitter, inject user BYOK credentials if available
+    if (providerId === 'x') {
+      const userCreds = await getTwitterCredentials(profileId);
+      if (userCreds) {
+        console.log('[OAuth Engine] Using BYOK credentials for X/Twitter callback');
+        setXUserCredentials({
+          clientId: userCreds.clientId,
+          clientSecret: userCreds.clientSecret,
+        });
+      } else {
+        setXUserCredentials(null);
+      }
+    }
 
     // Exchange code for tokens
     let tokens = await provider.exchangeCodeForToken({
@@ -454,6 +485,19 @@ export async function refreshTokens(
   const refreshToken = decryptOptional(connection.refreshTokenEnc);
   if (!refreshToken) {
     throw new TokenRefreshError(provider.config.id, 'No refresh token available');
+  }
+
+  // For X/Twitter, inject user BYOK credentials if available
+  if (providerId === 'x') {
+    const userCreds = await getTwitterCredentials(profileId);
+    if (userCreds) {
+      setXUserCredentials({
+        clientId: userCreds.clientId,
+        clientSecret: userCreds.clientSecret,
+      });
+    } else {
+      setXUserCredentials(null);
+    }
   }
 
   // Refresh tokens via provider

@@ -85,6 +85,9 @@ model Profile {
   lastFeedbackPromptAt        DateTime? @map("last_feedback_prompt_at")
   betaFeedback                BetaFeedback[]
 
+  // User-provided API credentials (BYOK - Bring Your Own Keys)
+  apiCredentials              UserApiCredentials[]
+
   @@index([stripeCustomerId])
   @@index([betaUser])
   @@map("profiles")
@@ -1198,4 +1201,46 @@ model BetaFeedback {
   @@index([feedbackType])
   @@index([createdAt(sort: Desc)])
   @@map("beta_feedback")
+}
+
+// ============================================
+// USER API CREDENTIALS (BYOK - Bring Your Own Keys)
+// ============================================
+
+/// UserApiCredentials - Store user-provided API credentials for platforms
+/// that require paid API access (e.g., Twitter/X)
+/// All sensitive fields are AES-256-GCM encrypted
+model UserApiCredentials {
+  id         String   @id @default(cuid())
+  profileId  String   @map("profile_id") @db.Uuid
+  provider   String   // 'twitter', 'youtube', etc.
+
+  // Encrypted credentials (AES-256-GCM)
+  clientIdEnc     String  @map("client_id_enc")
+  clientSecretEnc String  @map("client_secret_enc")
+
+  // Optional: OAuth tokens if user provides pre-generated tokens
+  accessTokenEnc  String? @map("access_token_enc")
+  accessSecretEnc String? @map("access_secret_enc")  // For OAuth 1.0a (Twitter v1)
+
+  // Optional metadata
+  appName     String?  @map("app_name")  // User's app name for reference
+
+  // Status
+  isValid     Boolean  @default(true) @map("is_valid")
+  lastError   String?  @map("last_error")
+  lastTestedAt DateTime? @map("last_tested_at")
+
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  // Constraints - one credential set per provider per user
+  @@unique([profileId, provider])
+  @@index([profileId])
+  @@index([provider])
+  @@map("user_api_credentials")
 }
