@@ -42,7 +42,6 @@ export async function GET(request: NextRequest) {
       rssFeeds,
       blogAutoShareSettings,
       blogAutoSharePosts,
-      brandVoices,
       teamMembership,
     ] = await Promise.all([
       // Profile
@@ -197,22 +196,6 @@ export async function GET(request: NextRequest) {
         take: 50,
       }),
 
-      // Brand voices
-      prisma.brandVoice.findMany({
-        where: { profileId: user.id },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          voiceAttributes: true,
-          styleGuide: true,
-          isDefault: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      }),
-
       // Team membership
       prisma.teamMember.findUnique({
         where: { userId: user.id },
@@ -251,7 +234,6 @@ export async function GET(request: NextRequest) {
         blogAutoSharePosts,
       },
       settings: {
-        brandVoices,
         blogAutoShareSettings,
         rssFeeds,
       },
