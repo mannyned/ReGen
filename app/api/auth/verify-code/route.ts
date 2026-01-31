@@ -23,8 +23,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify the code
-    const result = verificationStore.verifyCode(email, code)
+    // Verify the code from database
+    const result = await verificationStore.verifyCode(email, code)
 
     if (!result.valid) {
       return NextResponse.json(

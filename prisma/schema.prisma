@@ -648,6 +648,25 @@ model WaitlistEntry {
 }
 
 // ============================================
+// EMAIL VERIFICATION CODES
+// ============================================
+
+/// VerificationCode - Stores email verification codes for signup
+/// Used instead of in-memory storage for serverless compatibility
+model VerificationCode {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  code      String
+  attempts  Int      @default(0)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([email])
+  @@index([expiresAt])
+  @@map("verification_codes")
+}
+
+// ============================================
 // BETA INVITES (Pre-registration)
 // ============================================
 

@@ -23,9 +23,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate and store verification code
+    // Generate and store verification code in database
     const code = verificationStore.generateCode()
-    verificationStore.setCode(email, code, 10) // 10 minutes expiry
+    await verificationStore.setCode(email, code, 10) // 10 minutes expiry
 
     // Check if Resend API key is configured
     const resend = getResend()

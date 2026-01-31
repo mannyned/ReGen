@@ -1,59 +1,72 @@
-// In-memory store for verification codes
-// Note: In production, use Redis, database, or a proper session store
-// This in-memory store will reset when the server restarts
+// Database-backed verification code store for serverless environments
+// Uses Prisma to persist codes across function invocations
 
-interface VerificationData {
-  code: string
-  expiresAt: number
-  attempts: number
-}
+import { prisma } from '@/lib/db'
+
+const MAX_ATTEMPTS = 5
+const DEFAULT_EXPIRY_MINUTES = 10
 
 class VerificationStore {
-  private codes = new Map<string, VerificationData>()
-  private maxAttempts = 5
-
   // Generate a random 6-digit code
   generateCode(): string {
     return Math.floor(100000 + Math.random() * 900000).toString()
   }
 
   // Store a verification code for an email
-  setCode(email: string, code: string, expiryMinutes: number = 10): void {
+  async setCode(email: string, code: string, expiryMinutes: number = DEFAULT_EXPIRY_MINUTES): Promise<void> {
     const normalizedEmail = email.toLowerCase().trim()
-    this.codes.set(normalizedEmail, {
-      code,
-      expiresAt: Date.now() + expiryMinutes * 60 * 1000,
-      attempts: 0,
+    const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000)
+
+    // Upsert - create or update existing code for this email
+    await prisma.verificationCode.upsert({
+      where: { email: normalizedEmail },
+      update: {
+        code,
+        attempts: 0,
+        expiresAt,
+      },
+      create: {
+        email: normalizedEmail,
+        code,
+        attempts: 0,
+        expiresAt,
+      },
     })
   }
 
   // Verify a code for an email
-  verifyCode(email: string, code: string): { valid: boolean; error?: string } {
+  async verifyCode(email: string, code: string): Promise<{ valid: boolean; error?: string }> {
     const normalizedEmail = email.toLowerCase().trim()
-    const data = this.codes.get(normalizedEmail)
+
+    const data = await prisma.verificationCode.findUnique({
+      where: { email: normalizedEmail },
+    })
 
     if (!data) {
       return { valid: false, error: 'No verification code found. Please request a new one.' }
     }
 
     // Check expiry
-    if (Date.now() > data.expiresAt) {
-      this.codes.delete(normalizedEmail)
+    if (new Date() > data.expiresAt) {
+      await prisma.verificationCode.delete({ where: { email: normalizedEmail } })
       return { valid: false, error: 'Code has expired. Please request a new one.' }
     }
 
     // Check attempts
-    if (data.attempts >= this.maxAttempts) {
-      this.codes.delete(normalizedEmail)
+    if (data.attempts >= MAX_ATTEMPTS) {
+      await prisma.verificationCode.delete({ where: { email: normalizedEmail } })
       return { valid: false, error: 'Too many attempts. Please request a new code.' }
     }
 
     // Increment attempts
-    data.attempts++
+    await prisma.verificationCode.update({
+      where: { email: normalizedEmail },
+      data: { attempts: data.attempts + 1 },
+    })
 
     // Check code
     if (data.code !== code) {
-      const remaining = this.maxAttempts - data.attempts
+      const remaining = MAX_ATTEMPTS - (data.attempts + 1)
       return {
         valid: false,
         error: remaining > 0
@@ -63,34 +76,27 @@ class VerificationStore {
     }
 
     // Success - remove the code
-    this.codes.delete(normalizedEmail)
+    await prisma.verificationCode.delete({ where: { email: normalizedEmail } })
     return { valid: true }
   }
 
   // Check if email has a pending verification
-  hasPendingVerification(email: string): boolean {
+  async hasPendingVerification(email: string): Promise<boolean> {
     const normalizedEmail = email.toLowerCase().trim()
-    const data = this.codes.get(normalizedEmail)
-    return !!data && Date.now() <= data.expiresAt
+    const data = await prisma.verificationCode.findUnique({
+      where: { email: normalizedEmail },
+    })
+    return !!data && new Date() <= data.expiresAt
   }
 
-  // Get remaining time in seconds
-  getRemainingTime(email: string): number {
-    const normalizedEmail = email.toLowerCase().trim()
-    const data = this.codes.get(normalizedEmail)
-    if (!data) return 0
-    const remaining = Math.max(0, data.expiresAt - Date.now())
-    return Math.floor(remaining / 1000)
-  }
-
-  // Clean up expired codes (call periodically)
-  cleanup(): void {
-    const now = Date.now()
-    for (const [email, data] of this.codes.entries()) {
-      if (now > data.expiresAt) {
-        this.codes.delete(email)
-      }
-    }
+  // Clean up expired codes (call periodically via cron)
+  async cleanup(): Promise<number> {
+    const result = await prisma.verificationCode.deleteMany({
+      where: {
+        expiresAt: { lt: new Date() },
+      },
+    })
+    return result.count
   }
 }
 
