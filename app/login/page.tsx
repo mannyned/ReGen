@@ -22,8 +22,11 @@ function LoginForm() {
   const redirectTo = searchParams.get('redirectTo') || '/dashboard';
   const urlError = searchParams.get('error');
   const urlMessage = searchParams.get('message');
+  const verified = searchParams.get('verified');
+  const prefilledEmail = searchParams.get('email');
+  const inviteToken = searchParams.get('invite_token');
 
-  // Show URL error/message on mount
+  // Show URL error/message on mount and handle verified state
   useEffect(() => {
     if (urlError) {
       setErrors({ general: decodeURIComponent(urlError) });
@@ -31,7 +34,13 @@ function LoginForm() {
     if (urlMessage) {
       setSuccessMessage(decodeURIComponent(urlMessage));
     }
-  }, [urlError, urlMessage]);
+    if (verified === 'true') {
+      setSuccessMessage('Email verified successfully! You can now log in.');
+    }
+    if (prefilledEmail) {
+      setEmail(decodeURIComponent(prefilledEmail));
+    }
+  }, [urlError, urlMessage, verified, prefilledEmail]);
 
   // Validate form
   const validateForm = (): boolean => {
@@ -86,7 +95,11 @@ function LoginForm() {
 
       if (data.session) {
         // Successfully logged in - redirect
-        router.push(redirectTo);
+        // Handle team invite if present
+        const finalRedirect = inviteToken
+          ? `/team/invite?token=${inviteToken}`
+          : redirectTo;
+        router.push(finalRedirect);
         router.refresh(); // Refresh to update server components
       }
     } catch (error) {

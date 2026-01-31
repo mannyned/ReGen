@@ -100,11 +100,12 @@ function VerifyEmailContent() {
         return;
       }
 
-      // Success - redirect to dashboard or team invite
-      const redirectPath = inviteToken
-        ? `/team/invite?token=${inviteToken}`
-        : '/dashboard';
-      router.push(redirectPath);
+      // Success - redirect to login page so user can sign in
+      // Include success message and preserve invite token if present
+      const loginUrl = inviteToken
+        ? `/login?verified=true&email=${encodeURIComponent(email || '')}&invite_token=${inviteToken}`
+        : `/login?verified=true&email=${encodeURIComponent(email || '')}`;
+      router.push(loginUrl);
     } catch {
       setError('Something went wrong. Please try again.');
       setIsVerifying(false);
