@@ -18,6 +18,27 @@ export class TwitterPublisher extends BasePlatformPublisher {
   protected platform: SocialPlatform = 'twitter'
   protected baseUrl = API_BASE_URLS.twitter
 
+  /**
+   * Override validateContent to skip caption length check for Twitter
+   * Twitter captions are auto-truncated to 280 chars instead of failing validation
+   */
+  protected validateContent(content: { caption: string; hashtags: string[] }, media?: ContentPayload): void {
+    // Only validate media, skip caption length check (we auto-truncate for Twitter)
+    if (media) {
+      const limits = { maxVideoLengthSeconds: 140, maxFileSizeMb: 512, supportedFormats: ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'webp'] }
+
+      if (media.duration && media.duration > limits.maxVideoLengthSeconds) {
+        throw new Error(`Video exceeds maximum duration of ${limits.maxVideoLengthSeconds} seconds for twitter`)
+      }
+
+      const fileSizeMb = media.fileSize / (1024 * 1024)
+      if (fileSizeMb > limits.maxFileSizeMb) {
+        throw new Error(`File exceeds maximum size of ${limits.maxFileSizeMb}MB for twitter`)
+      }
+    }
+    // Caption length is NOT validated - we auto-truncate to 280 chars
+  }
+
   async publishContent(options: PublishOptions): Promise<PublishResult> {
     const { userId, content, media } = options
     this.validateContent(content, media)
