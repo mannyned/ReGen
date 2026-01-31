@@ -238,6 +238,9 @@ export default function SettingsPage() {
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null)
 
+  // Export data state
+  const [exportDataLoading, setExportDataLoading] = useState(false)
+
   // Initialize
   useEffect(() => {
     setMounted(true)
@@ -508,6 +511,37 @@ export default function SettingsPage() {
       setDeleteAccountError('An unexpected error occurred. Please try again.')
     } finally {
       setDeleteAccountLoading(false)
+    }
+  }
+
+  // Export data handler
+  const handleExportData = async () => {
+    setExportDataLoading(true)
+
+    try {
+      const response = await fetch('/api/user/export')
+
+      if (!response.ok) {
+        const data = await response.json()
+        alert(data.error || 'Failed to export data')
+        return
+      }
+
+      // Get the blob and trigger download
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `regenr-data-export-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Export data error:', error)
+      alert('Failed to export data. Please try again.')
+    } finally {
+      setExportDataLoading(false)
     }
   }
 
@@ -2259,8 +2293,22 @@ export default function SettingsPage() {
                       <p className="font-medium text-text-primary">Export all data</p>
                       <p className="text-sm text-text-secondary">Download a copy of all your content and account data</p>
                     </div>
-                    <button className="px-4 py-2.5 border-2 border-gray-200 text-text-secondary rounded-xl font-medium hover:bg-gray-100 transition-colors whitespace-nowrap">
-                      Export Data
+                    <button
+                      onClick={handleExportData}
+                      disabled={exportDataLoading}
+                      className="px-4 py-2.5 border-2 border-gray-200 text-text-secondary rounded-xl font-medium hover:bg-gray-100 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {exportDataLoading ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Exporting...
+                        </>
+                      ) : (
+                        'Export Data'
+                      )}
                     </button>
                   </div>
 
