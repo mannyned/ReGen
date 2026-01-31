@@ -1,6 +1,7 @@
 import { BasePlatformPublisher, ContentPayload, PublishOptions } from './BasePlatformPublisher'
 import type { SocialPlatform, PublishResult, PostAnalytics } from '../../types/social'
 import { API_BASE_URLS } from '../../config/oauth'
+import { prisma } from '../../db'
 
 // ============================================
 // TIKTOK PUBLISHER
@@ -75,14 +76,35 @@ export class TikTokPublisher extends BasePlatformPublisher {
         throw new Error(publishStatus.fail_reason || 'TikTok publish failed')
       }
 
+      // Get TikTok username from OAuth connection metadata for proper URL
+      let platformUrl: string | undefined
+      if (publishStatus.video_id) {
+        try {
+          const connection = await prisma.oAuthConnection.findUnique({
+            where: {
+              profileId_provider: {
+                profileId: userId,
+                provider: 'tiktok',
+              },
+            },
+            select: { metadata: true },
+          })
+          const metadata = connection?.metadata as Record<string, unknown> | null
+          const username = metadata?.displayName || metadata?.username
+          if (username) {
+            platformUrl = `https://www.tiktok.com/@${username}/video/${publishStatus.video_id}`
+          }
+        } catch (e) {
+          console.warn('[TikTok] Could not fetch username for URL:', e)
+        }
+      }
+
       return {
         success: true,
         platform: this.platform,
         platformPostId: publishStatus.video_id || uploadInfo.publish_id,
         publishedAt: new Date(),
-        platformUrl: publishStatus.video_id
-          ? `https://www.tiktok.com/@user/video/${publishStatus.video_id}`
-          : undefined,
+        platformUrl,
         message: publishStatus.status === 'PUBLISH_COMPLETE'
           ? 'Video published to TikTok!'
           : 'Video is being processed and will appear on your TikTok profile shortly.',
