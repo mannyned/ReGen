@@ -150,7 +150,22 @@ function SignupContent() {
 
       // Check if email confirmation is required
       if (data.user && !data.session) {
-        // Email confirmation required - redirect to verify page
+        // Email confirmation required - send verification via Resend
+        try {
+          const verifyResponse = await fetch('/api/auth/send-verification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, displayName }),
+          });
+
+          if (!verifyResponse.ok) {
+            console.error('Failed to send verification email via Resend');
+          }
+        } catch (verifyError) {
+          console.error('Error sending verification email:', verifyError);
+        }
+
+        // Redirect to verify page
         const verifyUrl = inviteToken
           ? `/auth/verify-email?email=${encodeURIComponent(email)}&invite_token=${inviteToken}`
           : `/auth/verify-email?email=${encodeURIComponent(email)}`;
