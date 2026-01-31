@@ -424,20 +424,14 @@ export default function DashboardPage() {
               label="Repurposes Done"
               value={stats.repurposesDone}
               icon="🔄"
-              trend={currentPlan !== 'free' ? {
-                value: currentPlan === 'creator' ? '+12 this week' : '+45 this week',
-                positive: true
-              } : undefined}
-              subtitle={currentPlan === 'free' ? 'Free tier' : undefined}
+              subtitle={currentPlan === 'free' ? 'Free tier' : 'Total posts created'}
+              tooltip="The total number of posts you've created and published through ReGenr."
             />
             <StatCard
               label="Total Engagement"
               value={stats.totalEngagement}
               icon="❤️"
-              trend={{
-                value: currentPlan === 'pro' ? '+52% vs last week' : '+24% vs last week',
-                positive: true
-              }}
+              subtitle={totalEngagementValue > 0 ? 'Likes, comments & shares' : 'Sync analytics to see data'}
               tooltip="The sum of all likes, comments, shares, and saves across your published posts. Sync your analytics from the Analytics page to update this metric."
             />
             <StatCard

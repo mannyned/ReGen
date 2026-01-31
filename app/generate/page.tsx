@@ -1003,12 +1003,8 @@ function GeneratePageContent() {
                   <div className="md:col-span-1">
                     <div className="relative">
                       <div className="aspect-square bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl flex items-center justify-center relative overflow-hidden">
-                        {uploadData.uploadType === 'text' ? (
-                          <div className="p-4 text-center">
-                            <span className="text-4xl mb-2 block">📝</span>
-                            <p className="text-sm text-gray-600">Text Content</p>
-                          </div>
-                        ) : preview.files[preview.currentFileIndex]?.base64Data ? (
+                        {/* Show media preview if files exist (including for text posts with featured media) */}
+                        {preview.files[preview.currentFileIndex]?.base64Data ? (
                           // Check if it's a video file
                           preview.files[preview.currentFileIndex].type?.startsWith('video/') ? (
                             <video
@@ -1025,6 +1021,12 @@ function GeneratePageContent() {
                               className="w-full h-full object-cover"
                             />
                           )
+                        ) : uploadData.uploadType === 'text' ? (
+                          // Text-only content without media
+                          <div className="p-4 text-center">
+                            <span className="text-4xl mb-2 block">📝</span>
+                            <p className="text-sm text-gray-600">Text Content</p>
+                          </div>
                         ) : (
                           <div className="text-6xl">
                             {uploadData.uploadType === 'video' ? '🎬' : '🖼️'}

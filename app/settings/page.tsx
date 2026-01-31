@@ -190,6 +190,14 @@ export default function SettingsPage() {
   const [betaDaysRemaining, setBetaDaysRemaining] = useState<number | null>(null)
   const [betaExpiresAt, setBetaExpiresAt] = useState<string | null>(null)
 
+  // Usage stats state
+  const [usageData, setUsageData] = useState<{
+    uploads: { used: number; limit: number };
+    storage: { used: number; limit: number; unit: string };
+    platforms: { used: number; limit: number };
+    scheduledPosts: { used: number; limit: number };
+  } | null>(null)
+
   // Team state
   const [teamData, setTeamData] = useState<{
     id: string;
@@ -223,6 +231,12 @@ export default function SettingsPage() {
   const [twitterByokError, setTwitterByokError] = useState<string | null>(null)
   const [showTwitterByokForm, setShowTwitterByokForm] = useState(false)
   const [twitterMaskedClientId, setTwitterMaskedClientId] = useState('')
+
+  // Delete account state
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null)
 
   // Initialize
   useEffect(() => {
@@ -378,6 +392,21 @@ export default function SettingsPage() {
     }
 
     fetchTwitterByokStatus()
+
+    // Fetch usage data
+    async function fetchUsageData() {
+      try {
+        const response = await fetch('/api/usage')
+        if (response.ok) {
+          const data = await response.json()
+          setUsageData(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch usage data:', error)
+      }
+    }
+
+    fetchUsageData()
   }, [user, authLoading])
 
   // Twitter BYOK handlers
@@ -441,6 +470,44 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Failed to remove Twitter BYOK:', error)
+    }
+  }
+
+  // Delete account handler
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETE') {
+      setDeleteAccountError('Please type "DELETE" to confirm')
+      return
+    }
+
+    setDeleteAccountLoading(true)
+    setDeleteAccountError(null)
+
+    try {
+      const response = await fetch('/api/user/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmText: 'DELETE' }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        if (data.code === 'TEAM_OWNER') {
+          setDeleteAccountError(data.error)
+        } else {
+          setDeleteAccountError(data.error || 'Failed to delete account')
+        }
+        return
+      }
+
+      // Redirect to home page after successful deletion
+      window.location.href = '/'
+    } catch (error) {
+      console.error('Delete account error:', error)
+      setDeleteAccountError('An unexpected error occurred. Please try again.')
+    } finally {
+      setDeleteAccountLoading(false)
     }
   }
 
@@ -1410,7 +1477,7 @@ export default function SettingsPage() {
 
                 <Card className="p-6 lg:p-8" hover={false}>
                   <h2 className="text-2xl font-bold text-text-primary mb-6">Active Sessions</h2>
-                  <p className="text-text-secondary mb-6">Manage your logged-in devices</p>
+                  <p className="text-text-secondary mb-6">Your current login session</p>
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
@@ -1421,35 +1488,18 @@ export default function SettingsPage() {
                           </svg>
                         </div>
                         <div>
-                          <p className="font-medium text-text-primary">Chrome on Windows</p>
-                          <p className="text-sm text-text-secondary">Current session</p>
+                          <p className="font-medium text-text-primary">Current Device</p>
+                          <p className="text-sm text-text-secondary">This browser session</p>
                         </div>
                       </div>
                       <Badge variant="success">Active</Badge>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
-                          <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="font-medium text-text-primary">Safari on iPhone</p>
-                          <p className="text-sm text-text-secondary">Last active 2 hours ago</p>
-                        </div>
-                      </div>
-                      <button className="text-red-600 text-sm font-medium hover:underline">
-                        Revoke
-                      </button>
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                      <p className="text-sm text-text-secondary text-center">
+                        Multi-device session management coming soon
+                      </p>
                     </div>
-                  </div>
-
-                  <div className="mt-6 pt-6 border-t border-gray-100">
-                    <button className="text-red-600 font-medium hover:underline">
-                      Sign out of all devices
-                    </button>
                   </div>
                 </Card>
               </div>
@@ -1615,15 +1665,25 @@ export default function SettingsPage() {
 
                     <div>
                       <div className="flex justify-between text-sm mb-1">
-                        <span className="text-text-secondary">Generations</span>
+                        <span className="text-text-secondary">Uploads</span>
                         <span className="font-medium text-text-primary">
-                          {effectivePlan === 'pro' ? '347 / unlimited' : '423 / 500'}
+                          {usageData ? (
+                            usageData.uploads.limit === -1
+                              ? `${usageData.uploads.used} / unlimited`
+                              : `${usageData.uploads.used} / ${usageData.uploads.limit}`
+                          ) : '— / —'}
                         </span>
                       </div>
                       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary rounded-full"
-                          style={{ width: effectivePlan === 'pro' ? '35%' : '85%' }}
+                          style={{
+                            width: usageData && usageData.uploads.limit > 0
+                              ? `${Math.min((usageData.uploads.used / usageData.uploads.limit) * 100, 100)}%`
+                              : usageData?.uploads.limit === -1
+                                ? '10%'
+                                : '0%'
+                          }}
                         />
                       </div>
                     </div>
@@ -1632,13 +1692,23 @@ export default function SettingsPage() {
                       <div className="flex justify-between text-sm mb-1">
                         <span className="text-text-secondary">Storage</span>
                         <span className="font-medium text-text-primary">
-                          {effectivePlan === 'pro' ? '2.3 GB / 100 GB' : '4.2 GB / 10 GB'}
+                          {usageData ? (
+                            usageData.storage.limit === -1
+                              ? `${usageData.storage.used >= 1024 ? (usageData.storage.used / 1024).toFixed(1) + ' GB' : usageData.storage.used + ' MB'} / unlimited`
+                              : `${usageData.storage.used >= 1024 ? (usageData.storage.used / 1024).toFixed(1) + ' GB' : usageData.storage.used + ' MB'} / ${usageData.storage.limit >= 1024 ? (usageData.storage.limit / 1024).toFixed(0) + ' GB' : usageData.storage.limit + ' MB'}`
+                          ) : '— / —'}
                         </span>
                       </div>
                       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary rounded-full"
-                          style={{ width: effectivePlan === 'pro' ? '2%' : '42%' }}
+                          style={{
+                            width: usageData && usageData.storage.limit > 0
+                              ? `${Math.min((usageData.storage.used / usageData.storage.limit) * 100, 100)}%`
+                              : usageData?.storage.limit === -1
+                                ? '5%'
+                                : '0%'
+                          }}
                         />
                       </div>
                     </div>
@@ -2199,7 +2269,14 @@ export default function SettingsPage() {
                       <p className="font-medium text-red-600">Delete account</p>
                       <p className="text-sm text-text-secondary">Permanently delete your account and all associated data</p>
                     </div>
-                    <button className="px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors whitespace-nowrap">
+                    <button
+                      onClick={() => {
+                        setShowDeleteAccountModal(true)
+                        setDeleteConfirmText('')
+                        setDeleteAccountError(null)
+                      }}
+                      className="px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors whitespace-nowrap"
+                    >
                       Delete Account
                     </button>
                   </div>
@@ -2220,6 +2297,94 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </Card>
+            )}
+
+            {/* Delete Account Confirmation Modal */}
+            {showDeleteAccountModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center">
+                <div
+                  className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                  onClick={() => !deleteAccountLoading && setShowDeleteAccountModal(false)}
+                />
+                <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6">
+                  <div className="text-center mb-6">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-bold text-text-primary">Delete Your Account?</h3>
+                    <p className="text-text-secondary mt-2">
+                      This action is permanent and cannot be undone. All your data will be deleted including:
+                    </p>
+                  </div>
+
+                  <ul className="text-sm text-text-secondary mb-6 space-y-1">
+                    <li className="flex items-center gap-2">
+                      <span className="text-red-500">•</span> All uploaded content and media
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-red-500">•</span> Published posts and analytics
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-red-500">•</span> Social media connections
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-red-500">•</span> Scheduled posts and automations
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-red-500">•</span> Brand voice settings
+                    </li>
+                  </ul>
+
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-text-primary mb-2">
+                      Type <span className="font-bold text-red-600">DELETE</span> to confirm
+                    </label>
+                    <input
+                      type="text"
+                      value={deleteConfirmText}
+                      onChange={(e) => setDeleteConfirmText(e.target.value)}
+                      placeholder="DELETE"
+                      disabled={deleteAccountLoading}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    />
+                  </div>
+
+                  {deleteAccountError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+                      <p className="text-sm text-red-600">{deleteAccountError}</p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowDeleteAccountModal(false)}
+                      disabled={deleteAccountLoading}
+                      className="flex-1 px-4 py-3 border border-gray-200 text-text-secondary rounded-xl font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDeleteAccount}
+                      disabled={deleteAccountLoading || deleteConfirmText !== 'DELETE'}
+                      className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {deleteAccountLoading ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Deleting...
+                        </>
+                      ) : (
+                        'Delete Account'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Sign Out - Always visible at bottom */}
