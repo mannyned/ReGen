@@ -92,13 +92,21 @@ function VerifyEmailContent() {
 
       const data = await response.json();
 
+      // Log debug info to console
+      if (data.debug) {
+        console.log('[Verify Code] Debug info:', data.debug);
+      }
+
       if (!response.ok) {
+        console.error('[Verify Code] Failed:', data);
         setError(data.error || 'Invalid code. Please try again.');
         setCode(['', '', '', '', '', '']);
         inputRefs.current[0]?.focus();
         setIsVerifying(false);
         return;
       }
+
+      console.log('[Verify Code] Success:', data);
 
       // Success - redirect to login page so user can sign in
       // Include success message and preserve invite token if present
