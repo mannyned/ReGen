@@ -1,146 +1,51 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { useState, Suspense, useRef, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 /**
- * Email Verification Page
+ * Email Verification Pending Page
  *
  * Shown after signup when email verification is required.
- * Uses custom Resend-based verification with 6-digit code.
+ * Allows users to resend verification email via Supabase (using Resend SMTP).
  */
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const supabase = createClient();
 
   const email = searchParams.get('email');
-  const inviteToken = searchParams.get('invite_token');
+  const redirectTo = searchParams.get('redirectTo') || '/dashboard';
 
-  const [code, setCode] = useState(['', '', '', '', '', '']);
-  const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const [error, setError] = useState('');
   const [resendStatus, setResendStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [resendMessage, setResendMessage] = useState('');
   const [cooldown, setCooldown] = useState(0);
 
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
-  // Focus first input on mount
-  useEffect(() => {
-    inputRefs.current[0]?.focus();
-  }, []);
-
-  // Handle code input
-  const handleCodeChange = (index: number, value: string) => {
-    // Only allow digits
-    if (value && !/^\d$/.test(value)) return;
-
-    const newCode = [...code];
-    newCode[index] = value;
-    setCode(newCode);
-    setError('');
-
-    // Auto-focus next input
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    // Auto-submit when complete
-    if (value && index === 5 && newCode.every(digit => digit)) {
-      handleVerify(newCode.join(''));
-    }
-  };
-
-  // Handle backspace
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  // Handle paste
-  const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (pastedData.length === 6) {
-      const newCode = pastedData.split('');
-      setCode(newCode);
-      inputRefs.current[5]?.focus();
-      handleVerify(pastedData);
-    }
-  };
-
-  // Verify code
-  const handleVerify = async (verificationCode?: string) => {
-    const codeToVerify = verificationCode || code.join('');
-    if (codeToVerify.length !== 6) {
-      setError('Please enter the complete 6-digit code');
-      return;
-    }
-
-    setIsVerifying(true);
-    setError('');
-
-    try {
-      const response = await fetch('/api/auth/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code: codeToVerify }),
-      });
-
-      const data = await response.json();
-
-      // Log debug info to console
-      if (data.debug) {
-        console.log('[Verify Code] Debug info:', data.debug);
-      }
-
-      if (!response.ok) {
-        console.error('[Verify Code] Failed:', data);
-        setError(data.error || 'Invalid code. Please try again.');
-        setCode(['', '', '', '', '', '']);
-        inputRefs.current[0]?.focus();
-        setIsVerifying(false);
-        return;
-      }
-
-      console.log('[Verify Code] Success:', data);
-
-      // Success - redirect to login page so user can sign in
-      // Include success message and preserve invite token if present
-      const loginUrl = inviteToken
-        ? `/login?verified=true&email=${encodeURIComponent(email || '')}&invite_token=${inviteToken}`
-        : `/login?verified=true&email=${encodeURIComponent(email || '')}`;
-      router.push(loginUrl);
-    } catch {
-      setError('Something went wrong. Please try again.');
-      setIsVerifying(false);
-    }
-  };
-
-  // Resend verification email via Resend
+  // Handle resend verification email via Supabase
   const handleResend = async () => {
     if (!email || cooldown > 0) return;
 
     setIsResending(true);
     setResendStatus('idle');
-    setError('');
 
     try {
-      const response = await fetch('/api/auth/send-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+        },
       });
 
-      if (!response.ok) {
-        const data = await response.json();
+      if (error) {
         setResendStatus('error');
-        setError(data.error || 'Failed to send email');
+        setResendMessage(error.message);
       } else {
         setResendStatus('success');
+        setResendMessage('Verification email sent!');
         // Start 60-second cooldown
         setCooldown(60);
         const interval = setInterval(() => {
@@ -155,7 +60,7 @@ function VerifyEmailContent() {
       }
     } catch {
       setResendStatus('error');
-      setError('Failed to send email. Please try again.');
+      setResendMessage('Failed to send email. Please try again.');
     } finally {
       setIsResending(false);
     }
@@ -191,43 +96,39 @@ function VerifyEmailContent() {
         {/* Content Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Verify your email
+            Check your email
           </h1>
 
           <p className="text-gray-600 mb-6">
-            We sent a 6-digit code to{' '}
+            We sent a verification link to{' '}
             <span className="font-medium text-gray-900">{maskedEmail}</span>
           </p>
 
-          {/* Code Input */}
-          <div className="flex justify-center gap-2 mb-6" onPaste={handlePaste}>
-            {code.map((digit, index) => (
-              <input
-                key={index}
-                ref={(el) => { inputRefs.current[index] = el; }}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleCodeChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                disabled={isVerifying}
-                className={`w-12 h-14 text-center text-2xl font-bold rounded-xl border-2 transition-all
-                  ${error ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20'}
-                  ${isVerifying ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-900'}
-                  outline-none`}
-              />
-            ))}
+          {/* Animated mail icon */}
+          <div className="flex justify-center mb-6">
+            <div className="relative">
+              <div className="w-24 h-16 bg-gradient-to-br from-teal-400 to-cyan-500 rounded-lg shadow-lg flex items-center justify-center animate-pulse">
+                <svg
+                  className="w-8 h-8 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              {/* Decorative dots */}
+              <div className="absolute -top-2 -right-2 w-4 h-4 bg-teal-200 rounded-full animate-bounce" />
+              <div className="absolute -bottom-1 -left-2 w-3 h-3 bg-cyan-200 rounded-full animate-bounce delay-100" />
+            </div>
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          )}
-
-          {/* Success Message */}
+          {/* Status Messages */}
           {resendStatus === 'success' && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl">
               <p className="text-sm text-green-700 flex items-center justify-center gap-2">
@@ -238,51 +139,59 @@ function VerifyEmailContent() {
                     clipRule="evenodd"
                   />
                 </svg>
-                New code sent!
+                {resendMessage}
               </p>
             </div>
           )}
 
-          {/* Verify Button */}
-          <button
-            onClick={() => handleVerify()}
-            disabled={isVerifying || code.some(d => !d)}
-            className={`w-full py-3 px-4 rounded-xl font-medium transition-all mb-4 ${
-              isVerifying || code.some(d => !d)
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white hover:from-teal-600 hover:to-cyan-600'
-            }`}
-          >
-            {isVerifying ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Verifying...
-              </span>
-            ) : (
-              'Verify Email'
-            )}
-          </button>
+          {resendStatus === 'error' && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-sm text-red-700">{resendMessage}</p>
+            </div>
+          )}
 
           {/* Resend Button */}
           <button
             onClick={handleResend}
             disabled={isResending || cooldown > 0 || !email}
-            className="text-sm text-teal-600 hover:text-teal-700 font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
+            className={`w-full py-3 px-4 rounded-xl font-medium transition-all ${
+              isResending || cooldown > 0 || !email
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white hover:from-teal-600 hover:to-cyan-600'
+            }`}
           >
             {isResending ? (
-              'Sending...'
+              <span className="flex items-center justify-center gap-2">
+                <svg
+                  className="animate-spin w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Sending...
+              </span>
             ) : cooldown > 0 ? (
-              `Resend code in ${cooldown}s`
+              `Resend in ${cooldown}s`
             ) : (
-              "Didn't receive the code? Resend"
+              'Resend verification email'
             )}
           </button>
 
           {/* Secondary Actions */}
-          <div className="mt-6 pt-6 border-t border-gray-100 space-y-3">
+          <div className="mt-4 space-y-3">
             <Link
               href="/login"
               className="block w-full py-3 px-4 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-all"

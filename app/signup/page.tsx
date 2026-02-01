@@ -150,22 +150,8 @@ function SignupContent() {
 
       // Check if email confirmation is required
       if (data.user && !data.session) {
-        // Email confirmation required - send verification via Resend
-        try {
-          const verifyResponse = await fetch('/api/auth/send-verification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, displayName }),
-          });
-
-          if (!verifyResponse.ok) {
-            console.error('Failed to send verification email via Resend');
-          }
-        } catch (verifyError) {
-          console.error('Error sending verification email:', verifyError);
-        }
-
-        // Redirect to verify page
+        // Email confirmation required - Supabase sends email via configured SMTP (Resend)
+        // Redirect to verify page to wait for user to click the link
         const verifyUrl = inviteToken
           ? `/auth/verify-email?email=${encodeURIComponent(email)}&invite_token=${inviteToken}`
           : `/auth/verify-email?email=${encodeURIComponent(email)}`;
