@@ -47,6 +47,7 @@ function SchedulePageContent() {
   const searchParams = useSearchParams()
   const { triggerAfterFirstPost, hasCompletedFirstPost } = useFeedbackTrigger()
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([])
+  const [uploadedPlatforms, setUploadedPlatforms] = useState<Platform[]>([]) // Platforms selected during upload
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
   const [showSuccess, setShowSuccess] = useState(false)
@@ -254,7 +255,9 @@ function SchedulePageContent() {
             if (previewsFromDb.length > 0) {
               setSelectedPreviews(previewsFromDb)
               // Platforms are already normalized in previewsFromDb
-              setSelectedPlatforms(previewsFromDb.map(p => p.platform))
+              const platformsFromUpload = previewsFromDb.map(p => p.platform)
+              setSelectedPlatforms(platformsFromUpload)
+              setUploadedPlatforms(platformsFromUpload) // Track which platforms were selected during upload
               // Set contentType from database
               if (processedData.contentType) {
                 setContentType(processedData.contentType)
@@ -275,6 +278,7 @@ function SchedulePageContent() {
       localStorage.removeItem('contentType')
       setSelectedPreviews([])
       setSelectedPlatforms([])
+      setUploadedPlatforms([])
     }
 
     loadPreviews()
@@ -712,6 +716,7 @@ function SchedulePageContent() {
         setTimeout(() => {
           setShowSuccess(false)
           setSelectedPlatforms([])
+          setUploadedPlatforms([])
           setSelectedPreviews([])
           setContentId(null)
         }, 3000)
@@ -877,6 +882,7 @@ function SchedulePageContent() {
         setShowSuccess(false)
         // Reset form and clear content
         setSelectedPlatforms([])
+        setUploadedPlatforms([])
         setSelectedPreviews([])
         setContentId(null)
         setSelectedDate('')
@@ -1132,29 +1138,35 @@ function SchedulePageContent() {
                     const isConnected = connectedAccounts.includes(name)
                     const isSelected = selectedPlatforms.includes(name)
                     const isComingSoon = 'comingSoon' in platform && platform.comingSoon
+                    // Only allow selecting platforms that were chosen during upload
+                    const wasSelectedInUpload = uploadedPlatforms.length === 0 || uploadedPlatforms.includes(name)
+                    const isDisabled = isComingSoon || !wasSelectedInUpload
                     return (
                       <button
                         key={name}
-                        onClick={() => !isComingSoon && togglePlatform(name)}
-                        disabled={isComingSoon}
+                        onClick={() => !isDisabled && togglePlatform(name)}
+                        disabled={isDisabled}
+                        title={!wasSelectedInUpload ? 'This platform was not selected during upload' : undefined}
                         className={`flex items-center gap-3 p-4 rounded-lg font-semibold transition-all relative ${
-                          isComingSoon
-                            ? 'bg-gray-100 text-text-secondary opacity-60 cursor-not-allowed'
+                          isComingSoon || !wasSelectedInUpload
+                            ? 'bg-gray-100 text-text-secondary opacity-40 cursor-not-allowed'
                             : isSelected
                             ? 'bg-primary text-white shadow-lg hover:bg-primary-hover'
                             : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
                         }`}
                       >
-                        <div className={isComingSoon ? 'grayscale' : ''}>
+                        <div className={isDisabled ? 'grayscale' : ''}>
                           <PlatformLogo
                             platform={PLATFORM_ID_MAP[name]}
                             size="md"
-                            variant={isSelected && !isComingSoon ? 'white' : 'color'}
+                            variant={isSelected && !isDisabled ? 'white' : 'color'}
                           />
                         </div>
                         <span>{label}</span>
                         {isComingSoon ? (
                           <span className="absolute top-1 right-1 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs font-medium rounded-full">Soon</span>
+                        ) : !wasSelectedInUpload ? (
+                          <span className="absolute top-1 right-1 px-2 py-0.5 bg-gray-300 text-gray-500 text-xs font-medium rounded-full">N/A</span>
                         ) : !isConnected && (
                           <span className="absolute top-1 right-1 w-3 h-3 bg-orange-500 rounded-full" title="Not connected" />
                         )}
