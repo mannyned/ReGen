@@ -240,6 +240,7 @@ function SignupContent() {
 
         {/* Social Sign-In Buttons */}
         <div className="space-y-3 mb-6">
+          {/* TODO: Re-enable Apple Sign-In after joining Apple Developer Program ($99/year)
           <button
             onClick={() => handleSocialSignIn('apple')}
             disabled={isLoading}
@@ -250,6 +251,7 @@ function SignupContent() {
             </svg>
             <span>Continue with Apple</span>
           </button>
+          */}
 
           <button
             onClick={() => handleSocialSignIn('google')}
