@@ -1054,6 +1054,22 @@ function UploadPageContent() {
                     </div>
                   </div>
 
+                  {/* Automation tip for regular blog posters */}
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                        <span className="text-lg">🤖</span>
+                      </div>
+                      <div className="text-sm">
+                        <p className="font-semibold text-purple-900 mb-1">Post blogs regularly?</p>
+                        <p className="text-purple-700">
+                          Set up <Link href="/automations" className="font-medium underline hover:text-purple-900">Automations</Link> to automatically
+                          repurpose and share your blog posts to social media whenever you publish new content.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Text/URL Input Section */}
                   <div className="space-y-4">
                     <div>
