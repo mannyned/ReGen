@@ -11,6 +11,47 @@ import { validatePlatformParam, validatePublishContent, validationErrorResponse 
 import { createRateLimitMiddleware } from '@/lib/middleware/rateLimit'
 import { prisma } from '@/lib/db'
 import { sendPublishedPostNotification } from '@/lib/services/push'
+import { CONTENT_LIMITS } from '@/lib/config/oauth'
+
+// Helper function to truncate caption to platform limit
+function truncateCaptionForPlatform(caption: string | undefined, platform: SocialPlatform): string {
+  if (!caption) return ''
+
+  const limit = CONTENT_LIMITS[platform]?.maxCaptionLength || 2000
+
+  if (caption.length <= limit) return caption
+
+  console.log(`[Publish] Auto-truncating ${platform} caption from ${caption.length} to ${limit} chars`)
+
+  // Try to truncate at a sentence boundary
+  let truncated = caption.substring(0, limit)
+  const lastSentenceEnd = Math.max(
+    truncated.lastIndexOf('. '),
+    truncated.lastIndexOf('! '),
+    truncated.lastIndexOf('? '),
+    truncated.lastIndexOf('.\n'),
+    truncated.lastIndexOf('!\n'),
+    truncated.lastIndexOf('?\n')
+  )
+
+  // If we found a sentence boundary in the last 20% of the text, use it
+  if (lastSentenceEnd > limit * 0.8) {
+    truncated = truncated.substring(0, lastSentenceEnd + 1).trim()
+  } else {
+    // Otherwise truncate at last word boundary
+    const lastSpace = truncated.lastIndexOf(' ')
+    if (lastSpace > limit * 0.8) {
+      truncated = truncated.substring(0, lastSpace).trim()
+    }
+    // Remove trailing punctuation if incomplete and add ellipsis
+    truncated = truncated.replace(/[,;:\-]$/, '').trim()
+    if (truncated.length < limit - 3) {
+      truncated += '...'
+    }
+  }
+
+  return truncated
+}
 
 // ============================================
 // POST /api/publish
@@ -100,15 +141,37 @@ export async function POST(request: NextRequest) {
         return validationErrorResponse([{ field: 'platforms', message: 'At least one platform is required' }])
       }
 
-      // Validate each platform
+      // Auto-truncate captions to platform limits before validation
+      // This prevents validation failures for existing long captions
+      const truncatedPlatformContent: Record<SocialPlatform, PlatformContent> = {} as Record<SocialPlatform, PlatformContent>
+
+      for (const platform of platforms) {
+        const originalContent = platformContent?.[platform] || content
+        const truncatedCaption = truncateCaptionForPlatform(originalContent.caption, platform)
+
+        truncatedPlatformContent[platform] = {
+          ...originalContent,
+          caption: truncatedCaption,
+        }
+
+        // Update the main content object if using shared content
+        if (!platformContent?.[platform] && content.caption !== truncatedCaption) {
+          // Create platform-specific content with truncated caption
+          if (!platformContent) {
+            (body as any).platformContent = {}
+          }
+        }
+      }
+
+      // Validate each platform with truncated content
       for (const platform of platforms) {
         const validation = validatePlatformParam(platform)
         if (!validation.valid) {
           return validationErrorResponse(validation.errors)
         }
 
-        // Validate content for this platform
-        const platformSpecificContent = platformContent?.[platform] || content
+        // Validate content for this platform (using truncated version)
+        const platformSpecificContent = truncatedPlatformContent[platform]
         const contentValidation = validatePublishContent(platform, {
           caption: platformSpecificContent.caption,
           hashtags: platformSpecificContent.hashtags,
@@ -127,6 +190,9 @@ export async function POST(request: NextRequest) {
           )
         }
       }
+
+      // Use truncated content for publishing
+      const finalPlatformContent = truncatedPlatformContent
 
       console.log('[Publish API] All validation passed, proceeding to publish')
 
@@ -170,7 +236,7 @@ export async function POST(request: NextRequest) {
           userId,
           items: carouselItems!,
           content,
-          platformContent,
+          platformContent: finalPlatformContent,
           contentType,
           discordChannelId,  // Pass Discord channel for carousel posts
         })
@@ -219,7 +285,7 @@ export async function POST(request: NextRequest) {
           userId,
           content,
           media,
-          platformContent,
+          platformContent: finalPlatformContent,
           contentType,
           linkedInOrganizationUrn,  // Pass LinkedIn org URN for company page posts
           tiktokSettings,           // Pass TikTok settings for Content Sharing Guidelines
