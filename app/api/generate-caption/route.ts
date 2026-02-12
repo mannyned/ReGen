@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { extractUrlContent, formatUrlContentForAI } from '@/lib/utils/urlExtractor'
+import { CONTENT_LIMITS } from '@/lib/config/oauth'
+import type { SocialPlatform } from '@/lib/types/social'
 
 // For App Router - extend timeout for AI generation
 export const maxDuration = 60 // 60 seconds timeout
@@ -88,17 +90,41 @@ export async function POST(request: NextRequest) {
       prompt += `\n\nInclude these hashtags: ${hashtags}`
     }
 
-    // Platform-specific guidelines
-    const platformGuidelines: Record<string, string> = {
-      'TikTok': 'Keep it short, catchy, and use trending language. Max 150 characters.',
-      'Instagram': 'Use line breaks, emojis, and storytelling. Include a call-to-action.',
-      'YouTube': 'Make it compelling and SEO-friendly. Include keywords.',
-      'X (Twitter)': 'Keep it concise and impactful. Max 280 characters.',
-      'LinkedIn': 'Professional and insightful. Focus on value and learning.',
-      'Facebook': 'Conversational and engaging. Encourage comments and shares.'
+    // Map platform display names to SocialPlatform type for limits lookup
+    const platformKeyMap: Record<string, SocialPlatform> = {
+      'TikTok': 'tiktok',
+      'Instagram': 'instagram',
+      'YouTube': 'youtube',
+      'X (Twitter)': 'twitter',
+      'LinkedIn': 'linkedin',
+      'LinkedIn Company': 'linkedin-org',
+      'Facebook': 'facebook',
+      'Pinterest': 'pinterest',
+      'Discord': 'discord',
+      'Reddit': 'reddit',
     }
 
-    prompt += `\n\nPlatform Guidelines: ${platformGuidelines[platform] || 'Create an engaging caption.'}`
+    // Get the platform key for limits lookup
+    const platformKey = platformKeyMap[platform] || platform.toLowerCase() as SocialPlatform
+    const platformLimits = CONTENT_LIMITS[platformKey]
+    const maxChars = platformLimits?.maxCaptionLength || 2000
+
+    // Platform-specific guidelines with actual character limits
+    const platformGuidelines: Record<string, string> = {
+      'TikTok': `Keep it catchy and use trending language. STRICT LIMIT: ${maxChars} characters maximum.`,
+      'Instagram': `Use line breaks, emojis, and storytelling. Include a call-to-action. STRICT LIMIT: ${maxChars} characters maximum.`,
+      'YouTube': `Make it compelling and SEO-friendly. Include keywords. STRICT LIMIT: ${maxChars} characters maximum.`,
+      'X (Twitter)': `Keep it concise and impactful. STRICT LIMIT: ${maxChars} characters maximum - this is critical.`,
+      'LinkedIn': `Professional and insightful. Focus on value and learning. STRICT LIMIT: ${maxChars} characters maximum.`,
+      'LinkedIn Company': `Professional company voice. Focus on value and industry insights. STRICT LIMIT: ${maxChars} characters maximum.`,
+      'Facebook': `Conversational and engaging. Encourage comments and shares. STRICT LIMIT: ${maxChars} characters maximum.`,
+      'Pinterest': `Create a compelling pin description. Keep it descriptive but concise. STRICT LIMIT: ${maxChars} characters maximum - Pinterest has a short limit.`,
+      'Discord': `Casual and community-friendly. STRICT LIMIT: ${maxChars} characters maximum.`,
+      'Reddit': `Match the subreddit's tone. Be authentic. STRICT LIMIT: ${maxChars} characters maximum.`,
+    }
+
+    prompt += `\n\nPlatform Guidelines: ${platformGuidelines[platform] || `Create an engaging caption. STRICT LIMIT: ${maxChars} characters maximum.`}`
+    prompt += `\n\nIMPORTANT: Your caption MUST be under ${maxChars} characters. Count your characters carefully. If including hashtags, they count toward this limit.`
 
     // Tone-specific guidelines
     const toneGuidelines: Record<string, string> = {
@@ -124,7 +150,15 @@ export async function POST(request: NextRequest) {
     const messages: any[] = [
       {
         role: 'system',
-        content: 'You are an expert social media content creator who writes compelling captions that drive engagement. IMPORTANT: When a user provides a content description, you MUST incorporate it as the primary theme and message of the caption. The user\'s description tells you what they want the caption to be about. You can analyze images, videos, and linked article content to enhance the caption, but the user\'s content description takes priority. When article content is provided, reference key points and create engaging hooks that make people want to read more.'
+        content: `You are an expert social media content creator who writes compelling captions that drive engagement.
+
+CRITICAL REQUIREMENTS:
+1. ALWAYS respect character limits. The caption MUST fit within the platform's limit. Count characters carefully.
+2. When a user provides a content description, incorporate it as the primary theme and message.
+3. You can analyze images, videos, and linked article content to enhance the caption, but the user's content description takes priority.
+4. When article content is provided, reference key points and create engaging hooks.
+5. If hashtags are requested, include them within the character limit - they count toward the total.
+6. For short-limit platforms like Twitter (280) or Pinterest (500), be concise and impactful.`
       }
     ]
 
@@ -161,12 +195,52 @@ export async function POST(request: NextRequest) {
       max_tokens: 300,
     })
 
-    const generatedCaption = completion.choices[0]?.message?.content || 'Failed to generate caption'
+    let generatedCaption = completion.choices[0]?.message?.content || 'Failed to generate caption'
+    generatedCaption = generatedCaption.trim()
+
+    // Safety net: Truncate if caption still exceeds platform limit
+    let wasTruncated = false
+    if (generatedCaption.length > maxChars) {
+      console.log(`[Generate Caption] Caption exceeded ${maxChars} char limit (${generatedCaption.length} chars), truncating...`)
+
+      // Try to truncate at a sentence boundary
+      let truncated = generatedCaption.substring(0, maxChars)
+      const lastSentenceEnd = Math.max(
+        truncated.lastIndexOf('. '),
+        truncated.lastIndexOf('! '),
+        truncated.lastIndexOf('? '),
+        truncated.lastIndexOf('.\n'),
+        truncated.lastIndexOf('!\n'),
+        truncated.lastIndexOf('?\n')
+      )
+
+      // If we found a sentence boundary in the last 20% of the text, use it
+      if (lastSentenceEnd > maxChars * 0.8) {
+        truncated = truncated.substring(0, lastSentenceEnd + 1).trim()
+      } else {
+        // Otherwise truncate at last word boundary and add ellipsis
+        const lastSpace = truncated.lastIndexOf(' ')
+        if (lastSpace > maxChars * 0.8) {
+          truncated = truncated.substring(0, lastSpace).trim()
+        }
+        // Remove trailing punctuation if incomplete and add ellipsis
+        truncated = truncated.replace(/[,;:\-]$/, '').trim()
+        if (truncated.length < maxChars - 3) {
+          truncated += '...'
+        }
+      }
+
+      generatedCaption = truncated
+      wasTruncated = true
+    }
 
     return NextResponse.json({
-      caption: generatedCaption.trim(),
+      caption: generatedCaption,
       platform,
-      tone
+      tone,
+      characterLimit: maxChars,
+      characterCount: generatedCaption.length,
+      wasTruncated
     })
 
   } catch (error: any) {

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { BrandVoiceProfile } from '@/app/types/brandVoice'
+import { CONTENT_LIMITS } from '@/lib/config/oauth'
+import type { SocialPlatform } from '@/lib/types/social'
 
 // For App Router - extend timeout for AI generation
 export const maxDuration = 60 // 60 seconds timeout
@@ -115,18 +117,24 @@ async function generateBrandVoiceCaption(
     }
   }
 
-  // Platform-specific guidelines
+  // Get platform character limits
+  const platformKey = platform.toLowerCase() as SocialPlatform
+  const platformLimits = CONTENT_LIMITS[platformKey]
+  const maxChars = platformLimits?.maxCaptionLength || 2000
+
+  // Platform-specific guidelines with actual character limits
   const platformGuidelines: Record<string, string> = {
-    'tiktok': 'Keep it short, catchy, and use trending language. Max 150 characters ideal.',
-    'instagram': 'Use line breaks, emojis, and storytelling. Include a call-to-action.',
-    'youtube': 'Make it compelling and SEO-friendly. Include keywords.',
-    'x': 'Keep it concise and impactful. Max 280 characters.',
-    'twitter': 'Keep it concise and impactful. Max 280 characters.',
-    'linkedin': 'Professional and insightful. Focus on value and learning.',
-    'facebook': 'Conversational and engaging. Encourage comments and shares.',
-    'pinterest': 'Descriptive and keyword-rich. Focus on searchability.',
-    'discord': 'Casual and community-focused.',
-    'reddit': 'Authentic and discussion-oriented. Avoid being promotional.'
+    'tiktok': `Keep it catchy and use trending language. STRICT LIMIT: ${CONTENT_LIMITS.tiktok.maxCaptionLength} characters maximum.`,
+    'instagram': `Use line breaks, emojis, and storytelling. Include a call-to-action. STRICT LIMIT: ${CONTENT_LIMITS.instagram.maxCaptionLength} characters maximum.`,
+    'youtube': `Make it compelling and SEO-friendly. Include keywords. STRICT LIMIT: ${CONTENT_LIMITS.youtube.maxCaptionLength} characters maximum.`,
+    'x': `Keep it concise and impactful. STRICT LIMIT: ${CONTENT_LIMITS.twitter.maxCaptionLength} characters maximum - this is critical.`,
+    'twitter': `Keep it concise and impactful. STRICT LIMIT: ${CONTENT_LIMITS.twitter.maxCaptionLength} characters maximum - this is critical.`,
+    'linkedin': `Professional and insightful. Focus on value and learning. STRICT LIMIT: ${CONTENT_LIMITS.linkedin.maxCaptionLength} characters maximum.`,
+    'linkedin-org': `Professional company voice. Focus on industry insights. STRICT LIMIT: ${CONTENT_LIMITS['linkedin-org'].maxCaptionLength} characters maximum.`,
+    'facebook': `Conversational and engaging. Encourage comments and shares. STRICT LIMIT: ${CONTENT_LIMITS.facebook.maxCaptionLength} characters maximum.`,
+    'pinterest': `Descriptive and keyword-rich. Focus on searchability. STRICT LIMIT: ${CONTENT_LIMITS.pinterest.maxCaptionLength} characters maximum - Pinterest has a short limit.`,
+    'discord': `Casual and community-focused. STRICT LIMIT: ${CONTENT_LIMITS.discord.maxCaptionLength} characters maximum.`,
+    'reddit': `Authentic and discussion-oriented. Avoid being promotional. STRICT LIMIT: ${CONTENT_LIMITS.reddit.maxCaptionLength} characters maximum.`
   }
 
   // Build the prompt
@@ -156,6 +164,7 @@ ${platformGuidelines[platform.toLowerCase()] || 'Create an engaging caption.'}`
     prompt += `\n\nOverall tone should be: ${options.tone}`
   }
 
+  prompt += `\n\nIMPORTANT: Your caption MUST be under ${maxChars} characters. Count characters carefully. If including hashtags, they count toward this limit.`
   prompt += '\n\nGenerate only the caption text. Do not include explanations or metadata.'
 
   // Call OpenAI
@@ -164,7 +173,9 @@ ${platformGuidelines[platform.toLowerCase()] || 'Create an engaging caption.'}`
     messages: [
       {
         role: 'system',
-        content: 'You are an expert social media content creator who writes compelling captions that drive engagement. When given a brand voice profile, you MUST write in that exact style, incorporating the specified tone, vocabulary, and patterns. The caption should feel authentic to the brand voice while being optimized for the target platform.'
+        content: `You are an expert social media content creator who writes compelling captions that drive engagement. When given a brand voice profile, you MUST write in that exact style, incorporating the specified tone, vocabulary, and patterns. The caption should feel authentic to the brand voice while being optimized for the target platform.
+
+CRITICAL: Always respect character limits. The caption MUST fit within the platform's limit. For short-limit platforms like Twitter (280) or Pinterest (500), be concise and impactful.`
       },
       {
         role: 'user',
@@ -175,7 +186,42 @@ ${platformGuidelines[platform.toLowerCase()] || 'Create an engaging caption.'}`
     max_tokens: 300,
   })
 
-  return completion.choices[0]?.message?.content?.trim() || content
+  let caption = completion.choices[0]?.message?.content?.trim() || content
+
+  // Safety net: Truncate if caption still exceeds platform limit
+  if (caption.length > maxChars) {
+    console.log(`[Brand Voice] Caption exceeded ${maxChars} char limit (${caption.length} chars), truncating...`)
+
+    // Try to truncate at a sentence boundary
+    let truncated = caption.substring(0, maxChars)
+    const lastSentenceEnd = Math.max(
+      truncated.lastIndexOf('. '),
+      truncated.lastIndexOf('! '),
+      truncated.lastIndexOf('? '),
+      truncated.lastIndexOf('.\n'),
+      truncated.lastIndexOf('!\n'),
+      truncated.lastIndexOf('?\n')
+    )
+
+    // If we found a sentence boundary in the last 20% of the text, use it
+    if (lastSentenceEnd > maxChars * 0.8) {
+      truncated = truncated.substring(0, lastSentenceEnd + 1).trim()
+    } else {
+      // Otherwise truncate at last word boundary
+      const lastSpace = truncated.lastIndexOf(' ')
+      if (lastSpace > maxChars * 0.8) {
+        truncated = truncated.substring(0, lastSpace).trim()
+      }
+      truncated = truncated.replace(/[,;:\-]$/, '').trim()
+      if (truncated.length < maxChars - 3) {
+        truncated += '...'
+      }
+    }
+
+    caption = truncated
+  }
+
+  return caption
 }
 
 function generateVariations(baseCaption: string, profile: any) {
