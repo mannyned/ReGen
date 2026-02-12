@@ -249,6 +249,7 @@ export async function GET(request: NextRequest) {
             fileName: true,
             thumbnailUrl: true,
             mimeType: true,
+            processedUrls: true,  // Include processedUrls for media thumbnail
           },
         },
       },
@@ -257,9 +258,14 @@ export async function GET(request: NextRequest) {
     // Transform for frontend
     let recentPosts = posts.map((post) => {
       const metadata = post.metadata as Record<string, unknown> | null
+      const processedUrls = post.contentUpload?.processedUrls as { files?: Array<{ publicUrl: string }> } | null
 
-      // Use mediaUrl from metadata as thumbnail, fallback to contentUpload
+      // Priority for thumbnail:
+      // 1. mediaUrl from metadata (the actual published media)
+      // 2. First file from processedUrls (uploaded/processed media)
+      // 3. thumbnailUrl from contentUpload (generated thumbnail)
       const thumbnail = (metadata?.mediaUrl as string | undefined) ||
+                        processedUrls?.files?.[0]?.publicUrl ||
                         post.contentUpload?.thumbnailUrl
 
       // Get mimeType from metadata or contentUpload
