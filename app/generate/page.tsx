@@ -14,20 +14,22 @@ import type { PrimaryCaption, PlatformCaptionInstance, CaptionAnalyticsMetadata 
 import { PlatformLogo } from '../components/ui'
 
 type CaptionTone = 'professional' | 'engaging' | 'casual'
-type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'pinterest' | 'discord' | 'reddit'
+type Platform = 'tiktok' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'linkedin' | 'linkedin-org' | 'pinterest' | 'discord' | 'reddit' | 'snapchat'
 type ContentType = 'post' | 'story'
 
-// Map local Platform type to SocialPlatform
-const PLATFORM_MAP: Record<Platform, SocialPlatform> = {
+// Map local Platform type to SocialPlatform (snapchat is not a valid SocialPlatform)
+const PLATFORM_MAP: Partial<Record<Platform, SocialPlatform>> = {
   'instagram': 'instagram',
   'tiktok': 'tiktok',
   'youtube': 'youtube',
   'facebook': 'facebook',
   'x': 'twitter',
   'linkedin': 'linkedin',
+  'linkedin-org': 'linkedin-org',
   'pinterest': 'pinterest',
   'discord': 'discord',
   'reddit': 'reddit',
+  // Note: snapchat is not supported by SocialPlatform type
 }
 
 // Extract a frame from a video for AI analysis
@@ -336,6 +338,7 @@ function GeneratePageContent() {
       youtube: { post: 1, story: 1 },     // Single video per upload
       x: { post: 4, story: 1 },           // Up to 4 images per tweet (standard users)
       linkedin: { post: 20, story: 1 },   // Document carousel: up to 20 slides
+      'linkedin-org': { post: 20, story: 1 }, // Company page: same as personal
       pinterest: { post: 5, story: 1 },   // Carousel pin: 2-5 images
       discord: { post: 10, story: 1 },    // Multi-attachment: up to 10
       reddit: { post: 20, story: 1 },     // Gallery posts: up to 20 images
@@ -375,6 +378,7 @@ function GeneratePageContent() {
       facebook: 'Check out how AI is revolutionizing content creation! 🎯\n\nWith ReGenr, one upload = content for all platforms.',
       x: 'Creators: Stop wasting hours on manual repurposing.\n\nReGenr AI:\n• Upload once\n• Generate for all platforms\n• Edit & schedule\n• Track performance\n\nGame changer 🔥',
       linkedin: 'Content repurposing doesn\'t have to be painful.\n\nI\'ve been using AI to transform one video into platform-specific posts for TikTok, Instagram, YouTube, and more.\n\nThe result? 10+ hours saved per week and 3x more engagement.\n\nHere\'s my workflow:',
+      'linkedin-org': 'We\'re excited to share how AI is transforming content creation.\n\nWith ReGenr, our team has streamlined content repurposing across all major platforms.\n\nHere\'s what we\'ve learned:',
       snapchat: 'New content drop! 💫 Created with AI magic ✨',
       pinterest: 'Save this for later! 📌 Creative inspiration powered by AI ✨',
       discord: 'Check out what I just created! 🎮 Made with ReGenr AI 🚀',
@@ -391,6 +395,7 @@ function GeneratePageContent() {
       facebook: ['#FacebookCreator', '#ContentStrategy', '#SocialMediaMarketing'],
       x: ['#CreatorTools', '#AIforCreators'],
       linkedin: ['#ContentStrategy', '#MarketingAutomation', '#CreatorEconomy'],
+      'linkedin-org': ['#CompanyNews', '#BusinessStrategy', '#Innovation'],
       snapchat: ['#SnapCreator', '#ContentCreation'],
       pinterest: ['#PinterestInspiration', '#SaveForLater', '#CreativeIdeas'],
       discord: [],
@@ -756,7 +761,7 @@ function GeneratePageContent() {
           </div>
 
           <CaptionWorkflow
-            availablePlatforms={uploadData.selectedPlatforms.map(p => PLATFORM_MAP[p])}
+            availablePlatforms={uploadData.selectedPlatforms.map(p => PLATFORM_MAP[p]).filter((p): p is SocialPlatform => p !== undefined)}
             initialCaption={uploadData.contentDescription}
             initialHashtags={uploadData.customHashtags.split(/[,\s]+/).filter(h => h.length > 0)}
             contentDescription={uploadData.contentDescription}
@@ -961,7 +966,7 @@ function GeneratePageContent() {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <PlatformLogo platform={PLATFORM_MAP[preview.platform]} size="lg" variant="color" />
+                    <PlatformLogo platform={PLATFORM_MAP[preview.platform] || preview.platform as SocialPlatform} size="lg" variant="color" />
                     <div>
                       <h3 className="text-xl font-bold text-text-primary capitalize">{preview.platform}</h3>
                       <p className="text-sm text-text-secondary">{preview.format}</p>
