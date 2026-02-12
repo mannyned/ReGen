@@ -63,6 +63,11 @@ function SchedulePageContent() {
   const [urlContent, setUrlContent] = useState<string | null>(null)
   const [isPublishing, setIsPublishing] = useState(false)
   const [publishingStatus, setPublishingStatus] = useState('')
+
+  // Repeat/Repost settings
+  const [repeatEnabled, setRepeatEnabled] = useState(false)
+  const [repeatDays, setRepeatDays] = useState(3) // Default to 3 days
+
   const [upcomingPosts, setUpcomingPosts] = useState<Array<{
     id: string
     contentUploadId?: string
@@ -76,6 +81,8 @@ function SchedulePageContent() {
       thumbnailUrl?: string
       publicUrl?: string
     }
+    repeatGroupId?: string | null
+    repeatIndex?: number | null
   }>>([])
   const [upcomingPostsLoading, setUpcomingPostsLoading] = useState(true)
 
@@ -708,6 +715,50 @@ function SchedulePageContent() {
           console.log(`Published to ${result.summary.succeeded}/${result.summary.total} platforms`)
         }
 
+        // If repeat is enabled, schedule posts for days 2+
+        if (repeatEnabled && repeatDays > 1 && contentId) {
+          try {
+            setPublishingStatus(`Scheduling ${repeatDays - 1} repeat posts...`)
+
+            // Build platform content from preview
+            const platformContent: Record<string, { caption: string; hashtags: string[] }> = {}
+            const preview = selectedPreviews[0]
+            selectedPlatforms.forEach(platform => {
+              platformContent[platform] = {
+                caption: preview?.caption || '',
+                hashtags: preview?.hashtags || [],
+              }
+            })
+
+            // Schedule for tomorrow onwards (day 1 was just published)
+            const tomorrow = new Date()
+            tomorrow.setDate(tomorrow.getDate() + 1)
+            tomorrow.setHours(new Date().getHours(), new Date().getMinutes(), 0, 0)
+
+            const scheduleResponse = await fetch('/api/schedule', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contentUploadId: contentId,
+                platforms: selectedPlatforms,
+                scheduledAt: tomorrow.toISOString(),
+                platformContent,
+                repeatDays: repeatDays - 1, // Remaining days (day 1 already published)
+              }),
+            })
+
+            const scheduleResult = await scheduleResponse.json()
+            if (scheduleResponse.ok && scheduleResult.success) {
+              console.log(`Scheduled ${repeatDays - 1} repeat posts`)
+            } else {
+              console.error('Failed to schedule repeat posts:', scheduleResult.error)
+            }
+          } catch (repeatError) {
+            console.error('Error scheduling repeat posts:', repeatError)
+            // Don't fail the whole operation - day 1 was already published
+          }
+        }
+
         // Clear localStorage and state to prevent stale data
         localStorage.removeItem('selectedPreviews')
         localStorage.removeItem('contentType')
@@ -719,6 +770,8 @@ function SchedulePageContent() {
           setUploadedPlatforms([])
           setSelectedPreviews([])
           setContentId(null)
+          setRepeatEnabled(false)
+          setRepeatDays(3)
         }, 3000)
       } else {
         // Build error message from results
@@ -831,6 +884,8 @@ function SchedulePageContent() {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         platformContent,
         contentType, // Pass content type (post vs story/reel)
+        // Repeat/Repost settings
+        repeatDays: repeatEnabled ? repeatDays : undefined,
       }
 
       // If TikTok is selected, include TikTok-specific settings
@@ -887,6 +942,8 @@ function SchedulePageContent() {
         setContentId(null)
         setSelectedDate('')
         setSelectedTime('')
+        setRepeatEnabled(false)
+        setRepeatDays(3)
       }, 3000)
     } catch (error: any) {
       console.error('Error scheduling post:', error)
@@ -915,19 +972,48 @@ function SchedulePageContent() {
     }
   }
 
-  // Helper to delete a scheduled post
-  const handleDeleteScheduledPost = async (postId: string) => {
-    if (!confirm('Delete this scheduled post? This cannot be undone.')) return
+  // Helper to delete a scheduled post (with optional series deletion)
+  const handleDeleteScheduledPost = async (postId: string, deleteSeries: boolean = false) => {
+    const post = upcomingPosts.find(p => p.id === postId)
+    const isPartOfSeries = post?.repeatGroupId
+
+    // If it's part of a series and not explicitly deleting series, ask user
+    if (isPartOfSeries && !deleteSeries) {
+      const choice = confirm(
+        'This post is part of a repeating series.\n\n' +
+        'Click OK to delete the ENTIRE series, or Cancel to keep the series.'
+      )
+      if (choice) {
+        // User wants to delete entire series
+        return handleDeleteScheduledPost(postId, true)
+      }
+      return // User cancelled
+    }
+
+    const confirmMsg = deleteSeries && isPartOfSeries
+      ? 'Delete the entire repeating series? This cannot be undone.'
+      : 'Delete this scheduled post? This cannot be undone.'
+
+    if (!confirm(confirmMsg)) return
 
     try {
-      const response = await fetch(`/api/schedule?id=${postId}`, {
+      const url = deleteSeries && isPartOfSeries
+        ? `/api/schedule?id=${postId}&deleteSeries=true`
+        : `/api/schedule?id=${postId}`
+
+      const response = await fetch(url, {
         method: 'DELETE',
       })
       const result = await response.json()
 
       if (result.success) {
-        // Remove from local state
-        setUpcomingPosts(prev => prev.filter(p => p.id !== postId))
+        if (deleteSeries && isPartOfSeries) {
+          // Remove all posts with same repeatGroupId from local state
+          setUpcomingPosts(prev => prev.filter(p => p.repeatGroupId !== post.repeatGroupId))
+        } else {
+          // Remove single post from local state
+          setUpcomingPosts(prev => prev.filter(p => p.id !== postId))
+        }
       } else {
         alert(result.error || 'Failed to delete scheduled post')
       }
@@ -1572,6 +1658,104 @@ function SchedulePageContent() {
                 </div>
               )}
 
+              {/* Repeat Post Section - Available for both Post Now and Schedule modes */}
+              {(
+                <div className="mb-8 p-5 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🔄</span>
+                      <div>
+                        <h3 className="font-semibold text-text-primary">Repeat this post</h3>
+                        <p className="text-sm text-text-secondary">
+                          Post the same content daily for multiple days
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setRepeatEnabled(!repeatEnabled)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        repeatEnabled ? 'bg-primary' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          repeatEnabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Days selector - shown when repeat is enabled */}
+                  {repeatEnabled && (
+                    <div className="animate-fadeIn">
+                      <label className="block text-sm font-medium text-text-secondary mb-3">
+                        Repeat for how many days?
+                      </label>
+
+                      {/* Quick day buttons */}
+                      <div className="flex gap-2 mb-4">
+                        {[2, 3, 5, 7].map((days) => (
+                          <button
+                            key={days}
+                            type="button"
+                            onClick={() => setRepeatDays(days)}
+                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                              repeatDays === days
+                                ? 'bg-primary text-white'
+                                : 'bg-white border border-gray-200 text-text-secondary hover:border-primary'
+                            }`}
+                          >
+                            {days} days
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Custom input */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="text-sm text-text-secondary">Or enter:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={7}
+                          value={repeatDays}
+                          onChange={(e) => setRepeatDays(Math.min(7, Math.max(1, parseInt(e.target.value) || 1)))}
+                          className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center"
+                        />
+                        <span className="text-sm text-text-secondary">days (max 7)</span>
+                      </div>
+
+                      {/* Preview of scheduled dates */}
+                      {selectedDate && selectedTime && (
+                        <div className="p-3 bg-white rounded-lg border border-gray-200">
+                          <p className="text-xs font-medium text-text-secondary mb-2 uppercase tracking-wide">
+                            Will post on:
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {Array.from({ length: repeatDays }, (_, i) => {
+                              const date = new Date(`${selectedDate}T${selectedTime}:00`)
+                              date.setDate(date.getDate() + i)
+                              return (
+                                <span
+                                  key={i}
+                                  className="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-medium"
+                                >
+                                  {date.toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Publishing Loading Overlay */}
               {isPublishing && (
                 <div className="mb-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
@@ -1738,12 +1922,22 @@ function SchedulePageContent() {
                             }
                           </span>
                         </div>
-                        <span className="badge-primary text-xs">
-                          {post.status}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {post.repeatGroupId && (
+                            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full flex items-center gap-1">
+                              🔄 Repeating
+                            </span>
+                          )}
+                          <span className="badge-primary text-xs">
+                            {post.status}
+                          </span>
+                        </div>
                       </div>
                       <p className="text-sm text-text-secondary mb-3">
                         {formatScheduledTime(post.scheduledAt)}
+                        {post.repeatGroupId && post.repeatIndex !== null && post.repeatIndex !== undefined && (
+                          <span className="text-purple-600 ml-2">(Day {post.repeatIndex + 1})</span>
+                        )}
                       </p>
                       {/* Media preview if available */}
                       {post.media?.publicUrl && (

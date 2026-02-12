@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { publishingService } from '@/lib/services/publishing'
 import { sendPublishedPostNotification } from '@/lib/services/push'
 import type { SocialPlatform } from '@/lib/types/social'
+import crypto from 'crypto'
 
 // Map Prisma SocialPlatform enum to lowercase string
 const platformEnumToString: Record<string, SocialPlatform> = {
@@ -82,6 +83,9 @@ export async function GET(request: NextRequest) {
           publicUrl: processedUrls?.files?.[0]?.publicUrl,
         },
         createdAt: post.createdAt,
+        // Repeat/Repost series fields
+        repeatGroupId: post.repeatGroupId,
+        repeatIndex: post.repeatIndex,
       }
     })
 
@@ -119,6 +123,7 @@ export async function POST(request: NextRequest) {
       discordChannelId,
       tiktokSettings,
       linkedInOrganizationUrn,
+      repeatDays, // Optional: number of days to repeat (1-7)
     } = body
 
     // Validate required fields
@@ -185,14 +190,71 @@ export async function POST(request: NextRequest) {
       },
     }
 
-    // Create scheduled post
+    // Validate and clamp repeatDays (1-7)
+    const validRepeatDays = repeatDays && repeatDays >= 1 && repeatDays <= 7 ? Math.floor(repeatDays) : 1
+    const isRepostSeries = validRepeatDays > 1
+
+    // Generate repeatGroupId if this is a repost series
+    const repeatGroupId = isRepostSeries ? crypto.randomUUID() : null
+
+    // Create scheduled post(s)
+    const baseDate = new Date(scheduledAt)
+    const userTimezone = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+
+    if (isRepostSeries) {
+      // Create multiple posts for repost series
+      const postsToCreate = []
+      for (let i = 0; i < validRepeatDays; i++) {
+        const postDate = new Date(baseDate)
+        postDate.setDate(postDate.getDate() + i) // Same time, successive days
+
+        postsToCreate.push({
+          profileId: user.id,
+          contentUploadId,
+          platforms: platformEnums,
+          scheduledAt: postDate,
+          timezone: userTimezone,
+          platformContent: enrichedPlatformContent,
+          status: 'PENDING' as const,
+          repeatGroupId,
+          repeatIndex: i,
+        })
+      }
+
+      // Create all posts
+      await prisma.scheduledPost.createMany({
+        data: postsToCreate,
+      })
+
+      // Fetch created posts to return details
+      const createdPosts = await prisma.scheduledPost.findMany({
+        where: { repeatGroupId },
+        orderBy: { scheduledAt: 'asc' },
+      })
+
+      return NextResponse.json({
+        success: true,
+        isRepostSeries: true,
+        totalPosts: validRepeatDays,
+        repeatGroupId,
+        posts: createdPosts.map(p => ({
+          id: p.id,
+          platforms: p.platforms,
+          scheduledAt: p.scheduledAt,
+          status: p.status.toLowerCase(),
+          repeatIndex: p.repeatIndex,
+        })),
+      })
+    }
+
+    // Single post (no repeat)
     const scheduledPost = await prisma.scheduledPost.create({
       data: {
         profileId: user.id,
         contentUploadId,
         platforms: platformEnums,
-        scheduledAt: new Date(scheduledAt),
-        timezone: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        scheduledAt: baseDate,
+        timezone: userTimezone,
         platformContent: enrichedPlatformContent,
         status: 'PENDING',
       },
@@ -200,6 +262,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      isRepostSeries: false,
       post: {
         id: scheduledPost.id,
         platforms: scheduledPost.platforms,
@@ -217,6 +280,7 @@ export async function POST(request: NextRequest) {
 }
 
 // DELETE /api/schedule?id=xxx - Cancel a scheduled post
+// Add ?deleteSeries=true to cancel entire repost series
 export async function DELETE(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -228,6 +292,7 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const postId = searchParams.get('id')
+    const deleteSeries = searchParams.get('deleteSeries') === 'true'
 
     if (!postId) {
       return NextResponse.json(
@@ -251,6 +316,26 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    // Handle series deletion
+    if (deleteSeries && existingPost.repeatGroupId) {
+      // Cancel all PENDING posts in the series
+      const result = await prisma.scheduledPost.updateMany({
+        where: {
+          repeatGroupId: existingPost.repeatGroupId,
+          profileId: user.id,
+          status: 'PENDING',
+        },
+        data: { status: 'CANCELLED' },
+      })
+
+      return NextResponse.json({
+        success: true,
+        message: `Cancelled ${result.count} posts in repost series`,
+        cancelledCount: result.count,
+      })
+    }
+
+    // Single post cancellation
     // Only allow cancelling pending posts
     if (existingPost.status !== 'PENDING') {
       return NextResponse.json(

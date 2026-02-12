@@ -348,6 +348,10 @@ model ScheduledPost {
   processedAt     DateTime?      @map("processed_at")
   errorMessage    String?        @map("error_message")
 
+  // Repeat/Repost grouping (for "Repeat for X days" feature)
+  repeatGroupId   String?        @map("repeat_group_id")
+  repeatIndex     Int?           @map("repeat_index")
+
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
@@ -358,6 +362,7 @@ model ScheduledPost {
   @@index([profileId])
   @@index([scheduledAt])
   @@index([status])
+  @@index([repeatGroupId])
   @@map("scheduled_posts")
 }
 
