@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { SignOutButton } from '@/components/auth'
 import { Tooltip } from './Tooltip'
 import { useFeedback } from '@/app/context/FeedbackContext'
+import { WorkspaceSwitcher } from '@/app/components/WorkspaceSwitcher'
 
 // ==========================================
 // PLATFORM LOGO COMPONENT (RE-EXPORT)
@@ -312,6 +313,11 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
 
           {/* Right Side: CTA + Avatar */}
           <div className="flex items-center gap-3">
+            {/* Workspace Switcher - Only shows for PRO users with workspaces enabled */}
+            <div className="hidden sm:block">
+              <WorkspaceSwitcher />
+            </div>
+
             {/* Create New CTA - Desktop */}
             <Link
               href="/upload"
