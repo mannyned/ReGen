@@ -141,6 +141,13 @@ export const PROTECTED_ROUTES: ProtectedRouteConfig[] = [
 
   // RSS Feed Ingestion - any authenticated user
   { path: '/rss', prefix: true },
+
+  // Workspaces - Pro tier required
+  { path: '/workspaces', prefix: true, requiredTier: 'PRO' },
+
+  // Workspace-scoped routes - Pro tier required
+  // Note: The /w/[workspaceId] layout handles workspace access verification
+  { path: '/w', prefix: true, requiredTier: 'PRO' },
 ];
 
 /**
@@ -182,6 +189,10 @@ export const PROTECTED_API_ROUTES: ProtectedRouteConfig[] = [
   // Note: Team MEMBERS inherit PRO from owner, but middleware can't check that
   // So we allow all authenticated users and let the endpoint return appropriate data
   { path: '/api/team', prefix: true },
+
+  // Workspaces - Any authenticated user (endpoint handles PRO check and access)
+  // Note: Non-PRO users get a 403 from the endpoint, not middleware
+  { path: '/api/workspaces', prefix: true },
 
   // RSS Feed Ingestion - Any authenticated user
   { path: '/api/rss', prefix: true },

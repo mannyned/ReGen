@@ -23,7 +23,7 @@ datasource db {
 // We manage application-level user data (profiles table).
 
 model Profile {
-  id          String   @id @db.Uuid  // UUID from Supabase auth.users.id
+  id          String   @id @db.Uuid // UUID from Supabase auth.users.id
   email       String   @unique
   displayName String?  @map("display_name")
   avatarUrl   String?  @map("avatar_url")
@@ -35,12 +35,15 @@ model Profile {
   betaUser      Boolean   @default(false) @map("beta_user")
   betaExpiresAt DateTime? @map("beta_expires_at")
 
+  // Workspace limits (PRO feature)
+  workspaceLimit Int @default(1) @map("workspace_limit")
+
   // Stripe subscription fields
-  stripeCustomerId       String?   @unique @map("stripe_customer_id")
-  stripeSubscriptionId   String?   @unique @map("stripe_subscription_id")
+  stripeCustomerId         String?             @unique @map("stripe_customer_id")
+  stripeSubscriptionId     String?             @unique @map("stripe_subscription_id")
   stripeSubscriptionStatus SubscriptionStatus? @map("stripe_subscription_status")
-  stripePriceId          String?   @map("stripe_price_id")
-  stripeCurrentPeriodEnd DateTime? @map("stripe_current_period_end")
+  stripePriceId            String?             @map("stripe_price_id")
+  stripeCurrentPeriodEnd   DateTime?           @map("stripe_current_period_end")
 
   // User preferences
   notificationPreferences Json? @map("notification_preferences")
@@ -54,9 +57,9 @@ model Profile {
   analyticsSnapshots AnalyticsSnapshot[]
   exportJobs         ExportJob[]
 
-  // Team relations
+  // Team/Workspace relations
   ownedTeam       Team?        @relation("TeamOwner")
-  teamMembership  TeamMember?
+  teamMemberships TeamMember[] // Users can be members of multiple workspaces
   sentTeamInvites TeamInvite[]
 
   // RSS Feed relations
@@ -68,25 +71,25 @@ model Profile {
   tiktokVideoMetrics TikTokVideoMetrics[]
 
   // Cross-platform outbound posts
-  outboundPosts      OutboundPost[]
+  outboundPosts OutboundPost[]
 
   // YouTube metrics cache
-  youtubeMetrics     YouTubeMetricsCache[]
+  youtubeMetrics YouTubeMetricsCache[]
 
   // Blog Auto-Share
   blogAutoShareSettings BlogAutoShareSettings?
   blogAutoSharePosts    BlogAutoSharePost[]
 
   // Beta Feedback tracking
-  hasCompletedFirstPost       Boolean   @default(false) @map("has_completed_first_post")
-  hasViewedAnalyticsFirst     Boolean   @default(false) @map("has_viewed_analytics_first")
-  hasCompletedFirstAutoShare  Boolean   @default(false) @map("has_completed_first_auto_share")
-  feedbackDismissedTypes      String[]  @default([]) @map("feedback_dismissed_types")
-  lastFeedbackPromptAt        DateTime? @map("last_feedback_prompt_at")
-  betaFeedback                BetaFeedback[]
+  hasCompletedFirstPost      Boolean        @default(false) @map("has_completed_first_post")
+  hasViewedAnalyticsFirst    Boolean        @default(false) @map("has_viewed_analytics_first")
+  hasCompletedFirstAutoShare Boolean        @default(false) @map("has_completed_first_auto_share")
+  feedbackDismissedTypes     String[]       @default([]) @map("feedback_dismissed_types")
+  lastFeedbackPromptAt       DateTime?      @map("last_feedback_prompt_at")
+  betaFeedback               BetaFeedback[]
 
   // User-provided API credentials (BYOK - Bring Your Own Keys)
-  apiCredentials              UserApiCredentials[]
+  apiCredentials UserApiCredentials[]
 
   @@index([stripeCustomerId])
   @@index([betaUser])
@@ -140,13 +143,13 @@ model User {
 
 // Legacy session model (Supabase handles sessions now)
 model Session {
-  id           String   @id @default(cuid())
-  userId       String
-  token        String   @unique
-  expiresAt    DateTime
-  ipAddress    String?
-  userAgent    String?
-  createdAt    DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -176,6 +179,7 @@ enum PlanTier {
 model SocialConnection {
   id              String         @id @default(cuid())
   profileId       String         @map("profile_id") @db.Uuid
+  workspaceId     String?        @map("workspace_id") // Nullable for backwards compatibility
   platform        SocialPlatform
   platformUserId  String         @map("platform_user_id")
   username        String?
@@ -183,30 +187,32 @@ model SocialConnection {
   profileImageUrl String?        @map("profile_image_url")
 
   // OAuth Tokens (encrypted at rest)
-  accessToken     String         @map("access_token")
-  refreshToken    String?        @map("refresh_token")
-  tokenExpiresAt  DateTime?      @map("token_expires_at")
-  scopes          String[]
+  accessToken    String    @map("access_token")
+  refreshToken   String?   @map("refresh_token")
+  tokenExpiresAt DateTime? @map("token_expires_at")
+  scopes         String[]
 
   // Platform-specific metadata
-  metadata        Json?
+  metadata Json?
 
   // Status
-  isActive        Boolean  @default(true) @map("is_active")
-  lastSyncAt      DateTime? @map("last_sync_at")
-  lastErrorAt     DateTime? @map("last_error_at")
-  lastError       String?   @map("last_error")
+  isActive    Boolean   @default(true) @map("is_active")
+  lastSyncAt  DateTime? @map("last_sync_at")
+  lastErrorAt DateTime? @map("last_error_at")
+  lastError   String?   @map("last_error")
 
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  publishedPosts PublishedPost[]
+  profile            Profile             @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  workspace          Team?               @relation(fields: [workspaceId], references: [id])
+  publishedPosts     PublishedPost[]
   analyticsSnapshots AnalyticsSnapshot[]
 
   @@unique([profileId, platform])
   @@index([platform])
   @@index([profileId])
+  @@index([workspaceId])
   @@map("social_connections")
 }
 
@@ -233,33 +239,36 @@ enum SocialPlatform {
 // Tokens are AES-256-GCM encrypted at rest
 
 model OAuthConnection {
-  id                String    @id @default(cuid())
-  profileId         String    @map("profile_id") @db.Uuid
-  provider          String    // Provider ID: 'meta', 'tiktok', 'google', 'x', 'linkedin'
-  providerAccountId String    @map("provider_account_id")
+  id                String  @id @default(cuid())
+  profileId         String  @map("profile_id") @db.Uuid
+  workspaceId       String? @map("workspace_id") // Nullable for backwards compatibility
+  provider          String // Provider ID: 'meta', 'tiktok', 'google', 'x', 'linkedin'
+  providerAccountId String  @map("provider_account_id")
 
   // Encrypted OAuth tokens (AES-256-GCM)
-  accessTokenEnc    String    @map("access_token_enc")
-  refreshTokenEnc   String?   @map("refresh_token_enc")
+  accessTokenEnc  String  @map("access_token_enc")
+  refreshTokenEnc String? @map("refresh_token_enc")
 
   // Token metadata
-  scopes            String[]
-  expiresAt         DateTime? @map("expires_at")
+  scopes    String[]
+  expiresAt DateTime? @map("expires_at")
 
   // Provider-specific data (pages, channels, business accounts, etc.)
-  metadata          Json?     @default("{}")
+  metadata Json? @default("{}")
 
   // Timestamps
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  profile           Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  workspace Team?   @relation(fields: [workspaceId], references: [id])
 
   // Constraints
   @@unique([profileId, provider])
   @@index([provider])
   @@index([profileId])
+  @@index([workspaceId])
   @@index([expiresAt])
   @@map("oauth_connections")
 }
@@ -267,14 +276,14 @@ model OAuthConnection {
 // OAuth State - Temporary storage for OAuth state during authorization flow
 // Used for providers where cookies don't work reliably (e.g., Discord with webhook.incoming)
 model OAuthState {
-  id            String   @id @default(cuid())
-  state         String   @unique  // The state parameter value
-  provider      String   // Provider ID
-  profileId     String   @map("profile_id") @db.Uuid
-  codeVerifier  String?  @map("code_verifier")  // For PKCE flows
-  targetPlatform String? @map("target_platform")  // For Meta's Instagram/Facebook targeting
-  expiresAt     DateTime @map("expires_at")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id             String   @id @default(cuid())
+  state          String   @unique // The state parameter value
+  provider       String // Provider ID
+  profileId      String   @map("profile_id") @db.Uuid
+  codeVerifier   String?  @map("code_verifier") // For PKCE flows
+  targetPlatform String?  @map("target_platform") // For Meta's Instagram/Facebook targeting
+  expiresAt      DateTime @map("expires_at")
+  createdAt      DateTime @default(now()) @map("created_at")
 
   @@index([state])
   @@index([expiresAt])
@@ -286,29 +295,31 @@ model OAuthState {
 // ============================================
 
 model ContentUpload {
-  id           String      @id @default(cuid())
-  profileId    String      @map("profile_id") @db.Uuid
+  id          String  @id @default(cuid())
+  profileId   String  @map("profile_id") @db.Uuid
+  workspaceId String? @map("workspace_id") // Nullable for backwards compatibility
 
   // Original content
-  originalUrl  String      @map("original_url")
-  fileName     String      @map("file_name")
-  fileSize     Int         @map("file_size")
-  mimeType     String      @map("mime_type")
-  duration     Int?        // For videos, in seconds
+  originalUrl String @map("original_url")
+  fileName    String @map("file_name")
+  fileSize    Int    @map("file_size")
+  mimeType    String @map("mime_type")
+  duration    Int? // For videos, in seconds
 
   // Processed versions
-  thumbnailUrl  String?    @map("thumbnail_url")
-  processedUrls Json?      @map("processed_urls")
+  thumbnailUrl  String? @map("thumbnail_url")
+  processedUrls Json?   @map("processed_urls")
 
   // AI-generated content
-  generatedCaptions Json?  @map("generated_captions")
+  generatedCaptions Json?   @map("generated_captions")
   brandVoiceProfile String? @map("brand_voice_profile")
 
-  status       ContentStatus @default(PROCESSING)
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  status    ContentStatus @default(PROCESSING)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
 
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile        Profile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  workspace      Team?           @relation(fields: [workspaceId], references: [id])
   scheduledPosts ScheduledPost[]
   publishedPosts PublishedPost[]
   rssFeedItems   RssFeedItem[]
@@ -316,6 +327,7 @@ model ContentUpload {
   outboundPosts  OutboundPost[]
 
   @@index([profileId])
+  @@index([workspaceId])
   @@index([status])
   @@map("content_uploads")
 }
@@ -332,34 +344,37 @@ enum ContentStatus {
 // ============================================
 
 model ScheduledPost {
-  id              String         @id @default(cuid())
-  profileId       String         @map("profile_id") @db.Uuid
-  contentUploadId String         @map("content_upload_id")
+  id              String  @id @default(cuid())
+  profileId       String  @map("profile_id") @db.Uuid
+  workspaceId     String? @map("workspace_id") // Nullable for backwards compatibility
+  contentUploadId String  @map("content_upload_id")
 
   // Publishing details
-  platforms       SocialPlatform[]
-  scheduledAt     DateTime       @map("scheduled_at")
-  timezone        String         @default("UTC")
+  platforms   SocialPlatform[]
+  scheduledAt DateTime         @map("scheduled_at")
+  timezone    String           @default("UTC")
 
   // Content for each platform
-  platformContent Json           @map("platform_content")
+  platformContent Json @map("platform_content")
 
-  status          ScheduleStatus @default(PENDING)
-  processedAt     DateTime?      @map("processed_at")
-  errorMessage    String?        @map("error_message")
+  status       ScheduleStatus @default(PENDING)
+  processedAt  DateTime?      @map("processed_at")
+  errorMessage String?        @map("error_message")
 
   // Repeat/Repost grouping (for "Repeat for X days" feature)
-  repeatGroupId   String?        @map("repeat_group_id")
-  repeatIndex     Int?           @map("repeat_index")
+  repeatGroupId String? @map("repeat_group_id")
+  repeatIndex   Int?    @map("repeat_index")
 
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  contentUpload ContentUpload @relation(fields: [contentUploadId], references: [id])
+  profile        Profile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  workspace      Team?           @relation(fields: [workspaceId], references: [id])
+  contentUpload  ContentUpload   @relation(fields: [contentUploadId], references: [id])
   publishedPosts PublishedPost[]
 
   @@index([profileId])
+  @@index([workspaceId])
   @@index([scheduledAt])
   @@index([status])
   @@index([repeatGroupId])
@@ -376,31 +391,31 @@ enum ScheduleStatus {
 }
 
 model PublishedPost {
-  id                 String          @id @default(cuid())
+  id                 String  @id @default(cuid())
   scheduledPostId    String?
   contentUploadId    String
   socialConnectionId String
 
   // Platform response
-  platform           SocialPlatform
-  platformPostId     String?
-  platformUrl        String?
+  platform       SocialPlatform
+  platformPostId String?
+  platformUrl    String?
 
   // Content published
-  caption            String?
-  hashtags           String[]
+  caption  String?
+  hashtags String[]
 
-  status             PublishStatus   @default(PENDING)
-  errorMessage       String?
-  publishedAt        DateTime?
+  status       PublishStatus @default(PENDING)
+  errorMessage String?
+  publishedAt  DateTime?
 
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  scheduledPost   ScheduledPost?   @relation(fields: [scheduledPostId], references: [id])
-  contentUpload   ContentUpload    @relation(fields: [contentUploadId], references: [id])
+  scheduledPost    ScheduledPost?   @relation(fields: [scheduledPostId], references: [id])
+  contentUpload    ContentUpload    @relation(fields: [contentUploadId], references: [id])
   socialConnection SocialConnection @relation(fields: [socialConnectionId], references: [id])
-  analyticsData   PostAnalytics?
+  analyticsData    PostAnalytics?
 
   @@index([platform])
   @@index([publishedAt])
@@ -419,67 +434,70 @@ enum PublishStatus {
 // ============================================
 
 model PostAnalytics {
-  id              String   @id @default(cuid())
-  publishedPostId String   @unique
+  id              String @id @default(cuid())
+  publishedPostId String @unique
 
   // Engagement metrics
-  views           Int      @default(0)
-  likes           Int      @default(0)
-  comments        Int      @default(0)
-  shares          Int      @default(0)
-  saves           Int      @default(0)
+  views    Int @default(0)
+  likes    Int @default(0)
+  comments Int @default(0)
+  shares   Int @default(0)
+  saves    Int @default(0)
 
   // Video-specific metrics
-  avgWatchTime    Float?   // In seconds
-  completionRate  Float?   // Percentage 0-100
+  avgWatchTime   Float? // In seconds
+  completionRate Float? // Percentage 0-100
 
   // Reach metrics
-  reach           Int      @default(0)
-  impressions     Int      @default(0)
+  reach       Int @default(0)
+  impressions Int @default(0)
 
   // Audience demographics (JSON for flexibility)
-  demographics    Json?
-  locationData    Json?
+  demographics Json?
+  locationData Json?
 
   // Retention data for videos
-  retentionCurve  Json?    // [{ timestamp: number, retention: number }]
+  retentionCurve Json? // [{ timestamp: number, retention: number }]
 
-  lastSyncAt      DateTime @default(now())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  lastSyncAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   publishedPost PublishedPost @relation(fields: [publishedPostId], references: [id], onDelete: Cascade)
 }
 
 model AnalyticsSnapshot {
-  id                 String          @id @default(cuid())
-  profileId          String          @map("profile_id") @db.Uuid
-  socialConnectionId String          @map("social_connection_id")
+  id                 String         @id @default(cuid())
+  profileId          String         @map("profile_id") @db.Uuid
+  workspaceId        String?        @map("workspace_id") // Nullable for backwards compatibility
+  socialConnectionId String         @map("social_connection_id")
   platform           SocialPlatform
 
   // Account-level metrics
-  followers          Int             @default(0)
-  following          Int             @default(0)
-  totalPosts         Int             @default(0) @map("total_posts")
+  followers  Int @default(0)
+  following  Int @default(0)
+  totalPosts Int @default(0) @map("total_posts")
 
   // Engagement metrics (aggregated)
-  avgEngagementRate  Float?          @map("avg_engagement_rate")
-  avgReach           Int?            @map("avg_reach")
-  avgImpressions     Int?            @map("avg_impressions")
+  avgEngagementRate Float? @map("avg_engagement_rate")
+  avgReach          Int?   @map("avg_reach")
+  avgImpressions    Int?   @map("avg_impressions")
 
   // Period metrics
-  periodStart        DateTime        @map("period_start")
-  periodEnd          DateTime        @map("period_end")
+  periodStart DateTime @map("period_start")
+  periodEnd   DateTime @map("period_end")
 
   // Detailed breakdown
-  metricsBreakdown   Json?           @map("metrics_breakdown")
+  metricsBreakdown Json? @map("metrics_breakdown")
 
-  createdAt          DateTime        @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile          Profile          @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  workspace        Team?            @relation(fields: [workspaceId], references: [id])
   socialConnection SocialConnection @relation(fields: [socialConnectionId], references: [id])
 
   @@index([profileId, platform])
+  @@index([workspaceId])
   @@index([periodStart, periodEnd])
   @@map("analytics_snapshots")
 }
@@ -489,29 +507,29 @@ model AnalyticsSnapshot {
 // ============================================
 
 model ApiRateLimit {
-  id           String         @id @default(cuid())
-  platform     SocialPlatform
-  endpoint     String
+  id       String         @id @default(cuid())
+  platform SocialPlatform
+  endpoint String
 
   // Rate limit configuration
-  maxRequests  Int
-  windowMs     Int            // Time window in milliseconds
+  maxRequests Int
+  windowMs    Int // Time window in milliseconds
 
   // Current usage
-  currentCount Int            @default(0)
-  windowStart  DateTime       @default(now())
+  currentCount Int      @default(0)
+  windowStart  DateTime @default(now())
 
   @@unique([platform, endpoint])
 }
 
 model WebhookEvent {
-  id           String         @id @default(cuid())
-  platform     SocialPlatform
-  eventType    String
-  payload      Json
-  processedAt  DateTime?
-  error        String?
-  createdAt    DateTime       @default(now())
+  id          String         @id @default(cuid())
+  platform    SocialPlatform
+  eventType   String
+  payload     Json
+  processedAt DateTime?
+  error       String?
+  createdAt   DateTime       @default(now())
 
   @@index([platform, eventType])
   @@index([processedAt])
@@ -522,38 +540,41 @@ model WebhookEvent {
 // ============================================
 
 model ExportJob {
-  id            String       @id @default(cuid())
-  profileId     String       @map("profile_id") @db.Uuid
+  id          String  @id @default(cuid())
+  profileId   String  @map("profile_id") @db.Uuid
+  workspaceId String? @map("workspace_id") // Nullable for backwards compatibility
 
   // Export configuration
-  format        ExportFormat
-  options       Json         // ExportOptions including filters
+  format  ExportFormat
+  options Json // ExportOptions including filters
 
   // Job status
-  status        ExportStatus @default(PENDING)
-  progress      Int          @default(0)
-  error         String?
+  status   ExportStatus @default(PENDING)
+  progress Int          @default(0)
+  error    String?
 
   // Output file details
-  fileName      String?      @map("file_name")
-  fileSize      Int?         @map("file_size")
-  fileUrl       String?      @map("file_url")
+  fileName String? @map("file_name")
+  fileSize Int?    @map("file_size")
+  fileUrl  String? @map("file_url")
 
   // Audit information
-  rowCount      Int?         @map("row_count")
+  rowCount      Int?             @map("row_count")
   platforms     SocialPlatform[]
-  dateRangeFrom DateTime?    @map("date_range_from")
-  dateRangeTo   DateTime?    @map("date_range_to")
+  dateRangeFrom DateTime?        @map("date_range_from")
+  dateRangeTo   DateTime?        @map("date_range_to")
 
   // Timestamps
-  createdAt     DateTime     @default(now()) @map("created_at")
-  completedAt   DateTime?    @map("completed_at")
-  expiresAt     DateTime?    @map("expires_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+  expiresAt   DateTime? @map("expires_at")
 
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile   Profile          @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  workspace Team?            @relation(fields: [workspaceId], references: [id])
   auditLogs ExportAuditLog[]
 
   @@index([profileId])
+  @@index([workspaceId])
   @@index([status])
   @@index([createdAt])
   @@index([expiresAt])
@@ -561,16 +582,16 @@ model ExportJob {
 }
 
 model ExportAuditLog {
-  id           String   @id @default(cuid())
-  exportJobId  String   @map("export_job_id")
-  profileId    String   @map("profile_id") @db.Uuid
+  id          String @id @default(cuid())
+  exportJobId String @map("export_job_id")
+  profileId   String @map("profile_id") @db.Uuid
 
   // Audit details
-  action       String   // 'created', 'downloaded', 'expired', 'deleted'
-  ipAddress    String?  @map("ip_address")
-  userAgent    String?  @map("user_agent")
+  action    String // 'created', 'downloaded', 'expired', 'deleted'
+  ipAddress String? @map("ip_address")
+  userAgent String? @map("user_agent")
 
-  createdAt    DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   exportJob ExportJob @relation(fields: [exportJobId], references: [id], onDelete: Cascade)
 
@@ -597,15 +618,15 @@ enum ExportStatus {
 // ============================================
 
 model NotificationLog {
-  id          String           @id @default(cuid())
-  profileId   String           @map("profile_id") @db.Uuid
-  type        NotificationType
-  channel     NotificationChannel @default(EMAIL)
-  recipient   String           // Email address or phone number
-  subject     String?
-  metadata    Json?            // Additional context (subscriptionId, interval, etc.)
-  sentAt      DateTime         @default(now()) @map("sent_at")
-  createdAt   DateTime         @default(now()) @map("created_at")
+  id        String              @id @default(cuid())
+  profileId String              @map("profile_id") @db.Uuid
+  type      NotificationType
+  channel   NotificationChannel @default(EMAIL)
+  recipient String // Email address or phone number
+  subject   String?
+  metadata  Json? // Additional context (subscriptionId, interval, etc.)
+  sentAt    DateTime            @default(now()) @map("sent_at")
+  createdAt DateTime            @default(now()) @map("created_at")
 
   @@index([profileId])
   @@index([type])
@@ -645,7 +666,7 @@ enum NotificationChannel {
 model WaitlistEntry {
   id        String   @id @default(cuid())
   email     String   @unique
-  source    String?  // Where they signed up from (landing, pricing, etc.)
+  source    String? // Where they signed up from (landing, pricing, etc.)
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])
@@ -682,8 +703,8 @@ model BetaInvite {
   email        String    @unique
   durationDays Int       @default(30) @map("duration_days")
   createdAt    DateTime  @default(now()) @map("created_at")
-  usedAt       DateTime? @map("used_at")  // When the user signed up and claimed the invite
-  expiresAt    DateTime? @map("expires_at")  // When the invite itself expires (optional)
+  usedAt       DateTime? @map("used_at") // When the user signed up and claimed the invite
+  expiresAt    DateTime? @map("expires_at") // When the invite itself expires (optional)
 
   @@index([email])
   @@index([createdAt])
@@ -705,12 +726,17 @@ enum TeamRole {
 
 /// Team - A workspace owned by a PRO user that can have multiple members
 /// Owner is the PRO subscriber who pays for the team
+/// NOTE: Team serves as the Workspace entity for workspace-scoped features
 model Team {
   id        String   @id @default(cuid())
-  name      String   @default("My Team")
+  name      String   @default("My Workspace")
   ownerId   String   @unique @map("owner_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Workspace-specific fields
+  isDefault Boolean @default(false) @map("is_default") // User's default workspace
+  settings  Json?   @default("{}") // Workspace settings JSON
 
   // Analytics permissions (workspace-level toggle)
   // When true, team members can view account-level analytics
@@ -722,16 +748,28 @@ model Team {
   members TeamMember[]
   invites TeamInvite[]
 
+  // Workspace-scoped content relations
+  socialConnections     SocialConnection[]
+  oauthConnections      OAuthConnection[]
+  contentUploads        ContentUpload[]
+  scheduledPosts        ScheduledPost[]
+  analyticsSnapshots    AnalyticsSnapshot[]
+  exportJobs            ExportJob[]
+  rssFeeds              RssFeed[]
+  outboundPosts         OutboundPost[]
+  blogAutoShareSettings BlogAutoShareSettings[]
+
   @@index([ownerId])
+  @@index([isDefault])
   @@map("teams")
 }
 
-/// TeamMember - Links a user to a team with a specific role
-/// Users can only be a member of one team at a time
+/// TeamMember - Links a user to a team/workspace with a specific role
+/// Users can be members of multiple workspaces (workspace-scoped permissions)
 model TeamMember {
   id       String   @id @default(cuid())
   teamId   String   @map("team_id")
-  userId   String   @unique @map("user_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid // Removed @unique - users can be in multiple workspaces
   role     TeamRole @default(MEMBER)
   joinedAt DateTime @default(now()) @map("joined_at")
 
@@ -795,18 +833,19 @@ enum RssItemStatus {
 /// RssFeed - User's subscribed RSS feed URLs
 /// Stores feed configuration and metadata for content ingestion
 model RssFeed {
-  id        String        @id @default(cuid())
-  profileId String        @map("profile_id") @db.Uuid
+  id          String  @id @default(cuid())
+  profileId   String  @map("profile_id") @db.Uuid
+  workspaceId String? @map("workspace_id") // Nullable for backwards compatibility
 
   // Feed configuration
-  name      String
-  url       String
+  name String
+  url  String
 
   // Feed metadata (populated after first fetch)
-  feedTitle       String?   @map("feed_title")
-  feedDescription String?   @map("feed_description")
-  feedImageUrl    String?   @map("feed_image_url")
-  feedLink        String?   @map("feed_link")
+  feedTitle       String? @map("feed_title")
+  feedDescription String? @map("feed_description")
+  feedImageUrl    String? @map("feed_image_url")
+  feedLink        String? @map("feed_link")
 
   // Status and polling
   status        RssFeedStatus @default(ACTIVE)
@@ -819,12 +858,14 @@ model RssFeed {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  profile Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  items   RssFeedItem[]
+  profile   Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  workspace Team?         @relation(fields: [workspaceId], references: [id])
+  items     RssFeedItem[]
 
   // Constraints
   @@unique([profileId, url])
   @@index([profileId])
+  @@index([workspaceId])
   @@index([status])
   @@index([lastFetchedAt])
   @@map("rss_feeds")
@@ -838,13 +879,13 @@ model RssFeedItem {
   profileId String @map("profile_id") @db.Uuid
 
   // Item content
-  guid        String   // Unique identifier from feed (RSS guid or link)
+  guid        String // Unique identifier from feed (RSS guid or link)
   title       String
   link        String?
   description String?
-  content     String?  // Full content if available
+  content     String? // Full content if available
   author      String?
-  imageUrl    String?  @map("image_url")
+  imageUrl    String?   @map("image_url")
   publishedAt DateTime? @map("published_at")
 
   // Categories/tags from feed
@@ -861,9 +902,9 @@ model RssFeedItem {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  feed          RssFeed        @relation(fields: [feedId], references: [id], onDelete: Cascade)
-  profile       Profile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  contentUpload ContentUpload? @relation(fields: [contentUploadId], references: [id])
+  feed               RssFeed             @relation(fields: [feedId], references: [id], onDelete: Cascade)
+  profile            Profile             @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  contentUpload      ContentUpload?      @relation(fields: [contentUploadId], references: [id])
   blogAutoSharePosts BlogAutoSharePost[]
 
   // Constraints - prevent duplicate items per feed
@@ -895,37 +936,37 @@ enum TikTokPostStatus {
 /// TikTokPost - Track posts initiated via ReGenr to TikTok
 /// Supports both immediate and scheduled posting
 model TikTokPost {
-  id               String    @id @default(cuid())
-  profileId        String    @map("profile_id") @db.Uuid
-  workspaceId      String?   @map("workspace_id")
-  contentUploadId  String?   @map("content_upload_id")
+  id              String  @id @default(cuid())
+  profileId       String  @map("profile_id") @db.Uuid
+  workspaceId     String? @map("workspace_id")
+  contentUploadId String? @map("content_upload_id")
 
   // TikTok identifiers
-  tiktokVideoId    String?   @map("tiktok_video_id")
-  publishId        String?   @map("publish_id")
+  tiktokVideoId String? @map("tiktok_video_id")
+  publishId     String? @map("publish_id")
 
   // Post status
-  status           TikTokPostStatus @default(PENDING)
-  scheduledAt      DateTime? @map("scheduled_at")
-  postedAt         DateTime? @map("posted_at")
-  lastError        String?   @map("last_error")
+  status      TikTokPostStatus @default(PENDING)
+  scheduledAt DateTime?        @map("scheduled_at")
+  postedAt    DateTime?        @map("posted_at")
+  lastError   String?          @map("last_error")
 
   // Post content
-  caption          String?
-  privacyLevel     String?   @map("privacy_level") @default("PUBLIC_TO_EVERYONE")
+  caption      String?
+  privacyLevel String? @default("PUBLIC_TO_EVERYONE") @map("privacy_level")
 
   // TikTok post settings
-  disableComment   Boolean   @default(false) @map("disable_comment")
-  disableDuet      Boolean   @default(false) @map("disable_duet")
-  disableStitch    Boolean   @default(false) @map("disable_stitch")
+  disableComment Boolean @default(false) @map("disable_comment")
+  disableDuet    Boolean @default(false) @map("disable_duet")
+  disableStitch  Boolean @default(false) @map("disable_stitch")
 
   // Timestamps
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  profile          Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  contentUpload    ContentUpload? @relation(fields: [contentUploadId], references: [id])
+  profile       Profile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  contentUpload ContentUpload? @relation(fields: [contentUploadId], references: [id])
 
   @@index([profileId])
   @@index([status])
@@ -937,19 +978,19 @@ model TikTokPost {
 /// TikTokVideoMetrics - Cache metrics fetched from TikTok Display API
 /// Stores historical metrics to avoid excessive API calls
 model TikTokVideoMetrics {
-  id             String   @id @default(cuid())
-  profileId      String   @map("profile_id") @db.Uuid
-  tiktokVideoId  String   @map("tiktok_video_id")
+  id            String @id @default(cuid())
+  profileId     String @map("profile_id") @db.Uuid
+  tiktokVideoId String @map("tiktok_video_id")
 
   // Timestamp when metrics were fetched
-  fetchedAt      DateTime @default(now()) @map("fetched_at")
+  fetchedAt DateTime @default(now()) @map("fetched_at")
 
   // Metrics data as JSON for flexibility
   // { views: number, likes: number, comments: number, shares: number }
-  metrics        Json
+  metrics Json
 
   // Relations
-  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   // Unique per video per day to avoid duplicate entries
   @@unique([profileId, tiktokVideoId, fetchedAt])
@@ -969,8 +1010,8 @@ enum OutboundPostStatus {
   PROCESSING
   POSTED
   FAILED
-  INITIATED  // For user-initiated shares (Snapchat)
-  DELETED    // Post was deleted from the platform
+  INITIATED // For user-initiated shares (Snapchat)
+  DELETED // Post was deleted from the platform
 
   @@map("outbound_post_status")
 }
@@ -978,34 +1019,37 @@ enum OutboundPostStatus {
 /// OutboundPost - Track posts initiated via ReGenr across all platforms
 /// Unified table for LinkedIn, YouTube, Snapchat, etc.
 model OutboundPost {
-  id               String    @id @default(cuid())
-  profileId        String    @map("profile_id") @db.Uuid
-  contentUploadId  String?   @map("content_upload_id")
+  id              String  @id @default(cuid())
+  profileId       String  @map("profile_id") @db.Uuid
+  workspaceId     String? @map("workspace_id") // Nullable for backwards compatibility
+  contentUploadId String? @map("content_upload_id")
 
   // Platform identifier
-  provider         String    // 'linkedin', 'youtube', 'snapchat', etc.
+  provider String // 'linkedin', 'youtube', 'snapchat', etc.
 
   // External identifiers
-  externalPostId   String?   @map("external_post_id")  // Platform's post ID
+  externalPostId String? @map("external_post_id") // Platform's post ID
 
   // Post status
-  status           OutboundPostStatus @default(QUEUED)
-  scheduledAt      DateTime? @map("scheduled_at")
-  postedAt         DateTime? @map("posted_at")
-  lastError        String?   @map("last_error")
+  status      OutboundPostStatus @default(QUEUED)
+  scheduledAt DateTime?          @map("scheduled_at")
+  postedAt    DateTime?          @map("posted_at")
+  lastError   String?            @map("last_error")
 
   // Metadata (platform-specific data as JSON)
-  metadata         Json      @default("{}")
+  metadata Json @default("{}")
 
   // Timestamps
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  profile          Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  contentUpload    ContentUpload? @relation(fields: [contentUploadId], references: [id])
+  profile       Profile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  workspace     Team?          @relation(fields: [workspaceId], references: [id])
+  contentUpload ContentUpload? @relation(fields: [contentUploadId], references: [id])
 
   @@index([profileId])
+  @@index([workspaceId])
   @@index([provider])
   @@index([status])
   @@index([scheduledAt])
@@ -1020,20 +1064,20 @@ model OutboundPost {
 /// YouTubeMetricsCache - Cache metrics fetched from YouTube Analytics API
 /// Stores historical metrics to avoid excessive API calls
 model YouTubeMetricsCache {
-  id             String   @id @default(cuid())
-  profileId      String   @map("profile_id") @db.Uuid
-  channelId      String   @map("channel_id")
-  videoId        String?  @map("video_id")  // null for channel-level metrics
+  id        String  @id @default(cuid())
+  profileId String  @map("profile_id") @db.Uuid
+  channelId String  @map("channel_id")
+  videoId   String? @map("video_id") // null for channel-level metrics
 
   // Timestamp when metrics were fetched
-  fetchedAt      DateTime @default(now()) @map("fetched_at")
+  fetchedAt DateTime @default(now()) @map("fetched_at")
 
   // Metrics data as JSON for flexibility
   // { views, watchTime, likes, comments, shares, etc. }
-  metrics        Json
+  metrics Json
 
   // Relations
-  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   // Unique per channel/video per day to avoid duplicate entries
   @@unique([profileId, channelId, videoId, fetchedAt])
@@ -1051,33 +1095,34 @@ model YouTubeMetricsCache {
 /// BlogAutoShareSettings - User configuration for automatic blog post sharing
 /// Stores preferences for RSS-to-social automation
 model BlogAutoShareSettings {
-  id          String   @id @default(cuid())
-  profileId   String   @unique @map("profile_id") @db.Uuid
+  id          String  @id @default(cuid())
+  profileId   String  @unique @map("profile_id") @db.Uuid
+  workspaceId String? @map("workspace_id") // Nullable for backwards compatibility
 
   // Feature toggle
-  enabled     Boolean  @default(false)
+  enabled Boolean @default(false)
 
   // Blog URL (RSS feed URL for the user's blog)
-  blogUrl     String?  @map("blog_url")
+  blogUrl String? @map("blog_url")
 
   // Platform selection (V1: instagram, facebook, twitter, linkedin, discord, pinterest)
-  platforms   String[] @default([])
+  platforms String[] @default([])
 
   // Publishing mode
-  autoPublish Boolean  @default(false) @map("auto_publish")  // false = create draft for approval
+  autoPublish Boolean @default(false) @map("auto_publish") // false = create draft for approval
 
   // Default fallback image URL (used when og:image not found)
   defaultImageUrl String? @map("default_image_url")
 
   // Quiet hours (UTC) - don't publish during these hours
   quietHoursEnabled Boolean @default(false) @map("quiet_hours_enabled")
-  quietHoursStart   Int?    @map("quiet_hours_start")  // 0-23 hour
-  quietHoursEnd     Int?    @map("quiet_hours_end")    // 0-23 hour
+  quietHoursStart   Int?    @map("quiet_hours_start") // 0-23 hour
+  quietHoursEnd     Int?    @map("quiet_hours_end") // 0-23 hour
 
   // Posting windows - preferred times (UTC)
   postingWindowEnabled Boolean @default(false) @map("posting_window_enabled")
-  postingWindowStart   Int?    @map("posting_window_start")  // 0-23 hour
-  postingWindowEnd     Int?    @map("posting_window_end")    // 0-23 hour
+  postingWindowStart   Int?    @map("posting_window_start") // 0-23 hour
+  postingWindowEnd     Int?    @map("posting_window_end") // 0-23 hour
 
   // Per-platform caption templates (JSON object)
   // { "instagram": "Check out my new post! {title} {url}", "twitter": "{title} - Read more: {url}" }
@@ -1088,7 +1133,7 @@ model BlogAutoShareSettings {
 
   // Only share new posts - ignore items published before enabledAt
   onlyNewPosts Boolean   @default(true) @map("only_new_posts")
-  enabledAt    DateTime? @map("enabled_at")  // When auto-share was enabled (for filtering)
+  enabledAt    DateTime? @map("enabled_at") // When auto-share was enabled (for filtering)
 
   // Discord channel for auto-share (if Discord is enabled)
   discordChannelId String? @map("discord_channel_id")
@@ -1104,23 +1149,25 @@ model BlogAutoShareSettings {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  workspace Team?   @relation(fields: [workspaceId], references: [id])
 
   @@index([profileId])
+  @@index([workspaceId])
   @@index([enabled])
   @@map("blog_auto_share_settings")
 }
 
 /// BlogAutoSharePost status tracking
 enum BlogAutoShareStatus {
-  PENDING       // Waiting to be processed
-  DRAFT         // Created as draft for user approval
-  QUEUED        // Approved, waiting for posting window
-  PROCESSING    // Currently being published
-  PUBLISHED     // Successfully published to all platforms
-  PARTIAL       // Published to some platforms, failed on others
-  FAILED        // Failed to publish to all platforms
-  SKIPPED       // Skipped (duplicate, quiet hours, etc.)
+  PENDING // Waiting to be processed
+  DRAFT // Created as draft for user approval
+  QUEUED // Approved, waiting for posting window
+  PROCESSING // Currently being published
+  PUBLISHED // Successfully published to all platforms
+  PARTIAL // Published to some platforms, failed on others
+  FAILED // Failed to publish to all platforms
+  SKIPPED // Skipped (duplicate, quiet hours, etc.)
 
   @@map("blog_auto_share_status")
 }
@@ -1128,44 +1175,44 @@ enum BlogAutoShareStatus {
 /// BlogAutoSharePost - Tracks individual blog post shares
 /// Links RSS items to their cross-platform publishing results
 model BlogAutoSharePost {
-  id            String   @id @default(cuid())
-  profileId     String   @map("profile_id") @db.Uuid
-  rssFeedItemId String?  @map("rss_feed_item_id")  // Optional - not used when creating from blogUrl directly
+  id            String  @id @default(cuid())
+  profileId     String  @map("profile_id") @db.Uuid
+  rssFeedItemId String? @map("rss_feed_item_id") // Optional - not used when creating from blogUrl directly
 
   // Extracted metadata from article
-  articleUrl      String    @map("article_url")
-  canonicalUrl    String?   @map("canonical_url")
-  ogTitle         String?   @map("og_title")
-  ogDescription   String?   @map("og_description")
-  ogImage         String?   @map("og_image")
-  articleTitle    String    @map("article_title")
-  articleExcerpt  String?   @map("article_excerpt")
+  articleUrl     String  @map("article_url")
+  canonicalUrl   String? @map("canonical_url")
+  ogTitle        String? @map("og_title")
+  ogDescription  String? @map("og_description")
+  ogImage        String? @map("og_image")
+  articleTitle   String  @map("article_title")
+  articleExcerpt String? @map("article_excerpt")
 
   // Deduplication hash (SHA256 of guid + canonical URL)
-  dedupeHash    String    @unique @map("dedupe_hash")
+  dedupeHash String @unique @map("dedupe_hash")
 
   // Generated caption (base caption before platform-specific modifications)
   generatedCaption String? @map("generated_caption")
 
   // Status
-  status        BlogAutoShareStatus @default(PENDING)
-  errorMessage  String?   @map("error_message")
+  status       BlogAutoShareStatus @default(PENDING)
+  errorMessage String?             @map("error_message")
 
   // Scheduling
-  scheduledAt   DateTime? @map("scheduled_at")
-  processedAt   DateTime? @map("processed_at")
+  scheduledAt DateTime? @map("scheduled_at")
+  processedAt DateTime? @map("processed_at")
 
   // Platform results (JSON array)
   // [{ platform: "twitter", status: "published", postId: "123", postUrl: "...", error: null }]
-  platformResults Json?   @map("platform_results")
+  platformResults Json? @map("platform_results")
 
   // Timestamps
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  profile       Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  rssFeedItem   RssFeedItem? @relation(fields: [rssFeedItemId], references: [id], onDelete: Cascade)
+  profile     Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  rssFeedItem RssFeedItem? @relation(fields: [rssFeedItemId], references: [id], onDelete: Cascade)
 
   @@index([profileId])
   @@index([rssFeedItemId])
@@ -1193,18 +1240,18 @@ enum FeedbackType {
 /// BetaFeedback - Captures structured feedback from beta users
 /// Triggered after meaningful events or via persistent "Give Feedback" option
 model BetaFeedback {
-  id          String       @id @default(cuid())
-  profileId   String       @map("profile_id") @db.Uuid
+  id        String @id @default(cuid())
+  profileId String @map("profile_id") @db.Uuid
 
   // Feedback metadata
   feedbackType FeedbackType @map("feedback_type")
 
   // Structured feedback fields
-  usageIntent        String? @map("usage_intent")          // What they use ReGenr for
-  featureValueRating Int?    @map("feature_value_rating")  // 1-5 scale
-  usefulnessRating   Int?    @map("usefulness_rating")     // 1-5 scale
-  confusionPoints    String? @map("confusion_points")      // Open text - what's confusing
-  missingFeatures    String? @map("missing_features")      // Open text - feature requests
+  usageIntent        String? @map("usage_intent") // What they use ReGenr for
+  featureValueRating Int?    @map("feature_value_rating") // 1-5 scale
+  usefulnessRating   Int?    @map("usefulness_rating") // 1-5 scale
+  confusionPoints    String? @map("confusion_points") // Open text - what's confusing
+  missingFeatures    String? @map("missing_features") // Open text - feature requests
 
   // Pricing feedback (for PRICING type)
   creatorPriceInput Decimal? @map("creator_price_input") @db.Decimal(10, 2)
@@ -1235,29 +1282,29 @@ model BetaFeedback {
 /// that require paid API access (e.g., Twitter/X)
 /// All sensitive fields are AES-256-GCM encrypted
 model UserApiCredentials {
-  id         String   @id @default(cuid())
-  profileId  String   @map("profile_id") @db.Uuid
-  provider   String   // 'twitter', 'youtube', etc.
+  id        String @id @default(cuid())
+  profileId String @map("profile_id") @db.Uuid
+  provider  String // 'twitter', 'youtube', etc.
 
   // Encrypted credentials (AES-256-GCM)
-  clientIdEnc     String  @map("client_id_enc")
-  clientSecretEnc String  @map("client_secret_enc")
+  clientIdEnc     String @map("client_id_enc")
+  clientSecretEnc String @map("client_secret_enc")
 
   // Optional: OAuth tokens if user provides pre-generated tokens
   accessTokenEnc  String? @map("access_token_enc")
-  accessSecretEnc String? @map("access_secret_enc")  // For OAuth 1.0a (Twitter v1)
+  accessSecretEnc String? @map("access_secret_enc") // For OAuth 1.0a (Twitter v1)
 
   // Optional metadata
-  appName     String?  @map("app_name")  // User's app name for reference
+  appName String? @map("app_name") // User's app name for reference
 
   // Status
-  isValid     Boolean  @default(true) @map("is_valid")
-  lastError   String?  @map("last_error")
+  isValid      Boolean   @default(true) @map("is_valid")
+  lastError    String?   @map("last_error")
   lastTestedAt DateTime? @map("last_tested_at")
 
   // Timestamps
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
