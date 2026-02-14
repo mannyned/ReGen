@@ -1258,9 +1258,11 @@ model BetaFeedback {
   missingFeatures    String? @map("missing_features") // Open text - feature requests
 
   // Pricing feedback (for PRICING type)
-  creatorPriceInput Decimal? @map("creator_price_input") @db.Decimal(10, 2)
-  proPriceInput     Decimal? @map("pro_price_input") @db.Decimal(10, 2)
-  pricingContext    Json?    @map("pricing_context") // { role, featuresUsed }
+  creatorPriceInput            Decimal? @map("creator_price_input") @db.Decimal(10, 2)
+  proPriceInput                Decimal? @map("pro_price_input") @db.Decimal(10, 2)
+  additionalWorkspacePriceInput Decimal? @map("additional_workspace_price_input") @db.Decimal(10, 2)
+  additionalSeatPriceInput     Decimal? @map("additional_seat_price_input") @db.Decimal(10, 2)
+  pricingContext               Json?    @map("pricing_context") // { role, featuresUsed }
 
   // Additional context
   browserInfo     String? @map("browser_info")

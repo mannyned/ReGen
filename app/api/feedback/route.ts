@@ -72,9 +72,9 @@ export async function POST(request: NextRequest) {
     const data = parsed.data;
 
     // Build pricing context if pricing feedback is provided
-    const pricingContext =
-      data.creatorPriceInput !== undefined || data.proPriceInput !== undefined
-        ? {
+    const hasPricingInput = data.creatorPriceInput !== undefined || data.proPriceInput !== undefined || data.additionalWorkspacePriceInput !== undefined || data.additionalSeatPriceInput !== undefined;
+    const pricingContext = hasPricingInput
+      ? {
             role: profile.tier,
             featuresUsed: profile.socialConnections.map((c) => c.platform),
             postsCount: profile.outboundPosts.length > 0 ? 'has_posts' : 'no_posts',
@@ -93,6 +93,8 @@ export async function POST(request: NextRequest) {
         missingFeatures: data.missingFeatures,
         creatorPriceInput: data.creatorPriceInput,
         proPriceInput: data.proPriceInput,
+        additionalWorkspacePriceInput: data.additionalWorkspacePriceInput,
+        additionalSeatPriceInput: data.additionalSeatPriceInput,
         pricingContext,
         browserInfo: data.browserInfo,
         feedbackContext: {
@@ -114,7 +116,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       type: data.feedbackType,
       hasRatings: !!(data.featureValueRating || data.usefulnessRating),
-      hasPricing: !!(data.creatorPriceInput || data.proPriceInput),
+      hasPricing: !!(data.creatorPriceInput || data.proPriceInput || data.additionalWorkspacePriceInput || data.additionalSeatPriceInput),
     });
 
     return NextResponse.json(

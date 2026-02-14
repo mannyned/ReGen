@@ -25,6 +25,8 @@ interface FormState {
   missingFeatures: string;
   creatorPriceInput: string;
   proPriceInput: string;
+  additionalWorkspacePriceInput: string;
+  additionalSeatPriceInput: string;
 }
 
 // ============================================
@@ -190,8 +192,10 @@ export function FeedbackModal() {
     missingFeatures: '',
     creatorPriceInput: '',
     proPriceInput: '',
+    additionalWorkspacePriceInput: '',
+    additionalSeatPriceInput: '',
   });
-  const [errors, setErrors] = useState<{ creator?: string; pro?: string }>({});
+  const [errors, setErrors] = useState<{ creator?: string; pro?: string; workspace?: string; seat?: string }>({});
 
   // Handle mounting
   useEffect(() => {
@@ -210,6 +214,8 @@ export function FeedbackModal() {
         missingFeatures: '',
         creatorPriceInput: '',
         proPriceInput: '',
+        additionalWorkspacePriceInput: '',
+        additionalSeatPriceInput: '',
       });
       setErrors({});
     }
@@ -241,13 +247,14 @@ export function FeedbackModal() {
   const updateForm = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     // Clear errors when user types
-    if (key === 'creatorPriceInput' || key === 'proPriceInput') {
-      setErrors((prev) => ({ ...prev, [key === 'creatorPriceInput' ? 'creator' : 'pro']: undefined }));
+    if (key === 'creatorPriceInput' || key === 'proPriceInput' || key === 'additionalWorkspacePriceInput' || key === 'additionalSeatPriceInput') {
+      const errorKey = key === 'creatorPriceInput' ? 'creator' : key === 'proPriceInput' ? 'pro' : key === 'additionalWorkspacePriceInput' ? 'workspace' : 'seat';
+      setErrors((prev) => ({ ...prev, [errorKey]: undefined }));
     }
   }, []);
 
   const validatePricing = useCallback(() => {
-    const newErrors: { creator?: string; pro?: string } = {};
+    const newErrors: { creator?: string; pro?: string; workspace?: string; seat?: string } = {};
 
     if (form.creatorPriceInput) {
       const price = parseFloat(form.creatorPriceInput);
@@ -263,9 +270,23 @@ export function FeedbackModal() {
       }
     }
 
+    if (form.additionalWorkspacePriceInput) {
+      const price = parseFloat(form.additionalWorkspacePriceInput);
+      if (isNaN(price) || price < 0 || price > 999) {
+        newErrors.workspace = 'Please enter a valid price between $0 and $999';
+      }
+    }
+
+    if (form.additionalSeatPriceInput) {
+      const price = parseFloat(form.additionalSeatPriceInput);
+      if (isNaN(price) || price < 0 || price > 999) {
+        newErrors.seat = 'Please enter a valid price between $0 and $999';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [form.creatorPriceInput, form.proPriceInput]);
+  }, [form.creatorPriceInput, form.proPriceInput, form.additionalWorkspacePriceInput, form.additionalSeatPriceInput]);
 
   const handleDismiss = useCallback(() => {
     if (currentTrigger) {
@@ -304,6 +325,8 @@ export function FeedbackModal() {
       missingFeatures: form.missingFeatures || undefined,
       creatorPriceInput: form.creatorPriceInput ? parseFloat(form.creatorPriceInput) : undefined,
       proPriceInput: form.proPriceInput ? parseFloat(form.proPriceInput) : undefined,
+      additionalWorkspacePriceInput: form.additionalWorkspacePriceInput ? parseFloat(form.additionalWorkspacePriceInput) : undefined,
+      additionalSeatPriceInput: form.additionalSeatPriceInput ? parseFloat(form.additionalSeatPriceInput) : undefined,
     };
 
     const success = await submitFeedback(feedbackData);
@@ -500,6 +523,40 @@ export function FeedbackModal() {
                 features={planFeatures.pro}
                 error={errors.pro}
               />
+
+              {/* Pro Add-ons Section */}
+              <div className="mt-6 pt-5 border-t border-gray-200">
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  Pro Add-ons
+                </p>
+                <p className="text-xs text-gray-500 mb-4">
+                  For Pro users who need more capacity, how much would you pay monthly for each?
+                </p>
+
+                <PriceInput
+                  value={form.additionalWorkspacePriceInput}
+                  onChange={(v) => updateForm('additionalWorkspacePriceInput', v)}
+                  label="Additional Workspace"
+                  features={[
+                    'Separate brand or client workspace',
+                    'Own connected accounts & content',
+                    'Independent analytics & scheduling',
+                  ]}
+                  error={errors.workspace}
+                />
+
+                <PriceInput
+                  value={form.additionalSeatPriceInput}
+                  onChange={(v) => updateForm('additionalSeatPriceInput', v)}
+                  label="Additional Team Seat"
+                  features={[
+                    'Invite another team member',
+                    'Shared access to workspace content',
+                    'Role-based permissions (Admin/Member)',
+                  ]}
+                  error={errors.seat}
+                />
+              </div>
             </>
           )}
         </div>

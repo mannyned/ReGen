@@ -40,6 +40,8 @@ export interface FeedbackFormData {
   missingFeatures?: string;
   creatorPriceInput?: number;
   proPriceInput?: number;
+  additionalWorkspacePriceInput?: number;
+  additionalSeatPriceInput?: number;
 }
 
 interface FeedbackState {

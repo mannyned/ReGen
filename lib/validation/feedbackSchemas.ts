@@ -50,6 +50,8 @@ export const feedbackFormSchema = z.object({
     .optional(),
   creatorPriceInput: priceInputSchema,
   proPriceInput: priceInputSchema,
+  additionalWorkspacePriceInput: priceInputSchema,
+  additionalSeatPriceInput: priceInputSchema,
   browserInfo: z
     .string()
     .max(500, 'Browser info must be less than 500 characters')
