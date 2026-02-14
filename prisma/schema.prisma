@@ -773,6 +773,10 @@ model TeamMember {
   role     TeamRole @default(MEMBER)
   joinedAt DateTime @default(now()) @map("joined_at")
 
+  // Admin permissions (granted by owner)
+  // Only applicable when role is ADMIN
+  canRename Boolean @default(false) @map("can_rename")
+
   // Relations
   team Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -52,8 +52,8 @@ export async function GET() {
         hasCompletedFirstAutoShare: true,
         feedbackDismissedTypes: true,
         lastFeedbackPromptAt: true,
-        // Check team membership
-        teamMembership: {
+        // Check team memberships (user can be in multiple workspaces)
+        teamMemberships: {
           select: {
             id: true,
             role: true,
@@ -71,6 +71,7 @@ export async function GET() {
               },
             },
           },
+          take: 1, // Get first membership for backwards compatibility
         },
       },
     });
@@ -97,12 +98,13 @@ export async function GET() {
     }
 
     // Check if user is a team member (not owner) - they inherit PRO access and beta status
-    const isTeamMember = !!profile.teamMembership;
+    const teamMembership = profile.teamMemberships?.[0];
+    const isTeamMember = !!teamMembership;
     let teamMemberPro = false;
     let teamMemberBeta = false;
 
-    if (isTeamMember && profile.teamMembership?.team?.owner) {
-      const owner = profile.teamMembership.team.owner;
+    if (isTeamMember && teamMembership?.team?.owner) {
+      const owner = teamMembership.team.owner;
       // Check if team owner has active PRO access (paid or beta)
       const ownerIsPro = owner.tier === 'PRO' ||
         !!(owner.betaUser && owner.betaExpiresAt && new Date(owner.betaExpiresAt) > new Date());
@@ -138,7 +140,7 @@ export async function GET() {
     }
 
     // Determine team role - owner if no team membership, otherwise the actual role
-    const teamRole = profile.teamMembership?.role || 'owner';
+    const teamRole = teamMembership?.role || 'owner';
 
     return NextResponse.json({
       id: profile.id,
@@ -164,10 +166,10 @@ export async function GET() {
       // Team role for billing visibility (owner, admin, member)
       teamRole,
       // Team info if member of a team
-      team: profile.teamMembership ? {
-        id: profile.teamMembership.team.id,
-        name: profile.teamMembership.team.name,
-        role: profile.teamMembership.role,
+      team: teamMembership ? {
+        id: teamMembership.team.id,
+        name: teamMembership.team.name,
+        role: teamMembership.role,
       } : null,
     });
   } catch (error) {

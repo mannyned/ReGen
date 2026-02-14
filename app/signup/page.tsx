@@ -119,9 +119,10 @@ function SignupContent() {
 
     try {
       // Determine redirect URL after email verification
+      // Default to /workspaces so users can select a workspace before continuing
       const redirectPath = inviteToken
         ? `/team/invite?token=${inviteToken}`
-        : '/dashboard';
+        : '/workspaces';
 
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -176,7 +177,7 @@ function SignupContent() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+          redirectTo: `${window.location.origin}/auth/callback?next=/workspaces`,
         },
       });
 

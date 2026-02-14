@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const provider = searchParams.get('provider') as OAuthProvider;
-  const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+  const redirectTo = searchParams.get('redirectTo') || '/workspaces';
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || '';
 
   // Validate provider

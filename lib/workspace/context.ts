@@ -185,6 +185,8 @@ export async function countOwnedWorkspaces(identity: VerifiedIdentity): Promise<
  * @returns The default workspace
  */
 export async function getOrCreateDefaultWorkspace(identity: VerifiedIdentity) {
+  console.log('[Workspace] getOrCreateDefaultWorkspace called for:', identity.profileId)
+
   // Check if user already has a default workspace
   let workspace = await prisma.team.findFirst({
     where: {
@@ -194,6 +196,21 @@ export async function getOrCreateDefaultWorkspace(identity: VerifiedIdentity) {
   })
 
   if (workspace) {
+    console.log('[Workspace] Found existing default workspace:', workspace.id)
+    // Ensure owner is in team_members (fix for orphaned workspaces)
+    const membership = await prisma.teamMember.findFirst({
+      where: { teamId: workspace.id, userId: identity.profileId },
+    })
+    if (!membership) {
+      console.log('[Workspace] Adding missing team membership for owner')
+      await prisma.teamMember.create({
+        data: {
+          teamId: workspace.id,
+          userId: identity.profileId,
+          role: 'OWNER',
+        },
+      })
+    }
     return workspace
   }
 
@@ -203,6 +220,7 @@ export async function getOrCreateDefaultWorkspace(identity: VerifiedIdentity) {
   })
 
   if (workspace) {
+    console.log('[Workspace] Found existing workspace, marking as default:', workspace.id)
     // Mark existing workspace as default
     await prisma.team.update({
       where: { id: workspace.id },
@@ -211,30 +229,42 @@ export async function getOrCreateDefaultWorkspace(identity: VerifiedIdentity) {
     return workspace
   }
 
+  console.log('[Workspace] Creating new default workspace for:', identity.profileId)
+
   // Create new default workspace with content migration
-  return prisma.$transaction(async (tx) => {
-    const newWorkspace = await tx.team.create({
-      data: {
-        name: 'My Workspace',
-        ownerId: identity.profileId,
-        isDefault: true,
-      },
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const newWorkspace = await tx.team.create({
+        data: {
+          name: 'My Workspace',
+          ownerId: identity.profileId,
+          isDefault: true,
+        },
+      })
+      console.log('[Workspace] Created workspace:', newWorkspace.id)
+
+      // Add owner as OWNER member
+      await tx.teamMember.create({
+        data: {
+          teamId: newWorkspace.id,
+          userId: identity.profileId,
+          role: 'OWNER',
+        },
+      })
+      console.log('[Workspace] Added owner as member')
+
+      // Migrate existing content to this workspace
+      await migrateUserContentToWorkspace(tx, identity.profileId, newWorkspace.id)
+      console.log('[Workspace] Migrated content')
+
+      return newWorkspace
     })
-
-    // Add owner as OWNER member
-    await tx.teamMember.create({
-      data: {
-        teamId: newWorkspace.id,
-        userId: identity.profileId,
-        role: 'OWNER',
-      },
-    })
-
-    // Migrate existing content to this workspace
-    await migrateUserContentToWorkspace(tx, identity.profileId, newWorkspace.id)
-
-    return newWorkspace
-  })
+    console.log('[Workspace] Transaction complete:', result.id)
+    return result
+  } catch (error) {
+    console.error('[Workspace] Error creating workspace:', error)
+    throw error
+  }
 }
 
 /**

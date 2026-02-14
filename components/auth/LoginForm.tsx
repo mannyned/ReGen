@@ -20,7 +20,7 @@ interface LoginFormProps {
   redirectTo?: string;
 }
 
-export function LoginForm({ onSuccess, redirectTo = '/dashboard' }: LoginFormProps) {
+export function LoginForm({ onSuccess, redirectTo = '/workspaces' }: LoginFormProps) {
   const { signInWithPassword, signInWithMagicLink, signInWithOAuth, loading, error } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

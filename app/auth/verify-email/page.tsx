@@ -17,7 +17,7 @@ function VerifyEmailContent() {
   const supabase = createClient();
 
   const email = searchParams.get('email');
-  const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+  const redirectTo = searchParams.get('redirectTo') || '/workspaces';
 
   const [isResending, setIsResending] = useState(false);
   const [resendStatus, setResendStatus] = useState<'idle' | 'success' | 'error'>('idle');

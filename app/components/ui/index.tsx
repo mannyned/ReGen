@@ -2,11 +2,14 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { SignOutButton } from '@/components/auth'
 import { Tooltip } from './Tooltip'
 import { useFeedback } from '@/app/context/FeedbackContext'
 import { WorkspaceSwitcher } from '@/app/components/WorkspaceSwitcher'
+import { WorkspaceBanner } from '@/app/components/WorkspaceBanner'
+import { useWorkspaceOptional } from '@/app/context/WorkspaceContext'
 
 // ==========================================
 // PLATFORM LOGO COMPONENT (RE-EXPORT)
@@ -133,9 +136,13 @@ interface AppHeaderProps {
   userInitials?: string
   userName?: string
   userRole?: 'owner' | 'admin' | 'member'  // Team role - billing only shows for owner (auto-fetched if not provided)
+  showBackButton?: boolean  // Show back navigation button
 }
 
-export function AppHeader({ currentPage, showSchedule = true, isPro = false, userInitials = 'U', userName = 'User', userRole: userRoleProp }: AppHeaderProps) {
+export function AppHeader({ currentPage, showSchedule = true, isPro = false, userInitials = 'U', userName = 'User', userRole: userRoleProp, showBackButton = false }: AppHeaderProps) {
+  const router = useRouter()
+  const workspaceContext = useWorkspaceOptional()
+  const activeWorkspace = workspaceContext?.activeWorkspace
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
@@ -206,6 +213,7 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
 
   // Secondary nav items (in "More" dropdown) - Content Sources section
   const moreNavItems: NavItem[] = [
+    { href: '/workspaces', label: 'Workspaces', active: currentPage === 'workspaces' || currentPage === 'workspace' },
     { href: '/rss', label: 'Content Feeds', active: currentPage === 'rss' },
     { href: '/help', label: 'Help Center', active: currentPage === 'help' },
   ]
@@ -214,6 +222,7 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
   const isMoreActive = moreNavItems.some(item => item.active)
 
   return (
+    <>
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
       scrolled
         ? 'bg-white/98 backdrop-blur-xl shadow-sm'
@@ -221,8 +230,34 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 lg:h-16">
-          {/* Logo */}
+          {/* Logo and Back Button */}
           <div className="flex items-center gap-6">
+            {showBackButton && activeWorkspace && (
+              <button
+                onClick={() => router.push(`/w/${activeWorkspace.id}/dashboard`)}
+                className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 transition-colors group"
+              >
+                <svg className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="text-sm">
+                  <span className="hidden sm:inline">Back to </span>
+                  <span className="font-medium">{activeWorkspace.name}</span>
+                </span>
+              </button>
+            )}
+            {showBackButton && !activeWorkspace && (
+              <button
+                onClick={() => router.back()}
+                className="flex items-center gap-1 text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="text-sm hidden sm:inline">Back</span>
+              </button>
+            )}
+            {showBackButton && <div className="h-6 w-px bg-gray-200" />}
             <Link href="/dashboard" className="flex items-center group">
               <div className="relative h-7 lg:h-8 transition-transform group-hover:scale-[1.02]">
                 <Image
@@ -516,6 +551,9 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
         </div>
       </div>
     </header>
+    {/* Workspace Banner - shows active workspace context */}
+    <WorkspaceBanner />
+    </>
   )
 }
 

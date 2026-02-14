@@ -39,10 +39,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // For PRO users, ensure they have a default workspace
-    if (identity.tier === 'PRO') {
-      await getOrCreateDefaultWorkspace(identity)
-    }
+    // For users with workspace access, ensure they have a default workspace
+    // (tier check already done via isWorkspacesEnabledForUser)
+    await getOrCreateDefaultWorkspace(identity)
 
     // Get all workspaces user has access to
     const memberships = await getUserWorkspaces(identity)
@@ -91,19 +90,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Only PRO users can create workspaces
-  if (identity.tier !== 'PRO') {
-    return NextResponse.json(
-      {
-        error: 'PRO plan required to create workspaces',
-        code: 'TIER_REQUIRED',
-        requiredTier: 'PRO',
-      },
-      { status: 403 }
-    )
-  }
-
-  // Check if workspaces feature is enabled
+  // Check if workspaces feature is enabled (includes PRO/beta check)
   if (!isWorkspacesEnabledForUser(identity.profileId)) {
     return NextResponse.json(
       {

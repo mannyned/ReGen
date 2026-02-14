@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { fileStorage, fileToBase64, generateFileId } from '../utils/fileStorage'
 import { AppHeader, Card, Badge, PlatformLogo } from '../components/ui'
+import { useWorkspaceBannerPadding } from '../components/WorkspaceBanner'
 import { CarouselComposer } from '../components/CarouselComposer'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import type { SocialPlatform } from '@/lib/types/social'
@@ -91,6 +92,7 @@ const platforms = [
 function UploadPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const workspaceBannerPadding = useWorkspaceBannerPadding()
   const { user, loading: authLoading } = useAuth()
   const [uploadType, setUploadType] = useState<UploadType>('video')
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([])
@@ -669,7 +671,7 @@ function UploadPageContent() {
     <div className="min-h-screen bg-background">
       <AppHeader currentPage="upload" />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28">
+      <main className={`max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28 ${workspaceBannerPadding}`}>
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl lg:text-4xl font-bold text-text-primary tracking-tight mb-2">

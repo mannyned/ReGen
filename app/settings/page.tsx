@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { AppHeader, Card, GradientBanner, Badge, PlatformLogo } from '../components/ui'
+import { useWorkspaceBannerPadding } from '../components/WorkspaceBanner'
 import { BetaProBadge, BetaSubscriptionCard, OverLimitWarning } from '../components/BetaProBadge'
 import type { SocialPlatform } from '@/lib/types/social'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
@@ -115,6 +116,7 @@ export default function SettingsPage() {
   const [mounted, setMounted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [showSaveToast, setShowSaveToast] = useState(false)
+  const workspaceBannerPadding = useWorkspaceBannerPadding()
 
   // Profile state
   const [displayName, setDisplayName] = useState('')
@@ -1255,7 +1257,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28">
+      <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28 ${workspaceBannerPadding}`}>
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl lg:text-4xl font-bold text-text-primary tracking-tight mb-2">Account Settings</h1>

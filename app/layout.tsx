@@ -4,6 +4,7 @@ import './globals.css'
 import { PlanProvider } from './context/PlanContext'
 import { UpgradeIntentProvider } from './context/UpgradeIntentContext'
 import { FeedbackProvider } from './context/FeedbackContext'
+import { WorkspaceProvider } from './context/WorkspaceContext'
 import { ToastProvider } from './components/ui/Toast'
 import { FeedbackModal } from './components/FeedbackModal'
 import { PWAProvider } from './components/PWAProvider'
@@ -83,12 +84,14 @@ export default function RootLayout({
           <PlanProvider>
             <UpgradeIntentProvider>
               <FeedbackProvider>
-                <ToastProvider>
-                  {children}
-                  <FeedbackModal />
-                  <PWAInstallPrompt />
-                  {process.env.NODE_ENV === 'development' && <PlanSwitcher />}
-                </ToastProvider>
+                <WorkspaceProvider>
+                  <ToastProvider>
+                    {children}
+                    <FeedbackModal />
+                    <PWAInstallPrompt />
+                    {process.env.NODE_ENV === 'development' && <PlanSwitcher />}
+                  </ToastProvider>
+                </WorkspaceProvider>
               </FeedbackProvider>
             </UpgradeIntentProvider>
           </PlanProvider>

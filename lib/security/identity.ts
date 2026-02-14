@@ -91,13 +91,22 @@ export async function getVerifiedIdentity(): Promise<VerifiedIdentity | null> {
     }
 
     // Get tier from profile (or default to FREE)
+    // Also check beta status for effective tier
     let tier: UserTier = 'FREE';
     try {
       const profile = await prisma.profile.findUnique({
         where: { id: user.id },
-        select: { tier: true },
+        select: { tier: true, betaUser: true, betaExpiresAt: true },
       });
-      tier = profile?.tier || 'FREE';
+      if (profile) {
+        // Check if user has active beta PRO access
+        const hasBetaPro = profile.betaUser &&
+          profile.betaExpiresAt &&
+          new Date(profile.betaExpiresAt) > new Date();
+
+        // Effective tier: PRO if paid PRO or active beta PRO
+        tier = profile.tier === 'PRO' || hasBetaPro ? 'PRO' : profile.tier;
+      }
     } catch {
       // Profile lookup failed, use default tier
     }

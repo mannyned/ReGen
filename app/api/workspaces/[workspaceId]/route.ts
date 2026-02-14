@@ -70,8 +70,15 @@ export async function GET(
       )
     }
 
-    // Get user's role
+    // Get user's role and permissions
     const membership = workspace.members.find((m) => m.userId === identity.profileId)
+    const isOwner = workspace.ownerId === identity.profileId
+
+    // Determine rename permission:
+    // - OWNER can always rename
+    // - ADMIN can rename only if granted canRename permission by owner
+    // - MEMBER cannot rename
+    const canRename = isOwner || (membership?.role === 'ADMIN' && membership?.canRename === true)
 
     return NextResponse.json({
       workspace: {
@@ -83,6 +90,7 @@ export async function GET(
         settings: workspace.settings,
         allowMemberAccountAnalytics: workspace.allowMemberAccountAnalytics,
         role: membership?.role || 'MEMBER',
+        canRename,
         members: workspace.members.map((m) => ({
           id: m.id,
           userId: m.user.id,
@@ -91,6 +99,7 @@ export async function GET(
           avatarUrl: m.user.avatarUrl,
           role: m.role,
           joinedAt: m.joinedAt,
+          canRename: m.canRename,
         })),
         stats: {
           socialConnections: workspace._count.socialConnections,
@@ -125,11 +134,33 @@ export async function PATCH(
   const { workspaceId } = await params
 
   try {
-    // Check admin access
-    const isAdmin = await isWorkspaceAdmin(identity.profileId, workspaceId)
-    if (!isAdmin) {
+    // Get workspace and membership to check permissions
+    const workspace = await prisma.team.findUnique({
+      where: { id: workspaceId },
+      include: {
+        members: {
+          where: { userId: identity.profileId },
+          select: { role: true, canRename: true },
+        },
+      },
+    })
+
+    if (!workspace) {
       return NextResponse.json(
-        { error: 'Admin access required', code: 'FORBIDDEN' },
+        { error: 'Workspace not found', code: 'NOT_FOUND' },
+        { status: 404 }
+      )
+    }
+
+    const membership = workspace.members[0]
+    const isOwner = workspace.ownerId === identity.profileId
+    const isAdminRole = membership?.role === 'ADMIN'
+    const isMemberRole = membership?.role === 'MEMBER'
+
+    // Members cannot update workspace at all
+    if (isMemberRole && !isOwner) {
+      return NextResponse.json(
+        { error: 'You do not have permission to update this workspace', code: 'FORBIDDEN' },
         { status: 403 }
       )
     }
@@ -141,6 +172,19 @@ export async function PATCH(
     const updateData: Record<string, unknown> = {}
 
     if (name !== undefined) {
+      // Check rename permission:
+      // - OWNER can always rename
+      // - ADMIN can rename only if granted canRename permission
+      // - MEMBER cannot rename
+      const canRename = isOwner || (isAdminRole && membership?.canRename === true)
+
+      if (!canRename) {
+        return NextResponse.json(
+          { error: 'You do not have permission to rename this workspace', code: 'FORBIDDEN' },
+          { status: 403 }
+        )
+      }
+
       const trimmedName = String(name).trim().slice(0, 100)
       if (!trimmedName) {
         return NextResponse.json(
@@ -160,18 +204,18 @@ export async function PATCH(
     }
 
     // Update workspace
-    const workspace = await prisma.team.update({
+    const updated = await prisma.team.update({
       where: { id: workspaceId },
       data: updateData,
     })
 
     return NextResponse.json({
       workspace: {
-        id: workspace.id,
-        name: workspace.name,
-        isDefault: workspace.isDefault,
-        settings: workspace.settings,
-        allowMemberAccountAnalytics: workspace.allowMemberAccountAnalytics,
+        id: updated.id,
+        name: updated.name,
+        isDefault: updated.isDefault,
+        settings: updated.settings,
+        allowMemberAccountAnalytics: updated.allowMemberAccountAnalytics,
       },
     })
   } catch (error) {

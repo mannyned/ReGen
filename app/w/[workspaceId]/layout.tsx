@@ -1,9 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/db'
-import { WorkspaceProvider } from '@/app/context/WorkspaceContext'
 import { isWorkspacesEnabledForUser } from '@/lib/feature-flags/workspaces'
-import type { TeamRole } from '@prisma/client'
 
 interface Props {
   children: React.ReactNode
@@ -49,13 +47,6 @@ export default async function WorkspaceLayout({ children, params }: Props) {
     redirect('/workspaces?error=no_access')
   }
 
-  return (
-    <WorkspaceProvider
-      initialWorkspaceId={workspaceId}
-      initialWorkspaceName={membership.team.name}
-      initialRole={membership.role as 'OWNER' | 'ADMIN' | 'MEMBER'}
-    >
-      {children}
-    </WorkspaceProvider>
-  )
+  // WorkspaceProvider is already in root layout, no need to wrap again
+  return <>{children}</>
 }

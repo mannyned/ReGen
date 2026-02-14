@@ -18,6 +18,8 @@ export interface Workspace {
 interface WorkspaceContextValue {
   /** Currently active workspace (null if not in workspace mode) */
   currentWorkspace: Workspace | null
+  /** Active workspace that persists across pages (for showing brand context) */
+  activeWorkspace: Workspace | null
   /** All workspaces the user has access to */
   workspaces: Workspace[]
   /** User's workspace limit */
@@ -30,6 +32,8 @@ interface WorkspaceContextValue {
   error: string | null
   /** Switch to a different workspace */
   switchWorkspace: (workspaceId: string) => void
+  /** Set active workspace (persists across pages) */
+  setActiveWorkspace: (workspace: Workspace | null) => void
   /** Refresh workspaces list */
   refreshWorkspaces: () => Promise<void>
   /** Check if user can create more workspaces */
@@ -78,8 +82,38 @@ export function WorkspaceProvider({
     initialWorkspaceId || null
   )
 
+  // Active workspace that persists across pages (stored in sessionStorage)
+  const [activeWorkspace, setActiveWorkspaceState] = useState<Workspace | null>(null)
+
+  // Load active workspace from sessionStorage on mount (client-side only)
+  useEffect(() => {
+    const stored = sessionStorage.getItem('activeWorkspace')
+    if (stored) {
+      try {
+        setActiveWorkspaceState(JSON.parse(stored) as Workspace)
+      } catch {
+        // Invalid stored data
+      }
+    }
+  }, [])
+
   // Find current workspace from list
   const currentWorkspace = workspaces.find((w) => w.id === currentWorkspaceId) || null
+
+  // Set active workspace and persist to sessionStorage
+  const setActiveWorkspace = useCallback((workspace: Workspace | null) => {
+    if (workspace) {
+      setActiveWorkspaceState(workspace)
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('activeWorkspace', JSON.stringify(workspace))
+      }
+    } else {
+      setActiveWorkspaceState(null)
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('activeWorkspace')
+      }
+    }
+  }, [])
 
   // Fetch workspaces on mount
   const fetchWorkspaces = useCallback(async () => {
@@ -159,12 +193,14 @@ export function WorkspaceProvider({
 
   const value: WorkspaceContextValue = {
     currentWorkspace,
+    activeWorkspace,
     workspaces,
     workspaceLimit,
     workspacesEnabled,
     isLoading,
     error,
     switchWorkspace,
+    setActiveWorkspace,
     refreshWorkspaces: fetchWorkspaces,
     canCreateWorkspace,
     isAdmin,
