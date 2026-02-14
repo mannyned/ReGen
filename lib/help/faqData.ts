@@ -466,6 +466,39 @@ Your scheduled posts appear in the Schedule tab where you can edit, reschedule, 
 **Tip:** If you're scheduling for a different timezone audience, consider when they're most active, not when you are. Our analytics can help identify optimal posting times.`,
       },
       {
+        id: 'repeat-post',
+        question: 'What is the "Repeat this Post" feature?',
+        answer: `Repeat this Post lets you automatically repost the same content daily for multiple days—perfect for maximizing reach and visibility.
+
+**How it works:**
+1. Create your content and select platforms
+2. Toggle **"Repeat this post"** on the Schedule page
+3. Choose how many days to repeat (up to 30 days)
+4. Schedule or publish — ReGenr handles the rest
+
+**Quick select options:** 2, 3, 5, 7, 14, or 30 days
+**Custom entry:** Enter any number from 1 to 30
+
+**What happens behind the scenes:**
+- Each day creates a separate scheduled post
+- All posts in a series are grouped together
+- You can cancel individual posts or the entire series
+- If you publish immediately, Day 1 posts right away and Days 2+ are scheduled
+
+**Preview:**
+When you select a repeat period, you'll see a preview of all the dates your post will go out on.
+
+**Deleting a series:**
+- When deleting a repeated post, you'll be asked if you want to delete just that post or the entire series
+- Only pending (unposted) posts in the series can be cancelled
+
+**Best for:**
+- Product launches and promotions
+- Event reminders and countdowns
+- Evergreen content that benefits from repeated exposure
+- Month-long campaigns (use the 30-day option)`,
+      },
+      {
         id: 'duplicate-prevention',
         question: 'How do you prevent duplicate posts?',
         answer: `We have safeguards to prevent accidental duplicates:
@@ -786,11 +819,11 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
 - Unlimited platform connections
 - Everything in Creator
 - 20 content feeds included
-- Team workspace (3 seats)
+- Team workspace (1 default workspace, 3 seats)
 - Advanced analytics permissions
 - API access (coming soon)
 
-*Pricing will be announced when we exit beta. Beta users will receive special early-adopter rates.*`,
+*During the beta period, Pro users receive 1 default workspace. Additional workspaces will be available after beta for an additional monthly fee — pricing will be announced soon. Beta users will receive special early-adopter rates.*`,
       },
       {
         id: 'beta-pro',
@@ -858,7 +891,7 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
       {
         id: 'what-is-workspace',
         question: 'What is a shared workspace?',
-        answer: `A shared workspace lets multiple team members collaborate on content:
+        answer: `A shared workspace lets multiple team members collaborate on content. Workspaces are designed for social media managers and organizations that manage multiple brands — each brand can have its own workspace with separate platforms, content, and team members.
 
 **Shared Resources:**
 - All connected platforms
@@ -872,9 +905,14 @@ Think of it as a content pipeline that brings fresh material directly into ReGen
 - Personal settings
 
 **Best for:**
+- Social media managers handling multiple brands
 - Agencies managing client accounts
+- Organizations with multiple brands or product lines
 - Marketing teams sharing responsibilities
-- Content teams with multiple contributors`,
+- Content teams with multiple contributors
+
+**Beta Period:**
+During the beta testing period, Pro users receive 1 default workspace. Additional workspaces will be available after the beta period for an additional monthly fee — pricing will be announced when we exit beta.`,
       },
       {
         id: 'seat-counting',

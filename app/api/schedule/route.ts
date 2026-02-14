@@ -190,8 +190,8 @@ export async function POST(request: NextRequest) {
       },
     }
 
-    // Validate and clamp repeatDays (1-7)
-    const validRepeatDays = repeatDays && repeatDays >= 1 && repeatDays <= 7 ? Math.floor(repeatDays) : 1
+    // Validate and clamp repeatDays (1-30)
+    const validRepeatDays = repeatDays && repeatDays >= 1 && repeatDays <= 30 ? Math.floor(repeatDays) : 1
     const isRepostSeries = validRepeatDays > 1
 
     // Generate repeatGroupId if this is a repost series

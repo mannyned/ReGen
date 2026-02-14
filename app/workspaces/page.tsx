@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AppHeader } from '@/app/components/ui'
+import WorkspaceHeader from '@/app/components/WorkspaceHeader'
 
 // ============================================
 // TYPES
@@ -135,7 +135,7 @@ export default function WorkspacesPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <AppHeader currentPage="workspaces" />
+        <WorkspaceHeader />
         <div className="flex items-center justify-center h-[60vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
@@ -147,7 +147,7 @@ export default function WorkspacesPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <AppHeader currentPage="workspaces" />
+        <WorkspaceHeader />
         <div className="max-w-4xl mx-auto px-4 py-16 text-center">
           <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-8">
             <h2 className="text-xl font-semibold text-red-800 dark:text-red-200 mb-2">
@@ -179,9 +179,9 @@ export default function WorkspacesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <AppHeader currentPage="workspaces" />
+      <WorkspaceHeader />
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-8 pt-20 lg:pt-24">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
@@ -209,12 +209,9 @@ export default function WorkspacesPage() {
           <p className="text-blue-800 dark:text-blue-200 text-sm">
             You own {ownedCount} of {workspaceLimit} workspace{workspaceLimit !== 1 ? 's' : ''}.
             {ownedCount >= workspaceLimit && (
-              <button
-                onClick={() => setShowPaywall(true)}
-                className="ml-2 underline hover:no-underline"
-              >
-                Upgrade for more
-              </button>
+              <span className="ml-2 text-blue-600 dark:text-blue-300">
+                Additional workspaces will be available after the beta period for an additional monthly fee.
+              </span>
             )}
           </p>
         </div>
@@ -336,25 +333,18 @@ export default function WorkspacesPage() {
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
               Workspace Limit Reached
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Your plan includes {workspaceLimit} workspace
-              {workspaceLimit !== 1 ? 's' : ''}. Upgrade to add more workspaces and
-              collaborate with additional teams.
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              During the beta period, Pro users are limited to {workspaceLimit} default workspace{workspaceLimit !== 1 ? 's' : ''}.
             </p>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowPaywall(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => router.push('/settings?tab=billing')}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Upgrade Plan
-              </button>
-            </div>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              After the beta testing period, additional workspaces will be available for an additional monthly fee. Pricing will be announced soon.
+            </p>
+            <button
+              onClick={() => setShowPaywall(false)}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Got it
+            </button>
           </div>
         </div>
       )}

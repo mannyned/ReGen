@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { fileStorage } from '../utils/fileStorage'
 import { AppHeader, PlatformLogo } from '../components/ui'
+import { useWorkspaceBannerPadding } from '../components/WorkspaceBanner'
 import type { SocialPlatform } from '@/lib/types/social'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import { TikTokPostSettings, type TikTokPostSettingsData } from '../components/tiktok/TikTokPostSettings'
@@ -46,6 +47,7 @@ function SchedulePageContent() {
   const { user, loading: authLoading } = useAuth()
   const searchParams = useSearchParams()
   const { triggerAfterFirstPost, hasCompletedFirstPost } = useFeedbackTrigger()
+  const workspaceBannerPadding = useWorkspaceBannerPadding()
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([])
   const [uploadedPlatforms, setUploadedPlatforms] = useState<Platform[]>([]) // Platforms selected during upload
   const [selectedDate, setSelectedDate] = useState('')
@@ -1061,7 +1063,7 @@ function SchedulePageContent() {
       <AppHeader currentPage="schedule" />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28">
+      <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28 ${workspaceBannerPadding}`}>
         {/* Test Mode Banner */}
         <div className={`mb-6 p-4 rounded-xl border-2 ${
           testMode
@@ -1695,7 +1697,7 @@ function SchedulePageContent() {
 
                       {/* Quick day buttons */}
                       <div className="flex gap-2 mb-4">
-                        {[2, 3, 5, 7].map((days) => (
+                        {[2, 3, 5, 7, 14, 30].map((days) => (
                           <button
                             key={days}
                             type="button"
@@ -1717,12 +1719,12 @@ function SchedulePageContent() {
                         <input
                           type="number"
                           min={1}
-                          max={7}
+                          max={30}
                           value={repeatDays}
-                          onChange={(e) => setRepeatDays(Math.min(7, Math.max(1, parseInt(e.target.value) || 1)))}
+                          onChange={(e) => setRepeatDays(Math.min(30, Math.max(1, parseInt(e.target.value) || 1)))}
                           className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center"
                         />
-                        <span className="text-sm text-text-secondary">days (max 7)</span>
+                        <span className="text-sm text-text-secondary">days (max 30)</span>
                       </div>
 
                       {/* Preview of scheduled dates */}

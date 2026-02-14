@@ -92,8 +92,10 @@ export const LANDING_FAQ_SECTIONS: LandingFAQSection[] = [
       {
         id: 'scheduling',
         question: 'Can I schedule posts in advance?',
-        answer: `Yes. Create your content, choose your platforms, pick your date and time, and we'll handle the rest. You can schedule weeks or months ahead, and manage everything from a visual calendar. Scheduled posts can be edited or cancelled anytime before they go live.`,
-        highlight: 'Set it and forget it',
+        answer: `Yes. Create your content, choose your platforms, pick your date and time, and we'll handle the rest. You can schedule weeks or months ahead, and manage everything from a visual calendar. Scheduled posts can be edited or cancelled anytime before they go live.
+
+You can also use **Repeat this Post** to automatically repost the same content daily for up to 30 days — perfect for promotions, product launches, and month-long campaigns.`,
+        highlight: 'Schedule and repeat for up to 30 days',
       },
       {
         id: 'analytics',
@@ -138,7 +140,7 @@ export const LANDING_FAQ_SECTIONS: LandingFAQSection[] = [
       {
         id: 'plan-options',
         question: 'What plans are available?',
-        answer: `We offer three tiers: Free (for getting started), Creator (for active content creators with unlimited scheduling), and Pro (for teams with collaboration features, advanced analytics, and API access). Each tier is designed to grow with your needs.`,
+        answer: `We offer three tiers: Free (for getting started), Creator (for active content creators with unlimited scheduling), and Pro (for teams with collaboration features, workspaces for managing multiple brands, advanced analytics, and API access). Each tier is designed to grow with your needs. During beta, Pro users receive 1 default workspace — additional workspaces will be available after beta for an additional monthly fee.`,
         highlight: 'Plans that scale with you',
       },
       {
