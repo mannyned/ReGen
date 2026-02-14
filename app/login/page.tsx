@@ -19,7 +19,8 @@ function LoginForm() {
   const [successMessage, setSuccessMessage] = useState('');
 
   // Get redirect URL and any error/success messages from URL
-  const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+  // Default to /workspaces so users can select a workspace before continuing
+  const redirectTo = searchParams.get('redirectTo') || '/workspaces';
   const urlError = searchParams.get('error');
   const urlMessage = searchParams.get('message');
   const verified = searchParams.get('verified');

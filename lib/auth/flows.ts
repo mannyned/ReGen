@@ -170,7 +170,7 @@ export async function signUp(data: SignUpData): Promise<AuthResult> {
       email: data.email,
       password: data.password,
       options: {
-        emailRedirectTo: `${baseUrl}/auth/callback?next=/dashboard`,
+        emailRedirectTo: `${baseUrl}/auth/callback?next=/workspaces`,
         data: {
           display_name: data.displayName || data.email.split('@')[0],
         },
@@ -226,7 +226,7 @@ export async function signUpWithMagicLink(data: MagicLinkData & { displayName?: 
     const { error } = await supabase.auth.signInWithOtp({
       email: data.email,
       options: {
-        emailRedirectTo: `${baseUrl}/auth/callback?next=/dashboard`,
+        emailRedirectTo: `${baseUrl}/auth/callback?next=/workspaces`,
         data: {
           display_name: data.displayName || data.email.split('@')[0],
         },
@@ -332,7 +332,7 @@ export async function signInWithMagicLink(data: MagicLinkData): Promise<AuthResu
     const { error } = await supabase.auth.signInWithOtp({
       email: data.email,
       options: {
-        emailRedirectTo: `${baseUrl}/auth/callback?next=/dashboard`,
+        emailRedirectTo: `${baseUrl}/auth/callback?next=/workspaces`,
         // Don't create new user for sign-in
         shouldCreateUser: false,
       },
@@ -376,7 +376,7 @@ export async function signInWithMagicLink(data: MagicLinkData): Promise<AuthResu
  */
 export async function signInWithOAuth(
   provider: 'google' | 'apple',
-  redirectTo: string = '/dashboard'
+  redirectTo: string = '/workspaces'
 ): Promise<AuthResult> {
   try {
     const supabase = createClient();
@@ -658,7 +658,7 @@ export async function resendVerificationEmail(email: string): Promise<AuthResult
       type: 'signup',
       email,
       options: {
-        emailRedirectTo: `${baseUrl}/auth/callback?next=/dashboard`,
+        emailRedirectTo: `${baseUrl}/auth/callback?next=/workspaces`,
       },
     });
 

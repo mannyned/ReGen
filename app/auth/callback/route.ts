@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
 
   // Get the authorization code
   const code = searchParams.get('code');
-  const next = searchParams.get('next') || '/dashboard';
+  // Default to /workspaces so users can select a workspace before continuing
+  const next = searchParams.get('next') || '/workspaces';
 
   if (!code) {
     return NextResponse.redirect(
