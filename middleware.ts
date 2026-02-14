@@ -182,12 +182,17 @@ async function getUserTier(
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('tier')
+      .select('tier, beta_user')
       .eq('id', userId)
-      .single<{ tier: string }>();
+      .single<{ tier: string; beta_user: boolean }>();
 
     if (error || !data) {
       return 'FREE';
+    }
+
+    // Beta users get PRO-level access
+    if (data.beta_user) {
+      return 'PRO';
     }
 
     return data.tier as UserTier;
