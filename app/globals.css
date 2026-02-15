@@ -430,3 +430,59 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============================================================================
+   PWA SAFE AREA & LAYOUT FIXES
+
+   Handles safe-area-insets for notched/Dynamic Island devices (iPhone X+, etc.)
+   and prevents common PWA overflow issues.
+
+   - env(safe-area-inset-*) values are 0px on non-notched devices
+   - They only become non-zero when viewport-fit: cover is set (in layout.tsx)
+   - All changes are additive — zero visual impact on non-notched devices
+   ============================================================================ */
+
+/* Prevent horizontal overflow from 100vw calculations or wide content */
+html {
+  overflow-x: hidden;
+}
+
+/* Fixed app header — adds safe area padding above content on notched devices */
+.pwa-header {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Positioned below the app header (header height + safe area) */
+/* Mobile: header is h-14 (3.5rem), Desktop: header is h-16 (4rem) */
+.pwa-below-header {
+  top: calc(3.5rem + env(safe-area-inset-top, 0px));
+}
+
+@media (min-width: 1024px) {
+  .pwa-below-header {
+    top: calc(4rem + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* Page content offset to clear fixed header + safe area */
+/* Mobile: 5rem (header + spacing), Desktop: 6rem */
+.pwa-page-offset {
+  padding-top: calc(5rem + env(safe-area-inset-top, 0px));
+}
+
+@media (min-width: 1024px) {
+  .pwa-page-offset {
+    padding-top: calc(6rem + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* Bottom safe area padding for fixed bottom elements */
+.pwa-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Left/right safe area padding for landscape mode */
+.pwa-safe-horizontal {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}

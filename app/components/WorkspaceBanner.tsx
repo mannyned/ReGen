@@ -23,7 +23,7 @@ export function WorkspaceBanner() {
   }
 
   return (
-    <div className="fixed top-14 lg:top-16 left-0 right-0 z-40 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-700/50">
+    <div className="fixed pwa-below-header left-0 right-0 z-40 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-700/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-10">
           {/* Workspace Info */}

@@ -5,3 +5,4 @@
  */
 
 export * from './workspaces'
+export * from './pwa-layout'

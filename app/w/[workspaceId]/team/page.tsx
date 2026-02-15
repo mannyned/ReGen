@@ -182,7 +182,7 @@ export default function TeamManagementPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <WorkspaceHeader workspaceName={team.name} workspaceId={workspaceId} />
 
-      <main className="max-w-4xl mx-auto px-4 py-8 pt-20 lg:pt-24">
+      <main className="max-w-4xl mx-auto px-4 py-8 pwa-page-offset">
         {/* Success Message */}
         {inviteSuccess && (
           <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">

@@ -133,7 +133,7 @@ export function NotificationBell() {
 
       {/* Dropdown - Fixed position on mobile for better visibility */}
       {isOpen && (
-        <div className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-16 sm:top-auto sm:mt-2 w-auto sm:w-96 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden max-w-[calc(100vw-2rem)] sm:max-w-none">
+        <div className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-16 sm:top-auto sm:mt-2 w-auto sm:w-96 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden max-w-[calc(100%-2rem)] sm:max-w-none">
           {/* Header */}
           <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
             <h3 className="font-semibold text-gray-900 dark:text-white">Notifications</h3>

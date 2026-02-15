@@ -223,7 +223,7 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
 
   return (
     <>
-    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+    <header className={`fixed top-0 left-0 right-0 z-50 pwa-header transition-all duration-300 ${
       scrolled
         ? 'bg-white/98 backdrop-blur-xl shadow-sm'
         : 'bg-white border-b border-gray-100'
@@ -568,7 +568,7 @@ interface PageWrapperProps {
 
 export function PageWrapper({ children, className = '' }: PageWrapperProps) {
   return (
-    <div className={`min-h-screen bg-background pt-20 lg:pt-24 ${className}`}>
+    <div className={`min-h-screen bg-background pwa-page-offset ${className}`}>
       {children}
     </div>
   )

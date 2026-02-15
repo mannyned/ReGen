@@ -196,7 +196,7 @@ export default function WorkspaceDashboardPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <WorkspaceHeader workspaceName={details?.name} workspaceId={workspaceId} />
 
-      <main className="max-w-6xl mx-auto px-4 py-8 pt-20 lg:pt-24">
+      <main className="max-w-6xl mx-auto px-4 py-8 pwa-page-offset">
         {/* Workspace Header */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

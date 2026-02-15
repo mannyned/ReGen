@@ -133,7 +133,7 @@ export function PWAInstallPrompt() {
 
   // Standard Install Banner
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 p-4 animate-slideUp">
+    <div className="fixed bottom-0 left-0 right-0 z-50 p-4 pwa-safe-bottom animate-slideUp">
       <div className="max-w-lg mx-auto bg-white rounded-2xl shadow-2xl border border-gray-100 p-4">
         <div className="flex items-center gap-4">
           <Image

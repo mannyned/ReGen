@@ -181,7 +181,7 @@ export default function WorkspacesPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <WorkspaceHeader />
 
-      <main className="max-w-6xl mx-auto px-4 py-8 pt-20 lg:pt-24">
+      <main className="max-w-6xl mx-auto px-4 py-8 pwa-page-offset">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
