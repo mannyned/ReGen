@@ -18,9 +18,8 @@ function LoginForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Get redirect URL and any error/success messages from URL
-  // Default to /workspaces so users can select a workspace before continuing
-  const redirectTo = searchParams.get('redirectTo') || '/workspaces';
+  // Get redirect URL from query params (if explicitly set, use it)
+  const explicitRedirect = searchParams.get('redirectTo');
   const urlError = searchParams.get('error');
   const urlMessage = searchParams.get('message');
   const verified = searchParams.get('verified');
@@ -95,12 +94,22 @@ function LoginForm() {
       }
 
       if (data.session) {
-        // Successfully logged in - redirect
-        // Handle team invite if present
-        const finalRedirect = inviteToken
-          ? `/team/invite?token=${inviteToken}`
-          : redirectTo;
-        router.push(finalRedirect);
+        // Successfully logged in - determine redirect
+        if (inviteToken) {
+          router.push(`/team/invite?token=${inviteToken}`);
+        } else if (explicitRedirect) {
+          router.push(explicitRedirect);
+        } else {
+          // Fetch user tier to determine default redirect
+          try {
+            const meRes = await fetch('/api/auth/me');
+            const meData = await meRes.json();
+            const isProOrBeta = meData.tierInfo?.effectiveTier === 'PRO' || meData.betaUser;
+            router.push(isProOrBeta ? '/workspaces' : '/dashboard');
+          } catch {
+            router.push('/dashboard');
+          }
+        }
         router.refresh(); // Refresh to update server components
       }
     } catch (error) {

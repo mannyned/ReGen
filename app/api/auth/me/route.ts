@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 import { getClientTierInfo, type ProfileWithBeta } from '@/lib/tiers/effective-tier';
+import { getOrCreateDefaultWorkspace } from '@/lib/workspace/context';
 
 // Ensure fresh data on every request (no caching)
 export const runtime = 'nodejs';
@@ -75,6 +76,22 @@ export async function GET() {
         },
       },
     });
+
+    // Silently create a default workspace for ALL users (enables seamless Pro upgrade)
+    if (profile) {
+      try {
+        await getOrCreateDefaultWorkspace({
+          id: user.id,
+          profileId: profile.id,
+          email: profile.email,
+          tier: profile.tier,
+          emailVerified: !!user.email_confirmed_at,
+        });
+      } catch (wsError) {
+        // Never fail the auth/me response — workspace creation is best-effort
+        console.error('[Auth/Me] Silent workspace creation error:', wsError);
+      }
+    }
 
     if (!profile) {
       // Profile doesn't exist yet - return basic user info

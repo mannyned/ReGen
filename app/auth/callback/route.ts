@@ -45,8 +45,7 @@ export async function GET(request: NextRequest) {
 
   // Get the authorization code
   const code = searchParams.get('code');
-  // Default to /workspaces so users can select a workspace before continuing
-  const next = searchParams.get('next') || '/workspaces';
+  const next = searchParams.get('next'); // Will determine redirect after checking tier
 
   if (!code) {
     return NextResponse.redirect(
@@ -171,8 +170,19 @@ export async function GET(request: NextRequest) {
       console.error('[Auth Callback Profile Error]', profileError);
     }
 
-    // Redirect to intended destination
-    return NextResponse.redirect(`${baseUrl}${next}`);
+    // Determine redirect destination based on tier
+    let redirectTo = next; // Use explicit redirect if provided
+    if (!redirectTo) {
+      // Check if user is Pro or Beta — send to workspaces, otherwise dashboard
+      const profile = await prisma.profile.findUnique({
+        where: { id: user.id },
+        select: { tier: true, betaUser: true },
+      });
+      const isProOrBeta = profile?.tier === 'PRO' || profile?.betaUser;
+      redirectTo = isProOrBeta ? '/workspaces' : '/dashboard';
+    }
+
+    return NextResponse.redirect(`${baseUrl}${redirectTo}`);
   } catch (error) {
     console.error('[Auth Callback Error]', error);
     return NextResponse.redirect(
