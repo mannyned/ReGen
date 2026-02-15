@@ -634,6 +634,19 @@ export default function SaveRateAnalyticsPage() {
       const platformParam = selectedPlatform !== 'all' ? `&platform=${selectedPlatform}` : '';
       const statsRes = await fetch(`/api/analytics/stats?days=${days}${platformParam}`);
       if (!statsRes.ok) {
+        // API error - still set summary with zeros so user sees "0.00%" instead of "-"
+        // This makes it clear data loaded but no saves were found
+        setSummary({
+          saves: 0,
+          impressions: 0,
+          saveRate: 0,
+          contentCount: 0,
+          trend: { direction: 'stable' as TrendDirection, changePercent: 0 }
+        });
+        setByFormat([]);
+        setByPlatform([]);
+        setTrends([]);
+        setTopPosts([]);
         setIsLoading(false);
         return;
       }
@@ -869,7 +882,7 @@ export default function SaveRateAnalyticsPage() {
               <p className="font-medium">When do metrics update?</p>
               <p className="mt-1 text-blue-600">
                 Instagram saves update within 15-30 minutes. YouTube metrics may take 24-48 hours to reflect.
-                Data syncs automatically when you visit this page.
+                Data syncs automatically every 6 hours. You can also trigger a manual sync from the main Analytics page.
               </p>
             </div>
           </div>

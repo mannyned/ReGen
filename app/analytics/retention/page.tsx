@@ -826,6 +826,13 @@ export default function RetentionAnalyticsPage() {
       // Fetch analytics stats to get video metrics from synced data
       const statsRes = await fetch(`/api/analytics/stats?days=${days}${platformParam}`);
       if (!statsRes.ok) {
+        // API error - show empty state instead of silently failing
+        setSummary(null);
+        setHookScore(null);
+        setRetentionData([]);
+        setDropOffs([]);
+        setByFormat([]);
+        setInsights([]);
         setIsLoading(false);
         return;
       }
