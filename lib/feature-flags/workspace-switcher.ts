@@ -4,7 +4,8 @@
  * Controls the Notion-style workspace switcher in the header-left.
  *
  * Environment Variables:
- * - WORKSPACE_SWITCHER_V2: 'true' to enable (default: false)
+ * - NEXT_PUBLIC_WORKSPACE_SWITCHER_V2: 'true' to enable (default: false)
+ *   Must use NEXT_PUBLIC_ prefix because this flag is consumed in client components.
  *
  * When enabled:
  * - WorkspaceSwitcherV2 renders in the top-left of the AppHeader
@@ -18,4 +19,4 @@
  * - Zero runtime cost
  */
 
-export const WORKSPACE_SWITCHER_V2 = process.env.WORKSPACE_SWITCHER_V2 === 'true'
+export const WORKSPACE_SWITCHER_V2 = process.env.NEXT_PUBLIC_WORKSPACE_SWITCHER_V2 === 'true'
