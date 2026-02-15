@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useWorkspaceOptional, type Workspace } from '@/app/context/WorkspaceContext'
 
 // ============================================
@@ -219,7 +220,7 @@ export function WorkspaceSwitcherV2() {
     return null
   }
 
-  const { currentWorkspace, workspaces, switchWorkspace, canCreateWorkspace, isLoading } = ctx
+  const { currentWorkspace, workspaces, setActiveWorkspace, canCreateWorkspace, isLoading } = ctx
 
   if (isLoading) return null
 
@@ -227,7 +228,7 @@ export function WorkspaceSwitcherV2() {
     <WorkspaceSwitcherInner
       currentWorkspace={currentWorkspace}
       workspaces={workspaces}
-      switchWorkspace={switchWorkspace}
+      setActiveWorkspace={setActiveWorkspace}
       canCreateWorkspace={canCreateWorkspace}
       isOpen={isOpen}
       setIsOpen={setIsOpen}
@@ -248,7 +249,7 @@ export function WorkspaceSwitcherV2() {
 function WorkspaceSwitcherInner({
   currentWorkspace,
   workspaces,
-  switchWorkspace,
+  setActiveWorkspace,
   canCreateWorkspace,
   isOpen,
   setIsOpen,
@@ -264,7 +265,7 @@ function WorkspaceSwitcherInner({
 }: {
   currentWorkspace: Workspace | null
   workspaces: Workspace[]
-  switchWorkspace: (id: string) => void
+  setActiveWorkspace: (workspace: Workspace | null) => void
   canCreateWorkspace: boolean
   isOpen: boolean
   setIsOpen: (v: boolean) => void
@@ -364,14 +365,18 @@ function WorkspaceSwitcherInner({
     [isOpen, focusedIndex, filteredWorkspaces, setIsOpen, setFocusedIndex, triggerRef]
   )
 
+  const router = useRouter()
+
   const handleSelect = useCallback(
     (id: string) => {
-      if (id !== currentWorkspace?.id) {
-        switchWorkspace(id)
+      const workspace = workspaces.find((w) => w.id === id)
+      if (workspace) {
+        setActiveWorkspace(workspace)
       }
       setIsOpen(false)
+      router.push('/dashboard')
     },
-    [currentWorkspace, switchWorkspace, setIsOpen]
+    [workspaces, setActiveWorkspace, setIsOpen, router]
   )
 
   // Prevent body scroll when mobile sheet is open
