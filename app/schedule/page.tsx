@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { fileStorage } from '../utils/fileStorage'
 import { AppHeader, PlatformLogo } from '../components/ui'
-import { useWorkspaceBannerPadding } from '../components/WorkspaceBanner'
 import type { SocialPlatform } from '@/lib/types/social'
 import { useAuth } from '@/lib/supabase/hooks/useAuth'
 import { TikTokPostSettings, type TikTokPostSettingsData } from '../components/tiktok/TikTokPostSettings'
@@ -47,7 +46,6 @@ function SchedulePageContent() {
   const { user, loading: authLoading } = useAuth()
   const searchParams = useSearchParams()
   const { triggerAfterFirstPost, hasCompletedFirstPost } = useFeedbackTrigger()
-  const workspaceBannerPadding = useWorkspaceBannerPadding()
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([])
   const [uploadedPlatforms, setUploadedPlatforms] = useState<Platform[]>([]) // Platforms selected during upload
   const [selectedDate, setSelectedDate] = useState('')
@@ -1063,7 +1061,7 @@ function SchedulePageContent() {
       <AppHeader currentPage="schedule" />
 
       {/* Main Content */}
-      <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28 ${workspaceBannerPadding}`}>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28">
         {/* Test Mode Banner */}
         <div className={`mb-6 p-4 rounded-xl border-2 ${
           testMode

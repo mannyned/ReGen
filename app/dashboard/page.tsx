@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react'
 import { usePlan } from '../context/PlanContext'
 import { getRemainingUploads } from '../config/plans'
 import { AppHeader, Card, StatCard, GradientBanner, Badge, PlatformLogo } from '../components/ui'
-import { useWorkspaceBannerPadding } from '../components/WorkspaceBanner'
 import { useBetaStatus } from '../components/BetaProBadge'
 import { NotificationBell } from '../components/NotificationBell'
 import type { SocialPlatform } from '@/lib/types/social'
@@ -77,7 +76,6 @@ interface AnalyticsStats {
 export default function DashboardPage() {
   const { currentPlan, planFeatures, usedUploads } = usePlan()
   const { isBetaPro, daysRemaining, isLoading: betaLoading } = useBetaStatus()
-  const workspaceBannerPadding = useWorkspaceBannerPadding()
   const [mounted, setMounted] = useState(false)
   const [recentPosts, setRecentPosts] = useState<RecentPost[]>([])
   const [loadingPosts, setLoadingPosts] = useState(true)
@@ -277,7 +275,7 @@ export default function DashboardPage() {
       />
 
       {/* Main Content */}
-      <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28 ${workspaceBannerPadding}`}>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28">
         {/* Plan Status Banner */}
         {currentPlan === 'free' && (
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 mb-6 animate-fade-in">

@@ -9,7 +9,6 @@ import { SignOutButton } from '@/components/auth'
 import { Tooltip } from './Tooltip'
 import { useFeedback } from '@/app/context/FeedbackContext'
 import { WorkspaceSwitcher } from '@/app/components/WorkspaceSwitcher'
-import { WorkspaceBanner } from '@/app/components/WorkspaceBanner'
 import { useWorkspaceOptional } from '@/app/context/WorkspaceContext'
 import { WORKSPACE_SWITCHER_V2 } from '@/lib/feature-flags'
 
@@ -576,8 +575,7 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
         </div>
       </div>
     </header>
-    {/* Workspace Banner - shows active workspace context */}
-    <WorkspaceBanner />
+    {/* Workspace context is now shown in the WorkspaceSwitcherV2 in the header */}
     </>
   )
 }

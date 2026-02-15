@@ -19,7 +19,6 @@ import {
   LockIcon
 } from '../components/ui'
 import { ExportAnalytics } from '../components/ExportAnalytics'
-import { useWorkspaceBannerPadding } from '../components/WorkspaceBanner'
 import { useUpgradeIntent, LockedMetricId } from '../context/UpgradeIntentContext'
 import { useFeedbackTrigger } from '../context/FeedbackContext'
 import type { SocialPlatform } from '@/lib/types/social'
@@ -181,7 +180,6 @@ export default function AnalyticsPage() {
   const [mounted, setMounted] = useState(false)
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformFilter>('all')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-  const workspaceBannerPadding = useWorkspaceBannerPadding()
   const [upgradeModalMetric, setUpgradeModalMetric] = useState<LockedMetricId | null>(null)
   const [activeTrialMetric, setActiveTrialMetric] = useState<LockedMetricId | null>(null)
   const [analyticsPermissions, setAnalyticsPermissions] = useState<AnalyticsPermissions | null>(null)
@@ -710,7 +708,7 @@ export default function AnalyticsPage() {
     <div className="min-h-screen bg-background">
       <AppHeader currentPage="analytics" />
 
-      <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28 ${workspaceBannerPadding}`}>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 lg:pt-28">
         {/* FREE USER - Full Page Upgrade Gate */}
         {userPlan === 'free' ? (
           <div className="min-h-[70vh] flex flex-col items-center justify-center animate-fade-in">
