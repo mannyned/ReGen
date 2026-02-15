@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { buildWorkspaceRoute } from '@/lib/utils/workspace-route'
 
 // ============================================
 // TYPES
@@ -174,16 +175,30 @@ export function WorkspaceProvider({
     }
   }, [pathname])
 
-  // Switch workspace
+  // Switch workspace — preserves current sub-page when possible
   const switchWorkspace = useCallback(
     (workspaceId: string) => {
       const workspace = workspaces.find((w) => w.id === workspaceId)
-      if (workspace) {
-        setCurrentWorkspaceId(workspaceId)
-        router.push(`/w/${workspaceId}/dashboard`)
+      if (!workspace) {
+        console.error('[workspace:switch] Workspace not found:', workspaceId)
+        setError('Workspace not found. It may have been deleted.')
+        return
       }
+
+      console.info('[workspace:switch]', {
+        from: currentWorkspaceId,
+        to: workspaceId,
+        pathname,
+      })
+
+      setCurrentWorkspaceId(workspaceId)
+      setActiveWorkspace(workspace)
+
+      // Preserve current sub-page (e.g. /w/old/team → /w/new/team)
+      const targetPath = buildWorkspaceRoute(workspaceId, pathname)
+      router.push(targetPath)
     },
-    [workspaces, router]
+    [workspaces, router, pathname, currentWorkspaceId, setActiveWorkspace]
   )
 
   // Computed values

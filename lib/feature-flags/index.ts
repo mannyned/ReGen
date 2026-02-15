@@ -6,3 +6,4 @@
 
 export * from './workspaces'
 export * from './pwa-layout'
+export * from './workspace-switcher'

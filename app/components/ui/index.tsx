@@ -4,12 +4,20 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { SignOutButton } from '@/components/auth'
 import { Tooltip } from './Tooltip'
 import { useFeedback } from '@/app/context/FeedbackContext'
 import { WorkspaceSwitcher } from '@/app/components/WorkspaceSwitcher'
 import { WorkspaceBanner } from '@/app/components/WorkspaceBanner'
 import { useWorkspaceOptional } from '@/app/context/WorkspaceContext'
+import { WORKSPACE_SWITCHER_V2 } from '@/lib/feature-flags'
+
+// Lazy-load V2 switcher — zero cost when flag is off
+const WorkspaceSwitcherV2 = dynamic(
+  () => import('@/app/components/WorkspaceSwitcherV2'),
+  { ssr: false }
+)
 
 // ==========================================
 // PLATFORM LOGO COMPONENT (RE-EXPORT)
@@ -230,8 +238,16 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 lg:h-16">
-          {/* Logo and Back Button */}
+          {/* Workspace Switcher V2 + Logo + Nav */}
           <div className="flex items-center gap-6">
+            {/* V2 Workspace Switcher — top-left, Notion-style */}
+            {WORKSPACE_SWITCHER_V2 && (
+              <>
+                <WorkspaceSwitcherV2 />
+                <div className="hidden sm:block w-px h-6 bg-gray-200" />
+              </>
+            )}
+
             {showBackButton && activeWorkspace && (
               <button
                 onClick={() => router.push(`/w/${activeWorkspace.id}/dashboard`)}
@@ -348,10 +364,12 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
 
           {/* Right Side: CTA + Avatar */}
           <div className="flex items-center gap-3">
-            {/* Workspace Switcher - Only shows for PRO users with workspaces enabled */}
-            <div className="hidden sm:block">
-              <WorkspaceSwitcher />
-            </div>
+            {/* Workspace Switcher (old) - hidden when V2 is enabled */}
+            {!WORKSPACE_SWITCHER_V2 && (
+              <div className="hidden sm:block">
+                <WorkspaceSwitcher />
+              </div>
+            )}
 
             {/* Create New CTA - Desktop */}
             <Link
@@ -450,6 +468,13 @@ export function AppHeader({ currentPage, showSchedule = true, isPro = false, use
         mobileMenuOpen ? 'max-h-[32rem] border-t border-gray-100' : 'max-h-0'
       }`}>
         <div className="px-4 py-3 bg-white">
+          {/* V2 Workspace Switcher - Mobile */}
+          {WORKSPACE_SWITCHER_V2 && (
+            <div className="pb-3 mb-3 border-b border-gray-100">
+              <WorkspaceSwitcherV2 />
+            </div>
+          )}
+
           {/* User Info - Mobile */}
           <div className="flex items-center gap-3 pb-3 mb-3 border-b border-gray-100">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-semibold">
