@@ -146,16 +146,20 @@ async function fetchFacebookInsights(
       saves: 0,
     }
 
-    // Get insights
-    const insightsUrl = `${META_GRAPH_API}/${postId}/insights?metric=post_impressions,post_impressions_unique&access_token=${accessToken}`
+    // Get insights (impressions, reach, and saves)
+    const insightsUrl = `${META_GRAPH_API}/${postId}/insights?metric=post_impressions,post_impressions_unique,post_activity_by_action_type&access_token=${accessToken}`
     const insightsResponse = await fetch(insightsUrl)
 
     if (insightsResponse.ok) {
       const insightsData = await insightsResponse.json()
       for (const insight of insightsData.data || []) {
-        const value = insight.values?.[0]?.value || 0
-        if (insight.name === 'post_impressions') result.impressions = value
-        if (insight.name === 'post_impressions_unique') result.reach = value
+        const value = insight.values?.[0]?.value
+        if (insight.name === 'post_impressions') result.impressions = (typeof value === 'number' ? value : 0)
+        if (insight.name === 'post_impressions_unique') result.reach = (typeof value === 'number' ? value : 0)
+        // post_activity_by_action_type returns an object with action counts
+        if (insight.name === 'post_activity_by_action_type' && typeof value === 'object' && value !== null) {
+          result.saves = (value as Record<string, number>).save || 0
+        }
       }
     }
 
@@ -289,7 +293,7 @@ async function fetchTikTokInsights(
   accessToken: string
 ): Promise<Record<string, number> | null> {
   try {
-    const listUrl = `${TIKTOK_API}/video/list/?fields=id,like_count,comment_count,share_count,view_count`
+    const listUrl = `${TIKTOK_API}/video/list/?fields=id,like_count,comment_count,share_count,view_count,collect_count`
     const listResponse = await fetch(listUrl, {
       method: 'POST',
       headers: {
@@ -314,7 +318,7 @@ async function fetchTikTokInsights(
       shares: video.share_count || 0,
       reach: video.view_count || 0,
       impressions: video.view_count || 0,
-      saves: 0,
+      saves: video.collect_count || 0,
     }
   } catch (error) {
     console.error(`[Cron Analytics] TikTok error for ${videoId}:`, error)
@@ -356,6 +360,7 @@ async function fetchLinkedInInsights(
             comments: stats.commentCount || 0,
             shares: stats.shareCount || 0,
             reach: stats.uniqueImpressionsCount || stats.impressionCount || 0,
+            clicks: stats.clickCount || 0,
             saves: 0,
           }
         }

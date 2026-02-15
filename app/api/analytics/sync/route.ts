@@ -148,6 +148,7 @@ async function fetchFacebookInsights(
   likes: number
   comments: number
   shares: number
+  saves: number
 } | null> {
   // Initialize apiErrors array if needed
   if (facebookDebug && !facebookDebug.apiErrors) {
@@ -162,14 +163,15 @@ async function fetchFacebookInsights(
     likes: 0,
     comments: 0,
     shares: 0,
+    saves: 0,
   }
 
   try {
     // ========================================
-    // STEP 1: Try to get insights (reach/impressions)
+    // STEP 1: Try to get insights (reach/impressions/saves)
     // This requires pages_read_engagement permission
     // ========================================
-    const insightsMetrics = 'post_impressions,post_impressions_unique,post_engaged_users,post_clicks'
+    const insightsMetrics = 'post_impressions,post_impressions_unique,post_engaged_users,post_clicks,post_activity_by_action_type'
     const insightsUrl = `${META_GRAPH_API}/${postId}/insights?metric=${insightsMetrics}&access_token=${accessToken}`
     console.log(`[Facebook] Fetching insights for ${postId}`)
 
@@ -180,23 +182,29 @@ async function fetchFacebookInsights(
       console.log(`[Facebook Insights] Success for ${postId}:`, JSON.stringify(insightsData).slice(0, 500))
 
       for (const insight of insightsData.data || []) {
-        const value = insight.values?.[0]?.value || 0
+        const value = insight.values?.[0]?.value
         switch (insight.name) {
           case 'post_impressions':
-            result.impressions = value
+            result.impressions = (typeof value === 'number' ? value : 0)
             break
           case 'post_impressions_unique':
-            result.reach = value
+            result.reach = (typeof value === 'number' ? value : 0)
             break
           case 'post_engaged_users':
-            result.engaged_users = value
+            result.engaged_users = (typeof value === 'number' ? value : 0)
             break
           case 'post_clicks':
-            result.clicks = value
+            result.clicks = (typeof value === 'number' ? value : 0)
+            break
+          case 'post_activity_by_action_type':
+            // Returns an object with action counts: { like: N, comment: N, share: N, save: N }
+            if (typeof value === 'object' && value !== null) {
+              result.saves = (value as Record<string, number>).save || 0
+            }
             break
         }
       }
-      console.log(`[Facebook Insights] Parsed: impressions=${result.impressions}, reach=${result.reach}, engaged=${result.engaged_users}`)
+      console.log(`[Facebook Insights] Parsed: impressions=${result.impressions}, reach=${result.reach}, engaged=${result.engaged_users}, saves=${result.saves}`)
     } else {
       const errorText = await insightsResponse.text()
       console.log(`[Facebook Insights] Failed for ${postId} (${insightsResponse.status}): ${errorText.slice(0, 200)}`)
@@ -483,7 +491,7 @@ async function fetchTikTokInsights(
 
     // Use video/list endpoint to get user's videos with stats
     // TikTok v2 API requires POST with fields in URL
-    const listUrl = `${TIKTOK_API}/video/list/?fields=id,like_count,comment_count,share_count,view_count`
+    const listUrl = `${TIKTOK_API}/video/list/?fields=id,like_count,comment_count,share_count,view_count,collect_count`
 
     const listResponse = await fetch(listUrl, {
       method: 'POST',
@@ -519,6 +527,7 @@ async function fetchTikTokInsights(
       likes: video.like_count || 0,
       comments: video.comment_count || 0,
       shares: video.share_count || 0,
+      saves: video.collect_count || 0,
     }
 
     console.log(`[TikTok Insights] Parsed stats for ${videoId}:`, result)
@@ -551,7 +560,7 @@ async function discoverAndSyncTikTokVideos(
     console.log(`[TikTok Discovery] Fetching all videos for user`)
 
     // Fetch videos with all available fields
-    const listUrl = `${TIKTOK_API}/video/list/?fields=id,title,cover_image_url,like_count,comment_count,share_count,view_count,create_time,duration`
+    const listUrl = `${TIKTOK_API}/video/list/?fields=id,title,cover_image_url,like_count,comment_count,share_count,view_count,collect_count,create_time,duration`
 
     console.log(`[TikTok Discovery] Calling: ${listUrl}`)
 
@@ -621,6 +630,7 @@ async function discoverAndSyncTikTokVideos(
         likes: video.like_count || 0,
         comments: video.comment_count || 0,
         shares: video.share_count || 0,
+        saves: video.collect_count || 0,
         syncedAt: new Date().toISOString(),
       }
 
@@ -1365,7 +1375,7 @@ export async function POST(request: NextRequest) {
             likes: fullInsights.likes || basic?.likes || 0,
             comments: fullInsights.comments || basic?.comments || 0,
             shares: fullInsights.shares || 0,
-            saves: 0, // Facebook API doesn't provide saves
+            saves: fullInsights.saves || 0, // From post_activity_by_action_type.save
             engaged_users: fullInsights.engaged_users,
           }
           console.log(`[Analytics Sync] Facebook insights for ${post.externalPostId}:`, insights)
@@ -1431,7 +1441,7 @@ export async function POST(request: NextRequest) {
             // Map to common metrics
             reach: tiktokInsights.views,
             impressions: tiktokInsights.views,
-            saves: 0, // TikTok doesn't expose saves via API
+            saves: tiktokInsights.saves || 0, // TikTok collect_count = saves/favorites
           }
         }
       } else if (platform === 'linkedin') {
