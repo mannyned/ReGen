@@ -225,6 +225,7 @@ export default function AnalyticsPage() {
   const isProduction = process.env.NODE_ENV === 'production'
 
   const [isSyncing, setIsSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<{ synced: number; total: number; errors?: string[]; tokens?: Record<string, boolean> } | null>(null)
 
   // Helper function to format relative time
   const formatRelativeTime = (dateString: string | null | undefined): string => {
@@ -312,20 +313,28 @@ export default function AnalyticsPage() {
     }
   }
 
-  // Sync analytics from connected platforms (Meta, YouTube)
+  // Sync analytics from connected platforms
   const syncAnalytics = async () => {
     try {
       setIsSyncing(true)
+      setSyncResult(null)
       const response = await fetch('/api/analytics/sync', { method: 'POST' })
       const result = await response.json()
       if (response.ok) {
         console.log('[Analytics] Sync completed:', result)
+        setSyncResult({
+          synced: result.synced || 0,
+          total: result.total || 0,
+          errors: result.errors,
+          tokens: result.debug?.tokens,
+        })
       } else {
         console.warn('[Analytics] Sync failed:', result)
-        // Don't block on sync errors - still load stats
+        setSyncResult({ synced: 0, total: 0, errors: [result.error || 'Sync failed'] })
       }
     } catch (error) {
       console.error('Failed to sync analytics:', error)
+      setSyncResult({ synced: 0, total: 0, errors: ['Network error - could not reach sync endpoint'] })
     } finally {
       setIsSyncing(false)
     }
@@ -920,6 +929,23 @@ export default function AnalyticsPage() {
                   )}
                 </button>
 
+                {/* Sync Result Feedback */}
+                {syncResult && !isSyncing && (
+                  <div className={`text-xs px-3 py-1.5 rounded-lg ${
+                    syncResult.errors?.length ? 'bg-red-50 text-red-600' :
+                    syncResult.synced > 0 ? 'bg-green-50 text-green-600' :
+                    'bg-yellow-50 text-yellow-600'
+                  }`}>
+                    {syncResult.synced > 0
+                      ? `Synced ${syncResult.synced}/${syncResult.total} posts`
+                      : syncResult.total === 0
+                        ? 'No posts found to sync (last 30 days)'
+                        : `0/${syncResult.total} posts synced`}
+                    {syncResult.errors?.length ? ` · ${syncResult.errors.length} error${syncResult.errors.length > 1 ? 's' : ''}` : ''}
+                    {syncResult.tokens && !Object.values(syncResult.tokens).some(Boolean) && ' · No connected accounts'}
+                  </div>
+                )}
+
                 {/* Export Analytics Button - PRO Only */}
                 <ExportAnalytics
                   userId="demo-user-id"
@@ -1353,18 +1379,18 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {realStats?.engagement?.totalSaves !== undefined && realStats.engagement.totalSaves > 0 && (
+                      {realStats?.engagement && (
                         <>
                           <div className="text-right hidden md:block">
                             <p className="text-2xl font-bold">
-                              {realStats.engagement.totalReach > 0
+                              {realStats.engagement.totalReach > 0 && realStats.engagement.totalSaves > 0
                                 ? `${((realStats.engagement.totalSaves / realStats.engagement.totalReach) * 100).toFixed(1)}%`
-                                : '—'}
+                                : '0.0%'}
                             </p>
                             <p className="text-xs text-white/80">Avg Save Rate</p>
                           </div>
                           <div className="text-right hidden md:block">
-                            <p className="text-2xl font-bold">{realStats.engagement.totalSaves.toLocaleString()}</p>
+                            <p className="text-2xl font-bold">{(realStats.engagement.totalSaves || 0).toLocaleString()}</p>
                             <p className="text-xs text-white/80">Total Saves</p>
                           </div>
                         </>
