@@ -223,17 +223,20 @@ export function WorkspaceSwitcherV2() {
 
   if (isLoading) return null
 
-  // Single workspace — render as a static label, no dropdown needed
+  // Single workspace — link to workspace dashboard
   if (workspaces.length === 1) {
     return (
-      <div className="flex items-center gap-2 px-2 py-1.5">
+      <Link
+        href={`/w/${workspaces[0].id}/dashboard`}
+        className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+      >
         <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-accent-purple flex items-center justify-center text-white text-xs font-bold shrink-0">
           {workspaces[0].name.charAt(0).toUpperCase()}
         </div>
         <span className="hidden sm:block text-sm font-semibold text-gray-900 max-w-[120px] truncate">
           {workspaces[0].name}
         </span>
-      </div>
+      </Link>
     )
   }
 
