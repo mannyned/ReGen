@@ -220,13 +220,17 @@ export function WorkspaceSwitcherV2() {
     return null
   }
 
-  const { currentWorkspace, workspaces, setActiveWorkspace, canCreateWorkspace, isLoading } = ctx
+  const { currentWorkspace, activeWorkspace, workspaces, setActiveWorkspace, canCreateWorkspace, isLoading } = ctx
+
+  // Display workspace: prefer activeWorkspace (user's selection), then currentWorkspace (from URL), then first workspace
+  const displayWorkspace = activeWorkspace || currentWorkspace || workspaces[0]
 
   if (isLoading) return null
 
   return (
     <WorkspaceSwitcherInner
       currentWorkspace={currentWorkspace}
+      displayWorkspace={displayWorkspace}
       workspaces={workspaces}
       setActiveWorkspace={setActiveWorkspace}
       canCreateWorkspace={canCreateWorkspace}
@@ -248,6 +252,7 @@ export function WorkspaceSwitcherV2() {
 // Extracted inner component to use hooks unconditionally
 function WorkspaceSwitcherInner({
   currentWorkspace,
+  displayWorkspace,
   workspaces,
   setActiveWorkspace,
   canCreateWorkspace,
@@ -264,6 +269,7 @@ function WorkspaceSwitcherInner({
   searchInputRef,
 }: {
   currentWorkspace: Workspace | null
+  displayWorkspace: Workspace
   workspaces: Workspace[]
   setActiveWorkspace: (workspace: Workspace | null) => void
   canCreateWorkspace: boolean
@@ -398,16 +404,16 @@ function WorkspaceSwitcherInner({
         className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        aria-label={`Current workspace: ${currentWorkspace?.name || 'Select workspace'}. Click to switch.`}
+        aria-label={`Current workspace: ${displayWorkspace.name}. Click to switch.`}
       >
         {/* Initial Avatar */}
         <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-accent-purple flex items-center justify-center text-white text-xs font-bold shrink-0">
-          {currentWorkspace?.name?.charAt(0)?.toUpperCase() || 'W'}
+          {displayWorkspace.name.charAt(0).toUpperCase()}
         </div>
 
         {/* Workspace Name (hidden on small mobile) */}
         <span className="hidden sm:block text-sm font-semibold text-gray-900 max-w-[120px] truncate">
-          {currentWorkspace?.name || 'Workspace'}
+          {displayWorkspace.name}
         </span>
 
         {/* Chevron */}
@@ -434,7 +440,7 @@ function WorkspaceSwitcherInner({
         >
           <PanelContent
             filteredWorkspaces={filteredWorkspaces}
-            currentWorkspace={currentWorkspace}
+            currentWorkspace={displayWorkspace}
             focusedIndex={focusedIndex}
             canCreateWorkspace={canCreateWorkspace}
             searchQuery={searchQuery}
@@ -477,7 +483,7 @@ function WorkspaceSwitcherInner({
             <div className="flex-1 overflow-y-auto py-2">
               <PanelContent
                 filteredWorkspaces={filteredWorkspaces}
-                currentWorkspace={currentWorkspace}
+                currentWorkspace={displayWorkspace}
                 focusedIndex={focusedIndex}
                 canCreateWorkspace={canCreateWorkspace}
                 searchQuery={searchQuery}
